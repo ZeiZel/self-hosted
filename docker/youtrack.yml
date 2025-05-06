@@ -1,3 +1,5 @@
+---
+
 services:
   youtrack:
     image: jetbrains/youtrack:2025.1.74704

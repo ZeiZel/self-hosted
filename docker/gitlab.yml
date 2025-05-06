@@ -1,4 +1,5 @@
 ---
+
 services:
   gitlab:
     image: gitlab/gitlab-ee:latest

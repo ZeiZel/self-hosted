@@ -1,4 +1,5 @@
-# Тут поднимается Notesnook Server для синхронизации данных заметок на сервере
+---
+# Sync server for notesnook
 # https://github.com/streetwriters/notesnook-sync-server/blob/master/docker-compose.yml
 
 services:
