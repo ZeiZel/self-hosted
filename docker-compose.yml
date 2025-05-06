@@ -1,0 +1,27 @@
+services:
+  caddy:
+    env_file:
+      - .env
+    build:
+      context: .
+    extends:
+      file: ./docker/caddy.yml
+      service: caddy
+
+  dashy:
+    build:
+      context: .
+    extends:
+      file: ./docker/dashy.yml
+      service: dashy
+
+  youtrack:
+    build:
+      context: .
+    extends:
+      file: ./docker/youtrack.yml
+      service: youtrack
+
+networks:
+  locality:
+    driver: bridge

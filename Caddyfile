@@ -1,0 +1,47 @@
+{$WWW_HOSTNAME}.{$CORE_DOMAIN} {
+    reverse_proxy localhost:8080
+}
+
+{$DASHY_HOSTNAME}.{$CORE_DOMAIN} {
+    reverse_proxy localhost:{$DASHY_OUT_PORT}
+}
+
+{$YOUTRACK_HOSTNAME}.{$CORE_DOMAIN} {
+    reverse_proxy localhost:{$YOUTRACK_OUT_PORT}
+}
+
+{$GITLAB_HOSTNAME}.{$CORE_DOMAIN} {
+    reverse_proxy localhost:8929
+}
+
+{$NOTESNOOK_HOSTNAME}.{$CORE_DOMAIN} {
+    reverse_proxy localhost:3000
+}
+
+{$AUTH_HOSTNAME}.{$CORE_DOMAIN} {
+    reverse_proxy localhost:9000
+}
+
+{$REVOLT_HOSTNAME}.{$CORE_DOMAIN} {
+    route /api* {
+        uri strip_prefix /api
+        reverse_proxy http://api:14702
+    }
+
+    route /ws {
+        uri strip_prefix /ws
+        reverse_proxy http://events:14703
+    }
+
+    route /autumn* {
+        uri strip_prefix /autumn
+        reverse_proxy http://autumn:14704
+    }
+
+    route /january* {
+        uri strip_prefix /january
+        reverse_proxy http://january:14705
+    }
+
+    reverse_proxy http://web:5000
+}

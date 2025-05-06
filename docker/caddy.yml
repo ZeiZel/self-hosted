@@ -1,0 +1,14 @@
+services:
+  caddy:
+    image: caddy:2
+    container_name: caddy
+    restart: unless-stopped
+    ports:
+      - $CADDY_HTTP_OUT_PORT:$CADDY_HTTP_DOCKER_PORT
+      - $CADDY_HTTPS_OUT_PORT:$CADDY_HTTPS_DOCKER_PORT
+    volumes:
+      - ${PWD}/Caddyfile:/etc/caddy/Caddyfile
+      - ${PWD}/volumes/caddy/data:/data
+      - ${PWD}/volumes/caddy/config:/config
+    networks:
+      - locality

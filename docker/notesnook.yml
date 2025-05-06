@@ -1,0 +1,16 @@
+# Тут поднимается Notesnook Server для синхронизации данных заметок на сервере
+# https://github.com/streetwriters/notesnook-sync-server/blob/master/docker-compose.yml
+
+services:
+  notesnook:
+    image: streetwriters/notesnook-server:latest
+    container_name: notesnook
+    restart: always
+    ports:
+      - "8787:3000"
+    environment:
+      - NODE_ENV=production
+    volumes:
+      - ${PWD}/volumes/notesnook/data:/data
+    networks:
+      - local
