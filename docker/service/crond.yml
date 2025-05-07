@@ -1,0 +1,18 @@
+---
+# Regular task daemon
+
+services:
+  crond:
+    image: ghcr.io/revoltchat/crond:20250210-1-debug
+    restart: always
+    depends_on:
+      mongo:
+        condition: service_healthy
+      minio:
+        condition: service_started
+    volumes:
+      - type: bind
+        source: ${PWD}/configs/revolt/Revolt.toml
+        target: /Revolt.toml
+    networks:
+      - locality

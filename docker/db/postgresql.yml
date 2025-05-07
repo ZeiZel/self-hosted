@@ -1,0 +1,23 @@
+---
+
+services:
+  postgres:
+    image: postgres:latest
+    container_name: vw-postgres
+    environment:
+      POSTGRES_USER: locality
+      POSTGRES_PASSWORD: ${PG_PASS:?database password required}
+      POSTGRES_DB: locality
+    volumes:
+      - ${PWD}/volumes/database:/var/lib/postgresql/data
+    networks:
+      - vw-net
+    restart: unless-stopped
+    env_file:
+      - .env
+    healthcheck:
+      test: [ "CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}" ]
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 5s

@@ -1,0 +1,11 @@
+---
+
+services:
+  mailhog:
+    image: mailhog/mailhog
+    container_name: smtp
+    restart: unless-stopped
+    ports:
+      - "8025:8025"  # web UI
+    networks:
+      - locality

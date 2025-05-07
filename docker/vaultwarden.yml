@@ -1,0 +1,23 @@
+---
+
+services:
+  vaultwarden:
+    image: vaultwarden/server:latest
+    container_name: vaultwarden
+    restart: unless-stopped
+    environment:
+      - DOMAIN=https://vault.local
+      - SIGNUPS_ALLOWED=false
+      - WEBSOCKET_ENABLED=true
+      - ADMIN_TOKEN=supersecureadmintoken
+      - DATABASE_URL=postgres://locality:supersecret@postgres:5432/locality
+      - SMTP_HOST=smtp
+      - SMTP_FROM=admin@vault.local
+      - SMTP_PORT=1025
+    volumes:
+      - ${PWD}/volumes/vaultwarden/data:/data
+    depends_on:
+      - postgres
+      - smtp
+    networks:
+      - locality

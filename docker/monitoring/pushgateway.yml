@@ -1,0 +1,10 @@
+---
+
+services:
+  pushgateway:
+    image: prom/pushgateway:latest
+    container_name: pushgateway
+    ports:
+      - "10015:9091"
+    networks:
+      - locality

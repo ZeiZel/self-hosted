@@ -1,0 +1,25 @@
+---
+
+# MinIO: S3-compatible storage server
+services:
+  minio:
+    image: docker.io/minio/minio
+    command: server /data
+    restart: always
+    volumes:
+      - ${PWD}/volumes/minio/data:/data
+    environment:
+      MINIO_ROOT_USER: minioautumn
+      MINIO_ROOT_PASSWORD: minioautumn
+      MINIO_DOMAIN: minio
+    networks:
+      default:
+        aliases:
+          - revolt-uploads.minio
+          # legacy support:
+          - attachments.minio
+          - avatars.minio
+          - backgrounds.minio
+          - icons.minio
+          - banners.minio
+          - emojis.minio

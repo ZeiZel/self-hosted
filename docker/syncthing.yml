@@ -1,0 +1,21 @@
+---
+
+services:
+  syncthing:
+    image: syncthing/syncthing:latest
+    container_name: syncthing
+    hostname: syncthing-node
+    volumes:
+      - ${PWD}/volumes/syncthing/config:/var/syncthing/config
+      - ${PWD}/volumes/syncthing/data:/var/syncthing/data
+      - ${PWD}/volumes/syncthing/backup:/var/syncthing/backup
+    ports:
+      - "8384:8384"     # Web UI
+      - "22000:22000/tcp" # Sync protocol
+      - "22000:22000/udp" # Sync discovery
+      - "21027:21027/udp" # Local discovery
+    networks:
+      - syncthing-network
+    restart: unless-stopped
+    labels:
+      - "com.centurylinklabs.watchtower.enable=true"

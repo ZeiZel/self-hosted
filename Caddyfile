@@ -1,28 +1,42 @@
-{$WWW_HOSTNAME}.{$CORE_DOMAIN} {
+(dashboard_vars) {
+  vars {
+    core_domain      {$CORE_DOMAIN:localhost}
+    dashy_port       {$DASHY_OUT_PORT:4000}
+    youtrack_port    {$YOUTRACK_OUT_PORT:4001}
+    gitlab_port      {$GITLAB_OUT_PORT:8929}
+    notesnook_port   {$NOTESNOOK_OUT_PORT:8929}
+    authn_port       {$AUTHENTIK_OUT_PORT:4003}
+  }
+}
+
+www.{$CORE_DOMAIN:localhost} {
     reverse_proxy localhost:8080
 }
 
-{$DASHY_HOSTNAME}.{$CORE_DOMAIN} {
-    reverse_proxy localhost:{$DASHY_OUT_PORT}
+dashy.{$CORE_DOMAIN:localhost} {
+    import dashboard_vars
+    reverse_proxy localhost:{dashy_port}
 }
 
-{$YOUTRACK_HOSTNAME}.{$CORE_DOMAIN} {
-    reverse_proxy localhost:{$YOUTRACK_OUT_PORT}
+youtrack.{$CORE_DOMAIN:localhost} {
+    import dashboard_vars
+    reverse_proxy localhost:{youtrack_port}
 }
 
-{$GITLAB_HOSTNAME}.{$CORE_DOMAIN} {
-    reverse_proxy localhost:8929
+gitlab.{$CORE_DOMAIN:localhost} {
+    import dashboard_vars
+    reverse_proxy localhost:{gitlab_port}
 }
 
-{$NOTESNOOK_HOSTNAME}.{$CORE_DOMAIN} {
-    reverse_proxy localhost:3000
+notesnook.{$CORE_DOMAIN:localhost} {
+    reverse_proxy localhost:{gitlab_port}
 }
 
-{$AUTH_HOSTNAME}.{$CORE_DOMAIN} {
+auth.{$CORE_DOMAIN:localhost} {
     reverse_proxy localhost:9000
 }
 
-{$REVOLT_HOSTNAME}.{$CORE_DOMAIN} {
+revolt.{$CORE_DOMAIN:localhost} {
     route /api* {
         uri strip_prefix /api
         reverse_proxy http://api:14702

@@ -1,0 +1,14 @@
+---
+
+services:
+  blackbox:
+    image: prom/blackbox-exporter:latest
+    container_name: blackbox
+    ports:
+      - "10016:9115"
+    volumes:
+      - ${PWD}/configs/blackbox:/etc/blackbox_exporter
+    command:
+      - '--config.file=/etc/blackbox_exporter/config.yml'
+    networks:
+      - locality

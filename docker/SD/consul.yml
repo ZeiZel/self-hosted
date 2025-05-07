@@ -1,0 +1,64 @@
+---
+
+services:
+  consul:
+    image: hashicorp/consul:latest
+    container_name: consul
+    command: agent -server -bootstrap-expect=1 -ui -client=0.0.0.0 -node=consul-server
+    ports:
+      - "8500:8500"   # Web UI
+      - "8600:8600/udp" # DNS
+      - "8300:8300"
+      - "8301:8301"
+      - "8301:8301/udp"
+      - "8302:8302"
+      - "8302:8302/udp"
+    volumes:
+      - consul-data:/consul/data
+    networks:
+      - consul-net
+
+  consul-agent:
+    image: hashicorp/consul:latest
+    container_name: consul-agent
+    command: agent -retry-join=consul -node=consul-agent -client=0.0.0.0
+    depends_on:
+      - consul
+    networks:
+      - consul-net
+
+  consul-exporter:
+    image: prometheus/consul-exporter:latest
+    container_name: consul-exporter
+    command:
+      - '--consul.server=consul:8500'
+    ports:
+      - "9107:9107"
+    networks:
+      - consul-net
+    depends_on:
+      - consul
+
+  registrator:
+    image: gliderlabs/registrator:latest
+    container_name: registrator
+    command: -internal consul://consul:8500
+    volumes:
+      - /var/run/docker.sock:/tmp/docker.sock
+    networks:
+      - consul-net
+    depends_on:
+      - consul
+
+  fabio:
+    image: fabiolb/fabio:latest
+    container_name: fabio
+    ports:
+      - "9999:9999" # HTTP proxy
+      - "9998:9998" # UI
+    environment:
+      - registry_consul_addr=consul:8500
+    networks:
+      - consul-net
+    depends_on:
+      - consul

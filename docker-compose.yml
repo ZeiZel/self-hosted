@@ -1,29 +1,319 @@
 ---
 
 services:
+  # SSL + reverse_proxy
   caddy:
-    env_file:
-      - .env
     build:
       context: .
     extends:
       file: ./docker/caddy.yml
       service: caddy
 
+  # DASHBOARD
+
   dashy:
+    depends_on:
+      - caddy
     build:
       context: .
     extends:
       file: ./docker/dashy.yml
       service: dashy
 
+  # TASKTRACKING
+
   youtrack:
+    profiles: [ tasktracking ]
+    depends_on:
+      - caddy
     build:
       context: .
     extends:
       file: ./docker/youtrack.yml
       service: youtrack
 
+  # MAIL
+
+  smtp:
+    profiles: [ mail ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/smtp.yml
+      service: mailhog
+
+  # SERVICE
+
+  watchtower:
+    build:
+      context: .
+    extends:
+      file: ./docker/service/watchtower.yml
+      service: watchtower
+
+  crond:
+    build:
+      context: .
+    extends:
+      file: ./docker/service/crond.yml
+      service: crond
+
+  # DB
+
+  minio:
+    profiles: [ db ]
+    build:
+      context: .
+    extends:
+      file: ./docker/db/minio.yml
+      service: minio
+
+  postgres:
+    profiles: [ db ]
+    build:
+      context: .
+    extends:
+      file: ./docker/db/postgres.yml
+      service: postgres
+
+  redis:
+    profiles: [ db ]
+    build:
+      context: .
+    extends:
+      file: ./docker/db/redis.yml
+      service: redis
+
+  mongo:
+    profiles: [ db ]
+    build:
+      context: .
+    extends:
+      file: ./docker/db/mongo.yml
+      service: mongo
+
+  createbuckets:
+    profiles: [ db ]
+    build:
+      context: .
+    extends:
+      file: ./docker/db/createbuckets.yml
+      service: createbuckets
+
+  # VAULT
+
+  vaultwarden:
+    profiles: [ vault ]
+    depends_on: [ caddy, smtp, watchtower, postgres ]
+    build:
+      context: .
+    extends:
+      file: ./docker/smtp.yml
+      service: mailhog
+
+  # CHAT
+
+  revolt-ui:
+    profiles: [ chat ]
+    depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
+    build:
+      context: .
+    extends:
+      file: ./docker/chat/revolt.yml
+      service: web
+
+  revolt-api:
+    profiles: [ chat ]
+    depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
+    build:
+      context: .
+    extends:
+      file: ./docker/chat/revolt.yml
+      service: api
+
+  revolt-events:
+    profiles: [ chat ]
+    depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
+    build:
+      context: .
+    extends:
+      file: ./docker/chat/revolt.yml
+      service: events
+
+  revolt-push-daemon:
+    profiles: [ chat ]
+    depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
+    build:
+      context: .
+    extends:
+      file: ./docker/chat/revolt.yml
+      service: pushd
+
+  revolt-jan:
+    profiles: [ chat ]
+    depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
+    build:
+      context: .
+    extends:
+      file: ./docker/chat/revolt.yml
+      service: january
+
+  revolt-autumn:
+    profiles: [ chat ]
+    depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
+    build:
+      context: .
+    extends:
+      file: ./docker/chat/revolt.yml
+      service: autumn
+
+  # GITLAB
+
+  gitlab:
+    profiles: [ gitlab ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/gitlab/gitlab.yml
+      service: gitlab
+  
+  # NOTES
+
+  notesnook:
+    profiles: [ notes ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/notes/notesnook.yml
+      service: gitlab
+
+  # LOGGING
+
+  elastic:
+    profiles: [ logging ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/logging/elastic.yml
+      service: elastic
+
+  filebeat:
+    profiles: [ logging ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/logging/filebeat.yml
+      service: filebeat
+
+  kibana:
+    profiles: [ logging ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/logging/kibana.yml
+      service: kibana
+
+  logstash:
+    profiles: [ logging ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/logging/logstash.yml
+      service: logstash
+
+  # GRAFANA + PROMETHEUS
+
+  prometheus:
+    profiles: [ monitoring ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/monitoring/prometheus.yml
+      service: prometheus
+  
+  grafana:
+    profiles: [ monitoring ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/monitoring/grafana.yml
+      service: grafana
+  
+  node-exporter:
+    profiles: [ monitoring ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/monitoring/node-exporter.yml
+      service: node-exporter
+  
+  cadvisor:
+    profiles: [ monitoring ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/monitoring/cadvisor.yml
+      service: cadvisor
+  
+  alertmanager:
+    profiles: [ monitoring ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/monitoring/alertmanager.yml
+      service: alertmanager
+  
+  blackbox:
+    profiles: [ monitoring ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/monitoring/blackbox.yml
+      service: blackbox
+  
+  pushgateway:
+    profiles: [ monitoring ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/monitoring/pushgateway.yml
+      service: pushgateway
+
 networks:
-  locality:
+  shared-net:
+    name: shared-net
+    driver: bridge
+  syncthing-net:
+    name: syncthing-net
+    driver: bridge
+  db-net:
+    name: db-net
     driver: bridge

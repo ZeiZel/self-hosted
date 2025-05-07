@@ -1,0 +1,12 @@
+---
+
+services:
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: alertmanager
+    ports:
+      - "4014:9093"
+    volumes:
+      - ${PWD}/configs/alertmanager/config.yml:/etc/alertmanager/config.yml
+    networks:
+      - locality

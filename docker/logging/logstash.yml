@@ -1,0 +1,13 @@
+services:
+    logstash:
+      image: docker.elastic.co/logstash/logstash:8.13.0
+      container_name: logstash
+      volumes:
+        - ./logstash/pipeline:/usr/share/logstash/pipeline
+      ports:
+        - "5044:5044"         # For Filebeat
+        - "9600:9600"         # Monitoring API
+      depends_on:
+        - elasticsearch
+      networks:
+        - locality
