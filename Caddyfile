@@ -9,6 +9,11 @@
   }
 }
 
+mail.{$CORE_DOMAIN:localhost} {
+    reverse_proxy stalwart-mail:8080
+    tls your_email@example.com
+}
+
 www.{$CORE_DOMAIN:localhost} {
     reverse_proxy localhost:8080
 }

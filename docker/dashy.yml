@@ -1,5 +1,7 @@
 ---
 
+# https://dashy.to/docs/quick-start/
+
 services:
   dashy:
     image: lissy93/dashy
@@ -17,3 +19,5 @@ services:
       timeout: 10s
       retries: 3
       start_period: 40s
+    networks:
+      - shared-net

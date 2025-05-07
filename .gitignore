@@ -2,6 +2,8 @@
 *.env
 .env.*
 *.env.*
+
 /volumes
+/configs/revolt/Revolt.toml
 
 !.env.example

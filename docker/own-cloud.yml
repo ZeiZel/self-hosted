@@ -1,0 +1,6 @@
+---
+
+# https://github.com/owncloud/web
+
+services:
+  own-cloud:

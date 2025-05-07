@@ -1,0 +1,30 @@
+{
+  "name": "self-hosted",
+  "version": "0.0.1",
+  "author": "ZeiZel",
+  "license": "ISC",
+  "type": "module",
+  "description": "Repo of self-hosted apps",
+  "bugs": {
+    "url": "https://github.com/ZeiZel/self-hosted/issues"
+  },
+  "homepage": "https://github.com/ZeiZel/self-hosted#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ZeiZel/self-hosted.git"
+  },
+  "keywords": [
+    "self-hosted",
+    "selfhosted",
+    "kubernetes",
+    "k8s",
+    "caddy",
+    "terraform",
+    "vagrant",
+    "docker",
+    "ansible"
+  ],
+  "scripts": {
+    "all": "docker compose up --profile all"
+  }
+}

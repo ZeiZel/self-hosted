@@ -13,4 +13,5 @@ services:
       - ${PWD}/volumes/caddy/data:/data
       - ${PWD}/volumes/caddy/config:/config
     networks:
-      - locality
+      - shared-net
+      - caddy-net

@@ -13,4 +13,4 @@ services:
       - ${PWD}/volumes/youtrack/backups:/opt/youtrack/backups
       - ${PWD}/volumes/youtrack/conf:/opt/youtrack/conf
     networks:
-      - locality
+      - shared-net

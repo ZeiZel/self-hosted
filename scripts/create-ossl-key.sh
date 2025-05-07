@@ -1,1 +1,1 @@
-echo "PG_PASS=$(openssl rand -base64 36 | tr -d '\n')" >> .env
+echo "PG_PASS=$(openssl rand -base64 36 | tr -d '\n')" >> ../.env

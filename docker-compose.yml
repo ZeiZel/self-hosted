@@ -23,7 +23,7 @@ services:
   # TASKTRACKING
 
   youtrack:
-    profiles: [ tasktracking ]
+    profiles: [ all,  all, tasktracking ]
     depends_on:
       - caddy
     build:
@@ -34,15 +34,15 @@ services:
 
   # MAIL
 
-  smtp:
-    profiles: [ mail ]
+  mail:
+    profiles: [ all, mail ]
     depends_on:
       - caddy
     build:
       context: .
     extends:
-      file: ./docker/smtp.yml
-      service: mailhog
+      file: ./docker/mailer.yml
+      service: stalwart-mail
 
   # SERVICE
 
@@ -60,10 +60,27 @@ services:
       file: ./docker/service/crond.yml
       service: crond
 
+  autoheal:
+    build:
+      context: .
+    extends:
+      file: ./docker/service/autoheal.yml
+      service: autoheal
+
+  validate:
+    build:
+      context: .
+    extends:
+      file: ./docker/service/validate.yml
+      service: validate
+
   # DB
 
   minio:
-    profiles: [ db ]
+    profiles: [ all,  db ]
+    depends_on:
+      validate:
+        condition: service_completed_successfully
     build:
       context: .
     extends:
@@ -71,7 +88,7 @@ services:
       service: minio
 
   postgres:
-    profiles: [ db ]
+    profiles: [ all,  db ]
     build:
       context: .
     extends:
@@ -79,7 +96,7 @@ services:
       service: postgres
 
   redis:
-    profiles: [ db ]
+    profiles: [ all,  db ]
     build:
       context: .
     extends:
@@ -87,7 +104,12 @@ services:
       service: redis
 
   mongo:
-    profiles: [ db ]
+    profiles: [ all,  db ]
+    depends_on:
+      caddy:
+        condition: service_started
+      validate:
+        condition: service_completed_successfully
     build:
       context: .
     extends:
@@ -95,7 +117,7 @@ services:
       service: mongo
 
   createbuckets:
-    profiles: [ db ]
+    profiles: [ all,  db ]
     build:
       context: .
     extends:
@@ -105,7 +127,7 @@ services:
   # VAULT
 
   vaultwarden:
-    profiles: [ vault ]
+    profiles: [ all,  vault ]
     depends_on: [ caddy, smtp, watchtower, postgres ]
     build:
       context: .
@@ -116,7 +138,7 @@ services:
   # CHAT
 
   revolt-ui:
-    profiles: [ chat ]
+    profiles: [ all,  chat ]
     depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
     build:
       context: .
@@ -125,7 +147,7 @@ services:
       service: web
 
   revolt-api:
-    profiles: [ chat ]
+    profiles: [ all,  chat ]
     depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
     build:
       context: .
@@ -134,7 +156,7 @@ services:
       service: api
 
   revolt-events:
-    profiles: [ chat ]
+    profiles: [ all,  chat ]
     depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
     build:
       context: .
@@ -143,7 +165,7 @@ services:
       service: events
 
   revolt-push-daemon:
-    profiles: [ chat ]
+    profiles: [ all,  chat ]
     depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
     build:
       context: .
@@ -152,7 +174,7 @@ services:
       service: pushd
 
   revolt-jan:
-    profiles: [ chat ]
+    profiles: [ all,  chat ]
     depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
     build:
       context: .
@@ -161,7 +183,7 @@ services:
       service: january
 
   revolt-autumn:
-    profiles: [ chat ]
+    profiles: [ all,  chat ]
     depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
     build:
       context: .
@@ -172,7 +194,7 @@ services:
   # GITLAB
 
   gitlab:
-    profiles: [ gitlab ]
+    profiles: [ all,  gitlab ]
     depends_on:
       - caddy
     build:
@@ -180,23 +202,31 @@ services:
     extends:
       file: ./docker/gitlab/gitlab.yml
       service: gitlab
-  
-  # NOTES
 
-  notesnook:
-    profiles: [ notes ]
+  # SYNC
+
+  syncthing:
+    profiles: [ all,  sync ]
     depends_on:
       - caddy
     build:
       context: .
     extends:
-      file: ./docker/notes/notesnook.yml
-      service: gitlab
+      file: ./docker/syncthing.yml
+      service: syncthing
+
+  syncthing-exporter:
+    profiles: [ all,  sync ]
+    build:
+      context: .
+    extends:
+      file: ./docker/syncthing.yml
+      service: syncthing-exporter
 
   # LOGGING
 
   elastic:
-    profiles: [ logging ]
+    profiles: [ all,  logging ]
     depends_on:
       - caddy
     build:
@@ -206,7 +236,7 @@ services:
       service: elastic
 
   filebeat:
-    profiles: [ logging ]
+    profiles: [ all,  logging ]
     depends_on:
       - caddy
     build:
@@ -216,7 +246,7 @@ services:
       service: filebeat
 
   kibana:
-    profiles: [ logging ]
+    profiles: [ all,  logging ]
     depends_on:
       - caddy
     build:
@@ -226,7 +256,7 @@ services:
       service: kibana
 
   logstash:
-    profiles: [ logging ]
+    profiles: [ all,  logging ]
     depends_on:
       - caddy
     build:
@@ -238,7 +268,7 @@ services:
   # GRAFANA + PROMETHEUS
 
   prometheus:
-    profiles: [ monitoring ]
+    profiles: [ all,  monitoring ]
     depends_on:
       - caddy
     build:
@@ -248,7 +278,7 @@ services:
       service: prometheus
   
   grafana:
-    profiles: [ monitoring ]
+    profiles: [ all,  monitoring ]
     depends_on:
       - caddy
     build:
@@ -258,7 +288,7 @@ services:
       service: grafana
   
   node-exporter:
-    profiles: [ monitoring ]
+    profiles: [ all,  monitoring ]
     depends_on:
       - caddy
     build:
@@ -268,7 +298,7 @@ services:
       service: node-exporter
   
   cadvisor:
-    profiles: [ monitoring ]
+    profiles: [ all,  monitoring ]
     depends_on:
       - caddy
     build:
@@ -278,7 +308,7 @@ services:
       service: cadvisor
   
   alertmanager:
-    profiles: [ monitoring ]
+    profiles: [ all,  monitoring ]
     depends_on:
       - caddy
     build:
@@ -288,7 +318,7 @@ services:
       service: alertmanager
   
   blackbox:
-    profiles: [ monitoring ]
+    profiles: [ all,  monitoring ]
     depends_on:
       - caddy
     build:
@@ -298,7 +328,7 @@ services:
       service: blackbox
   
   pushgateway:
-    profiles: [ monitoring ]
+    profiles: [ all,  monitoring ]
     depends_on:
       - caddy
     build:
@@ -308,11 +338,11 @@ services:
       service: pushgateway
 
 networks:
+  caddy-net:
+  notesnook-net:
   shared-net:
-    name: shared-net
     driver: bridge
   syncthing-net:
-    name: syncthing-net
     driver: bridge
   db-net:
     name: db-net

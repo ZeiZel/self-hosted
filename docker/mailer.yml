@@ -1,0 +1,23 @@
+---
+# https://github.com/stalwartlabs/mail-server
+
+services:
+  stalwart-mail:
+    image: stalwartlabs/mail-server:latest
+    container_name: stalwart-mail
+    restart: unless-stopped
+    volumes:
+      - ${PWD}/volumes/stalwart-mail:/opt/stalwart-mail
+    ports:
+      - "25:25"     # SMTP
+      - "465:465"   # SMTPS
+      - "587:587"   # Submission
+      - "110:110"   # POP3
+      - "995:995"   # POP3S
+      - "143:143"   # IMAP
+      - "993:993"   # IMAPS
+      - "4190:4190" # Sieve
+      - "8080:8080" # Web UI
+      - "443:443"   # HTTPS (если используется)
+    networks:
+      - mailnet
