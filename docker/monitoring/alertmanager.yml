@@ -4,9 +4,14 @@ services:
   alertmanager:
     image: prom/alertmanager:latest
     container_name: alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/config.yml'
+      - '--storage.path=/alertmanager'
+    restart: unless-stopped
     ports:
-      - "4014:9093"
+      - ${ALERTMNGR_OUT_PORT}:9093
     volumes:
-      - ${PWD}/configs/alertmanager/config.yml:/etc/alertmanager/config.yml
+      - ${PWD}/configs/alertmanager:/etc/alertmanager
     networks:
-      - locality
+      - shared-net
+      - monitoring-net

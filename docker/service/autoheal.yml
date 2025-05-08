@@ -1,6 +1,6 @@
 ---
 
-service:
+services:
   autoheal:
     image: willfarrell/autoheal:latest
     tty: true

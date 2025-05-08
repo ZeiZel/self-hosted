@@ -13,6 +13,8 @@ services:
       MINIO_ROOT_PASSWORD: minioautumn
       MINIO_DOMAIN: minio
     networks:
+      shared-net:
+      db-net:
       default:
         aliases:
           - revolt-uploads.minio

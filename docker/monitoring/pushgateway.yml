@@ -5,6 +5,7 @@ services:
     image: prom/pushgateway:latest
     container_name: pushgateway
     ports:
-      - "10015:9091"
+      - ${PUSHGW_OUT_PORT}:9091
     networks:
-      - locality
+      - shared-net
+      - monitoring-net

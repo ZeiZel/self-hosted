@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     shm_size: '256m'
     environment:
-      GITLAB_HOME: ./volumes/gitlab
+      GITLAB_HOME: ${GITLAB_HOME}
       GITLAB_OMNIBUS_CONFIG: |
         external_url 'http://gitlab.example.com:$GITLAB_DOCKER_PORT'
         gitlab_rails['gitlab_shell_ssh_port'] = 2424
@@ -23,7 +23,8 @@ services:
       - $GITLAB_HOME/logs:/var/log/gitlab
       - $GITLAB_HOME/data:/var/opt/gitlab
     networks:
-      - locality
+      - shared-net
+      - gitlab-net
 
   dind:
     image: docker:20-dind
@@ -34,9 +35,9 @@ services:
     command:
       - --storage-driver=overlay2
     volumes:
-      - ./data/dind/docker:/var/lib/docker
+      - ${PWD}/volumes/dind/data/docker:/var/lib/docker
     networks:
-      - gitlab_net
+      - gitlab-net
     depends_on:
       - gitlab
 
@@ -51,11 +52,11 @@ services:
     #     - apk add --no-cache docker
     #     - addgroup gitlab-runner docker
     volumes:
-      - ./config:/etc/gitlab-runner:z
-      - ./data/runner/cache:/cache
+      - ${PWD}/configs/gitlab:/etc/gitlab-runner:z
+      - ${PWD}/volumes/gitlab/data/runner/cache:/cache
       - /var/run/docker.sock:/var/run/docker.sock
     networks:
-      - gitlab_net
+      - gitlab-net
     depends_on:
       - gitlab
 
@@ -80,9 +81,9 @@ services:
       # Чтобы контейнре мог иметь сетевой доступ к контейнеру с gitlab
       - --docker-network-mode=host
     volumes:
-      - ./config:/etc/gitlab-runner:z
-      - ./data/dind/docker:/var/lib/docker
+      - ${PWD}/configs/gitlab:/etc/gitlab-runner:z
+      - ${PWD}/volumes/dind/data/docker:/var/lib/docker
     networks:
-      - gitlab_net
+      - gitlab-net
     depends_on:
       - dind

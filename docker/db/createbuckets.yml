@@ -3,8 +3,6 @@
 services:
   createbuckets:
     image: docker.io/minio/mc
-    depends_on:
-      - minio
     entrypoint: >
       /bin/sh -c "
       while ! /usr/bin/mc ready minio; do

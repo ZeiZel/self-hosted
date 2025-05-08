@@ -70,3 +70,4 @@ Requirements:
 - [Vars in Caddyfile](https://caddy.community/t/variables-in-caddyfile/15685)
 - [Install Gitlab](https://docs.gitlab.com/install/docker/installation/#install-gitlab-by-using-docker-compose)
 - [Install Authentik](https://docs.goauthentik.io/docs/install-config/install/docker-compose)
+- [Monitoring](https://github.com/Einsteinish/Docker-Compose-Prometheus-and-Grafana/blob/master/docker-compose.yml)

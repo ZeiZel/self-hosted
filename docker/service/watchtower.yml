@@ -5,7 +5,7 @@ services:
     image: containrrr/watchtower
     container_name: watchtower
     restart: unless-stopped
+    ports:
+      - ${WATCHTOWER_OUT_PORT}:${WATCHTOWER_DOCKER_PORT}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
-    networks:
-      - locality

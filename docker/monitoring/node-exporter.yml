@@ -4,7 +4,18 @@ services:
   node-exporter:
     image: prom/node-exporter:latest
     container_name: node-exporter
+    volumes:
+      - /:/rootfs:ro
+      - /sys:/host/sys:ro
+      - /proc:/host/proc:ro
+    command:
+      - '--path.procfs=/host/proc'
+      - '--path.rootfs=/rootfs'
+      - '--path.sysfs=/host/sys'
+      - '--collector.filesystem.ignored-mount-points=^/(sys|proc|dev|host|etc)($$|/)'
+    restart: unless-stopped
     ports:
-      - "4012:9100"
+      - ${NODE_EXPORTER_OUT_PORT}:9100
     networks:
-      - locality
+      - shared-net
+      - monitoring-net

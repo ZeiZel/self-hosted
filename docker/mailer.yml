@@ -17,7 +17,8 @@ services:
       - "143:143"   # IMAP
       - "993:993"   # IMAPS
       - "4190:4190" # Sieve
-      - "8080:8080" # Web UI
-      - "443:443"   # HTTPS (если используется)
+      - "5190:8080" # Web UI
+      - "5191:443"   # HTTPS
     networks:
-      - mailnet
+      - mail-net
+      - shared-net

@@ -10,4 +10,4 @@ services:
       depends_on:
         - elasticsearch
       networks:
-        - locality
+        - shared-net

@@ -64,3 +64,43 @@ revolt.{$CORE_DOMAIN:localhost} {
 
     reverse_proxy http://web:5000
 }
+
+:9000 {
+    basicauth / {$ADMIN_USER} {$ADMIN_PASSWORD}
+    proxy / prometheus:9000 {
+            transparent
+        }
+
+    errors stderr
+    tls off
+}
+
+:9001 {
+    proxy / grafana:9001 {
+            transparent
+            websocket
+        }
+
+    errors stderr
+    tls off
+}
+
+:9002 {
+    basicauth / {$ADMIN_USER} {$ADMIN_PASSWORD}
+    proxy / alertmanager:9002 {
+            transparent
+        }
+
+    errors stderr
+    tls off
+}
+
+:9091 {
+    basicauth / {$ADMIN_USER} {$ADMIN_PASSWORD}
+    proxy / pushgateway:9091 {
+            transparent
+        }
+
+    errors stderr
+    tls off
+}

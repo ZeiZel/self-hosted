@@ -11,10 +11,9 @@ services:
     volumes:
       - ${PWD}/volumes/database:/var/lib/postgresql/data
     networks:
-      - vw-net
+      - db-net
+      - shared-net
     restart: unless-stopped
-    env_file:
-      - .env
     healthcheck:
       test: [ "CMD-SHELL", "pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}" ]
       start_period: 20s
