@@ -6,6 +6,8 @@ services:
     container_name: watchtower
     restart: unless-stopped
     ports:
-      - ${WATCHTOWER_OUT_PORT}:${WATCHTOWER_DOCKER_PORT}
+      - ${WATCHTOWER_OUT_PORT}:8080
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
+    networks:
+      - shared-net

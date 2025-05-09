@@ -6,7 +6,7 @@ services:
     container_name: youtrack
     restart: always
     ports:
-        - $YOUTRACK_OUT_PORT:$YOUTRACK_DOCKER_PORT
+        - $YOUTRACK_OUT_PORT:8080
     volumes:
       - ${PWD}/volumes/youtrack/data:/opt/youtrack/data
       - ${PWD}/volumes/youtrack/logs:/opt/youtrack/logs

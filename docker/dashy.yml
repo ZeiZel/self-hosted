@@ -9,7 +9,7 @@ services:
     volumes:
       - ${PWD}/configs/dashy:/app/user-data
     ports:
-      - $DASHY_OUT_PORT:$DASHY_DOCKER_PORT
+      - $DASHY_OUT_PORT:8080
     environment:
       NODE_ENV: production
     restart: unless-stopped

@@ -1,44 +1,51 @@
-(dashboard_vars) {
+(port_vars) {
   vars {
     core_domain      {$CORE_DOMAIN:localhost}
     dashy_port       {$DASHY_OUT_PORT:4000}
     youtrack_port    {$YOUTRACK_OUT_PORT:4001}
-    gitlab_port      {$GITLAB_OUT_PORT:8929}
-    notesnook_port   {$NOTESNOOK_OUT_PORT:8929}
-    authn_port       {$AUTHENTIK_OUT_PORT:4003}
+    gitlab_port      {$GITLAB_OUT_PORT:4002}
+    www_port         {$WWW_OUT_PORT:4003}
+    mail_port        {$MAIL_OUT_PORT:4004}
+    notesnook_port   {$NOTESNOOK_OUT_PORT:4014}
+    authn_port       {$AUTHENTIK_OUT_PORT:4011}
   }
 }
 
-mail.{$CORE_DOMAIN:localhost} {
-    reverse_proxy stalwart-mail:8080
-    tls your_email@example.com
+{$CORE_DOMAIN:localhost}:80  {
+    import port_vars
+
+    route /mail* {
+        reverse_proxy localhost:{mail_port}
+    }
+
+    route /dashy* {
+        reverse_proxy localhost:{dashy_port}
+    }
 }
 
 www.{$CORE_DOMAIN:localhost} {
-    reverse_proxy localhost:8080
-}
-
-dashy.{$CORE_DOMAIN:localhost} {
-    import dashboard_vars
-    reverse_proxy localhost:{dashy_port}
+    import port_vars
+    reverse_proxy localhost:{www_port}
 }
 
 youtrack.{$CORE_DOMAIN:localhost} {
-    import dashboard_vars
+    import port_vars
     reverse_proxy localhost:{youtrack_port}
 }
 
 gitlab.{$CORE_DOMAIN:localhost} {
-    import dashboard_vars
+    import port_vars
     reverse_proxy localhost:{gitlab_port}
 }
 
 notesnook.{$CORE_DOMAIN:localhost} {
-    reverse_proxy localhost:{gitlab_port}
+    import port_vars
+    reverse_proxy localhost:{notesnook_port}
 }
 
 auth.{$CORE_DOMAIN:localhost} {
-    reverse_proxy localhost:9000
+    import port_vars
+    reverse_proxy localhost:{authn_port}
 }
 
 revolt.{$CORE_DOMAIN:localhost} {
@@ -65,42 +72,20 @@ revolt.{$CORE_DOMAIN:localhost} {
     reverse_proxy http://web:5000
 }
 
-:9000 {
-    basicauth / {$ADMIN_USER} {$ADMIN_PASSWORD}
-    proxy / prometheus:9000 {
-            transparent
-        }
+monitoring.{$CORE_DOMAIN:localhost} {
+    route /prometheus* {
+        reverse_proxy localhost:9000
+    }
 
-    errors stderr
-    tls off
-}
+    route /grafana* {
+        reverse_proxy localhost:9001
+    }
 
-:9001 {
-    proxy / grafana:9001 {
-            transparent
-            websocket
-        }
+    route /alert* {
+        reverse_proxy localhost:9002
+    }
 
-    errors stderr
-    tls off
-}
-
-:9002 {
-    basicauth / {$ADMIN_USER} {$ADMIN_PASSWORD}
-    proxy / alertmanager:9002 {
-            transparent
-        }
-
-    errors stderr
-    tls off
-}
-
-:9091 {
-    basicauth / {$ADMIN_USER} {$ADMIN_PASSWORD}
-    proxy / pushgateway:9091 {
-            transparent
-        }
-
-    errors stderr
-    tls off
+    route /pushgw* {
+        reverse_proxy localhost:9003
+    }
 }
