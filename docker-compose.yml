@@ -225,10 +225,8 @@ services:
 
   # LOGGING
 
-  elastic:
+  elasticsearch:
     profiles: [ all, logging ]
-    depends_on:
-      - caddy
     build:
       context: .
     extends:
@@ -237,8 +235,6 @@ services:
 
   filebeat:
     profiles: [ all, logging ]
-    depends_on:
-      - caddy
     build:
       context: .
     extends:
@@ -247,8 +243,6 @@ services:
 
   kibana:
     profiles: [ all, logging ]
-    depends_on:
-      - caddy
     build:
       context: .
     extends:
@@ -257,8 +251,6 @@ services:
 
   logstash:
     profiles: [ all, logging ]
-    depends_on:
-      - caddy
     build:
       context: .
     extends:
@@ -351,6 +343,7 @@ services:
 
 networks:
   monitoring-net:
+  logging-net:
   caddy-net:
   gitlab-net:
   notesnook-net:

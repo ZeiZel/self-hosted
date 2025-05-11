@@ -1,13 +1,20 @@
+---
+
 services:
-    filebeat:
-      image: docker.elastic.co/beats/filebeat:8.13.0
-      container_name: filebeat
-      user: root
-      volumes:
-        - ./filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml
-        - /var/lib/docker/containers:/var/lib/docker/containers:ro
-        - /var/run/docker.sock:/var/run/docker.sock:ro
-      depends_on:
-        - logstash
-      networks:
-        - locality
+  filebeat:
+    user: root
+    image: docker.elastic.co/beats/filebeat:9.0.0
+    container_name: filebeat
+    restart: unless-stopped
+    volumes:
+      - ${PWD}/configs/logging/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ${PWD}/volumes/filebeat:/usr/share/filebeat/data:rw
+      - ${PWD}/configs/filebeat:/usr/share/filebeat:ro
+      - ${PWD}/scripts/host_metrics_app/:/host_metrics_app/:ro
+      - /var/run/docker.sock:/var/run/docker.sock:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on:
+      - elasticsearch
+    networks:
+      - shared-net
+      - logging-net

@@ -2,20 +2,20 @@
 
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.13.0
+    user: 1000:1000
+    image: elasticsearch:9.0.1
     container_name: elasticsearch
+    restart: unless-stopped
     environment:
-      - discovery.type=single-node
-      - bootstrap.memory_lock=true
-      - xpack.security.enabled=false
-      - xpack.monitoring.collection.enabled=true
-    ulimits:
-      memlock:
-        soft: -1
-        hard: -1
+      ES_JAVA_OPTS: "-Xmx512m -Xms512m"
+      ELASTIC_USERNAME: "elastic"
+      ELASTIC_PASSWORD: "passAdm"
+      discovery.type: single-node
     volumes:
-      - esdata:/usr/share/elasticsearch/data
+      - ${PWD}/configs/elasticsearch/elasticsearch.yml:/usr/share/elasticsearch/config/elasticsearch.yml
+      - ${PWD}/volumes/elasticsearch:/usr/share/elasticsearch/data
     ports:
-      - "9200:9200"
+      - ${ELASTIC_OUT_PORT}:9200
     networks:
       - shared-net
+      - logging-net

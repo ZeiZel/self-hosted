@@ -1,15 +1,19 @@
 ---
-# https://github.com/elastic/kibana
 
 services:
-    kibana:
-      image: docker.elastic.co/kibana/kibana:8.13.0
-      container_name: kibana
-      environment:
-        - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
-      ports:
-        - "5601:5601"
-      depends_on:
-        - elasticsearch
-      networks:
-        - shared-net
+  kibana:
+    image: elastic/kibana:9.0.1
+    container_name: kibana
+    restart: unless-stopped
+    environment:
+      - ELASTICSEARCH_SERVICEACCOUNTTOKEN=AAEAAWVsYXN0aWMva2liYW5hL2tpYmFuYS10b2tlbjpJekFXeVp2U1NsU3UtTElDLTVSVEl3
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+    ports:
+      - "5601:5601"
+    depends_on:
+      - elasticsearch
+    volumes:
+      - ${PWD}/configs/kibana:/usr/share/kibana/config:ro
+    networks:
+      - shared-net
+      - logging-net

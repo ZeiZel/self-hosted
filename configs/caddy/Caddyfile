@@ -52,6 +52,20 @@ watchtower.{$CORE_DOMAIN:localhost} {
     }
 }
 
+# LOGGING
+
+elastic.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service elasticsearch 9200
+}
+
+logstash.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service logstash 5044
+}
+
+kibana.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service kibana 5601
+}
+
 # MONITORING
 
 prometheus.{$CORE_DOMAIN:localhost} {

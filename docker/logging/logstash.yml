@@ -1,13 +1,18 @@
+---
+
 services:
-    logstash:
-      image: docker.elastic.co/logstash/logstash:8.13.0
-      container_name: logstash
-      volumes:
-        - ./logstash/pipeline:/usr/share/logstash/pipeline
-      ports:
-        - "5044:5044"         # For Filebeat
-        - "9600:9600"         # Monitoring API
-      depends_on:
-        - elasticsearch
-      networks:
-        - shared-net
+  logstash:
+    image: elastic/logstash:9.0.1
+    container_name: logstash
+    restart: unless-stopped
+    volumes:
+      - ${PWD}/configs/logstash:/usr/share/logstash/config:ro
+    ports:
+      - 5044:5044
+      - 5001:5000
+      - 9600:9600
+    depends_on:
+      - elasticsearch
+    networks:
+      - shared-net
+      - logging-net
