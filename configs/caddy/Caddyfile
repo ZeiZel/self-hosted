@@ -1,52 +1,88 @@
-(port_vars) {
-  vars {
-    core_domain      {$CORE_DOMAIN:localhost}
-    dashy_port       {$DASHY_OUT_PORT:4000}
-    youtrack_port    {$YOUTRACK_OUT_PORT:4001}
-    gitlab_port      {$GITLAB_OUT_PORT:4002}
-    www_port         {$WWW_OUT_PORT:4003}
-    mail_port        {$MAIL_OUT_PORT:4004}
-    notesnook_port   {$NOTESNOOK_OUT_PORT:4014}
-    authn_port       {$AUTHENTIK_OUT_PORT:4011}
-  }
+{
+    admin off
+    auto_https disable_redirects
+    debug
 }
 
-{$CORE_DOMAIN:localhost}:80  {
-    import port_vars
-
-    route /mail* {
-        reverse_proxy localhost:{mail_port}
-    }
-
-    route /dashy* {
-        reverse_proxy localhost:{dashy_port}
+(reverse_proxy_service) {
+    # обращаемся сначала к сервису внутри Docker (например dashy), а потом к порту
+    reverse_proxy {args.0}:{args.1} {
+        header_up Host {host}
+        header_up X-Real-IP {remote}
+        header_up X-Forwarded-For {remote}
+        header_up X-Forwarded-Proto {scheme}
     }
 }
 
-www.{$CORE_DOMAIN:localhost} {
-    import port_vars
-    reverse_proxy localhost:{www_port}
+{$CORE_DOMAIN:localhost} {
+    respond "Welcome to main domain. Available services on {$CORE_DOMAIN:haha}: www {$WWW_OUT_PORT:4000004}, gitlab, dashy" 200
+}
+
+dashy.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service dashy 8080
 }
 
 youtrack.{$CORE_DOMAIN:localhost} {
-    import port_vars
-    reverse_proxy localhost:{youtrack_port}
+    import reverse_proxy_service youtrack 8080
+}
+
+www.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service www 3000
 }
 
 gitlab.{$CORE_DOMAIN:localhost} {
-    import port_vars
-    reverse_proxy localhost:{gitlab_port}
+    import reverse_proxy_service gitlab {$GITLAB_OUT_PORT:4002}
 }
 
 notesnook.{$CORE_DOMAIN:localhost} {
-    import port_vars
-    reverse_proxy localhost:{notesnook_port}
+    import reverse_proxy_service notesnook {$NOTESNOOK_OUT_PORT:4014}
 }
 
 auth.{$CORE_DOMAIN:localhost} {
-    import port_vars
-    reverse_proxy localhost:{authn_port}
+    import reverse_proxy_service auth {$AUTHENTIK_OUT_PORT:4011}
 }
+
+mail.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service mail {$MAIL_OUT_PORT:4004}
+}
+
+watchtower.{$CORE_DOMAIN:localhost} {
+    route /tower* {
+        import reverse_proxy_service watchtower 8080
+    }
+}
+
+# MONITORING
+
+prometheus.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service prometheus 9090
+}
+
+grafana.{$CORE_DOMAIN:localhost} {
+    reverse_proxy grafana:3000
+}
+
+alert.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service alertmanager 9093
+}
+
+pushgw.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service pushgateway 9091
+}
+
+node-exporter.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service node-exporter 9100
+}
+
+cadvisor.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service cadvisor 8080
+}
+
+bb.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service blackbox 9115
+}
+
+# CHAT
 
 revolt.{$CORE_DOMAIN:localhost} {
     route /api* {
@@ -72,20 +108,8 @@ revolt.{$CORE_DOMAIN:localhost} {
     reverse_proxy http://web:5000
 }
 
-monitoring.{$CORE_DOMAIN:localhost} {
-    route /prometheus* {
-        reverse_proxy localhost:9000
-    }
+# FORBIDDEN
 
-    route /grafana* {
-        reverse_proxy localhost:9001
-    }
-
-    route /alert* {
-        reverse_proxy localhost:9002
-    }
-
-    route /pushgw* {
-        reverse_proxy localhost:9003
-    }
+*.{$CORE_DOMAIN:localhost} {
+    respond "Service not found" 404
 }

@@ -7,8 +7,6 @@ services:
     restart: unless-stopped
     ports:
       - ${PROMETHEUS_OUT_PORT}:9090
-    labels:
-      org.label-schema.group: "monitoring"
     volumes:
       - ${PWD}/configs/prometheus:/etc/prometheus
       - ${PWD}/volumes/prometheus:/prometheus

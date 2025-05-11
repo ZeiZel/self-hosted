@@ -1,9 +1,9 @@
 ---
 
 services:
-  node-exporter:
+  nodeexporter:
     image: prom/node-exporter:latest
-    container_name: node-exporter
+    container_name: nodeexporter
     volumes:
       - /:/rootfs:ro
       - /sys:/host/sys:ro

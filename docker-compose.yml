@@ -6,6 +6,7 @@ x-env-files: &env-files
 services:
   # SSL + reverse_proxy
   caddy:
+    env_file: *env-files
     build:
       context: .
     extends:
@@ -224,47 +225,47 @@ services:
 
   # LOGGING
 
-#  elastic:
-#    profiles: [ all, logging ]
-#    depends_on:
-#      - caddy
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/logging/elasticsearch.yml
-#      service: elasticsearch
-#
-#  filebeat:
-#    profiles: [ all, logging ]
-#    depends_on:
-#      - caddy
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/logging/filebeat.yml
-#      service: filebeat
-#
-#  kibana:
-#    profiles: [ all, logging ]
-#    depends_on:
-#      - caddy
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/logging/kibana.yml
-#      service: kibana
-#
-#  logstash:
-#    profiles: [ all, logging ]
-#    depends_on:
-#      - caddy
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/logging/logstash.yml
-#      service: logstash
+  elastic:
+    profiles: [ all, logging ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/logging/elasticsearch.yml
+      service: elasticsearch
 
-  # GRAFANA + PROMETHEUS
+  filebeat:
+    profiles: [ all, logging ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/logging/filebeat.yml
+      service: filebeat
+
+  kibana:
+    profiles: [ all, logging ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/logging/kibana.yml
+      service: kibana
+
+  logstash:
+    profiles: [ all, logging ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/logging/logstash.yml
+      service: logstash
+
+  # MONITORING
 
   prometheus:
     profiles: [ all, monitoring ]
@@ -275,18 +276,20 @@ services:
     extends:
       file: ./docker/monitoring/prometheus.yml
       service: prometheus
+    labels:
+      org.label-schema.group: "monitoring"
 
   grafana:
     profiles: [ all, monitoring ]
-    depends_on:
-      - caddy
     build:
       context: .
     extends:
       file: ./docker/monitoring/grafana.yml
       service: grafana
+    labels:
+      org.label-schema.group: "monitoring"
 
-  node-exporter:
+  nodeexporter:
     profiles: [ all, monitoring ]
     depends_on:
       - caddy
@@ -294,7 +297,9 @@ services:
       context: .
     extends:
       file: ./docker/monitoring/node-exporter.yml
-      service: node-exporter
+      service: nodeexporter
+    labels:
+      org.label-schema.group: "monitoring"
 
   cadvisor:
     profiles: [ all, monitoring ]
@@ -305,6 +310,8 @@ services:
     extends:
       file: ./docker/monitoring/cadvisor.yml
       service: cadvisor
+    labels:
+      org.label-schema.group: "monitoring"
 
   alertmanager:
     profiles: [ all, monitoring ]
@@ -315,6 +322,8 @@ services:
     extends:
       file: ./docker/monitoring/alertmanager.yml
       service: alertmanager
+    labels:
+      org.label-schema.group: "monitoring"
 
   blackbox:
     profiles: [ all, monitoring ]
@@ -325,6 +334,8 @@ services:
     extends:
       file: ./docker/monitoring/blackbox.yml
       service: blackbox
+    labels:
+      org.label-schema.group: "monitoring"
 
   pushgateway:
     profiles: [ all, monitoring ]
@@ -335,6 +346,8 @@ services:
     extends:
       file: ./docker/monitoring/pushgateway.yml
       service: pushgateway
+    labels:
+      org.label-schema.group: "monitoring"
 
 networks:
   monitoring-net:

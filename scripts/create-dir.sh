@@ -5,3 +5,4 @@ mkdir -p -m 750 \
   caddy/{data,config}}
 sudo chown -R 13001:13001 ../volumes/youtrack
 sudo chown -R 65534:65534 ../volumes/prometheus
+sudo chown -R 472:472 ../volumes/grafana
