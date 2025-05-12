@@ -1,4 +1,5 @@
 ---
+# https://www.elastic.co/docs/reference/beats/filebeat/running-on-docker
 
 services:
   filebeat:
@@ -6,10 +7,13 @@ services:
     image: docker.elastic.co/beats/filebeat:9.0.0
     container_name: filebeat
     restart: unless-stopped
+#    entrypoint: bash -c 'export PATH=$PATH:/usr/share/filebeat && /usr/local/bin/docker-entrypoint -e'
+    environment:
+      strict.perms: false
+      output.elasticsearch.hosts: "elasticsearch:9200"
     volumes:
-      - ${PWD}/configs/logging/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - ${PWD}/volumes/filebeat:/usr/share/filebeat/data:rw
-      - ${PWD}/configs/filebeat:/usr/share/filebeat:ro
+      - ${PWD}/configs/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
       - ${PWD}/scripts/host_metrics_app/:/host_metrics_app/:ro
       - /var/run/docker.sock:/var/run/docker.sock:ro
       - /var/lib/docker/containers:/var/lib/docker/containers:ro

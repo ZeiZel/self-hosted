@@ -1,2 +1,2 @@
-api.host: 0.0.0.0
-http.host: "0.0.0.0"
+# https://www.elastic.co/docs/reference/logstash/logstash-settings-file#:~:text=production-,api.http.host,-The%20bind%20address
+api.http.host: "0.0.0.0"

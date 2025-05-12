@@ -55,7 +55,7 @@ watchtower.{$CORE_DOMAIN:localhost} {
 # LOGGING
 
 elastic.{$CORE_DOMAIN:localhost} {
-    import reverse_proxy_service elasticsearch 9200
+    import reverse_proxy_service elasticsearch 9300
 }
 
 logstash.{$CORE_DOMAIN:localhost} {
