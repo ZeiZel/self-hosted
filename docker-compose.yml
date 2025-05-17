@@ -63,55 +63,67 @@ services:
 
   # DB
 
-#  minio:
-#    profiles: [ all, db ]
-#    depends_on:
-#      validate:
-#        condition: service_completed_successfully
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/db/minio.yml
-#      service: minio
-#
-#  postgres:
-#    profiles: [ all, db ]
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/db/postgresql.yml
-#      service: postgres
-#
-#  redis:
-#    profiles: [ all, db ]
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/db/redis.yml
-#      service: redis
-#
-#  mongo:
-#    profiles: [ all, db ]
-#    depends_on:
-#      caddy:
-#        condition: service_started
-#      validate:
-#        condition: service_completed_successfully
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/db/mongo.yml
-#      service: mongo
-#
-#  createbuckets:
-#    profiles: [ all, db ]
-#    depends_on:
-#      - minio
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/db/createbuckets.yml
-#      service: createbuckets
+  bytebase:
+    profiles: [ all, db ]
+    build:
+      context: .
+    extends:
+      file: ./docker/db/bytebase.yml
+      service: bytebase
+
+  minio:
+    profiles: [ all, db ]
+    build:
+      context: .
+    extends:
+      file: ./docker/db/minio.yml
+      service: minio
+
+  postgres:
+    profiles: [ all, db ]
+    build:
+      context: .
+    extends:
+      file: ./docker/db/postgresql.yml
+      service: postgres
+
+  redis:
+    profiles: [ all, db ]
+    build:
+      context: .
+    extends:
+      file: ./docker/db/redis.yml
+      service: redis
+
+  mongo:
+    profiles: [ all, db ]
+    build:
+      context: .
+    extends:
+      file: ./docker/db/mongo.yml
+      service: mongo
+
+  createbuckets:
+    profiles: [ all, db ]
+    depends_on:
+      - minio
+    build:
+      context: .
+    extends:
+      file: ./docker/db/createbuckets.yml
+      service: createbuckets
+
+  # BROKERS
+
+  rabbit:
+    profiles: [ all, brokers ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/message-brokers/rmq.yml
+      service: rabbit
 
   # VAULT
 
@@ -126,59 +138,69 @@ services:
 
   # CHAT
 
-#  revolt-ui:
-#    profiles: [ all, chat ]
-#    depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/chat/revolt.yml
-#      service: web
-#
-#  revolt-api:
-#    profiles: [ all, chat ]
-#    depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/chat/revolt.yml
-#      service: api
-#
-#  revolt-events:
-#    profiles: [ all, chat ]
-#    depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/chat/revolt.yml
-#      service: events
-#
-#  revolt-push-daemon:
-#    profiles: [ all, chat ]
-#    depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/chat/revolt.yml
-#      service: pushd
-#
-#  revolt-jan:
-#    profiles: [ all, chat ]
-#    depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/chat/revolt.yml
-#      service: january
-#
-#  revolt-autumn:
-#    profiles: [ all, chat ]
-#    depends_on: [ caddy, mongo, redis, rmq, minio, crond, createbuckets ]
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/chat/revolt.yml
-#      service: autumn
+  api:
+    profiles: [ all, chat ]
+    build:
+      context: .
+    extends:
+      file: ./docker/chat/revolt.yml
+      service: api
+
+  events:
+    profiles: [ all, chat ]
+    build:
+      context: .
+    extends:
+      file: ./docker/chat/revolt.yml
+      service: events
+
+  web:
+    profiles: [ all, chat ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/chat/revolt.yml
+      service: web
+
+  autumn:
+    profiles: [ all, chat ]
+    build:
+      context: .
+    extends:
+      file: ./docker/chat/revolt.yml
+      service: autumn
+
+  january:
+    profiles: [ all, chat ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/chat/revolt.yml
+      service: january
+
+  crond:
+    profiles: [ all, chat ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/chat/revolt.yml
+      service: crond
+
+  pushd:
+    profiles: [ all, chat ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/chat/revolt.yml
+      service: pushd
 
   # GITLAB
 
@@ -397,6 +419,7 @@ services:
 
 
 networks:
+  broker-net:
   consul-net:
   monitoring-net:
   logging-net:

@@ -59,6 +59,7 @@ services:
 
   # register docker containers
   registrator:
+    # :latest in old format and don't work
     image: gliderlabs/registrator:master
     restart: unless-stopped
     container_name: registrator

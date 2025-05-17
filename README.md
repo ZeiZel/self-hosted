@@ -7,8 +7,8 @@
 - 🧠 YouTrack — task tracking
 - 📊 Grafana + Prometheus — monitoring
 - 📦 ELK (Elasticsearch, Logstash, Kibana) — logging
-- 🧭 Consul — discovery
-- 🔑 HashiCorp Vault — secret vault
+- 🧭 Consul (+ Fabio, Register and Prometheus exporter) — discovery
+- 🔑 Vault — secret vault
 - 🤫 Vaultwarden - collect passwords
 - 💬 Revolt — community (Maybe Matrix Element)
 - 🛠 GitLab — CI/CD + Git-repo
@@ -63,8 +63,9 @@ Requirements:
 - [ ] automate preconfigure servers with ansible
 - [ ] terraform server resources and vagrantifyed server machienes
 
-## Fast docs
+## Fast docs and links
 
+- [Selfhosted](https://github.com/awesome-selfhosted/awesome-selfhosted?tab=readme-ov-file#database-management)
 - [PG connect](https://www.postgresql.org/docs/current/libpq-connect.html#:~:text=The%20URI%20scheme%20designator%20can%20be%20either%20postgresql%3A//%20or%20postgres%3A//.%20Each%20of%20the%20remaining%20URI%20parts%20is%20optional.%20The%20following%20examples%20illustrate%20valid%20URI%20syntax%3A)
 - [Deploy notesnook](https://monogr.ph/66add1680f119badfa65686f/)
 - [Vars in Caddyfile](https://caddy.community/t/variables-in-caddyfile/15685)
@@ -73,6 +74,7 @@ Requirements:
 - [Monitoring](https://github.com/Einsteinish/Docker-Compose-Prometheus-and-Grafana/blob/master/docker-compose.yml)
 - [Start at ELK](https://habr.com/ru/articles/671344/)
 - [Start H-Vault](https://gist.github.com/Mishco/b47b341f852c5934cf736870f0b5da81)
+- [Revolt](https://github.com/revoltchat/self-hosted)
 
 ## How to?
 

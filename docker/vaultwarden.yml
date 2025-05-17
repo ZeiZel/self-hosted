@@ -12,7 +12,7 @@ services:
       - SIGNUPS_ALLOWED=${SIGNUPS_ALLOWED}
       - WEBSOCKET_ENABLED=${WEBSOCKET_ENABLED}
       - ADMIN_TOKEN=${ADMIN_TOKEN}
-      - DATABASE_URL=postgres://${PG_LOGIN}:${PG_SECRET}@postgres:${PG_PORT}/${VW_PG_NAME}
+      - DATABASE_URL=postgres://${PG_LOGIN}:${PG_PASS}@postgres:${PG_PORT}/${VW_PG_NAME}
       - SMTP_HOST=${SMTP_HOST}
       - SMTP_FROM=${SMTP_FROM}
       - SMTP_PORT=${SMTP_PORT}

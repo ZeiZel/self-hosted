@@ -9,7 +9,10 @@ services:
       RABBITMQ_DEFAULT_USER: rabbituser
       RABBITMQ_DEFAULT_PASS: rabbitpass
     volumes:
-      - ${PWD}/volumes/data/rabbit:/var/lib/rabbitmq
+      - ${PWD}/volumes/rabbitmq:/var/lib/rabbitmq
+    networks:
+      - db-net
+      - broker-net
     healthcheck:
       test: rabbitmq-diagnostics -q ping
       interval: 10s

@@ -47,6 +47,12 @@ watchtower.{$CORE_DOMAIN:localhost} {
     }
 }
 
+# DB
+
+bytebase.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service bytebase 8080
+}
+
 # SD
 
 consul.{$CORE_DOMAIN:localhost} {
@@ -106,25 +112,25 @@ bb.{$CORE_DOMAIN:localhost} {
 revolt.{$CORE_DOMAIN:localhost} {
     route /api* {
         uri strip_prefix /api
-        reverse_proxy http://api:14702
+        import reverse_proxy_service api 14702
     }
 
     route /ws {
         uri strip_prefix /ws
-        reverse_proxy http://events:14703
+        import reverse_proxy_service events 14703
     }
 
     route /autumn* {
         uri strip_prefix /autumn
-        reverse_proxy http://autumn:14704
+        import reverse_proxy_service autumn 14704
     }
 
     route /january* {
         uri strip_prefix /january
-        reverse_proxy http://january:14705
+        import reverse_proxy_service january 14705
     }
 
-    reverse_proxy http://web:5000
+    import reverse_proxy_service web 5000
 }
 
 # FORBIDDEN
