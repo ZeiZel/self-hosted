@@ -2,18 +2,18 @@
 
 ## Services
 
+- 🌐 Caddy — reverse proxy + HTTPS
 - 🎯 Dashy — center dashboard
 - 🧠 YouTrack — task tracking
-- 🛠 GitLab — CI/CD + Git-repo
-- 📝 Notesnook (notesnook-sync-server) — notes
-- 💬 Revolt — community (Maybe Matrix Element)
-- 🔐 Authentik — SSO authn
-- 🌐 Caddy — reverse proxy + HTTPS
 - 📊 Grafana + Prometheus — monitoring
 - 📦 ELK (Elasticsearch, Logstash, Kibana) — logging
 - 🧭 Consul — discovery
-- 🔑 HashiCorp Vault — secret vaul
+- 🔑 HashiCorp Vault — secret vault
 - 🤫 Vaultwarden - collect passwords
+- 💬 Revolt — community (Maybe Matrix Element)
+- 🛠 GitLab — CI/CD + Git-repo
+- 📝 Notesnook (notesnook-sync-server) — notes
+- 🔐 Authentik — SSO authn
 - ☁️ Syncthing (or ownCloud if find sync-server) - synchronise data in cloud
 
 ## Stack
@@ -72,6 +72,7 @@ Requirements:
 - [Install Authentik](https://docs.goauthentik.io/docs/install-config/install/docker-compose)
 - [Monitoring](https://github.com/Einsteinish/Docker-Compose-Prometheus-and-Grafana/blob/master/docker-compose.yml)
 - [Start at ELK](https://habr.com/ru/articles/671344/)
+- [Start H-Vault](https://gist.github.com/Mishco/b47b341f852c5934cf736870f0b5da81)
 
 ## How to?
 
@@ -89,4 +90,3 @@ exit
 ```
 
 Next you can place it into `kibana.yml` config by `elasticsearch.serviceAccountToken` field OR `ELASTICSEARCH_SERVICEACCOUNTTOKEN` env of Kibana service
-

@@ -16,6 +16,7 @@ services:
   # DASHBOARD
 
   dashy:
+    profiles: [ all ]
     depends_on:
       - caddy
     build:
@@ -35,18 +36,6 @@ services:
     extends:
       file: ./docker/youtrack.yml
       service: youtrack
-
-  # MAIL
-
-#  mail:
-#    profiles: [ all, mail ]
-#    depends_on:
-#      - caddy
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/mailer.yml
-#      service: stalwart-mail
 
   # SERVICE
 
@@ -223,6 +212,19 @@ services:
 #      file: ./docker/syncthing.yml
 #      service: syncthing-exporter
 
+
+  # MAIL
+
+  #  mail:
+  #    profiles: [ all, mail ]
+  #    depends_on:
+  #      - caddy
+  #    build:
+  #      context: .
+  #    extends:
+  #      file: ./docker/mailer.yml
+  #      service: stalwart-mail
+
   # LOGGING
 
   elasticsearch:
@@ -341,7 +343,61 @@ services:
     labels:
       org.label-schema.group: "monitoring"
 
+  # SERVICE DISCOVERY
+
+  consul-server:
+    profiles: [ all, discovery ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/SD/consul.yml
+      service: consul-server
+    labels:
+      org.label-schema.group: "SD"
+
+  consul-agent:
+    profiles: [ all, discovery ]
+    build:
+      context: .
+    extends:
+      file: ./docker/SD/consul.yml
+      service: consul-agent
+    labels:
+      org.label-schema.group: "SD"
+
+  consul-exporter:
+    profiles: [ all, discovery ]
+    build:
+      context: .
+    extends:
+      file: ./docker/SD/consul.yml
+      service: consul-exporter
+    labels:
+      org.label-schema.group: "SD"
+
+  registrator:
+    profiles: [ all, discovery ]
+    extends:
+      file: ./docker/SD/consul.yml
+      service: registrator
+    labels:
+      org.label-schema.group: "SD"
+
+  fabio:
+    profiles: [ all, discovery ]
+    build:
+      context: .
+    extends:
+      file: ./docker/SD/consul.yml
+      service: fabio
+    labels:
+      org.label-schema.group: "SD"
+
+
 networks:
+  consul-net:
   monitoring-net:
   logging-net:
   caddy-net:

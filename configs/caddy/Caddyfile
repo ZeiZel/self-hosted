@@ -6,12 +6,7 @@
 
 (reverse_proxy_service) {
     # обращаемся сначала к сервису внутри Docker (например dashy), а потом к порту
-    reverse_proxy {args.0}:{args.1} {
-        header_up Host {host}
-        header_up X-Real-IP {remote}
-        header_up X-Forwarded-For {remote}
-        header_up X-Forwarded-Proto {scheme}
-    }
+    reverse_proxy {args.0}:{args.1}
 }
 
 {$CORE_DOMAIN:localhost} {
@@ -50,6 +45,17 @@ watchtower.{$CORE_DOMAIN:localhost} {
     route /tower* {
         import reverse_proxy_service watchtower 8080
     }
+}
+
+
+# SD
+
+consul.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service consul-server 8500
+}
+
+fabio.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service fabio 9998
 }
 
 # LOGGING

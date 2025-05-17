@@ -25,6 +25,10 @@ scrape_configs:
     honor_labels: true
     static_configs:
       - targets: [ 'pushgateway:9091' ]
+  - job_name: 'consul'
+    static_configs:
+      - targets: ['consul-exporter:9107']
+
 
 alerting:
   alertmanagers:
