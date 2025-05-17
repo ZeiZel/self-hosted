@@ -1,0 +1,6 @@
+{
+  "node_name": "consul-agent",
+  "bind_addr": "0.0.0.0",
+  "advertise_addr": "{{ GetPrivateIP }}",
+  "client_addr": "0.0.0.0"
+}

@@ -10,12 +10,6 @@ services:
     command: agent -server -bootstrap-expect=1 -ui -node=server-1 -datacenter=dc1 -bind=0.0.0.0 -client=0.0.0.0
     environment:
       CONSUL_HTTP_SSL: false
-      CONSUL_LOCAL_CONFIG: |
-        {
-          "bind_addr": "0.0.0.0",
-          "advertise_addr": "{{ GetPrivateIP }}",
-          "client_addr": "0.0.0.0"
-        }
     ports:
       - 8500:8500       # Web UI
       - 8600:8600/tcp   # DNS
@@ -26,6 +20,7 @@ services:
       - 8302:8302       # Serf WAN
       - 8302:8302/udp
     volumes:
+      - ${PWD}/configs/consul/server.json:/consul/config/server.json:ro
       - ${PWD}/volumes/consul:/consul/data:rw
     networks:
       - shared-net
@@ -39,16 +34,11 @@ services:
     command: agent -retry-join=consul-server -node=agent-1 -datacenter=dc1 -bind=0.0.0.0 -client=0.0.0.0
     environment:
       CONSUL_HTTP_SSL: false
-      CONSUL_LOCAL_CONFIG: |
-        {
-          "bind_addr": "0.0.0.0",
-          "advertise_addr": "{{ GetPrivateIP }}",
-          "client_addr": "0.0.0.0"
-        }
+    volumes:
+      - ${PWD}/configs/consul/agent.json:/consul/config/server.json:ro
     depends_on:
       - consul-server
     networks:
-      - shared-net
       - consul-net
 
   # prometheus exporter
@@ -64,7 +54,7 @@ services:
     depends_on:
       - consul-server
     networks:
-      - shared-net
+      - monitoring-net
       - consul-net
 
   # register docker containers
@@ -94,5 +84,4 @@ services:
     depends_on:
       - consul-server
     networks:
-      - shared-net
       - consul-net

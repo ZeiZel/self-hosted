@@ -1,0 +1,11 @@
+{
+  "node_name": "consul-server",
+  "server": true,
+  "bootstrap": true,
+  "ui_config": {
+    "enabled": true
+  },
+  "bind_addr": "0.0.0.0",
+  "advertise_addr": "{{ GetPrivateIP }}",
+  "client_addr": "0.0.0.0"
+}

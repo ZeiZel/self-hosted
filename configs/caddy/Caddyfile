@@ -47,7 +47,6 @@ watchtower.{$CORE_DOMAIN:localhost} {
     }
 }
 
-
 # SD
 
 consul.{$CORE_DOMAIN:localhost} {
