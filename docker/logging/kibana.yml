@@ -6,14 +6,14 @@ services:
     container_name: kibana
     restart: unless-stopped
     environment:
-      - ELASTICSEARCH_SERVICEACCOUNTTOKEN=AAEAAWVsYXN0aWMva2liYW5hL2tpYmFuYS10b2tlbjpJekFXeVp2U1NsU3UtTElDLTVSVEl3
+      - ELASTICSEARCH_SERVICEACCOUNTTOKEN=AAEAAWVsYXN0aWMva2liYW5hL2tpYmFuYS10b2tlbjpMYkhKM0lmTVNvdXJzN0R1Mm8yWFpn
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
     ports:
-      - "5601:5601"
+      - 5601:5601
     depends_on:
       - elasticsearch
     volumes:
-      - ${PWD}/configs/kibana:/usr/share/kibana/config:ro
+      - ${PWD}/configs/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml
     networks:
       - shared-net
       - logging-net

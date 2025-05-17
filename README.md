@@ -71,3 +71,22 @@ Requirements:
 - [Install Gitlab](https://docs.gitlab.com/install/docker/installation/#install-gitlab-by-using-docker-compose)
 - [Install Authentik](https://docs.goauthentik.io/docs/install-config/install/docker-compose)
 - [Monitoring](https://github.com/Einsteinish/Docker-Compose-Prometheus-and-Grafana/blob/master/docker-compose.yml)
+- [Start at ELK](https://habr.com/ru/articles/671344/)
+
+## How to?
+
+### get elastic token for kibana auth
+
+Generate inside in running docker container
+
+```bash
+docker exec -it elasticsearch bash
+# delete old token if exists
+bin/elasticsearch-service-tokens delete elastic/kibana kibana-token
+# generate new token
+bin/elasticsearch-service-tokens create elastic/kibana kibana-token
+exit
+```
+
+Next you can place it into `kibana.yml` config by `elasticsearch.serviceAccountToken` field OR `ELASTICSEARCH_SERVICEACCOUNTTOKEN` env of Kibana service
+
