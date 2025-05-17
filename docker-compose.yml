@@ -80,7 +80,7 @@ services:
       service: minio
 
   postgres:
-    profiles: [ all, db ]
+    profiles: [ all, db, pgsql ]
     build:
       context: .
     extends:
@@ -117,8 +117,7 @@ services:
 
   rabbit:
     profiles: [ all, brokers ]
-    depends_on:
-      - caddy
+    depends_on: [ caddy ]
     build:
       context: .
     extends:
@@ -127,14 +126,14 @@ services:
 
   # VAULT
 
-#  vaultwarden:
-#    profiles: [ all, vault ]
-#    depends_on: [ caddy, smtp, watchtower, postgres ]
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/vaultwarden.yml
-#      service: vaultwarden
+  vaultwarden:
+    profiles: [ all, vault ]
+    depends_on: [ caddy ]
+    build:
+      context: .
+    extends:
+      file: ./docker/vaultwarden.yml
+      service: vaultwarden
 
   # CHAT
 

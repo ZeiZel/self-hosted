@@ -26,9 +26,11 @@
   ],
   "scripts": {
     "up:all": "docker compose --profile all up",
-    "up:db": "docker compose --profile db up",
     "up:tt": "docker compose --profile tasktracking up",
     "up:m8g": "docker compose --profile monitoring up",
-    "up:l5g": "docker compose --profile logging up"
+    "up:l5g": "docker compose --profile logging up",
+    "up:db": "docker compose --profile db up",
+    "up:brokers": "docker compose --profile brokers up",
+    "up:chat": "docker compose --profile db --profile brokers --profile chat up"
   }
 }

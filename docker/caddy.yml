@@ -14,4 +14,13 @@ services:
       - ${PWD}/volumes/caddy/data:/data
       - ${PWD}/volumes/caddy/config:/config
     networks:
+      - broker-net
+      - consul-net
+      - monitoring-net
+      - logging-net
+      - caddy-net
+      - gitlab-net
+      - notesnook-net
       - shared-net
+      - syncthing-net
+      - db-net

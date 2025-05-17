@@ -42,9 +42,11 @@ mail.{$CORE_DOMAIN:localhost} {
 }
 
 watchtower.{$CORE_DOMAIN:localhost} {
-    route /tower* {
-        import reverse_proxy_service watchtower 8080
-    }
+    import reverse_proxy_service watchtower 8080
+}
+
+vw.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service vaultwarden 80
 }
 
 # DB
