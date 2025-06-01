@@ -1,8 +1,5 @@
 ---
-
-x-env-files: &env-files
-  - .env
-
+x-env-files: &env-files [.env]
 services:
   # SSL + reverse_proxy
   caddy:
@@ -14,11 +11,9 @@ services:
       service: caddy
 
   # DASHBOARD
-
   dashy:
-    profiles: [ all ]
-    depends_on:
-      - caddy
+    profiles: [all]
+    depends_on: [caddy]
     build:
       context: .
     extends:
@@ -26,11 +21,9 @@ services:
       service: dashy
 
   # TASKTRACKING
-
   youtrack:
-    profiles: [ all, tasktracking ]
-    depends_on:
-      - caddy
+    profiles: [all, tasktracking]
+    depends_on: [caddy]
     build:
       context: .
     extends:
@@ -38,21 +31,18 @@ services:
       service: youtrack
 
   # SERVICE
-
   watchtower:
     build:
       context: .
     extends:
       file: ./docker/service/watchtower.yml
       service: watchtower
-
   autoheal:
     build:
       context: .
     extends:
       file: ./docker/service/autoheal.yml
       service: autoheal
-
   validate:
     env_file: *env-files
     build:
@@ -62,51 +52,44 @@ services:
       service: validate
 
   # DB
-
   bytebase:
-    profiles: [ all, db ]
+    profiles: [all, db]
     build:
       context: .
     extends:
       file: ./docker/db/bytebase.yml
       service: bytebase
-
   minio:
-    profiles: [ all, db ]
+    profiles: [all, db]
     build:
       context: .
     extends:
       file: ./docker/db/minio.yml
       service: minio
-
   postgres:
-    profiles: [ all, db, pgsql ]
+    profiles: [all, db, pgsql]
     build:
       context: .
     extends:
       file: ./docker/db/postgresql.yml
       service: postgres
-
   redis:
-    profiles: [ all, db ]
+    profiles: [all, db]
     build:
       context: .
     extends:
       file: ./docker/db/redis.yml
       service: redis
-
   mongo:
-    profiles: [ all, db ]
+    profiles: [all, db]
     build:
       context: .
     extends:
       file: ./docker/db/mongo.yml
       service: mongo
-
   createbuckets:
-    profiles: [ all, db ]
-    depends_on:
-      - minio
+    profiles: [all, db]
+    depends_on: [minio]
     build:
       context: .
     extends:
@@ -114,10 +97,9 @@ services:
       service: createbuckets
 
   # BROKERS
-
   rabbit:
-    profiles: [ all, brokers ]
-    depends_on: [ caddy ]
+    profiles: [all, brokers]
+    depends_on: [caddy]
     build:
       context: .
     extends:
@@ -125,10 +107,9 @@ services:
       service: rabbit
 
   # VAULT
-
   vaultwarden:
-    profiles: [ all, vault ]
-    depends_on: [ caddy ]
+    profiles: [all, vault]
+    depends_on: [caddy]
     build:
       context: .
     extends:
@@ -136,65 +117,54 @@ services:
       service: vaultwarden
 
   # CHAT
-
   api:
-    profiles: [ all, chat ]
+    profiles: [all, chat]
     build:
       context: .
     extends:
       file: ./docker/chat/revolt.yml
       service: api
-
   events:
-    profiles: [ all, chat ]
+    profiles: [all, chat]
     build:
       context: .
     extends:
       file: ./docker/chat/revolt.yml
       service: events
-
   web:
-    profiles: [ all, chat ]
-    depends_on:
-      - caddy
+    profiles: [all, chat]
+    depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/chat/revolt.yml
       service: web
-
   autumn:
-    profiles: [ all, chat ]
+    profiles: [all, chat]
     build:
       context: .
     extends:
       file: ./docker/chat/revolt.yml
       service: autumn
-
   january:
-    profiles: [ all, chat ]
-    depends_on:
-      - caddy
+    profiles: [all, chat]
+    depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/chat/revolt.yml
       service: january
-
   crond:
-    profiles: [ all, chat ]
-    depends_on:
-      - caddy
+    profiles: [all, chat]
+    depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/chat/revolt.yml
       service: crond
-
   pushd:
-    profiles: [ all, chat ]
-    depends_on:
-      - caddy
+    profiles: [all, chat]
+    depends_on: [caddy]
     build:
       context: .
     extends:
@@ -202,7 +172,6 @@ services:
       service: pushd
 
   # GITLAB
-
 #  gitlab:
 #    profiles: [ all, gitlab ]
 #    depends_on:
@@ -233,9 +202,7 @@ services:
 #      file: ./docker/syncthing.yml
 #      service: syncthing-exporter
 
-
   # MAIL
-
   #  mail:
   #    profiles: [ all, mail ]
   #    depends_on:
@@ -247,33 +214,29 @@ services:
   #      service: stalwart-mail
 
   # LOGGING
-
   elasticsearch:
-    profiles: [ all, logging ]
+    profiles: [all, logging]
     build:
       context: .
     extends:
       file: ./docker/logging/elasticsearch.yml
       service: elasticsearch
-
   filebeat:
-    profiles: [ all, logging ]
+    profiles: [all, logging]
     build:
       context: .
     extends:
       file: ./docker/logging/filebeat.yml
       service: filebeat
-
   kibana:
-    profiles: [ all, logging ]
+    profiles: [all, logging]
     build:
       context: .
     extends:
       file: ./docker/logging/kibana.yml
       service: kibana
-
   logstash:
-    profiles: [ all, logging ]
+    profiles: [all, logging]
     build:
       context: .
     extends:
@@ -281,142 +244,121 @@ services:
       service: logstash
 
   # MONITORING
-
   prometheus:
-    profiles: [ all, monitoring ]
-    depends_on:
-      - caddy
+    profiles: [all, monitoring]
+    depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/monitoring/prometheus.yml
       service: prometheus
     labels:
-      org.label-schema.group: "monitoring"
-
+      org.label-schema.group: monitoring
   grafana:
-    profiles: [ all, monitoring ]
+    profiles: [all, monitoring]
     build:
       context: .
     extends:
       file: ./docker/monitoring/grafana.yml
       service: grafana
     labels:
-      org.label-schema.group: "monitoring"
-
+      org.label-schema.group: monitoring
   nodeexporter:
-    profiles: [ all, monitoring ]
-    depends_on:
-      - caddy
+    profiles: [all, monitoring]
+    depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/monitoring/node-exporter.yml
       service: nodeexporter
     labels:
-      org.label-schema.group: "monitoring"
-
+      org.label-schema.group: monitoring
   cadvisor:
-    profiles: [ all, monitoring ]
-    depends_on:
-      - caddy
+    profiles: [all, monitoring]
+    depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/monitoring/cadvisor.yml
       service: cadvisor
     labels:
-      org.label-schema.group: "monitoring"
-
+      org.label-schema.group: monitoring
   alertmanager:
-    profiles: [ all, monitoring ]
-    depends_on:
-      - caddy
+    profiles: [all, monitoring]
+    depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/monitoring/alertmanager.yml
       service: alertmanager
     labels:
-      org.label-schema.group: "monitoring"
-
+      org.label-schema.group: monitoring
   blackbox:
-    profiles: [ all, monitoring ]
-    depends_on:
-      - caddy
+    profiles: [all, monitoring]
+    depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/monitoring/blackbox.yml
       service: blackbox
     labels:
-      org.label-schema.group: "monitoring"
-
+      org.label-schema.group: monitoring
   pushgateway:
-    profiles: [ all, monitoring ]
-    depends_on:
-      - caddy
+    profiles: [all, monitoring]
+    depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/monitoring/pushgateway.yml
       service: pushgateway
     labels:
-      org.label-schema.group: "monitoring"
+      org.label-schema.group: monitoring
 
   # SERVICE DISCOVERY
-
   consul-server:
-    profiles: [ all, discovery ]
-    depends_on:
-      - caddy
+    profiles: [all, discovery]
+    depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/SD/consul.yml
       service: consul-server
     labels:
-      org.label-schema.group: "SD"
-
+      org.label-schema.group: SD
   consul-agent:
-    profiles: [ all, discovery ]
+    profiles: [all, discovery]
     build:
       context: .
     extends:
       file: ./docker/SD/consul.yml
       service: consul-agent
     labels:
-      org.label-schema.group: "SD"
-
+      org.label-schema.group: SD
   consul-exporter:
-    profiles: [ all, discovery ]
+    profiles: [all, discovery]
     build:
       context: .
     extends:
       file: ./docker/SD/consul.yml
       service: consul-exporter
     labels:
-      org.label-schema.group: "SD"
-
+      org.label-schema.group: SD
   registrator:
-    profiles: [ all, discovery ]
+    profiles: [all, discovery]
     extends:
       file: ./docker/SD/consul.yml
       service: registrator
     labels:
-      org.label-schema.group: "SD"
-
+      org.label-schema.group: SD
   fabio:
-    profiles: [ all, discovery ]
+    profiles: [all, discovery]
     build:
       context: .
     extends:
       file: ./docker/SD/consul.yml
       service: fabio
     labels:
-      org.label-schema.group: "SD"
-
-
+      org.label-schema.group: SD
 networks:
   broker-net:
   consul-net:
