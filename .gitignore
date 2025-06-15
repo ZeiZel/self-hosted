@@ -3,6 +3,7 @@
 .env.*
 *.env.*
 
+/.vagrant
 /volumes
 /configs/revolt/Revolt.toml
 
