@@ -1,5 +1,7 @@
 ---
+
 x-env-files: &env-files [.env]
+
 services:
   # SSL + reverse_proxy
   caddy:
@@ -20,15 +22,44 @@ services:
       file: ./docker/dashy.yml
       service: dashy
 
-  # TASKTRACKING
+  # Jetbrains
+  ## TASKTRACKING
   youtrack:
     profiles: [all, tasktracking]
     depends_on: [caddy]
     build:
       context: .
     extends:
-      file: ./docker/youtrack.yml
+      file: ./docker/jetbrains/youtrack.yml
       service: youtrack
+
+  ## HUB
+  hub:
+    profiles: [ all, hub, vsc ]
+    depends_on: [ caddy ]
+    build:
+      context: .
+    extends:
+      file: ./docker/jetbrains/hub.yml
+      service: hub
+
+  ## CI/CD
+  teamcity:
+    profiles: [ all, teamcity, vsc ]
+    depends_on: [ caddy, postgres ]
+    build:
+      context: .
+    extends:
+      file: ./docker/jetbrains/teamcity.yml
+      service: teamcity
+  teamcity-agent:
+    profiles: [ all, teamcity, vsc ]
+    depends_on: [ caddy, postgres ]
+    build:
+      context: .
+    extends:
+      file: ./docker/jetbrains/teamcity.yml
+      service: teamcity-agent
 
   # SERVICE
   watchtower:
@@ -172,46 +203,44 @@ services:
       service: pushd
 
   # GITLAB
-#  gitlab:
-#    profiles: [ all, gitlab ]
-#    depends_on:
-#      - caddy
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/gitlab/gitlab.yml
-#      service: gitlab
+  gitlab:
+    profiles: [ all, gitlab, vsc ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/gitlab/gitlab.yml
+      service: gitlab
 
   # SYNC
-
-#  syncthing:
-#    profiles: [ all, sync ]
-#    depends_on:
-#      - caddy
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/syncthing.yml
-#      service: syncthing
-#
-#  syncthing-exporter:
-#    profiles: [ all, sync ]
-#    build:
-#      context: .
-#    extends:
-#      file: ./docker/syncthing.yml
-#      service: syncthing-exporter
+  syncthing:
+    profiles: [ all, sync ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/syncthing.yml
+      service: syncthing
+  syncthing-exporter:
+    profiles: [ all, sync ]
+    build:
+      context: .
+    extends:
+      file: ./docker/syncthing.yml
+      service: syncthing-exporter
 
   # MAIL
-  #  mail:
-  #    profiles: [ all, mail ]
-  #    depends_on:
-  #      - caddy
-  #    build:
-  #      context: .
-  #    extends:
-  #      file: ./docker/mailer.yml
-  #      service: stalwart-mail
+  mail:
+    profiles: [ all, mail ]
+    depends_on:
+      - caddy
+    build:
+      context: .
+    extends:
+      file: ./docker/mailer.yml
+      service: stalwart-mail
 
   # LOGGING
   elasticsearch:
@@ -359,6 +388,7 @@ services:
       service: fabio
     labels:
       org.label-schema.group: SD
+
 networks:
   broker-net:
   consul-net:

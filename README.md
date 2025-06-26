@@ -4,7 +4,7 @@
 
 - 🌐 Caddy — reverse proxy + HTTPS
 - 🎯 Dashy — center dashboard
-- 🧠 YouTrack — task tracking
+- 🧠 Jetbrains Hub - YouTrack, Hub, Teamcity
 - 📊 Grafana + Prometheus — monitoring
 - 📦 ELK (Elasticsearch, Logstash, Kibana) — logging
 - 🧭 Consul (+ Fabio, Register and Prometheus exporter) — discovery
