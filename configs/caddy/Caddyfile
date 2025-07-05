@@ -1,7 +1,6 @@
 {
-    admin off
-    auto_https disable_redirects
-    debug
+	admin 0.0.0.0:2019
+	debug
 }
 
 (reverse_proxy_service) {
@@ -21,12 +20,16 @@ youtrack.{$CORE_DOMAIN:localhost} {
     import reverse_proxy_service youtrack 8080
 }
 
+tc.{$CORE_DOMAIN:localhost} {
+    import reverse_proxy_service teamcity 8111
+}
+
 www.{$CORE_DOMAIN:localhost} {
     import reverse_proxy_service www 3000
 }
 
 gitlab.{$CORE_DOMAIN:localhost} {
-    import reverse_proxy_service gitlab {$GITLAB_OUT_PORT:4002}
+    import reverse_proxy_service gitlab 8929
 }
 
 notesnook.{$CORE_DOMAIN:localhost} {

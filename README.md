@@ -50,6 +50,7 @@ That's all what we need to run all services locally
 ### Deployment (WIP)
 
 Requirements:
+
 - At least 2 servers
 - Python
 
@@ -92,3 +93,22 @@ exit
 ```
 
 Next you can place it into `kibana.yml` config by `elasticsearch.serviceAccountToken` field OR `ELASTICSEARCH_SERVICEACCOUNTTOKEN` env of Kibana service
+
+# RUNNING
+
+1. Fill envs
+2. Running YouTrack
+
+On start you need to exec config script
+
+```bash
+docker exec -it youtrack sh
+# sample path from admin config page
+cat /opt/youtrack/conf/internal/services/configurationWizard/wizard_token.txt
+```
+
+# Troubleshooting
+
+## Caddy cannot redirect to a service in Docker
+
+Exit from VPN app. Not disconnect. Just exit.

@@ -1,17 +1,12 @@
+---
 services:
   hub:
     image: jetbrains/hub:2023.2.16591
     container_name: jetbrains-hub
     restart: unless-stopped
-    ports:
-      - "${HUB_PORT:-8081}:8080"
+    ports: ['${HUB_PORT:-8081}:8080']
     volumes:
       - ${PWD}/volumes/hub/data:/opt/hub/data:rw
       - ${PWD}/volumes/hub/logs:/opt/hub/logs:rw
       - ${PWD}/volumes/hub/backups:/opt/hub/backups:rw
-    networks:
-      - shared
-
-networks:
-  shared:
-    external: true
+    networks: [shared-net]

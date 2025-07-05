@@ -25,5 +25,5 @@ echo "" >> Revolt.toml
 echo "[files]" >> Revolt.toml
 echo "encryption_key = \"$(openssl rand -base64 32)\"" >> Revolt.toml
 
-mv -f Revolt.toml ../configs/revolt/Revolt.toml
-mv -f .env.web ../.env.web
+mv -f Revolt.toml ${PWD}/configs/revolt/Revolt.toml
+mv -f .env.web ${PWD}/env.web

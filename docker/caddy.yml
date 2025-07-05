@@ -1,14 +1,10 @@
 ---
-
 services:
   caddy:
     image: caddy:2
     container_name: caddy
     restart: unless-stopped
-    ports:
-      - 2019:2019
-      - ${CADDY_HTTP_OUT_PORT}:80
-      - ${CADDY_HTTPS_OUT_PORT}:443
+    ports: [2019:2019, 80:80, 443:443]
     volumes:
       - ${PWD}/configs/caddy:/etc/caddy
       - ${PWD}/volumes/caddy/data:/data

@@ -1,7 +1,5 @@
 ---
-
 x-env-files: &env-files [.env]
-
 services:
   # SSL + reverse_proxy
   caddy:
@@ -11,7 +9,6 @@ services:
     extends:
       file: ./docker/caddy.yml
       service: caddy
-
   # DASHBOARD
   dashy:
     profiles: [all]
@@ -21,46 +18,42 @@ services:
     extends:
       file: ./docker/dashy.yml
       service: dashy
-
   # Jetbrains
   ## TASKTRACKING
   youtrack:
-    profiles: [all, tasktracking]
+    profiles: [all, jb, tasktracking]
     depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/jetbrains/youtrack.yml
       service: youtrack
-
   ## HUB
   hub:
-    profiles: [ all, hub, vsc ]
-    depends_on: [ caddy ]
+    profiles: [all, hub, jb, vsc]
+    depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/jetbrains/hub.yml
       service: hub
-
   ## CI/CD
   teamcity:
-    profiles: [ all, teamcity, vsc ]
-    depends_on: [ caddy, postgres ]
+    profiles: [all, jb, teamcity, vsc]
+    depends_on: [caddy, postgres]
     build:
       context: .
     extends:
       file: ./docker/jetbrains/teamcity.yml
       service: teamcity
   teamcity-agent:
-    profiles: [ all, teamcity, vsc ]
-    depends_on: [ caddy, postgres ]
+    profiles: [all, jb, teamcity, vsc]
+    depends_on: [caddy, postgres]
     build:
       context: .
     extends:
       file: ./docker/jetbrains/teamcity.yml
       service: teamcity-agent
-
   # SERVICE
   watchtower:
     build:
@@ -81,7 +74,6 @@ services:
     extends:
       file: ./docker/service/validate.yml
       service: validate
-
   # DB
   bytebase:
     profiles: [all, db]
@@ -126,7 +118,6 @@ services:
     extends:
       file: ./docker/db/createbuckets.yml
       service: createbuckets
-
   # BROKERS
   rabbit:
     profiles: [all, brokers]
@@ -136,7 +127,6 @@ services:
     extends:
       file: ./docker/message-brokers/rmq.yml
       service: rabbit
-
   # VAULT
   vaultwarden:
     profiles: [all, vault]
@@ -146,7 +136,6 @@ services:
     extends:
       file: ./docker/vaultwarden.yml
       service: vaultwarden
-
   # CHAT
   api:
     profiles: [all, chat]
@@ -201,47 +190,40 @@ services:
     extends:
       file: ./docker/chat/revolt.yml
       service: pushd
-
   # GITLAB
   gitlab:
-    profiles: [ all, gitlab, vsc ]
-    depends_on:
-      - caddy
+    profiles: [all, gitlab, vsc]
+    depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/gitlab/gitlab.yml
       service: gitlab
-
   # SYNC
   syncthing:
-    profiles: [ all, sync ]
-    depends_on:
-      - caddy
+    profiles: [all, sync]
+    depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/syncthing.yml
       service: syncthing
   syncthing-exporter:
-    profiles: [ all, sync ]
+    profiles: [all, sync]
     build:
       context: .
     extends:
       file: ./docker/syncthing.yml
       service: syncthing-exporter
-
   # MAIL
   mail:
-    profiles: [ all, mail ]
-    depends_on:
-      - caddy
+    profiles: [all, mail]
+    depends_on: [caddy]
     build:
       context: .
     extends:
       file: ./docker/mailer.yml
       service: stalwart-mail
-
   # LOGGING
   elasticsearch:
     profiles: [all, logging]
@@ -271,7 +253,6 @@ services:
     extends:
       file: ./docker/logging/logstash.yml
       service: logstash
-
   # MONITORING
   prometheus:
     profiles: [all, monitoring]
@@ -342,7 +323,6 @@ services:
       service: pushgateway
     labels:
       org.label-schema.group: monitoring
-
   # SERVICE DISCOVERY
   consul-server:
     profiles: [all, discovery]
@@ -388,13 +368,17 @@ services:
       service: fabio
     labels:
       org.label-schema.group: SD
-
+volumes:
+  gitlab-config:
+  gitlab-logs:
+  gitlab-data:
 networks:
   broker-net:
   consul-net:
   monitoring-net:
   logging-net:
   caddy-net:
+  mail-net:
   gitlab-net:
   notesnook-net:
   shared-net:
