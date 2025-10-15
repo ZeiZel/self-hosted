@@ -11,29 +11,5 @@ services:
       - ${PWD}/volumes/vaultwarden/data:/data
     networks:
       - shared-net
-#      - db-net
-#    depends_on:
-#      - postgres
-#          - smtp
     environment:
       - DOMAIN=https://${VAULTWARDEN_HOSTNAME}.${CORE_DOMAIN}
-#      - DATABASE_URL=postgres://${PG_LOGIN}:${PG_PASS}@postgres:${PG_PORT}/${VW_PG_NAME}
-#      - WEBSOCKET_ENABLED=${WEBSOCKET_ENABLED}
-#      - ADMIN_TOKEN=${ADMIN_TOKEN}
-#      - SMTP_HOST=${SMTP_HOST}
-#      - SMTP_FROM=${SMTP_FROM}
-#      - SMTP_PORT=${SMTP_PORT}
-#    entrypoint: |
-#      /bin/sh -c '
-#      echo "Ожидаем запуска PostgreSQL...";
-#      sleep 3;
-#
-#      echo "Проверяем существование БД...";
-#      if ! psql "$${DATABASE_URL}" -c "SELECT 1" >/dev/null 2>&1; then
-#        echo "Создаем БД и таблицы...";
-#        diesel database setup --database-url="$${DATABASE_URL}";
-#      fi;
-#
-#      echo "Запускаем Vaultwarden...";
-#      exec /start.sh
-#      '

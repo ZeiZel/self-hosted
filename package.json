@@ -22,7 +22,8 @@
     "terraform",
     "vagrant",
     "docker",
-    "ansible"
+    "ansible",
+	"docsaurus"
   ],
   "scripts": {
     "up:all": "docker compose --profile all up",
