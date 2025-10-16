@@ -2,11 +2,24 @@ import { themes as prismThemes } from 'prism-react-renderer';
 import type { Config } from '@docusaurus/types';
 import type { Options, ThemeConfig } from '@docusaurus/preset-classic';
 
+const selfHostedConfig = {
+	author: 'ZeiZel',
+	project: {
+		name: 'self-hosted',
+	},
+	urls: {
+		docs: 'https://github.com/ZeiZel/self-hosted',
+		stoat: 'https://github.com/ZeiZel/self-hosted',
+		rss: 'https://github.com/ZeiZel/self-hosted',
+		landing: 'https://zeizel.github.io',
+		repo: 'https://github.com/ZeiZel/self-hosted',
+	},
+};
+
 const classicPreset: Options = {
 	docs: {
 		sidebarPath: './sidebars.ts',
-		editUrl:
-			'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+		editUrl: selfHostedConfig.urls.docs,
 	},
 	blog: {
 		showReadingTime: true,
@@ -14,8 +27,7 @@ const classicPreset: Options = {
 			type: ['rss', 'atom'],
 			xslt: true,
 		},
-		editUrl:
-			'https://github.com/facebook/docusaurus/tree/main/packages/create-docusaurus/templates/shared/',
+		editUrl: selfHostedConfig.urls.rss,
 		onInlineTags: 'warn',
 		onInlineAuthors: 'warn',
 		onUntruncatedBlogPosts: 'warn',
@@ -31,27 +43,29 @@ const themeConfig: ThemeConfig = {
 		respectPrefersColorScheme: true,
 	},
 	navbar: {
-		title: 'My Site',
+		title: 'Self-hosted',
 		logo: {
-			alt: 'My Site Logo',
+			alt: 'Self-hosted-world',
 			src: 'img/logo.svg',
 		},
 		items: [
 			{
 				type: 'localeDropdown',
+				position: 'right',
 			},
 			{
 				type: 'docsVersionDropdown',
 			},
 			{
+				// Next
 				type: 'docSidebar',
 				sidebarId: 'tutorialSidebar',
 				position: 'left',
 				label: 'Tutorial',
 			},
-			{ to: '/blog', label: 'Blog', position: 'left' },
+			{ to: '/about', label: 'About', position: 'left' },
 			{
-				href: 'https://github.com/ZeiZel/self-hosted',
+				href: selfHostedConfig.urls.repo,
 				label: 'GitHub',
 				position: 'right',
 			},
@@ -64,7 +78,7 @@ const themeConfig: ThemeConfig = {
 				title: 'Docs',
 				items: [
 					{
-						label: 'Tutorial',
+						label: 'Docs',
 						to: '/docs/intro',
 					},
 				],
@@ -73,16 +87,8 @@ const themeConfig: ThemeConfig = {
 				title: 'Community',
 				items: [
 					{
-						label: 'Stack Overflow',
-						href: 'https://stackoverflow.com/questions/tagged/docusaurus',
-					},
-					{
-						label: 'Discord',
-						href: 'https://discordapp.com/invite/docusaurus',
-					},
-					{
-						label: 'X',
-						href: 'https://x.com/docusaurus',
+						label: 'Stoat Server of Self-hosted',
+						href: 'https://stoat.zeizel.ru',
 					},
 				],
 			},
@@ -90,12 +96,12 @@ const themeConfig: ThemeConfig = {
 				title: 'More',
 				items: [
 					{
-						label: 'Blog',
-						to: '/blog',
+						label: 'About',
+						to: '/about',
 					},
 					{
 						label: 'GitHub',
-						href: 'https://github.com/facebook/docusaurus',
+						href: selfHostedConfig.urls.repo,
 					},
 				],
 			},
@@ -116,8 +122,8 @@ export default async (): Promise<Config> => {
 		future: {
 			v4: true,
 		},
-		url: 'https://your-docusaurus-site.example.com',
-		baseUrl: '/',
+		url: selfHostedConfig.urls.landing,
+		baseUrl: '/self-hosted/',
 		organizationName: 'ZeiZel',
 		projectName: 'self-hosted',
 		onBrokenLinks: 'throw',
