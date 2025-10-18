@@ -1,0 +1,86 @@
+version: '3'
+
+x-server-discovery: &server-discovery
+  NOTESNOOK_SERVER_PORT: 8010
+  NOTESNOOK_SERVER_HOST: notesnook-server
+  IDENTITY_SERVER_PORT: 8011
+  IDENTITY_SERVER_HOST: identity-server
+  SSE_SERVER_PORT: 8012
+  SSE_SERVER_HOST: sse-server
+  SELF_HOSTED: 1
+  IDENTITY_SERVER_URL: ${AUTH_SERVER_PUBLIC_URL}
+  NOTESNOOK_APP_HOST: ${NOTESNOOK_APP_PUBLIC_URL}
+
+x-env-files: &env-files
+  - .env
+
+services:
+  notesnook-db:
+    image: mongo:7.0.12
+    hostname: notesnook-db
+    volumes:
+      - ./db:/data/db
+      - ./configdb:/data/configdb
+    networks:
+      - notesnook
+    command: --replSet rs0 --bind_ip_all
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh mongodb://localhost:27017 --quiet
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+
+  notesnook-s3:
+    image: minio/minio:latest
+    ports:
+      - 9000:9000
+    networks:
+      - notesnook
+    volumes:
+      - ./s3:/data/s3
+    environment:
+      MINIO_BROWSER: "on"
+    command: server /data/s3 --console-address :9090
+    healthcheck:
+      test: timeout 5s bash -c ':> /dev/tcp/127.0.0.1/9000' || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+
+  identity-server:
+    image: streetwriters/identity:latest
+    ports:
+      - 8011:8011
+    networks:
+      - notesnook
+    env_file: *env-files
+    environment:
+      <<: *server-discovery
+      MONGODB_CONNECTION_STRING: mongodb://notesnook-db:27017/identity?replSet=rs0
+
+  notesnook-server:
+    image: streetwriters/notesnook-sync:latest
+    ports:
+      - 8010:8010
+    networks:
+      - notesnook
+    env_file: *env-files
+    depends_on:
+      - notesnook-s3
+      - identity-server
+    healthcheck:
+      test: wget --tries=1 -nv -q http://localhost:8010/health -O- || exit 1
+      interval: 40s
+      timeout: 30s
+      retries: 3
+      start_period: 60s
+    environment:
+      <<: *server-discovery
+      MONGODB_CONNECTION_STRING: mongodb://notesnook-db:27017/?replSet=rs0
+      S3_INTERNAL_SERVICE_URL: "http://notesnook-s3:9000"
+      S3_BUCKET_NAME: "attachments"
+
+networks:
+  notesnook:

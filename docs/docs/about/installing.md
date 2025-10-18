@@ -23,3 +23,7 @@ sidebar_position: 2
 ```bash
 helmfile init --force
 ```
+
+Кластерной базой является [kubespray](https://github.com/kubernetes-sigs/kubespray?tab=readme-ov-file)
+
+

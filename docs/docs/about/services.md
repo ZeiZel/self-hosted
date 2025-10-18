@@ -13,6 +13,7 @@ sidebar_position: 1
   - [Penpot](https://penpot.app/) - аналог фигмы с открытым исходным кодом, да ещё и self-hosted!
 - Пароли
   - [Vaultwarden](https://github.com/dani-garcia/vaultwarden)
+- [Remnawave](https://remna.st/) - менеджмент прокси
 - Коммуникации
   - [Stoat (Revolt)](https://github.com/stoatchat/self-hosted) - аналог дискорда с открытым исходным кодом и лучшими плюшками!
 - Почтовый сервер
