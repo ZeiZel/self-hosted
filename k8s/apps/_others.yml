@@ -1,0 +1,55 @@
+apps:
+  # EXTERNAL
+  ingress-nginx:
+    repo: ingress-nginx
+    chart: ingress-nginx
+    version: 4.0.16
+    namespace: ingress-nginx
+  cert-manager:
+    repo: jetstack
+    chart: cert-manager
+    version: v1.7.0
+    namespace: cert-manager
+  postgresql:
+    repo: bitnami
+    chart: postgresql
+    version: 11.0.1
+    namespace: postgresql
+  postfix:
+    repo: docker-postfix
+    chart: mail
+    version: 3.4.0
+    namespace: postfix
+  # INTERNAL
+  ## code
+  gitlab:
+    repo: charts
+    chart: gitlab
+    namespace: code
+  hub:
+    repo: charts
+    chart: hub
+    namespace: code
+  youtrack:
+    repo: charts
+    chart: youtrack
+    namespace: code
+  teamcity:
+    repo: charts
+    chart: youtrack
+    namespace: code
+  ## dbs
+  ## community
+  ## data
+  vaultwarden:
+    repo: charts
+    chart: vaultwarden
+    namespace: data
+  owncloud:
+    repo: charts
+    chart: owncloud
+    namespace: data
+  syncthing:
+    repo: charts
+    chart: syncthing
+    namespace: data

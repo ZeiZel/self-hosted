@@ -1,0 +1,57 @@
+---
+replicaCount: 1
+image:
+  repository: postgres
+  tag: 16.2-alpine3.19
+  pullPolicy: IfNotPresent
+strategyType: Recreate
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+podAnnotations: {}
+podLabels: {}
+podSecurityContext: {}
+securityContext: {}
+service:
+  type: ClusterIP
+  port: 5432
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+resources: {}
+volumes: []
+volumeMounts: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+storage:
+  class: ~
+  accessModes: ReadWriteOnce
+  dataSize: 1Gi
+  existingClaim: ""
+backup:
+  pvc:
+    class: ~
+    accessModes: ReadWriteOnce
+    dataSize: 1Gi
+    existingClaim: ""
+configs:
+  POSTGRES_HOST_AUTH_METHOD: ""
+  POSTGRES_USER: "postgres"
+  POSTGRES_PASSWORD: "example"
+  POSTGRES_DB: "postgres"
+  PGDATA: "/var/lib/postgresql/data/pgdata"
+  existingSecret: ""
+backupSchedule: "0 3 * * *"

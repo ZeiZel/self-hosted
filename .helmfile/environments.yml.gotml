@@ -1,0 +1,17 @@
+templates:
+  .default: &default
+    missingFileHandler: Info
+    values:
+      # Apps
+      - k8s/apps/*.*
+      # Env
+      - k8s/envs/{{ .Environment.Name }}/*.*
+      # Values
+      - k8s/envs/{{ .Environment.Name }}/values/*.*
+    secrets:
+      # Secrets
+      - k8s/envs/{{ .Environment.Name }}/secrets/*.*
+
+environments:
+  k8s:
+    <<: *default

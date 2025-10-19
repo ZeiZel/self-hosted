@@ -1,0 +1,19 @@
+repositories:
+  - name: ingress-nginx
+    url: https://kubernetes.github.io/ingress-nginx
+  - name: jetstack
+    url: https://charts.jetstack.io
+  - name: bitnami
+    url: https://raw.githubusercontent.com/bitnami/charts/archive-full-index/bitnami
+  - name: docker-postfix
+    url: https://bokysan.github.io/docker-postfix
+  - name: k8s-at-home
+    url: https://k8s-at-home.com/charts/
+  - name: oauth2-proxy
+    url: https://oauth2-proxy.github.io/manifests
+  - name: vmware-tanzu
+    url: https://vmware-tanzu.github.io/helm-charts
+  - name: requarks
+    url: https://charts.js.wiki
+  - name: groundhog2k
+    url: https://groundhog2k.github.io/helm-charts

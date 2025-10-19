@@ -29,6 +29,20 @@
 
 WIP...
 
+```bash
+helmfile init --force
+```
+
+```bash
+helmfile -e dev apply
+```
+
+Sync any changes in charts
+
+```bash
+helm sync
+```
+
 ## Troubleshooting
 
 If docker image can't access to file, you should change ownership for folder

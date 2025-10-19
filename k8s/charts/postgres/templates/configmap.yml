@@ -1,0 +1,21 @@
+{{- if not .Values.configs.existingSecret -}}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  namespace: {{ .Release.Namespace }}
+  name: {{ template "postgres.fullname" . }}-config
+  labels:
+    app: {{ template "postgres.name" . }}
+    chart: {{ template "postgres.chart" . }}
+    release: {{ .Release.Name }}
+    heritage: {{ .Release.Service }}
+data:
+{{- range $key, $value := .Values.configs }}
+  {{ $key }}: {{ $value | quote }}
+{{- end }}
+  DBHOST: "{{ include "postgres.fullname" . }}"
+  DBPORT: "{{ printf (toJson .Values.service.port) }}"
+  PGDATA: "{{ .Values.configs.PGDATA }}"
+  POSTGRES_USER: "{{ .Values.configs.POSTGRES_USER }}"
+  POSTGRES_HOST_AUTH_METHOD: "{{ .Values.configs.POSTGRES_HOST_AUTH_METHOD }}"
+{{- end }}
