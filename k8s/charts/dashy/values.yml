@@ -1,150 +1,102 @@
----
-infra:
-  name: self-hosted
-  host: zeizel
-postgres:
-  name: postgres
-  image: postgres
-  version: 17.0
-  components: postgres
-  port: 5432
-  limits:
-    memory: "500mi"
-    cpu: "300m"
-  envs:
-    - POSTGRES_DB
-    - POSTGRES_USER
-    - POSTGRES_PASSWORD
-landing:
-  name: landing
+replicaCount: 1
+image:
+  repository: lissy93/dashy
+  pullPolicy: IfNotPresent
+  tag: "release-3.1.1"
+strategyType: Recreate
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+serviceAccount:
+  create: true
+  automount: true
+  annotations: {}
+  name: ""
+podAnnotations: {}
+podLabels: {}
+probs:
+  failureThreshold: 3
+  timeoutSeconds: 10
+  periodSeconds: 90
+  initialDelaySeconds: 40
+  path: "/"
+podSecurityContext: {}
+securityContext: {}
+service:
+  type: ClusterIP
   port: 8080
-dashboard:
-  replicaCount: 1
-  image:
-    repository: lissy93/dashy
-    pullPolicy: IfNotPresent
-    tag: "release-3.1.1"
-  strategyType: Recreate
-  imagePullSecrets: [ ]
-  nameOverride: ""
-  fullnameOverride: ""
-  serviceAccount:
-    create: true
-    automount: true
-    annotations: { }
-    name: ""
-  podAnnotations: { }
-  podLabels: { }
-  probs:
-    failureThreshold: 3
-    timeoutSeconds: 10
-    periodSeconds: 90
-    initialDelaySeconds: 40
-    path: "/"
-  podSecurityContext: { }
-  securityContext: { }
-  service:
-    type: ClusterIP
-    port: 8080
-  ingress:
-    enabled: false
-    className: ""
-    annotations: { }
-    hosts:
-      - host: chart-example.local
-        paths:
-          - path: /
-            pathType: ImplementationSpecific
-    tls: [ ]
-  resources: { }
-  autoscaling:
-    enabled: false
-    minReplicas: 1
-    maxReplicas: 10
-    targetCPUUtilizationPercentage: 80
-  volumes: [ ]
-  volumeMounts: [ ]
-  nodeSelector: { }
-  tolerations: [ ]
-  affinity: { }
-  env:
-    NODE_ENV: "production"
-    PORT: 8080
-    existingSecret: ""
-  static:
-    enabled: true
-    existingSecret: ""
-    configMapContent:
-      conf: |-
-        # Page meta info, like heading, footer text and nav links
-        pageInfo:
-          title: Dashy
-          description: Welcome to your new dashboard!
-          navLinks:
+ingress:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: chart-example.local
+      paths:
+        - path: /
+          pathType: ImplementationSpecific
+  tls: []
+resources: {}
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 10
+  targetCPUUtilizationPercentage: 80
+volumes: []
+volumeMounts: []
+nodeSelector: {}
+tolerations: []
+affinity: {}
+env:
+  NODE_ENV: "production"
+  PORT: 8080
+  existingSecret: ""
+static:
+  enabled: true
+  existingSecret: ""
+  configMapContent:
+    conf: |-
+      # Page meta info, like heading, footer text and nav links
+      pageInfo:
+        title: Dashy
+        description: Welcome to your new dashboard!
+        navLinks:
+          - title: GitHub
+            path: https://github.com/Lissy93/dashy
+          - title: Documentation
+            path: https://dashy.to/docs
+
+      # Optional app settings and configuration
+      appConfig:
+        theme: colorful
+
+      # Main content - An array of sections, each containing an array of items
+      sections:
+        - name: Getting Started
+          icon: fas fa-rocket
+          items:
+            - title: Dashy Live
+              description: Development a project management links for Dashy
+              icon: https://i.ibb.co/qWWpD0v/astro-dab-128.png
+              url: https://live.dashy.to/
+              target: newtab
             - title: GitHub
-              path: https://github.com/Lissy93/dashy
-            - title: Documentation
-              path: https://dashy.to/docs
-
-        # Optional app settings and configuration
-        appConfig:
-          theme: colorful
-
-        # Main content - An array of sections, each containing an array of items
-        sections:
-          - name: Getting Started
-            icon: fas fa-rocket
-            items:
-              - title: Dashy Live
-                description: Development a project management links for Dashy
-                icon: https://i.ibb.co/qWWpD0v/astro-dab-128.png
-                url: https://live.dashy.to/
-                target: newtab
-              - title: GitHub
-                description: Source Code, Issues and Pull Requests
-                url: https://github.com/lissy93/dashy
-                icon: favicon
-              - title: Docs
-                description: Configuring & Usage Documentation
-                provider: Dashy.to
-                icon: far fa-book
-                url: https://dashy.to/docs
-              - title: Showcase
-                description: See how others are using Dashy
-                url: https://github.com/Lissy93/dashy/blob/master/docs/showcase.md
-                icon: far fa-grin-hearts
-              - title: Config Guide
-                description: See full list of configuration options
-                url: https://github.com/Lissy93/dashy/blob/master/docs/configuring.md
-                icon: fas fa-wrench
-              - title: Support
-                description: Get help with Dashy, raise a bug, or get in contact
-                url: https://github.com/Lissy93/dashy/blob/master/.github/SUPPORT.md
-                icon: far fa-hands-helping
-gitlab:
-  global:
-    hosts:
-      domain: localhost
-  gitlab:
-    gitaly:
-      persistence:
-        size: 10Gi
-  certmanager-issuer:
-    email: fake@example.com
-youtrack:
-  name: youtrack
-  image: jetbrains/youtrack
-  version: 2025.2.100871
-  app: youtrack
-  components: youtrack
-  namespace: default
-  port: 8080
-  replicas: 1
-  ingress:
-    enabled: true
-    hosts:
-      - host: youtrack.local
-        paths: [/]
-  persistence:
-    enabled: true
-    size: 5Gi
+              description: Source Code, Issues and Pull Requests
+              url: https://github.com/lissy93/dashy
+              icon: favicon
+            - title: Docs
+              description: Configuring & Usage Documentation
+              provider: Dashy.to
+              icon: far fa-book
+              url: https://dashy.to/docs
+            - title: Showcase
+              description: See how others are using Dashy
+              url: https://github.com/Lissy93/dashy/blob/master/docs/showcase.md
+              icon: far fa-grin-hearts
+            - title: Config Guide
+              description: See full list of configuration options
+              url: https://github.com/Lissy93/dashy/blob/master/docs/configuring.md
+              icon: fas fa-wrench
+            - title: Support
+              description: Get help with Dashy, raise a bug, or get in contact
+              url: https://github.com/Lissy93/dashy/blob/master/.github/SUPPORT.md
+              icon: far fa-hands-helping

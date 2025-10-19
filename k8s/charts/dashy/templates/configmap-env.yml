@@ -6,7 +6,7 @@ metadata:
   labels:
     {{- include "dashy.labels" . | nindent 4 }}
 data:
-{{- range $key, $value := .Values.env }}
-  {{ $key }}: {{ $value | quote }}
-{{- end }}
-{{- end }}
+  {{- range $key, $value := .Values.env }}
+    {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
