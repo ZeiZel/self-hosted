@@ -1,0 +1,36 @@
+---
+# https://syncthing.net/
+services:
+  syncthing:
+    image: syncthing/syncthing:latest
+    container_name: syncthing
+    hostname: syncthing-node
+    volumes:
+      - ./config:/var/syncthing/config
+      - data:/var/syncthing/data
+      - backup:/var/syncthing/backup
+    ports:
+      - 8384:8384  # Web UI
+      - 22000:22000/tcp  # Sync protocol
+      - 22000:22000/udp  # Sync discovery
+      - 21027:21027/udp  # Local discovery
+    networks: [syncthing-net, shared-net]
+    restart: unless-stopped
+  syncthing-exporter:
+    image: smnielsen/syncthing-exporter
+    container_name: syncthing-exporter
+    environment:
+      - ST_ADDR=http://syncthing:8384
+      - ST_API_KEY=your_api_key_here
+    ports:
+      - 9639:9639  # Metrics endpoint
+    depends_on: [syncthing]
+    networks: [syncthing-net, shared-net, metrics-net]
+    restart: unless-stopped
+volumes:
+  data:
+  backup:
+networks:
+  syncthing-net:
+  shared-net:
+  metrics-net:

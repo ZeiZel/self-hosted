@@ -1,0 +1,19 @@
+---
+services:
+  createbuckets:
+    image: docker.io/minio/mc
+    depends_on:
+      - minio
+    networks:
+      - db-net
+    entrypoint: >
+      /bin/sh -c "
+      while ! /usr/bin/mc ready minio; do
+        /usr/bin/mc config host add minio http://minio:9000 minioautumn minioautumn;
+        echo 'Waiting minio...' && sleep 1;
+      done;
+      /usr/bin/mc mb minio/revolt-uploads;
+      exit 0;
+      "
+networks:
+  db-net:
