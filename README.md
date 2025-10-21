@@ -29,12 +29,46 @@
 
 WIP...
 
+### Init helmfile
+
 ```bash
 helmfile init --force
 ```
 
+### Create keys
+
 ```bash
-helmfile -e dev apply
+helm plugin install https://github.com/jkroepke/helm-secrets
+
+brew install gpg sops
+
+gpg --gen-key
+
+sops -p <generated_public_key> secrets.yml
+
+<set_private_vars>
+
+PG_TTY=$(tty)
+export GPG_TTY
+
+helm secrets edit secrets.yml
+
+mv secrets.yml ./k8s/envs/k8s/secrets/_all.yaml
+```
+
+Put ur `<generated_public_key>` into `.sops.yaml` for easy decrypt and encrypt secrets
+
+`.sops.yaml`
+```YAML
+---
+creation_rules:
+  - pgp: "<generated_public_key>"
+```
+
+### Start project
+
+```bash
+helmfile -e k8s apply
 ```
 
 Sync any changes in charts
