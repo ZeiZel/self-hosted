@@ -27,4 +27,4 @@
 /**/yarn-error.log*
 
 /**/charts
-!/k8s/charts
+!/kubernetes/charts

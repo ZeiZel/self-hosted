@@ -1,0 +1,4 @@
+# С помощью этого файла переменные хелмового релиза конкретного окружения оверрайдят общие
+{{- if (.Values | getOrNil .Release.Name) }}
+{{ .Values | getOrNil .Release.Name | toYaml }}
+{{- end }}
