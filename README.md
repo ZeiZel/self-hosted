@@ -75,6 +75,12 @@ Sync any changes in charts
 helm sync
 ```
 
+
+
+```bash
+helmfile -e k8s list
+```
+
 ## How to work with it
 
 1. All helm repos is placed in `.helmfile/repositories.yaml`
@@ -82,6 +88,27 @@ helm sync
 3.
 
 ### Add repo
+
+### Add values
+
+#### Releases
+
+Тут находятся общие для всех окружений параметры определённого релиза чарта
+
+#### Values:
+
+Тут находятся параметры для релизов чартов по окружениям.
+Они перетирают то, что находится в `releases`.
+
+#### Secrets:
+
+Тут в зашифрованном виде задаются параметры helm чарта, которые оверрайдят:
+- и общие параметры
+- и параметры окружения из values
+
+#### Chart values
+
+Их мы задаём в самом чарте и особого смысла выносить их в окружение нет
 
 ### Add new env
 

@@ -1,11 +1,5 @@
-# sample
-#ingress-nginx:
-#  repo: ingress-nginx
-#  chart: ingress-nginx
-#  version: 4.0.16
-#  namespace: ingress-nginx
-
 apps:
+
   # EXTERNAL
   traefik:
     repo: traefik
@@ -16,22 +10,20 @@ apps:
     chart: cert-manager
     version: v1.7.0
     namespace: cert-manager
-  postgresql:
-    repo: bitnami
-    chart: postgresql
-    version: 11.0.1
-    namespace: postgresql
-  postfix:
-    repo: docker-postfix
-    chart: mail
-    version: 3.4.0
-    namespace: postfix
+  penpot:
+    repo: penpot
+    chart: penpot
+    namespace: design
+
   # INTERNAL
-  ## code
-  gitlab:
+
+  ## productivity
+  notesnook:
     repo: charts
-    chart: gitlab
+    chart: notesnook
     namespace: code
+
+  ## JB
   hub:
     repo: charts
     chart: hub
@@ -42,20 +34,71 @@ apps:
     namespace: code
   teamcity:
     repo: charts
-    chart: youtrack
+    chart: teamcity
     namespace: code
-  ## dbs
-  ## community
-  ## data
+
+  ## socials
+  stoat:
+    repo: charts
+    chart: stoat
+    namespace: code
+  stalwart:
+    repo: charts
+    chart: stalwart
+    namespace: code
+
+  ## datas
   vaultwarden:
     repo: charts
     chart: vaultwarden
-    namespace: data
-  owncloud:
-    repo: charts
-    chart: owncloud
-    namespace: data
+    namespace: code
   syncthing:
     repo: charts
     chart: syncthing
-    namespace: data
+    namespace: code
+  ownCloud:
+    repo: charts
+    chart: ownCloud
+    namespace: code
+
+  ## dbs
+  valkey:
+    repo: charts
+    chart: valkey
+    namespace: code
+  postgres:
+    repo: charts
+    chart: postgres
+    namespace: code
+  minio:
+    repo: charts
+    chart: minio
+    namespace: code
+
+  ## code
+  gitlab:
+    repo: charts
+    chart: gitlab
+    namespace: code
+
+  ## service
+  secrets:
+    repo: charts
+    chart: secrets
+    namespace: code
+  monitoring:
+    repo: charts
+    chart: monitoring
+    namespace: code
+  dashy:
+    repo: charts
+    chart: dashy
+    namespace: code
+  consul:
+    repo: charts
+    chart: consul
+    namespace: code
+  authentik:
+    repo: charts
+    chart: authentik
+    namespace: code
