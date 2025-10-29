@@ -1,0 +1,16 @@
+{{- $nodeSelectors := keys .Values.nodeSelector }}
+{{- $nsHostnameKey := first $nodeSelectors }}
+{{- $nsHostnameValue := index .Values.nodeSelector $nsHostnameKey }}
+{{- range .Values.volumes }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ .volume.name }}-pvc
+spec:
+  accessModes:
+    - ReadWriteOnce
+  resources:
+    requests:
+      storage: {{ .volume.storage }}
+{{- end }}

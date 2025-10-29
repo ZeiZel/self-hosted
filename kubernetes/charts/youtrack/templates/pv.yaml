@@ -1,0 +1,27 @@
+{{- $nodeSelectors := keys .Values.nodeSelector }}
+{{- $nsHostnameKey := first $nodeSelectors }}
+{{- $nsHostnameValue := index .Values.nodeSelector $nsHostnameKey }}
+{{- range .Values.volumes }}
+---
+apiVersion: v1
+kind: PersistentVolume
+metadata:
+  name: {{ .volume.name }}-pv
+spec:
+  capacity:
+    storage: {{ .volume.storageCapacity }}
+  volumeMode: {{ .volume.mode }}
+  accessModes:
+    - ReadWriteOnce
+  persistentVolumeReclaimPolicy: {{ .volume.reclaimPolicy }}
+  local:
+    path: {{ .volume.localMountPath }}
+  nodeAffinity:
+    required:
+      nodeSelectorTerms:
+        - matchExpressions:
+            - key: {{ $nsHostnameKey }}
+              operator: In
+              values:
+                - {{ $nsHostnameValue }}
+{{- end }}

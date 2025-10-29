@@ -1,0 +1,43 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Chart.Name }}-deployment
+  labels:
+    app: {{ .Chart.Name }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        app: {{ .Chart.Name }}
+    spec:
+      {{- range $key, $value := .Values.nodeSelector }}
+      nodeSelector:
+        {{ $key }}: {{ $value | quote }}
+      {{- end }}
+      volumes:
+        {{- range .Values.volumes}}
+        - name: {{ .volume.name }}
+          persistentVolumeClaim:
+            claimName: {{ .volume.name }}-pvc
+        {{- end }}
+      securityContext:
+        fsGroup: 13001
+        runAsUser: 13001
+      containers:
+        - name: {{ .Chart.Name }}
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: 80
+              protocol: TCP
+          volumeMounts:
+            {{- range .Values.volumes }}
+            - name: {{ .volume.name }}
+              mountPath: {{ .volume.mountPath}}
+            {{- end}}
