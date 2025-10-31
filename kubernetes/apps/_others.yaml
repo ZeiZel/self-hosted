@@ -96,6 +96,7 @@ apps:
   monitoring:
     repo: charts
     chart: monitoring
+    version: v1.0.0
     namespace: default
   dashy:
     repo: charts

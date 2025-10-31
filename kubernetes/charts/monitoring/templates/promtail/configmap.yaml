@@ -1,0 +1,52 @@
+{{- if .Values.promtail.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: promtail-config
+  namespace: {{ .Values.namespace }}
+data:
+  config.yaml: |
+    clients:
+      - url: http://loki:3100/loki/api/v1/push
+
+    positions:
+      filename: /tmp/positions.yaml
+
+    scrape_configs:
+      - job_name: kubernetes-pods
+        kubernetes_sd_configs:
+          - role: pod
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app]
+            target_label: app
+          - source_labels: [__meta_kubernetes_pod_name]
+            target_label: pod
+          - source_labels: [__meta_kubernetes_namespace]
+            target_label: namespace
+          - action: drop
+            regex: ''
+            source_labels: [__service__]
+          - action: replace
+            regex: ([^:]+)(?::\d+)?;(\d+)
+            replacement: $1:$2
+            source_labels:
+              - __meta_kubernetes_pod_node_name
+              - __meta_kubernetes_pod_container_port_number
+            target_label: __address__
+          - action: replace
+            source_labels:
+              - __meta_kubernetes_pod_node_name
+            target_label: __host__
+          - action: drop
+            regex: Succeeded|Failed
+            source_labels:
+              - __meta_kubernetes_pod_phase
+
+      - job_name: docker
+        static_configs:
+          - targets:
+              - stdout
+            labels:
+              job: varlogs
+              __path__: /var/log/*log
+{{- end }}
