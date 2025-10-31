@@ -65,15 +65,20 @@ apps:
   valkey:
     repo: charts
     chart: valkey
-    namespace: default
+    namespace: db
   postgres:
     repo: charts
     chart: postgres
-    namespace: default
+    namespace: db
   minio:
     repo: charts
     chart: minio
-    namespace: default
+    namespace: db
+    version: 1.0.0
+  mongodb:
+    repo: charts
+    chart: mongodb
+    namespace: db
     version: 1.0.0
 
   ## code

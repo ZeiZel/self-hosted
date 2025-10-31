@@ -1,0 +1,35 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: mongodb-init
+  namespace: {{ .Values.namespace }}
+data:
+  init-replica-set.js: |
+    {{- if .Values.initScripts.enabled }}
+    // Инициализация Replica Set
+    rs.initiate({
+      _id: "{{ .Values.mongodb.replicaSet }}",
+      members: [
+        { _id: 0, host: "mongodb-0.mongodb-headless.{{ .Values.namespace }}.svc.cluster.local:27017", priority: 10 },
+        { _id: 1, host: "mongodb-1.mongodb-headless.{{ .Values.namespace }}.svc.cluster.local:27017", priority: 5 },
+        { _id: 2, host: "mongodb-2.mongodb-headless.{{ .Values.namespace }}.svc.cluster.local:27017", priority: 3 }
+        {{- if .Values.arbiter.enabled }}
+        ,{ _id: 3, host: "mongodb-arbiter-0.mongodb-arbiter-headless.{{ .Values.namespace }}.svc.cluster.local:27017", arbiterOnly: true }
+        {{- end }}
+      ]
+    });
+    {{- end }}
+
+  mongodb.conf: |
+    # MongoDB ReplicaSet Config
+    storage:
+      engine: wiredTiger
+      journal:
+        enabled: true
+      wiredTiger:
+        cacheSizeGB: 0.5
+    net:
+      port: 27017
+      bindIp: 0.0.0.0
+    replication:
+      replSetName: {{ .Values.mongodb.replicaSet }}

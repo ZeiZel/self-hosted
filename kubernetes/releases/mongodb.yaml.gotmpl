@@ -1,0 +1,20 @@
+namespace: code
+
+mongodb:
+  replicaSet: rs0
+  replicaCount: 3
+  image: mongo:7.0.12
+  auth:
+    enabled: false
+
+persistence:
+  enabled: true
+  storageClass: openebs-hostpath
+  size: 30Gi
+
+consul:
+  enabled: true
+  datacenter: dc1
+
+arbiter:
+  enabled: true
