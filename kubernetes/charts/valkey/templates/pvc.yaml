@@ -1,0 +1,34 @@
+{{- if .Values.master.persistence.enabled }}
+{{- if eq .Values.architecture "replication" }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: valkey-master-data
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes:
+    - {{ .Values.master.persistence.accessMode }}
+  storageClassName: {{ .Values.master.persistence.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.master.persistence.size }}
+---
+{{- end }}
+{{- end }}
+{{- if and .Values.replica.persistence.enabled (eq .Values.architecture "replication") }}
+{{- range $i := until (int .Values.replica.replicaCount) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: valkey-replica-data-{{ $i }}
+  namespace: {{ $.Values.namespace }}
+spec:
+  accessModes:
+    - {{ $.Values.replica.persistence.accessMode }}
+  storageClassName: {{ $.Values.replica.persistence.storageClass }}
+  resources:
+    requests:
+      storage: {{ $.Values.replica.persistence.size }}
+---
+{{- end }}
+{{- end }}

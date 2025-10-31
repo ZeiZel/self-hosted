@@ -1,0 +1,55 @@
+# Headless Service for StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: valkey-headless
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: valkey
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - port: 6379
+      targetPort: 6379
+      name: valkey
+  selector:
+    app: valkey
+
+---
+# ClusterIP Service for Master
+apiVersion: v1
+kind: Service
+metadata:
+  name: valkey-master
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: valkey
+    component: master
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: 6379
+      name: valkey
+  selector:
+    app: valkey
+    component: master
+
+---
+# ClusterIP Service for all (master + replicas for load balancing)
+apiVersion: v1
+kind: Service
+metadata:
+  name: valkey
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: valkey
+spec:
+  type: ClusterIP
+  ports:
+    - port: 6379
+      targetPort: 6379
+      name: valkey
+  selector:
+    app: valkey

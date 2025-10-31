@@ -1,0 +1,38 @@
+namespace: code
+
+architecture: replication
+
+master:
+  enabled: true
+  persistence:
+    enabled: true
+    storageClass: openebs-hostpath
+    size: 20Gi
+
+replica:
+  enabled: true
+  replicaCount: 2
+  persistence:
+    enabled: true
+    storageClass: openebs-hostpath
+    size: 20Gi
+
+auth:
+  enabled: false
+
+persistence:
+  type: RDB
+  rdb:
+    enabled: true
+    interval: 900
+    minChanges: 1
+  aof:
+    enabled: false
+
+memory:
+  maxMemory: "512mb"
+  maxMemoryPolicy: "noeviction"
+
+affinity:
+  enabled: true
+  podAntiAffinity: preferred

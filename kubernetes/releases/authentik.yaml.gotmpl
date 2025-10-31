@@ -24,9 +24,9 @@ postgresql:
 # ========== Connect to external ValKey ==========
 valkey:
   enabled: true
-  host: "valkey.code.svc.cluster.local"
+  host: "valkey-master.code.svc.cluster.local"  # or just valkey
   port: 6379
-  password: ""  # или ваш пароль для ValKey
+  password: ""
   database: 0
 
 # Persistent Storage only for media/templates/certs

@@ -1,0 +1,116 @@
+{{- if and (eq .Values.architecture "replication") .Values.replica.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: valkey-replica
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: valkey
+    component: replica
+spec:
+  serviceName: valkey-headless
+  replicas: {{ .Values.replica.replicaCount }}
+  selector:
+    matchLabels:
+      app: valkey
+      component: replica
+  template:
+    metadata:
+      labels:
+        app: valkey
+        component: replica
+    spec:
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+
+      containers:
+        - name: valkey
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - valkey-server
+            - /etc/valkey/valkey.conf
+            - --replicaof
+            - valkey-master-0.valkey-headless.{{ .Values.namespace }}.svc.cluster.local
+            - "6379"
+
+          ports:
+            - containerPort: 6379
+              name: valkey
+
+          env:
+            {{- if .Values.auth.enabled }}
+            - name: VALKEY_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: valkey-auth
+                  key: password
+            {{- end }}
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+
+          resources:
+            {{- toYaml .Values.replica.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/valkey
+            - name: data
+              mountPath: {{ .Values.replica.persistence.mountPath }}
+
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            exec:
+              command:
+                - valkey-cli
+                - ping
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          {{- end }}
+
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            exec:
+              command:
+                - valkey-cli
+                - ping
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          {{- end }}
+
+      volumes:
+        - name: config
+          configMap:
+            name: valkey-config
+
+      {{- if .Values.affinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          {{- if eq .Values.affinity.podAntiAffinity "required" }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+          {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+          {{- end }}
+            - podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - valkey
+                topologyKey: kubernetes.io/hostname
+      {{- end }}
+
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - {{ .Values.replica.persistence.accessMode }}
+        storageClassName: {{ .Values.replica.persistence.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.replica.persistence.size }}
+{{- end }}
