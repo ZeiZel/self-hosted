@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  labels:
+    app: teamcity-agent
+spec:
+  restartPolicy: Never
+  containers:
+    - name: teamcity-agent
+      image: jetbrains/teamcity-agent
+      resources:
+        limits:
+          memory: "2Gi"

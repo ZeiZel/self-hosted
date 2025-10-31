@@ -1,15 +1,20 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "gitlab.fullname" . }}
-  labels:
-    {{- include "gitlab.labels" . | nindent 4 }}
+  name: gitlab-svc
+  namespace: gitlab
 spec:
-  type: {{ .Values.service.type }}
   ports:
-    - port: {{ .Values.service.port }}
-      targetPort: http
-      protocol: TCP
-      name: http
+  - port: 80
+    targetPort: 30088
+    nodePort: 30088
+    protocol: TCP
+    name: http
+  - port: 22
+    targetPort: 22
+    nodePort: 30022
+    protocol: TCP
+    name: tcp
   selector:
-    {{- include "gitlab.selectorLabels" . | nindent 4 }}
+    app: gitlab
+  type: NodePort

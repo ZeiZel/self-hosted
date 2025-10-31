@@ -1,5 +1,5 @@
-apiVersion: networking.k8s.io/v1
-kind: Ingress
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
 metadata:
   name: {{ .Chart.Name }}
   namespace: code
@@ -8,18 +8,11 @@ metadata:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
 spec:
-  rules:
-    - host: {{ .Chart.Name }}.local
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ .Chart.Name }}
-                port:
-                  number: 8080
-  tls:
-    - hosts:
-        - {{ .Chart.Name }}.local
-      secretName: {{ .Chart.Name }}-tls
+  entryPoints:
+    - web
+  routes:
+    - match: Host(`{{ .Chart.Name }}.localhost`)
+      kind: Rule
+      services:
+        - name: {{ .Chart.Name }}
+          port: 80

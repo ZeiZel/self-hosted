@@ -9,11 +9,11 @@ apps:
     repo: jetstack
     chart: cert-manager
     version: v1.7.0
-    namespace: cert-manager
+    namespace: default
   penpot:
     repo: penpot
     chart: penpot
-    namespace: design
+    namespace: default
 
   # INTERNAL
 
@@ -21,84 +21,85 @@ apps:
   notesnook:
     repo: charts
     chart: notesnook
-    namespace: code
+    namespace: default
 
   ## JB
   hub:
     repo: charts
     chart: hub
-    namespace: code
+    namespace: default
   youtrack:
     repo: charts
     chart: youtrack
-    namespace: code
+    namespace: default
   teamcity:
     repo: charts
     chart: teamcity
-    namespace: code
+    namespace: default
 
   ## socials
   stoat:
     repo: charts
     chart: stoat
-    namespace: code
+    namespace: default
   stalwart:
     repo: charts
     chart: stalwart
-    namespace: code
+    namespace: default
 
   ## datas
   vaultwarden:
     repo: charts
     chart: vaultwarden
-    namespace: code
+    namespace: default
   syncthing:
     repo: charts
     chart: syncthing
-    namespace: code
+    namespace: default
   ownCloud:
     repo: charts
     chart: ownCloud
-    namespace: code
+    namespace: default
 
   ## dbs
   valkey:
     repo: charts
     chart: valkey
-    namespace: code
+    namespace: default
   postgres:
     repo: charts
     chart: postgres
-    namespace: code
+    namespace: default
   minio:
     repo: charts
     chart: minio
-    namespace: code
+    namespace: default
+    version: 1.0.0
 
   ## code
   gitlab:
     repo: charts
     chart: gitlab
-    namespace: code
+    namespace: default
 
   ## service
   secrets:
     repo: charts
     chart: secrets
-    namespace: code
+    namespace: default
   monitoring:
     repo: charts
     chart: monitoring
-    namespace: code
+    namespace: default
   dashy:
     repo: charts
     chart: dashy
-    namespace: code
+    namespace: default
   consul:
     repo: charts
     chart: consul
-    namespace: code
+    namespace: default
   authentik:
     repo: charts
     chart: authentik
-    namespace: code
+    namespace: default

@@ -3,21 +3,9 @@ infra:
   name: self-hosted
   host: zeizel
 
-traefik:
-  ingressRoute:
-    dashboard:
-      enabled: true
-      matchRule: Host(`dashboard.localhost`)
-      entryPoints:
-        - web
-  providers:
-    kubernetesGateway:
-      enabled: true
-  gateway:
-    listeners:
-      web:
-        namespacePolicy:
-          from: All
+ingressRoute:
+  dashboard:
+    matchRule: Host(`traefik.k8s.localhost`)
 
 postgresql:
   global:

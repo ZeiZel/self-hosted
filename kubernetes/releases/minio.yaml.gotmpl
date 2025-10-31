@@ -1,0 +1,20 @@
+namespace: code
+replicaCount: 1
+mode: standalone
+
+persistence:
+  enabled: true
+  storageClass: openebs-hostpath
+  size: 20Gi
+
+ingress:
+  enabled: true
+  hosts:
+    - host: {{ .Values.infra.host }}.local
+      paths:
+        - path: /
+          pathType: Prefix
+
+minioConfig:
+  accessKey: minio
+  secretKey: minioSecurePassword123
