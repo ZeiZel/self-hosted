@@ -1,0 +1,87 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authentik-worker
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: authentik-worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  selector:
+    matchLabels:
+      app: authentik-worker
+  template:
+    metadata:
+      labels:
+        app: authentik-worker
+    spec:
+      serviceAccountName: authentik
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+        - name: authentik-worker
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - worker
+          envFrom:
+            - secretRef:
+                name: authentik-secrets
+            - configMapRef:
+                name: authentik-config
+          resources:
+            {{- toYaml .Values.worker.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.persistence.media.enabled }}
+            - name: media
+              mountPath: {{ .Values.persistence.media.mountPath }}
+            {{- end }}
+            {{- if .Values.persistence.templates.enabled }}
+            - name: templates
+              mountPath: {{ .Values.persistence.templates.mountPath }}
+            {{- end }}
+
+      initContainers:
+        # Ожидание доступности PostgreSQL
+        - name: wait-for-postgresql
+          image: postgres:15-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until psql -h {{ .Values.postgresql.host }} -U {{ .Values.postgresql.username }} -d {{ .Values.postgresql.database }} -c "SELECT 1" > /dev/null 2>&1; do
+                echo "Waiting for PostgreSQL..."
+                sleep 5
+              done
+              echo "PostgreSQL is ready!"
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secrets
+                  key: AUTHENTIK_POSTGRESQL__PASSWORD
+
+        # Ожидание доступности ValKey
+        - name: wait-for-valkey
+          image: redis:7-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until redis-cli -h {{ .Values.valkey.host }} -p {{ .Values.valkey.port }} ping > /dev/null 2>&1; do
+                echo "Waiting for ValKey..."
+                sleep 5
+              done
+              echo "ValKey is ready!"
+
+      volumes:
+        {{- if .Values.persistence.media.enabled }}
+        - name: media
+          persistentVolumeClaim:
+            claimName: authentik-media
+        {{- end }}
+        {{- if .Values.persistence.templates.enabled }}
+        - name: templates
+          persistentVolumeClaim:
+            claimName: authentik-templates
+        {{- end }}

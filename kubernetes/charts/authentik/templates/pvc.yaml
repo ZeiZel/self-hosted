@@ -1,0 +1,46 @@
+{{- if .Values.persistence.enabled }}
+{{- if .Values.persistence.media.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: authentik-media
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.accessMode }}
+  storageClassName: {{ .Values.persistence.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.media.size }}
+---
+{{- end }}
+{{- if .Values.persistence.templates.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: authentik-templates
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.accessMode }}
+  storageClassName: {{ .Values.persistence.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.templates.size }}
+---
+{{- end }}
+{{- if .Values.persistence.certs.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: authentik-certs
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.accessMode }}
+  storageClassName: {{ .Values.persistence.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.certs.size }}
+{{- end }}
+{{- end }}

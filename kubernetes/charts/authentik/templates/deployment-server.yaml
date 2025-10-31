@@ -1,0 +1,120 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authentik-server
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: authentik-server
+spec:
+  replicas: {{ .Values.server.replicas }}
+  selector:
+    matchLabels:
+      app: authentik-server
+  template:
+    metadata:
+      labels:
+        app: authentik-server
+    spec:
+      serviceAccountName: authentik
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+        - name: authentik
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - server
+          ports:
+            - containerPort: 9000
+              name: http
+            - containerPort: 9443
+              name: https
+          envFrom:
+            - secretRef:
+                name: authentik-secrets
+            - configMapRef:
+                name: authentik-config
+          env:
+            - name: AUTHENTIK_LISTEN__HTTP__TRUSTED_PROXIES
+              value: "10.0.0.0/8"
+          resources:
+            {{- toYaml .Values.server.resources | nindent 12 }}
+          volumeMounts:
+            {{- if .Values.persistence.media.enabled }}
+            - name: media
+              mountPath: {{ .Values.persistence.media.mountPath }}
+            {{- end }}
+            {{- if .Values.persistence.templates.enabled }}
+            - name: templates
+              mountPath: {{ .Values.persistence.templates.mountPath }}
+            {{- end }}
+            {{- if .Values.persistence.certs.enabled }}
+            - name: certs
+              mountPath: {{ .Values.persistence.certs.mountPath }}
+            {{- end }}
+          {{- if .Values.livenessProbe.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.livenessProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.livenessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.livenessProbe.periodSeconds }}
+          {{- end }}
+          {{- if .Values.readinessProbe.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.readinessProbe.path }}
+              port: http
+            initialDelaySeconds: {{ .Values.readinessProbe.initialDelaySeconds }}
+            periodSeconds: {{ .Values.readinessProbe.periodSeconds }}
+          {{- end }}
+
+      initContainers:
+        # Ожидание доступности PostgreSQL
+        - name: wait-for-postgresql
+          image: postgres:15-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until psql -h {{ .Values.postgresql.host }} -U {{ .Values.postgresql.username }} -d {{ .Values.postgresql.database }} -c "SELECT 1" > /dev/null 2>&1; do
+                echo "Waiting for PostgreSQL..."
+                sleep 5
+              done
+              echo "PostgreSQL is ready!"
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: authentik-secrets
+                  key: AUTHENTIK_POSTGRESQL__PASSWORD
+
+        # Ожидание доступности ValKey
+        - name: wait-for-valkey
+          image: redis:7-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until redis-cli -h {{ .Values.valkey.host }} -p {{ .Values.valkey.port }} ping > /dev/null 2>&1; do
+                echo "Waiting for ValKey..."
+                sleep 5
+              done
+              echo "ValKey is ready!"
+
+      volumes:
+        {{- if .Values.persistence.media.enabled }}
+        - name: media
+          persistentVolumeClaim:
+            claimName: authentik-media
+        {{- end }}
+        {{- if .Values.persistence.templates.enabled }}
+        - name: templates
+          persistentVolumeClaim:
+            claimName: authentik-templates
+        {{- end }}
+        {{- if .Values.persistence.certs.enabled }}
+        - name: certs
+          persistentVolumeClaim:
+            claimName: authentik-certs
+        {{- end }}

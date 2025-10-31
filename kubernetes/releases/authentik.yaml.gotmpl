@@ -1,0 +1,51 @@
+namespace: authentik
+
+authentik:
+  secretKey: "{{ .Values.secrets.authentikSecret }}"
+  bootstrapPassword: "{{ .Values.secrets.authentikBootstrapPassword }}"
+  bootstrapToken: "{{ .Values.secrets.authentikBootstrapToken }}"
+  email:
+    host: smtp.gmail.com
+    port: 587
+    username: "your-email@gmail.com"
+    password: "{{ .Values.secrets.smtpPassword }}"
+    from: "authentik@{{ .Values.infra.host }}.local"
+
+# ========== Connect to external PostgreSQL ==========
+postgresql:
+  external: true
+  host: "postgresql.code.svc.cluster.local"
+  port: 5432
+  username: "authentik"
+  password: "{{ .Values.secrets.postgresPassword }}"
+  database: "authentik"
+  ssl: false
+
+# ========== Connect to external ValKey ==========
+valkey:
+  enabled: true
+  host: "valkey.code.svc.cluster.local"
+  port: 6379
+  password: ""  # или ваш пароль для ValKey
+  database: 0
+
+# Persistent Storage only for media/templates/certs
+persistence:
+  enabled: true
+  storageClass: openebs-hostpath
+  media:
+    size: 10Gi
+  templates:
+    size: 5Gi
+  certs:
+    size: 2Gi
+
+ingress:
+  enabled: true
+  hosts:
+    - host: authentik.{{ .Values.infra.host }}.local
+      paths:
+        - path: /
+          pathType: Prefix
+        - path: /outpost.goauthentik.io/
+          pathType: Prefix
