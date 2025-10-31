@@ -103,6 +103,7 @@ apps:
   consul:
     repo: charts
     chart: consul
+    version: v1.0.0
     namespace: default
   authentik:
     repo: charts

@@ -1,25 +1,35 @@
-# Namespace
 namespace: notesnook
 
-# MongoDB (ВНЕШНЯЯ)
+# MongoDB (external)
 mongodb:
   external: true
-  host: "mongo.code.svc.cluster.local"  # или DNS имя вашего MongoDB
+  host: "mongo.code.svc.cluster.local" # or DNS name of MongoDB
   port: 27017
   replicaSet: "rs0"
   database: "notesnook"
-  # Если требуется аутентификация:
+  # for authentication:
   # username: "mongouser"
   # password: "mongopass"
 
-# MinIO (ВНЕШНЯЯ)
+# MinIO (external)
 minio:
   external: true
-  endpoint: "http://minio.code.svc.cluster.local:9000"  # или DNS имя вашего MinIO
+  endpoint: "http://minio.code.svc.cluster.local:9000" # or DNS name of MongoDB
   accessKey: "minioadmin"
   secretKey: "minioadmin"
   bucketName: "attachments"
   useSSL: false
+
+# Consul (external)
+consul:
+  enabled: true
+  host: "consul.consul.svc.cluster.local"
+  port: 8500
+  datacenter: "dc1"
+  tags:
+    - "notesnook"
+    - "backend"
+    - "production"
 
 # Identity Server
 identityServer:
@@ -49,7 +59,7 @@ notesnookServer:
       cpu: 500m
       memory: 512Mi
 
-# SSE Server (для real-time обновлений)
+# SSE Server (for real-time connection)
 sseServer:
   image: streetwriters/sse:v1.0-beta.1
   replicaCount: 1
@@ -63,7 +73,7 @@ sseServer:
       cpu: 250m
       memory: 256Mi
 
-# Ingress через Traefik
+# Ingress through Traefik
 ingress:
   enabled: true
   className: traefik
@@ -83,7 +93,7 @@ ingress:
     enabled: true
     secretName: notesnook-tls
 
-# Переменные окружения
+# envs
 environment:
   INSTANCE_NAME: "notesnook-instance"
   NOTESNOOK_API_SECRET: "replace-with-a-long-random-string"
@@ -92,7 +102,7 @@ environment:
   AUTH_SERVER_PUBLIC_URL: "http://identity.notesnook.local"
   ATTACHMENTS_SERVER_PUBLIC_URL: "http://sse.notesnook.local"
 
-# SMTP для отправки писем (опционально)
+# SMTP
 smtp:
   enabled: false
   username: "your-email@example.com"

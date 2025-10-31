@@ -12,6 +12,13 @@ spec:
     metadata:
       labels:
         app: notesnook-server
+      annotations:
+        # Connecting to Consul Connect
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "notesnook-server"
+        consul.hashicorp.com/connect-service-port: "8010"
+        # Tags for service discovery
+        consul.hashicorp.com/service-tags: "notesnook,backend"
     spec:
       containers:
         - name: server
@@ -22,6 +29,10 @@ spec:
           env:
             - name: MONGODB_CONNECTION_STRING
               value: "mongodb://{{ .Values.mongodb.host }}:{{ .Values.mongodb.port }}/?replSet={{ .Values.mongodb.replicaSet }}"
+            - name: CONSUL_HOST
+              value: "consul.consul.svc.cluster.local"
+            - name: CONSUL_PORT
+              value: "8500"
           ports:
             - containerPort: {{ .Values.notesnookServer.service.port }}
               name: server

@@ -1,0 +1,19 @@
+{{- range $i := until (int .Values.server.replicas) }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: data-{{ $.Release.Name }}-consul-server-{{ $i }}
+  namespace: {{ $.Values.namespace }}
+  labels:
+    app: consul
+    component: server
+    release: {{ $.Release.Name }}
+spec:
+  accessModes:
+    - {{ $.Values.server.persistence.accessMode }}
+  storageClassName: {{ $.Values.server.persistence.storageClass }}
+  resources:
+    requests:
+      storage: {{ $.Values.server.persistence.size }}
+---
+{{- end }}

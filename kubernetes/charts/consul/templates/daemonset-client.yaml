@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: consul-client
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: consul
+    component: client
+spec:
+  selector:
+    matchLabels:
+      app: consul
+      component: client
+  template:
+    metadata:
+      labels:
+        app: consul
+        component: client
+      {{- if .Values.connectInject.enabled }}
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/service-name: "consul-client"
+      {{- end }}
+    spec:
+      serviceAccountName: consul
+      hostNetwork: true
+      hostPID: true
+      dnsPolicy: ClusterFirst
+      containers:
+        - name: consul
+          image: {{ .Values.client.image }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - consul
+            - agent
+            - -config-file=/etc/consul/config/client-config.json
+            - -config-dir=/etc/consul/config
+          ports:
+            - containerPort: 8500
+              name: http
+            - containerPort: 8301
+              name: serf-lan
+            - containerPort: 8302
+              name: serf-wan
+            - containerPort: 8600
+              name: dns
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+          resources:
+            {{- toYaml .Values.client.resources | nindent 12 }}
+          volumeMounts:
+            - name: config
+              mountPath: /etc/consul/config
+          livenessProbe:
+            httpGet:
+              path: /v1/status/leader
+              port: 8500
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /v1/status/leader
+              port: 8500
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+      volumes:
+        - name: config
+          configMap:
+            name: consul-config
+
+      tolerations:
+        - effect: NoExecute
+          operator: Exists
+        - effect: NoSchedule
+          operator: Exists

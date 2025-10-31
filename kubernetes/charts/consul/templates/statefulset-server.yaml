@@ -1,0 +1,111 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: consul-server
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: consul
+    component: server
+spec:
+  serviceName: consul-headless
+  replicas: {{ .Values.server.replicas }}
+  selector:
+    matchLabels:
+      app: consul
+      component: server
+  template:
+    metadata:
+      labels:
+        app: consul
+        component: server
+    spec:
+      serviceAccountName: consul
+      securityContext:
+        fsGroup: 1000
+      containers:
+        - name: consul
+          image: {{ .Values.server.image }}
+          imagePullPolicy: IfNotPresent
+          command:
+            - consul
+            - agent
+            - -config-file=/etc/consul/config/server-config.json
+            - -config-dir=/etc/consul/config
+          ports:
+            - containerPort: 8500
+              name: http
+            - containerPort: 8501
+              name: https
+            - containerPort: 8301
+              name: serf-lan
+            - containerPort: 8302
+              name: serf-wan
+            - containerPort: 8300
+              name: server
+            - containerPort: 8600
+              name: dns
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: POD_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: POD_NAMESPACE
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.namespace
+          resources:
+            {{- toYaml .Values.server.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.server.persistence.mountPath }}
+            - name: config
+              mountPath: /etc/consul/config
+          livenessProbe:
+            httpGet:
+              path: /v1/status/leader
+              port: 8500
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /v1/status/leader
+              port: 8500
+            initialDelaySeconds: 10
+            periodSeconds: 5
+
+      volumes:
+        - name: config
+          configMap:
+            name: consul-config
+
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - consul
+                    - key: component
+                      operator: In
+                      values:
+                        - server
+                topologyKey: kubernetes.io/hostname
+
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - {{ .Values.server.persistence.accessMode }}
+        storageClassName: {{ .Values.server.persistence.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.server.persistence.size }}

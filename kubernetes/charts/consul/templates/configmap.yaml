@@ -1,0 +1,42 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: consul-config
+  namespace: {{ .Values.namespace }}
+data:
+  server-config.json: |
+    {
+      "datacenter": "{{ .Values.agentConfig.datacenter }}",
+      "domain": "{{ .Values.agentConfig.domain }}",
+      "server": true,
+      "ui": {{ .Values.ui.enabled | lower }},
+      "node_meta": {
+        "environment": "kubernetes"
+      },
+      "bootstrap_expect": {{ .Values.server.replicas }},
+      "client_addr": "0.0.0.0",
+      "bind_addr": "0.0.0.0",
+      "advertise_addr": "${POD_IP}",
+      "retry_join": [
+        {{- range $i := until (int .Values.server.replicas) }}
+        "consul-server-{{ $i }}.consul-headless.{{ $.Values.namespace }}.svc.cluster.local"{{ if ne $i (sub (int $.Values.server.replicas) 1) }},{{ end }}
+        {{- end }}
+      ],
+      "metrics": {
+        "prometheus_retention_time": "{{ .Values.metrics.prometheusRetentionTime }}"
+      }
+    }
+
+  client-config.json: |
+    {
+      "datacenter": "{{ .Values.agentConfig.datacenter }}",
+      "domain": "{{ .Values.agentConfig.domain }}",
+      "client_addr": "0.0.0.0",
+      "bind_addr": "0.0.0.0",
+      "advertise_addr": "${POD_IP}",
+      "retry_join": [
+        {{- range $i := until (int .Values.server.replicas) }}
+        "consul-server-{{ $i }}.consul-headless.{{ $.Values.namespace }}.svc.cluster.local"{{ if ne $i (sub (int $.Values.server.replicas) 1) }},{{ end }}
+        {{- end }}
+      ]
+    }
