@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: sse-server
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.sseServer.replicaCount }}
+  selector:
+    matchLabels:
+      app: sse-server
+  template:
+    metadata:
+      labels:
+        app: sse-server
+    spec:
+      containers:
+        - name: sse
+          image: {{ .Values.sseServer.image }}
+          envFrom:
+            - secretRef:
+                name: notesnook-env
+          ports:
+            - containerPort: {{ .Values.sseServer.service.port }}
+              name: sse
+          resources:
+            {{- toYaml .Values.sseServer.resources | nindent 12 }}
+          livenessProbe:
+            tcpSocket:
+              port: {{ .Values.sseServer.service.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10

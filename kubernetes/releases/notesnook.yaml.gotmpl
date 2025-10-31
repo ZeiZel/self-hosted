@@ -1,0 +1,35 @@
+namespace: notesnook
+
+environment:
+  INSTANCE_NAME: "notesnook-instance"
+  NOTESNOOK_API_SECRET: "{{ .Values.secrets.notesnookSecret }}"
+  DISABLE_ACCOUNT_CREATION: "0"
+  NOTESNOOK_APP_PUBLIC_URL: "http://notesnook.{{ .Values.infra.host }}.local"
+  AUTH_SERVER_PUBLIC_URL: "http://identity.notesnook.{{ .Values.infra.host }}.local"
+  ATTACHMENTS_SERVER_PUBLIC_URL: "http://sse.notesnook.{{ .Values.infra.host }}.local"
+
+mongodb:
+  external: true
+  host: "mongo.code.svc.cluster.local"
+  port: 27017
+  replicaSet: "rs0"
+
+minio:
+  external: true
+  endpoint: "http://minio.code.svc.cluster.local:9000"
+  accessKey: "minioadmin"
+  secretKey: "minioadmin"
+  bucketName: "attachments"
+  useSSL: false
+
+ingress:
+  hosts:
+    - host: notesnook.{{ .Values.infra.host }}.local
+      service: notesnook-server
+      port: 8010
+    - host: identity.notesnook.{{ .Values.infra.host }}.local
+      service: identity-server
+      port: 8011
+    - host: sse.notesnook.{{ .Values.infra.host }}.local
+      service: sse-server
+      port: 8012

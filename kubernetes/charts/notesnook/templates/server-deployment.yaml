@@ -1,0 +1,57 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: notesnook-server
+  namespace: {{ .Values.namespace }}
+spec:
+  replicas: {{ .Values.notesnookServer.replicaCount }}
+  selector:
+    matchLabels:
+      app: notesnook-server
+  template:
+    metadata:
+      labels:
+        app: notesnook-server
+    spec:
+      containers:
+        - name: server
+          image: {{ .Values.notesnookServer.image }}
+          envFrom:
+            - secretRef:
+                name: notesnook-env
+          env:
+            - name: MONGODB_CONNECTION_STRING
+              value: "mongodb://{{ .Values.mongodb.host }}:{{ .Values.mongodb.port }}/?replSet={{ .Values.mongodb.replicaSet }}"
+          ports:
+            - containerPort: {{ .Values.notesnookServer.service.port }}
+              name: server
+          resources:
+            {{- toYaml .Values.notesnookServer.resources | nindent 12 }}
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.notesnookServer.service.port }}
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: {{ .Values.notesnookServer.service.port }}
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      initContainers:
+        - name: wait-for-services
+          image: curlimages/curl:latest
+          command:
+            - sh
+            - -c
+            - |
+              until curl -f http://identity-server:8011/health; do
+                echo "Waiting for Identity Server..."
+                sleep 5
+              done
+              until curl -f "{{ .Values.minio.endpoint }}/minio/health/live"; do
+                echo "Waiting for MinIO..."
+                sleep 5
+              done
+              echo "All services are ready!"

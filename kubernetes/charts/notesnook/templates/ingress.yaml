@@ -1,0 +1,50 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: notesnook-ingress
+  namespace: {{ .Values.namespace }}
+  annotations:
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: notesnook.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: notesnook-server
+                port:
+                  number: {{ .Values.notesnookServer.service.port }}
+    - host: identity.notesnook.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: identity-server
+                port:
+                  number: {{ .Values.identityServer.service.port }}
+    - host: sse.notesnook.local
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: sse-server
+                port:
+                  number: {{ .Values.sseServer.service.port }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - notesnook.local
+        - identity.notesnook.local
+        - sse.notesnook.local
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}

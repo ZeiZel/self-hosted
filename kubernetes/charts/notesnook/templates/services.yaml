@@ -1,0 +1,41 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: identity-server
+  namespace: {{ .Values.namespace }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.identityServer.service.port }}
+      targetPort: identity
+      protocol: TCP
+  selector:
+    app: identity-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: notesnook-server
+  namespace: {{ .Values.namespace }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.notesnookServer.service.port }}
+      targetPort: server
+      protocol: TCP
+  selector:
+    app: notesnook-server
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: sse-server
+  namespace: {{ .Values.namespace }}
+spec:
+  type: ClusterIP
+  ports:
+    - port: {{ .Values.sseServer.service.port }}
+      targetPort: sse
+      protocol: TCP
+  selector:
+    app: sse-server
