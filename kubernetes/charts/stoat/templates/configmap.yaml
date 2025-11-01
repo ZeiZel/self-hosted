@@ -1,0 +1,71 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: revolt-config
+  namespace: {{ .Values.namespace }}
+data:
+  # API Configuration
+  SERVER_NAME: "{{ .Values.revolt.config.serverName }}"
+  LOG_LEVEL: "{{ .Values.revolt.config.logLevel }}"
+
+  # Features
+  FEATURES_INVITE_ONLY: "{{ .Values.revolt.config.features.inviteOnly }}"
+  FEATURES_EMAIL_VERIFICATION: "{{ .Values.revolt.config.features.emailVerification }}"
+  FEATURES_CAPTCHA: "{{ .Values.revolt.config.features.captcha }}"
+
+  # File upload
+  FILE_UPLOAD_MAX_SIZE: "{{ .Values.revolt.config.fileUpload.maxSize }}"
+
+  # Web Configuration
+  REVOLT_API_URL: "{{ .Values.revolt.config.apiUrl }}"
+  REVOLT_APP_URL: "{{ .Values.revolt.config.appUrl }}"
+  REVOLT_PUBLIC_URL: "{{ .Values.revolt.config.publicUrl }}"
+
+  # Revolt Configuration File
+  Revolt.toml: |
+    [api]
+    host = "0.0.0.0"
+    port = 8000
+
+    [web]
+    host = "0.0.0.0"
+    port = 3000
+
+    [database]
+    url = "${MONGO_URL}"
+
+    [redis]
+    url = "${REDIS_URL}"
+
+    [s3]
+    endpoint = "${S3_ENDPOINT}"
+    region = "${S3_REGION}"
+    access_key = "${S3_ACCESS_KEY}"
+    secret_key = "${S3_SECRET_KEY}"
+    bucket = "${S3_BUCKET}"
+
+    [general]
+    name = "{{ .Values.revolt.config.serverName }}"
+    api_url = "{{ .Values.revolt.config.apiUrl }}"
+    app_url = "{{ .Values.revolt.config.appUrl }}"
+    public_url = "{{ .Values.revolt.config.publicUrl }}"
+
+    {{- if .Values.smtp.enabled }}
+    [email]
+    smtp_host = "{{ .Values.smtp.host }}"
+    smtp_port = {{ .Values.smtp.port }}
+    smtp_from = "{{ .Values.smtp.from }}"
+    smtp_username = "{{ .Values.smtp.username }}"
+    smtp_password = "{{ .Values.smtp.password }}"
+    {{- end }}
+
+    {{- if .Values.saml.enabled }}
+    [saml]
+    enabled = true
+    entry_point = "{{ .Values.saml.entrypoint }}"
+    issuer = "{{ .Values.saml.issuer }}"
+    identifier_format = "{{ .Values.saml.identifierFormat }}"
+    {{- if .Values.saml.cert }}
+    cert = "{{ .Values.saml.cert }}"
+    {{- end }}
+    {{- end }}

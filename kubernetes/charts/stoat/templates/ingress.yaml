@@ -1,0 +1,47 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: revolt
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: revolt
+  annotations:
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    # API Ingress
+    - host: {{ .Values.ingress.api.host }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.api.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: revolt-api
+                port:
+                  number: {{ .Values.api.service.port }}
+
+    # Web Ingress
+    - host: {{ .Values.ingress.web.host }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.web.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: revolt-web
+                port:
+                  number: {{ .Values.web.service.port }}
+
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.api.host }}
+        - {{ .Values.ingress.web.host }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+{{- end }}
