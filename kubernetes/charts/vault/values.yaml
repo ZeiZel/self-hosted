@@ -1,0 +1,105 @@
+# Namespace
+namespace: vault
+
+# Vault Image
+image:
+  repository: vault
+  tag: "1.17.0"
+  pullPolicy: IfNotPresent
+
+# Vault Server конфигурация
+server:
+  replicaCount: 3  # For HA
+
+  service:
+    type: ClusterIP
+    port: 8200
+    clusterPort: 8201
+
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 1024Mi
+    requests:
+      cpu: 1000m
+      memory: 512Mi
+
+  # Data Storage конфигурация
+  dataStorage:
+    enabled: true
+    storageClass: standard
+    size: 30Gi
+    mountPath: /vault/data
+
+  # Audit Storage
+  auditStorage:
+    enabled: true
+    storageClass: standard
+    size: 10Gi
+    mountPath: /vault/logs
+
+  # HA Configuration с Integrated Storage (Raft)
+  ha:
+    enabled: true
+    replicas: 3
+    raftStoragePath: "/vault/data"
+
+# UI конфигурация
+ui:
+  enabled: true
+  serviceType: ClusterIP
+  servicePort: 8200
+
+# Ingress через Traefik
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+
+  host: vault.local
+  path: /
+
+  tls:
+    enabled: true
+    secretName: vault-tls
+
+# Consul интеграция
+consul:
+  enabled: true
+  host: "consul.consul.svc.cluster.local"
+  port: 8500
+  datacenter: dc1
+
+# Vault Agent Injector (для инъекции секретов)
+injector:
+  enabled: true
+  replicas: 1
+  resources:
+    limits:
+      cpu: 250m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+
+# Security
+securityContext:
+  runAsUser: 100
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Health Checks
+probes:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 10
+  readiness:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 5
+
+# Telemetry
+telemetry:
+  prometheusOperator: false

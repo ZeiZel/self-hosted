@@ -82,7 +82,6 @@ apps:
     repo: charts
     chart: valkey
     namespace: db
-    version: 1.0.0
     version: v1.0.0
   postgres:
     repo: charts
@@ -101,9 +100,9 @@ apps:
     version: 1.0.0
 
   ## service
-  secrets:
+  vault:
     repo: charts
-    chart: secrets
+    chart: vault
     namespace: default
     version: v1.0.0
   monitoring:

@@ -1,0 +1,56 @@
+# Headless Service for StatefulSet
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-internal
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: vault
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - port: 8200
+      targetPort: 8200
+      name: api
+    - port: 8201
+      targetPort: 8201
+      name: cluster
+  selector:
+    app: vault
+
+---
+# Service for access to Vault
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: vault
+spec:
+  type: {{ .Values.server.service.type }}
+  ports:
+    - port: {{ .Values.server.service.port }}
+      targetPort: 8200
+      name: api
+  selector:
+    app: vault
+
+---
+# Service для Vault Agent Injector
+{{- if .Values.injector.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: vault-agent-injector-svc
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: vault-agent-injector
+spec:
+  ports:
+    - port: 443
+      targetPort: 8080
+  selector:
+    app: vault-agent-injector
+{{- end }}
