@@ -1,0 +1,118 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: syncthing-config
+  namespace: {{ .Values.namespace }}
+data:
+  config.xml: |
+    <?xml version="1.0" encoding="UTF-8"?>
+    <configuration version="32">
+      <folder id="default" label="Default" path="/var/syncthing/Sync/default" type="sendreceive" rescanIntervalS="3600" ignorePerms="false" autoNormalize="true">
+        <filesystemType>basic</filesystemType>
+        <device id="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" introducedBy="" name="" compression="metadata" certName="" addresses="dynamic" skipIntroductionRemovals="false" introducedAt="0001-01-01T00:00:00Z" paused="false" allowedNetworks="" autoAcceptFolders="false"/>
+        <ignoreDelete value="false"/>
+        <ignorePattern value=""/>
+        <simpleVersioning maxVersions="5"/>
+      </folder>
+      <device id="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" name="syncthing" compression="metadata" certName="" addresses="dynamic" skipIntroductionRemovals="false" introducedAt="0001-01-01T00:00:00Z" paused="false" allowedNetworks="" autoAcceptFolders="false"/>
+      <gui enabled="true" tls="false" debugging="false">
+        <address>0.0.0.0:8384</address>
+        <apikey/>
+        <insecureAdminAccess>false</insecureAdminAccess>
+        <theme>default</theme>
+        <insecureSkipHostcheck>true</insecureSkipHostcheck>
+        <insecureAllowFrameLoading>false</insecureAllowFrameLoading>
+        <overrideTrustedCertificates/>
+        <overrideRemoteUIURL/>
+        <premiumpaid>0</premiumpaid>
+        <sendUsageReport>false</sendUsageReport>
+        <urAccepted>-1</urAccepted>
+        <urSeen>-1</urSeen>
+        <urUniqueID/>
+      </gui>
+      <ldap enabled="false">
+        <address/>
+        <bindDN/>
+        <bindPassword/>
+        <searchBaseDN/>
+        <searchFilter/>
+        <displayNameAttribute/>
+        <emailAttribute/>
+        <legacyPasswordBehavior>false</legacyPasswordBehavior>
+      </ldap>
+      <options>
+        <listenAddresses>
+          <listenAddress>tcp://0.0.0.0:22000</listenAddress>
+          <listenAddress>quic://0.0.0.0:22000</listenAddress>
+          <listenAddress>dynamic+https://relays.syncthing.net/endpoint</listenAddress>
+        </listenAddresses>
+        <globalAnnounceServers>
+          <globalAnnounceServer>default</globalAnnounceServer>
+        </globalAnnounceServers>
+        <globalAnnounceEnabled>true</globalAnnounceEnabled>
+        <localAnnounceEnabled>true</localAnnounceEnabled>
+        <localAnnouncePort>21027</localAnnouncePort>
+        <localAnnounceMCAddr>[ff12::8384]:21027</localAnnounceMCAddr>
+        <maxSendKbps>0</maxSendKbps>
+        <maxRecvKbps>0</maxRecvKbps>
+        <maxConcurrentScans>0</maxConcurrentScans>
+        <reconnectionIntervalS>60</reconnectionIntervalS>
+        <relaysEnabled>true</relaysEnabled>
+        <relayReconnectIntervalM>10</relayReconnectIntervalM>
+        <startBrowser>false</startBrowser>
+        <natEnabled>true</natEnabled>
+        <natLeaseMinutes>60</natLeaseMinutes>
+        <natRenewalMinutes>30</natRenewalMinutes>
+        <natTimeoutSeconds>0</natTimeoutSeconds>
+        <urAccepted>-1</urAccepted>
+        <urUniqueID/>
+        <urURL>https://data.syncthing.net/newdata</urURL>
+        <urPostInsecurely>false</urPostInsecurely>
+        <urInitialDelayS>1800</urInitialDelayS>
+        <usageReportingEnabled>false</usageReportingEnabled>
+        <statsReportingEnabled>false</statsReportingEnabled>
+        <limitBandwidthInLan>false</limitBandwidthInLan>
+        <minHomeDiskFree percentage="5"/>
+        <releasesURL>https://upgrades.syncthing.net/meta/v2/latest-v1.json</releasesURL>
+        <alwaysLocalNets/>
+        <overwriteRemoteDeviceNamesOnConnect>false</overwriteRemoteDeviceNamesOnConnect>
+        <tempIndexMinBlocks>10</tempIndexMinBlocks>
+        <unackedNotificationID/>
+        <trafficClass>0</trafficClass>
+        <setLowPriority>true</setLowPriority>
+        <scsiEjectMethod/>
+        <fsWatcherEnabled>true</fsWatcherEnabled>
+        <fsWatcherDelayS>10</fsWatcherDelayS>
+        <fsWatcherArgsEscaped>true</fsWatcherArgsEscaped>
+        <fsWatcherArgs/>
+        <restartOnWakeup>true</restartOnWakeup>
+        <periodicVersionCleanupEnabled>true</periodicVersionCleanupEnabled>
+        <periodicVersionCleanupIntervalH>0</periodicVersionCleanupIntervalH>
+        <skipUpdateCheck>false</skipUpdateCheck>
+        <upgradeSorting>descending</upgradeSorting>
+        <upgradeCheckInterval>24</upgradeCheckInterval>
+        <upgradeToEncryption>false</upgradeToEncryption>
+        <pullOrder>random</pullOrder>
+        <strictEncodingNorm>true</strictEncodingNorm>
+        <syncOwnershipMode/>
+        <syncOwnershipUid/>
+        <syncOwnershipGid/>
+        <syncThrottleKb>0</syncThrottleKb>
+        <blockSyncPersonal>false</blockSyncPersonal>
+        <iscsEnabled>false</iscsEnabled>
+        <iscsChunkSize>262144</iscsChunkSize>
+        <iscsapikey/>
+        <iscshttpurl/>
+        <weakHashThresholdPct>25</weakHashThresholdPct>
+        <stunKeepaliveStartH>8</stunKeepaliveStartH>
+        <stunKeepaliveMinS>900</stunKeepaliveMinS>
+        <stunServers>
+          <stunServer>stun.l.google.com:19302</stunServer>
+          <stunServer>stun1.l.google.com:19302</stunServer>
+          <stunServer>stun2.l.google.com:19302</stunServer>
+          <stunServer>stun3.l.google.com:19302</stunServer>
+          <stunServer>stun4.l.google.com:19302</stunServer>
+          <stunServer>stun.stunprotocol.org:3478</stunServer>
+        </stunServers>
+      </options>
+    </configuration>

@@ -1,0 +1,58 @@
+# GUI Service
+apiVersion: v1
+kind: Service
+metadata:
+  name: syncthing-gui
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: syncthing
+spec:
+  type: {{ .Values.syncthing.service.gui.type }}
+  ports:
+    - port: {{ .Values.syncthing.service.gui.port }}
+      targetPort: 8384
+      name: gui
+  selector:
+    app: syncthing
+
+---
+# Sync Service (TCP + QUIC/UDP)
+apiVersion: v1
+kind: Service
+metadata:
+  name: syncthing-sync
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: syncthing
+spec:
+  type: {{ .Values.syncthing.service.sync.type }}
+  ports:
+    - port: {{ .Values.syncthing.service.sync.port }}
+      targetPort: 22000
+      protocol: TCP
+      name: sync-tcp
+    - port: {{ .Values.syncthing.service.sync.port }}
+      targetPort: 22000
+      protocol: UDP
+      name: sync-quic
+  selector:
+    app: syncthing
+
+---
+# Discovery Service (UDP)
+apiVersion: v1
+kind: Service
+metadata:
+  name: syncthing-discovery
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: syncthing
+spec:
+  type: {{ .Values.syncthing.service.discovery.type }}
+  ports:
+    - port: {{ .Values.syncthing.service.discovery.port }}
+      targetPort: 21027
+      protocol: UDP
+      name: discovery
+  selector:
+    app: syncthing
