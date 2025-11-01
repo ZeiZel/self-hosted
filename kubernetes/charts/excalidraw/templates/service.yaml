@@ -1,0 +1,38 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: excalidraw
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: excalidraw
+spec:
+  type: {{ .Values.excalidraw.service.type }}
+  ports:
+    - port: {{ .Values.excalidraw.service.port }}
+      targetPort: 80
+      name: http
+  selector:
+    app: excalidraw
+
+{{- if .Values.server.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: excalidraw-server
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: excalidraw-server
+spec:
+  type: {{ .Values.server.service.type }}
+  ports:
+    - port: {{ .Values.server.service.port }}
+      targetPort: 3002
+      name: http
+    - port: {{ .Values.server.config.socketPort }}
+      targetPort: {{ .Values.server.config.socketPort }}
+      name: socket
+      protocol: TCP
+  selector:
+    app: excalidraw-server
+{{- end }}

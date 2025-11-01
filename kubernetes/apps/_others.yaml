@@ -23,6 +23,11 @@ apps:
     chart: notesnook
     namespace: default
     version: v1.0.0
+  excalidraw:
+    repo: charts
+    chart: excalidraw
+    namespace: default
+    version: v1.0.0
 
   ## JB
   hub:

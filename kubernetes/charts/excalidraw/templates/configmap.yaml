@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: excalidraw-config
+  namespace: {{ .Values.namespace }}
+data:
+  # Frontend configuration
+  appTitle: "{{ .Values.excalidraw.config.appTitle }}"
+  appDescription: "{{ .Values.excalidraw.config.appDescription }}"
+
+  # Collaboration
+  collaborationEnabled: "{{ .Values.excalidraw.config.collaboration.enabled }}"
+  socketServer: "{{ .Values.excalidraw.config.collaboration.socketServer }}"
+
+  # Library
+  libraryEnabled: "{{ .Values.excalidraw.config.library.enabled }}"
+  libraryShowPrivate: "{{ .Values.excalidraw.config.library.showPrivateLibraries }}"
+
+  # Rendering
+  infiniteCanvas: "{{ .Values.excalidraw.config.rendering.infiniteCanvas }}"
+
+  # Server configuration (if enabled)
+  {{- if .Values.server.enabled }}
+  storageType: "{{ .Values.server.config.storageType }}"
+  localStoragePath: "{{ .Values.server.config.localStoragePath }}"
+  socketPort: "{{ .Values.server.config.socketPort }}"
+  logLevel: "{{ .Values.server.config.logLevel }}"
+  maxConnections: "{{ .Values.server.config.maxConnections }}"
+  {{- end }}

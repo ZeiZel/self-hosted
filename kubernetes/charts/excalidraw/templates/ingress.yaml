@@ -1,0 +1,51 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: excalidraw
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: excalidraw
+  annotations:
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    # Frontend
+    - host: {{ .Values.ingress.frontend.host }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.frontend.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: excalidraw
+                port:
+                  number: {{ .Values.excalidraw.service.port }}
+
+    {{- if .Values.server.enabled }}
+    # Server API
+    - host: {{ .Values.ingress.server.host }}
+      http:
+        paths:
+          - path: {{ .Values.ingress.server.path }}
+            pathType: Prefix
+            backend:
+              service:
+                name: excalidraw-server
+                port:
+                  number: {{ .Values.server.service.port }}
+    {{- end }}
+
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.frontend.host }}
+        {{- if .Values.server.enabled }}
+        - {{ .Values.ingress.server.host }}
+        {{- end }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+{{- end }}

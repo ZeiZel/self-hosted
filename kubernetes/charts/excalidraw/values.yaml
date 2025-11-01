@@ -1,0 +1,169 @@
+# Namespace
+namespace: code
+
+# Excalidraw Image (Frontend)
+image:
+  repository: excalidraw/excalidraw
+  tag: "0.16.0"
+  pullPolicy: IfNotPresent
+
+# Excalidraw Server конфигурация
+excalidraw:
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+    requests:
+      cpu: 500m
+      memory: 256Mi
+
+  # Конфигурация Excalidraw
+  config:
+    # Application metadata
+    appTitle: "Excalidraw"
+    appDescription: "Virtual whiteboard for sketching hand-drawn diagrams"
+
+    # Storage configuration
+    storage:
+      type: "filesystem"  # filesystem, localstorage, или excalidraw-complete для full-featured server
+      # Если используется excalidraw-complete (recommend для production)
+      serverType: "complete"
+
+    # Collaboration settings
+    collaboration:
+      enabled: true
+      socketServer: "ws://excalidraw.local"
+
+    # Library settings
+    library:
+      enabled: true
+      showPrivateLibraries: true
+
+    # Export settings
+    export:
+      embedScene: true
+      embedSequence: true
+
+    # Rendering settings
+    rendering:
+      infiniteCanvas: true
+
+# Excalidraw Server (для полнофункционального хостинга с persistence)
+server:
+  enabled: true
+  image:
+    repository: patrickhwilly/excalidraw-complete
+    tag: "latest"
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 3002
+
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 500m
+      memory: 512Mi
+
+  # Server configuration
+  config:
+    storageType: "sqlite"  # filesystem, sqlite, или s3
+    localStoragePath: "/data/excalidraw"
+    socketPort: 8080
+    logLevel: "info"
+    maxConnections: 1000
+    # Для S3:
+    # s3BucketName: "excalidraw"
+    # s3Endpoint: "http://minio:9000"
+
+# Persistent Storage
+persistence:
+  enabled: true
+  storageClass: standard
+
+  # Application data
+  data:
+    enabled: true
+    size: 50Gi
+    mountPath: /data
+    accessMode: ReadWriteOnce
+
+# PostgreSQL (опционально для advanced backend)
+postgresql:
+  enabled: false
+  external: true
+  host: "postgresql.code.svc.cluster.local"
+  port: 5432
+  username: "excalidraw"
+  password: "changeme"
+  database: "excalidraw"
+
+# MinIO/S3 (опционально для хранения экспортов)
+s3:
+  enabled: false
+  endpoint: "http://minio.code.svc.cluster.local:9000"
+  bucket: "excalidraw"
+  accessKey: "minioadmin"
+  secretKey: "minioadmin"
+
+# Ingress через Traefik
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+
+  # Frontend ingress
+  frontend:
+    host: excalidraw.local
+    path: /
+
+  # Server ingress (для WebSocket)
+  server:
+    host: excalidraw-api.local
+    path: /
+
+  tls:
+    enabled: true
+    secretName: excalidraw-tls
+
+# Consul интеграция
+consul:
+  enabled: true
+  host: "consul.consul.svc.cluster.local"
+  port: 8500
+  datacenter: dc1
+  tags:
+    - excalidraw
+    - whiteboard
+
+# Security
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Health Checks
+probes:
+  liveness:
+    enabled: true
+    path: "/"
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  readiness:
+    enabled: true
+    path: "/"
+    initialDelaySeconds: 10
+    periodSeconds: 5

@@ -1,0 +1,157 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: excalidraw
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: excalidraw
+spec:
+  replicas: {{ .Values.excalidraw.replicaCount }}
+  selector:
+    matchLabels:
+      app: excalidraw
+  template:
+    metadata:
+      labels:
+        app: excalidraw
+      {{- if .Values.consul.enabled }}
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "excalidraw"
+        consul.hashicorp.com/connect-service-port: "80"
+        consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
+      {{- end }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+
+      serviceAccountName: excalidraw
+
+      containers:
+        - name: excalidraw
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          ports:
+            - containerPort: 80
+              name: http
+
+          env:
+            - name: PORT
+              value: "80"
+            - name: NODE_ENV
+              value: "production"
+
+          resources:
+            {{- toYaml .Values.excalidraw.resources | nindent 12 }}
+
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: 80
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          {{- end }}
+
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: 80
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          {{- end }}
+
+---
+{{- if .Values.server.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: excalidraw-server
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: excalidraw-server
+spec:
+  replicas: {{ .Values.server.replicaCount }}
+  selector:
+    matchLabels:
+      app: excalidraw-server
+  template:
+    metadata:
+      labels:
+        app: excalidraw-server
+      {{- if .Values.consul.enabled }}
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "excalidraw-server"
+        consul.hashicorp.com/connect-service-port: "{{ .Values.server.service.port }}"
+      {{- end }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+
+      serviceAccountName: excalidraw
+
+      containers:
+        - name: excalidraw-server
+          image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}"
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+
+          ports:
+            - containerPort: {{ .Values.server.config.socketPort }}
+              name: socket
+            - containerPort: 3002
+              name: http
+
+          env:
+            - name: STORAGE_TYPE
+              value: "{{ .Values.server.config.storageType }}"
+            - name: LOCAL_STORAGE_PATH
+              value: "{{ .Values.server.config.localStoragePath }}"
+            - name: SOCKET_PORT
+              value: "{{ .Values.server.config.socketPort }}"
+            - name: LOG_LEVEL
+              value: "{{ .Values.server.config.logLevel }}"
+            - name: MAX_CONNECTIONS
+              value: "{{ .Values.server.config.maxConnections }}"
+            {{- if .Values.s3.enabled }}
+            - name: S3_BUCKET_NAME
+              value: "{{ .Values.s3.bucket }}"
+            - name: AWS_S3_ENDPOINT
+              value: "{{ .Values.s3.endpoint }}"
+            - name: AWS_ACCESS_KEY_ID
+              value: "{{ .Values.s3.accessKey }}"
+            - name: AWS_SECRET_ACCESS_KEY
+              value: "{{ .Values.s3.secretKey }}"
+            {{- end }}
+
+          resources:
+            {{- toYaml .Values.server.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.persistence.data.mountPath }}
+
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            tcpSocket:
+              port: 3002
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          {{- end }}
+
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 3002
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          {{- end }}
+
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: excalidraw-data
+{{- end }}

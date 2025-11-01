@@ -1,0 +1,12 @@
+apiVersion: v2
+name: excalidraw
+description: A Helm chart for Excalidraw - Virtual Whiteboard
+type: application
+version: 1.0.0
+appVersion: "0.16.0"
+home: https://excalidraw.com
+sources:
+  - https://github.com/excalidraw/excalidraw
+  - https://github.com/PatWie/excalidraw-complete
+maintainers:
+  - name: DevOps Team
