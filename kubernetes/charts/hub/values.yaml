@@ -1,81 +1,100 @@
-# Общие параметры
-namespace: code
-replicaCount: 1
-mode: standalone  # или distributed
+# Namespace
+namespace: authentik
 
+# Hub Image
 image:
-  repository: minio/minio
+  repository: jetbrains/hub
+  tag: "2025.1"
   pullPolicy: IfNotPresent
-  tag: "2024.1.0"
 
-# MinIO конфигурация
-minioConfig:
-  accessKey: minioadmin         # Измените на свой ключ
-  secretKey: minioadmin         # Измените на свой секретный ключ
-  rootUser: minioadmin
-  rootPassword: minioadmin
+# Hub Server
+hub:
+  replicaCount: 1
 
-# Сервис
-service:
-  type: ClusterIP
-  port: 9000
-  targetPort: 9000
-  console:
-    port: 9001
-    targetPort: 9001
+  service:
+    type: ClusterIP
+    port: 8080
 
-# PVC для хранилища
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 1000m
+      memory: 1Gi
+
+  # Конфигурация Hub
+  config:
+    baseUrl: "http://hub.local"
+    listenPort: 8080
+
+# Persistent Storage
 persistence:
   enabled: true
-  storageClass: standard        # или openebs-hostpath для вашего кластера
-  accessMode: ReadWriteOnce
-  size: 20Gi                    # Размер хранилища
-  mountPath: /data
+  storageClass: standard
 
-# Ingress конфигурация
+  # Data
+  data:
+    enabled: true
+    size: 30Gi
+    mountPath: /opt/hub/data
+
+  # Config
+  config:
+    enabled: true
+    size: 5Gi
+    mountPath: /opt/hub/conf
+
+  # Logs
+  logs:
+    enabled: true
+    size: 10Gi
+    mountPath: /opt/hub/logs
+
+# PostgreSQL (внешний)
+postgresql:
+  external: true
+  host: "postgresql.authentik.svc.cluster.local"
+  port: 5432
+  username: "hub"
+  password: "changeme"
+  database: "hub"
+  ssl: false
+
+# Ingress через Traefik
 ingress:
   enabled: true
   className: traefik
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-  hosts:
-    - host: minio.local
-      paths:
-        - path: /
-          pathType: Prefix
-    - host: minio-console.local
-      paths:
-        - path: /
-          pathType: Prefix
+
+  host: hub.local
+  path: /
+
   tls:
     enabled: true
-    secretName: minio-tls
+    secretName: hub-tls
 
-# Ресурсы
-resources:
-  limits:
-    cpu: 1000m
-    memory: 1Gi
-  requests:
-    cpu: 500m
-    memory: 512Mi
+# Consul интеграция
+consul:
+  enabled: true
+  host: "consul.consul.svc.cluster.local"
+  port: 8500
+  datacenter: dc1
 
-# Безопасность
+# Security
 securityContext:
   runAsUser: 1000
   runAsGroup: 1000
   fsGroup: 1000
 
-# Переменные окружения
-env:
-  MINIO_BROWSER: "on"
-  MINIO_DOMAIN: minio.local
-
-# Buckets для создания
-buckets:
-  - name: data
-    policy: none
-  - name: logs
-    policy: none
-  - name: backups
-    policy: none
+# Health Checks
+probes:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 10
+  readiness:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 5

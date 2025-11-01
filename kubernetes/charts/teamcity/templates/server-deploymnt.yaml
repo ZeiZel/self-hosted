@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: teamcity-server
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: teamcity-server
+spec:
+  replicas: {{ .Values.server.replicaCount }}
+  selector:
+    matchLabels:
+      app: teamcity-server
+  template:
+    metadata:
+      labels:
+        app: teamcity-server
+      {{- if .Values.consul.enabled }}
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "teamcity"
+        consul.hashicorp.com/connect-service-port: "8111"
+      {{- end }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+
+      serviceAccountName: teamcity
+
+      containers:
+        - name: teamcity-server
+          image: "{{ .Values.server.image.repository }}:{{ .Values.server.image.tag }}"
+          imagePullPolicy: {{ .Values.server.image.pullPolicy }}
+
+          ports:
+            - containerPort: 8111
+              name: http
+
+          env:
+            - name: TEAMCITY_SERVER_MEM_OPTS
+              value: "-Xmx1024m"
+            - name: TEAMCITY_DATA_PATH
+              value: "{{ .Values.server.persistence.mountPath }}"
+            - name: TEAMCITY_DIST
+              value: "/opt/teamcity"
+
+          resources:
+            {{- toYaml .Values.server.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.server.persistence.mountPath }}
+            - name: logs
+              mountPath: /opt/teamcity/logs
+
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8111
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          {{- end }}
+
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8111
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          {{- end }}
+
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: teamcity-server-data
+        - name: logs
+          emptyDir: {}

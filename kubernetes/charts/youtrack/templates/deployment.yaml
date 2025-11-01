@@ -1,43 +1,127 @@
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ .Chart.Name }}-deployment
+  name: youtrack
+  namespace: {{ .Values.namespace }}
   labels:
-    app: {{ .Chart.Name }}
+    app: youtrack
 spec:
-  replicas: {{ .Values.replicaCount }}
+  replicas: {{ .Values.youtrack.replicaCount }}
   selector:
     matchLabels:
-      app: {{ .Chart.Name }}
+      app: youtrack
   template:
     metadata:
       labels:
-        app: {{ .Chart.Name }}
-    spec:
-      {{- range $key, $value := .Values.nodeSelector }}
-      nodeSelector:
-        {{ $key }}: {{ $value | quote }}
+        app: youtrack
+      {{- if .Values.consul.enabled }}
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "youtrack"
+        consul.hashicorp.com/connect-service-port: "8080"
+        consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
       {{- end }}
-      volumes:
-        {{- range .Values.volumes}}
-        - name: {{ .volume.name }}
-          persistentVolumeClaim:
-            claimName: {{ .volume.name }}-pvc
-        {{- end }}
+    spec:
       securityContext:
-        fsGroup: 13001
-        runAsUser: 13001
+        {{- toYaml .Values.securityContext | nindent 8 }}
+
+      serviceAccountName: youtrack
+
       containers:
-        - name: {{ .Chart.Name }}
-          image: {{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}
+        - name: youtrack
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+
           ports:
-            - name: http
-              containerPort: 80
-              protocol: TCP
+            - containerPort: 8080
+              name: http
+
+          env:
+            - name: YOUTRACK_BASE_URL
+              value: "{{ .Values.youtrack.config.baseUrl }}"
+            - name: YOUTRACK_LISTEN_PORT
+              value: "{{ .Values.youtrack.config.listenPort }}"
+            - name: YOUTRACK_JVM_OPTIONS
+              value: "{{ .Values.youtrack.config.jvmOptions }}"
+
+          envFrom:
+            - secretRef:
+                name: youtrack-secrets
+            - configMapRef:
+                name: youtrack-config
+
+          resources:
+            {{- toYaml .Values.youtrack.resources | nindent 12 }}
+
           volumeMounts:
-            {{- range .Values.volumes }}
-            - name: {{ .volume.name }}
-              mountPath: {{ .volume.mountPath}}
-            {{- end}}
+            - name: data
+              mountPath: {{ .Values.persistence.data.mountPath }}
+            - name: backups
+              mountPath: {{ .Values.persistence.backups.mountPath }}
+            - name: logs
+              mountPath: {{ .Values.persistence.logs.mountPath }}
+            - name: config
+              mountPath: /opt/youtrack/config
+
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          {{- end }}
+
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          {{- end }}
+
+      initContainers:
+        # Ожидание Hub
+        {{- if .Values.hub.enabled }}
+        - name: wait-for-hub
+          image: curlimages/curl:latest
+          command:
+            - sh
+            - -c
+            - |
+              until curl -f http://{{ .Values.hub.host }}:{{ .Values.hub.port }}/ > /dev/null 2>&1; do
+                echo "Waiting for Hub..."
+                sleep 5
+              done
+              echo "Hub is ready!"
+        {{- end }}
+
+        # Ожидание GitLab
+        {{- if .Values.gitlab.enabled }}
+        - name: wait-for-gitlab
+          image: curlimages/curl:latest
+          command:
+            - sh
+            - -c
+            - |
+              until curl -f http://{{ .Values.gitlab.host }}:{{ .Values.gitlab.port }}/ > /dev/null 2>&1; do
+                echo "Waiting for GitLab..."
+                sleep 5
+              done
+              echo "GitLab is ready!"
+        {{- end }}
+
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: youtrack-data
+        - name: backups
+          persistentVolumeClaim:
+            claimName: youtrack-backups
+        - name: logs
+          persistentVolumeClaim:
+            claimName: youtrack-logs
+        - name: config
+          configMap:
+            name: youtrack-config

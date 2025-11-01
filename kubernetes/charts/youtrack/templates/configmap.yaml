@@ -1,0 +1,29 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: youtrack-config
+  namespace: {{ .Values.namespace }}
+data:
+  # Конфигурация Hub интеграции
+  hub-config.properties: |
+    hub.enabled={{ .Values.hub.enabled }}
+    hub.host={{ .Values.hub.host }}
+    hub.port={{ .Values.hub.port }}
+    hub.sso.enabled={{ .Values.authentik.hubIntegration }}
+
+  # Конфигурация GitLab интеграции
+  gitlab-config.properties: |
+    gitlab.enabled={{ .Values.gitlab.enabled }}
+    gitlab.host={{ .Values.gitlab.host }}
+    gitlab.port={{ .Values.gitlab.port }}
+    gitlab.cicd.enabled={{ .Values.gitlab.integration.cicd }}
+    gitlab.webhooks.enabled={{ .Values.gitlab.integration.webhooks }}
+    gitlab.ssl=false
+
+  # Authentik SAML configuration
+  saml-config.properties: |
+    saml.enabled=true
+    saml.idp.sso.url=http://{{ .Values.hub.host }}:{{ .Values.hub.port }}/saml/sso
+    saml.idp.entity.id=hub
+    saml.sp.entity.id=youtrack
+    saml.sp.acs.url=http://{{ .Values.youtrack.config.baseUrl }}/saml/acs

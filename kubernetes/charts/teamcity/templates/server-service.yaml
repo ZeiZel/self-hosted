@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: teamcity-server
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: teamcity-server
+spec:
+  type: {{ .Values.server.service.type }}
+  ports:
+    - port: {{ .Values.server.service.port }}
+      targetPort: 8111
+      name: http
+  selector:
+    app: teamcity-server
+
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: teamcity-agent
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: teamcity-agent
+spec:
+  clusterIP: None
+  ports:
+    - port: {{ .Values.agent.service.port }}
+      targetPort: 9090
+      name: http
+  selector:
+    app: teamcity-agent

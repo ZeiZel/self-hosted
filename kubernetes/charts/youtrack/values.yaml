@@ -1,110 +1,132 @@
-# Default values for youtrack.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+# Namespace
+namespace: code
 
-replicaCount: 1
-
+# YouTrack Image
 image:
   repository: jetbrains/youtrack
+  tag: "2024.3"
   pullPolicy: IfNotPresent
-  # Overrides the image tag whose default is the chart appVersion.
-  tag: ""
 
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
+# YouTrack Server конфигурация
+youtrack:
+  replicaCount: 1
 
-serviceAccount:
-  # Specifies whether a service account should be created
-  create: true
-  # Annotations to add to the service account
-  annotations: {}
-  # The name of the service account to use.
-  # If not set and create is true, a name is generated using the fullname template
-  name: ""
+  service:
+    type: ClusterIP
+    port: 8080
 
-podAnnotations: {}
+  resources:
+    limits:
+      cpu: 2000m
+      memory: 2Gi
+    requests:
+      cpu: 1000m
+      memory: 1Gi
 
-podSecurityContext: {}
-# fsGroup: 2000
+  # Конфигурация YouTrack
+  config:
+    baseUrl: "http://youtrack.local"
+    listenPort: 8080
+    jvmOptions: "-Xmx1024m"
 
-securityContext: {}
-  # capabilities:
-  #   drop:
-  #   - ALL
-  # readOnlyRootFilesystem: true
-  # runAsNonRoot: true
-# runAsUser: 1000
+# Persistent Storage
+persistence:
+  enabled: true
+  storageClass: standard
 
-service:
-  type: ClusterIP
+  # Data directory
+  data:
+    enabled: true
+    size: 50Gi
+    mountPath: /opt/youtrack/data
+    accessMode: ReadWriteOnce
+
+  # Backups directory
+  backups:
+    enabled: true
+    size: 30Gi
+    mountPath: /opt/youtrack/backups
+    accessMode: ReadWriteOnce
+
+  # Logs directory
+  logs:
+    enabled: true
+    size: 10Gi
+    mountPath: /opt/youtrack/logs
+    accessMode: ReadWriteOnce
+
+# Hub интеграция (для SSO)
+hub:
+  enabled: true
+  host: "hub.authentik.svc.cluster.local"
+  port: 8080
+  # Или используйте DNS:
+  # host: "hub.example.com"
+
+# Authentik интеграция (через Hub)
+authentik:
+  enabled: true
+  hubIntegration: true  # SSO через Hub
+
+# GitLab интеграция
+gitlab:
+  enabled: true
+  host: "gitlab.code.svc.cluster.local"
+  # Или используйте DNS:
+  # host: "gitlab.example.com"
   port: 80
 
+  # Personal Access Token для GitLab
+  token: "changeme"
+
+  # Integration settings
+  integration:
+    cicd: true  # GitLab CI/CD integration
+    webhooks: true
+
+# Ingress через Traefik
 ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-    # kubernetes.io/ingress.class: nginx
-  # kubernetes.io/tls-acme: "true"
-  hosts:
-    - host: chart-example.local
-      paths:
-        - path: /youtrack
-          pathType: ImplementationSpecific
-  tls: []
-  #  - secretName: chart-example-tls
-  #    hosts:
-  #      - chart-example.local
+  enabled: true
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
 
-resources:
-   limits:
-     cpu: 100m
-     memory: 128Mi
-   requests:
-     cpu: 100m
-   memory: 128Mi
+  host: youtrack.local
+  path: /
 
-nodeSelector:
-  kubernetes.io/hostname: hostname
+  tls:
+    enabled: true
+    secretName: youtrack-tls
 
-selectorLabels: {}
+# Consul интеграция
+consul:
+  enabled: true
+  host: "consul.consul.svc.cluster.local"
+  port: 8500
+  datacenter: dc1
+  tags:
+    - youtrack
+    - issue-tracking
 
-deploymentLabels: {}
+# Security
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
 
-tolerations: []
+# Health Checks
+probes:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 180
+    periodSeconds: 20
+  readiness:
+    enabled: true
+    initialDelaySeconds: 60
+    periodSeconds: 10
 
-affinity: {}
-
-volumes:
-  - volume:
-      name: youtrack-data
-      mode: Filesystem
-      reclaimPolicy: Retain
-      mountPath: /opt/youtrack/data
-      localMountPath: /mnt/persistent/data
-      storage: 1Gi
-      storageCapacity: 10Gi
-  - volume:
-      name: youtrack-conf
-      mode: Filesystem
-      reclaimPolicy: Retain
-      mountPath: /opt/youtrack/conf
-      localMountPath: /mnt/persistent/conf
-      storage: 1Gi
-      storageCapacity: 1Gi
-  - volume:
-      name: youtrack-logs
-      mode: Filesystem
-      reclaimPolicy: Retain
-      mountPath: /opt/youtrack/logs
-      localMountPath: /mnt/persistent/logs
-      storage: 1Gi
-      storageCapacity: 1Gi
-  - volume:
-      name: youtrack-backups
-      mode: Filesystem
-      reclaimPolicy: Retain
-      mountPath: /opt/youtrack/
-      localMountPath: /mnt/persistent/logs
-      storage: 1Gi
-      storageCapacity: 1Gi
+# Environment variables
+env:
+  YOUTRACK_BASE_URL: "http://youtrack.local"
+  YOUTRACK_LISTEN_PORT: "8080"

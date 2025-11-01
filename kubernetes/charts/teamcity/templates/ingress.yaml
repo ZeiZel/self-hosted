@@ -2,13 +2,13 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: youtrack
+  name: teamcity
   namespace: {{ .Values.namespace }}
   labels:
-    app: youtrack
+    app: teamcity
   annotations:
     {{- with .Values.ingress.annotations }}
-      {{- toYaml . | nindent 4 }}
+    {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:
   ingressClassName: {{ .Values.ingress.className }}
@@ -20,9 +20,9 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: youtrack
+                name: teamcity-server
                 port:
-                  number: {{ .Values.youtrack.service.port }}
+                  number: {{ .Values.server.service.port }}
   {{- if .Values.ingress.tls.enabled }}
   tls:
     - hosts:

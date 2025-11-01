@@ -1,11 +1,11 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: youtrack-data
+  name: hub-data
   namespace: {{ .Values.namespace }}
 spec:
   accessModes:
-    - {{ .Values.persistence.data.accessMode }}
+    - ReadWriteOnce
   storageClassName: {{ .Values.persistence.storageClass }}
   resources:
     requests:
@@ -15,25 +15,25 @@ spec:
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: youtrack-backups
+  name: hub-config
   namespace: {{ .Values.namespace }}
 spec:
   accessModes:
-    - {{ .Values.persistence.backups.accessMode }}
+    - ReadWriteOnce
   storageClassName: {{ .Values.persistence.storageClass }}
   resources:
     requests:
-      storage: {{ .Values.persistence.backups.size }}
+      storage: {{ .Values.persistence.config.size }}
 
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: youtrack-logs
+  name: hub-logs
   namespace: {{ .Values.namespace }}
 spec:
   accessModes:
-    - {{ .Values.persistence.logs.accessMode }}
+    - ReadWriteOnce
   storageClassName: {{ .Values.persistence.storageClass }}
   resources:
     requests:

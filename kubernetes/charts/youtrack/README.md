@@ -6,8 +6,8 @@ Chart based on jetbrains/youtrack. Connected to cluster traefik.
 
 ## Working
 
-Debug:
+Manual installation
 
 ```bash
-helm install --debug --dry-run youtrack-release youtrack
+helm install youtrack charts/youtrack -n code --create-namespace -f values.yaml
 ```

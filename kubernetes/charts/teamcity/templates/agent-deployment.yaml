@@ -1,0 +1,68 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: teamcity-agent
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: teamcity-agent
+spec:
+  serviceName: teamcity-agent
+  replicas: {{ .Values.agent.replicaCount }}
+  selector:
+    matchLabels:
+      app: teamcity-agent
+  template:
+    metadata:
+      labels:
+        app: teamcity-agent
+    spec:
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+
+      serviceAccountName: teamcity
+
+      containers:
+        - name: teamcity-agent
+          image: "{{ .Values.agent.image.repository }}:{{ .Values.agent.image.tag }}"
+          imagePullPolicy: {{ .Values.agent.image.pullPolicy }}
+
+          env:
+            - name: SERVER_URL
+              value: "http://teamcity-server:8111"
+            - name: AGENT_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: AGENT_WORK_DIR
+              value: "{{ .Values.agent.persistence.mountPath }}"
+
+          resources:
+            {{- toYaml .Values.agent.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: work
+              mountPath: {{ .Values.agent.persistence.mountPath }}
+            - name: docker
+              mountPath: /var/run/docker.sock
+
+          livenessProbe:
+            tcpSocket:
+              port: 9090
+            initialDelaySeconds: 60
+            periodSeconds: 10
+
+      volumes:
+        - name: docker
+          hostPath:
+            path: /var/run/docker.sock
+
+  volumeClaimTemplates:
+    - metadata:
+        name: work
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: {{ .Values.agent.persistence.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.agent.persistence.size }}

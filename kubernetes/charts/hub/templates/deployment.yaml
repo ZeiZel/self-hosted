@@ -1,0 +1,98 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hub
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: hub
+spec:
+  replicas: {{ .Values.hub.replicaCount }}
+  selector:
+    matchLabels:
+      app: hub
+  template:
+    metadata:
+      labels:
+        app: hub
+      {{- if .Values.consul.enabled }}
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "hub"
+        consul.hashicorp.com/connect-service-port: "8080"
+      {{- end }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+
+      containers:
+        - name: hub
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          ports:
+            - containerPort: 8080
+              name: http
+
+          env:
+            - name: HUB_BASE_URL
+              value: "{{ .Values.hub.config.baseUrl }}"
+            - name: HUB_LISTEN_PORT
+              value: "{{ .Values.hub.config.listenPort }}"
+            - name: HUB_DATABASE_URL
+              value: "postgresql://{{ .Values.postgresql.username }}:{{ .Values.postgresql.password }}@{{ .Values.postgresql.host }}:{{ .Values.postgresql.port }}/{{ .Values.postgresql.database }}"
+
+          resources:
+            {{- toYaml .Values.hub.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.persistence.data.mountPath }}
+            - name: config
+              mountPath: {{ .Values.persistence.config.mountPath }}
+            - name: logs
+              mountPath: {{ .Values.persistence.logs.mountPath }}
+
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          {{- end }}
+
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 8080
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          {{- end }}
+
+      initContainers:
+        - name: wait-for-postgresql
+          image: postgres:15-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until psql -h {{ .Values.postgresql.host }} -U {{ .Values.postgresql.username }} -d {{ .Values.postgresql.database }} -c "SELECT 1" > /dev/null 2>&1; do
+                echo "Waiting for PostgreSQL..."
+                sleep 5
+              done
+              echo "PostgreSQL is ready!"
+          env:
+            - name: PGPASSWORD
+              value: {{ .Values.postgresql.password }}
+
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: hub-data
+        - name: config
+          persistentVolumeClaim:
+            claimName: hub-config
+        - name: logs
+          persistentVolumeClaim:
+            claimName: hub-logs

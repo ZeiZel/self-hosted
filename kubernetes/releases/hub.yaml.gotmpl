@@ -1,0 +1,27 @@
+namespace: authentik
+
+hub:
+  config:
+    baseUrl: "http://hub.{{ .Values.infra.host }}.local"
+
+persistence:
+  storageClass: openebs-hostpath
+  data:
+    size: 30Gi
+  config:
+    size: 5Gi
+  logs:
+    size: 10Gi
+
+postgresql:
+  external: true
+  host: "postgresql.authentik.svc.cluster.local"
+  password: "{{ .Values.secrets.postgresPassword }}"
+
+ingress:
+  enabled: true
+  host: hub.{{ .Values.infra.host }}.local
+
+consul:
+  enabled: true
+  host: "consul.consul.svc.cluster.local"

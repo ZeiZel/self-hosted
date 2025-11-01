@@ -1,6 +1,11 @@
 apiVersion: v2
 name: youtrack
-description: infrastructure
+description: A Helm chart for JetBrains YouTrack with Hub SSO and GitLab integration
 type: application
-version: 0.0.1
+version: 1.0.0
 appVersion: "2025"
+home: https://www.jetbrains.com/help/youtrack/
+sources:
+  - https://github.com/JetBrains/youtrack-docker-images
+maintainers:
+  - name: DevOps Team

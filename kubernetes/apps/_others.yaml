@@ -22,44 +22,60 @@ apps:
     repo: charts
     chart: notesnook
     namespace: default
+    version: v1.0.0
 
   ## JB
   hub:
     repo: charts
     chart: hub
     namespace: default
+    version: v1.0.0
   youtrack:
     repo: charts
     chart: youtrack
     namespace: default
+    version: v1.0.0
   teamcity:
     repo: charts
     chart: teamcity
     namespace: default
+    version: v1.0.0
+
+  ## code
+  gitlab:
+    repo: charts
+    chart: gitlab
+    namespace: default
+    version: v1.0.0
 
   ## socials
   stoat:
     repo: charts
     chart: stoat
     namespace: default
+    version: v1.0.0
   stalwart:
     repo: charts
     chart: stalwart
     namespace: default
+    version: v1.0.0
 
   ## datas
   vaultwarden:
     repo: charts
     chart: vaultwarden
     namespace: default
+    version: v1.0.0
   syncthing:
     repo: charts
     chart: syncthing
     namespace: default
+    version: v1.0.0
   ownCloud:
     repo: charts
     chart: ownCloud
     namespace: default
+    version: v1.0.0
 
   ## dbs
   valkey:
@@ -67,10 +83,12 @@ apps:
     chart: valkey
     namespace: db
     version: 1.0.0
+    version: v1.0.0
   postgres:
     repo: charts
     chart: postgres
     namespace: db
+    version: v1.0.0
   minio:
     repo: charts
     chart: minio
@@ -82,17 +100,12 @@ apps:
     namespace: db
     version: 1.0.0
 
-  ## code
-  gitlab:
-    repo: charts
-    chart: gitlab
-    namespace: default
-
   ## service
   secrets:
     repo: charts
     chart: secrets
     namespace: default
+    version: v1.0.0
   monitoring:
     repo: charts
     chart: monitoring
@@ -102,6 +115,7 @@ apps:
     repo: charts
     chart: dashy
     namespace: default
+    version: v1.0.0
   consul:
     repo: charts
     chart: consul
@@ -111,3 +125,4 @@ apps:
     repo: charts
     chart: authentik
     namespace: default
+    version: v1.0.0

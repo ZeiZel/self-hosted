@@ -1,0 +1,51 @@
+namespace: code
+
+gitlab:
+  config:
+    external_url: "http://gitlab.{{ .Values.infra.host }}.local"
+    smtp:
+      address: "smtp.gmail.com"
+      port: 587
+      user_name: "{{ .Values.secrets.smtpUsername }}"
+      password: "{{ .Values.secrets.smtpPassword }}"
+
+postgresql:
+  external: true
+  host: "postgresql.code.svc.cluster.local"
+  password: "{{ .Values.secrets.postgresPassword }}"
+
+redis:
+  external: true
+  host: "valkey-master.code.svc.cluster.local"
+
+objectStorage:
+  endpoint: "http://minio.code.svc.cluster.local:9000"
+  accessKey: "minioadmin"
+  secretKey: "minioadmin"
+
+ingress:
+  enabled: true
+  hosts:
+    - host: gitlab.{{ .Values.infra.host }}.local
+      path: /
+    - host: registry.gitlab.{{ .Values.infra.host }}.local
+      path: /
+
+persistence:
+  enabled: true
+  storageClass: openebs-hostpath
+  gitlabData:
+    size: 50Gi
+  gitlabRegistry:
+    size: 20Gi
+  gitlabPages:
+    size: 20Gi
+
+runner:
+  enabled: true
+  gitlabUrl: "http://gitlab.{{ .Values.infra.host }}.local"
+  runnerToken: "{{ .Values.secrets.gitlabRunnerToken }}"
+
+consul:
+  enabled: true
+  host: "consul.consul.svc.cluster.local"
