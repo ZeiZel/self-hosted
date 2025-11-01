@@ -1,0 +1,112 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: stalwart-config
+  namespace: {{ .Values.namespace }}
+data:
+  stalwart.toml: |
+    # Stalwart Mail Server Configuration
+    [server]
+    hostname = ["{{ .Values.stalwart.config.domain }}"]
+
+    [[server.listener.smtp]]
+    bind = ["0.0.0.0:25"]
+    greeting = "{{ .Values.stalwart.config.smtp.greeting }}"
+
+    [[server.listener.submission]]
+    bind = ["0.0.0.0:587"]
+
+    [[server.listener.smtps]]
+    bind = ["0.0.0.0:465"]
+
+    [[server.listener.imap]]
+    bind = ["0.0.0.0:143"]
+
+    [[server.listener.imaps]]
+    bind = ["0.0.0.0:993"]
+
+    [[server.listener.pop3]]
+    bind = ["0.0.0.0:110"]
+
+    [[server.listener.pop3s]]
+    bind = ["0.0.0.0:995"]
+
+    [[server.listener.managesieve]]
+    bind = ["0.0.0.0:4190"]
+
+    [[server.listener.http]]
+    bind = ["0.0.0.0:80"]
+
+    [[server.listener.https]]
+    bind = ["0.0.0.0:443"]
+
+    # Storage configuration
+    [storage]
+    data = "sqlite:///opt/stalwart/data/stalwart.db"
+    blob = "filecache:///opt/stalwart/data"
+    fts = "sqlite:///opt/stalwart/data/fts.db"
+    directory = "internal"
+
+    # LDAP Directory Configuration (Authentik)
+    [directory."ldap"]
+    type = "ldap"
+    url = "ldap://{{ .Values.ldap.host }}:{{ .Values.ldap.port }}"
+    timeout = "30s"
+
+    [directory."ldap".tls]
+    enable = false
+    allow-invalid-certs = true
+
+    # LDAP bind credentials
+    [directory."ldap".bind]
+    dn = "{{ .Values.ldap.bindDN }}"
+    secret = "changeme"
+
+    # LDAP authentication method
+    [directory."ldap".auth]
+    mechanism = "{{ .Values.ldap.authMethod }}"
+    base-dn = "{{ .Values.ldap.baseDN }}"
+    filter = "{{ .Values.ldap.userFilter }}"
+    username-attribute = "{{ .Values.ldap.usernameAttribute }}"
+    mail-attribute = "{{ .Values.ldap.emailAttribute }}"
+    name-attribute = "{{ .Values.ldap.displayNameAttribute }}"
+
+    # Accounts configuration
+    [directory."ldap".attributes]
+    mail-from = "noreply@{{ .Values.stalwart.config.domain }}"
+    quota = 2147483648  # 2GB
+
+    # SMTP rate limiting
+    [smtp]
+    max-message-size = {{ .Values.stalwart.config.smtp.maxSize }}
+
+    [smtp.rate-limit]
+    requests = 100
+    period = "1m"
+
+    # IMAP rate limiting
+    [imap]
+    max-connections = {{ .Values.stalwart.config.rateLimiting.maxConnections }}
+
+    # JMAP configuration
+    [jmap]
+    enabled = true
+
+    # Web UI configuration
+    [webadmin]
+    enabled = true
+    port = 443
+
+    # Let's Encrypt (optional, если нужно получить сертификат)
+    [certificate.acme]
+    enable = false
+    renew = 30
+
+    # или self-signed для текущей конфигурации
+    [certificate.self-signed]
+    enable = true
+
+    # Logging
+    [log]
+    level = "info"
+    fmt = "json"

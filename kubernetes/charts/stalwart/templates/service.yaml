@@ -1,0 +1,95 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: stalwart
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: stalwart
+spec:
+  type: {{ .Values.stalwart.service.type }}
+  ports:
+    # Mail ports
+    - port: {{ .Values.stalwart.service.smtp.port }}
+      targetPort: 25
+      name: smtp
+      protocol: TCP
+    - port: {{ .Values.stalwart.service.submission.port }}
+      targetPort: 587
+      name: submission
+      protocol: TCP
+    - port: {{ .Values.stalwart.service.smtps.port }}
+      targetPort: 465
+      name: smtps
+      protocol: TCP
+    - port: {{ .Values.stalwart.service.imap.port }}
+      targetPort: 143
+      name: imap
+      protocol: TCP
+    - port: {{ .Values.stalwart.service.imaps.port }}
+      targetPort: 993
+      name: imaps
+      protocol: TCP
+    - port: {{ .Values.stalwart.service.pop3.port }}
+      targetPort: 110
+      name: pop3
+      protocol: TCP
+    - port: {{ .Values.stalwart.service.pop3s.port }}
+      targetPort: 995
+      name: pop3s
+      protocol: TCP
+    - port: {{ .Values.stalwart.service.managesieve.port }}
+      targetPort: 4190
+      name: managesieve
+      protocol: TCP
+    # HTTP ports
+    - port: {{ .Values.stalwart.service.http.port }}
+      targetPort: 80
+      name: http
+      protocol: TCP
+    - port: {{ .Values.stalwart.service.https.port }}
+      targetPort: 443
+      name: https
+      protocol: TCP
+  selector:
+    app: stalwart
+
+{{- if .Values.nodePort.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: stalwart-nodeport
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: stalwart
+spec:
+  type: NodePort
+  ports:
+    - port: 25
+      targetPort: 25
+      nodePort: {{ .Values.nodePort.smtp }}
+      name: smtp
+      protocol: TCP
+    - port: 587
+      targetPort: 587
+      nodePort: {{ .Values.nodePort.submission }}
+      name: submission
+      protocol: TCP
+    - port: 465
+      targetPort: 465
+      nodePort: {{ .Values.nodePort.smtps }}
+      name: smtps
+      protocol: TCP
+    - port: 143
+      targetPort: 143
+      nodePort: {{ .Values.nodePort.imap }}
+      name: imap
+      protocol: TCP
+    - port: 993
+      targetPort: 993
+      nodePort: {{ .Values.nodePort.imaps }}
+      name: imaps
+      protocol: TCP
+  selector:
+    app: stalwart
+{{- end }}

@@ -1,0 +1,109 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stalwart
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: stalwart
+spec:
+  replicas: {{ .Values.stalwart.replicaCount }}
+  selector:
+    matchLabels:
+      app: stalwart
+  template:
+    metadata:
+      labels:
+        app: stalwart
+      {{- if .Values.consul.enabled }}
+      annotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "stalwart"
+        consul.hashicorp.com/connect-service-port: "25"
+        consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
+      {{- end }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+
+      serviceAccountName: stalwart
+
+      containers:
+        - name: stalwart
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+          ports:
+            # Mail ports
+            - containerPort: 25
+              name: smtp
+              protocol: TCP
+            - containerPort: 587
+              name: submission
+              protocol: TCP
+            - containerPort: 465
+              name: smtps
+              protocol: TCP
+            - containerPort: 143
+              name: imap
+              protocol: TCP
+            - containerPort: 993
+              name: imaps
+              protocol: TCP
+            - containerPort: 110
+              name: pop3
+              protocol: TCP
+            - containerPort: 995
+              name: pop3s
+              protocol: TCP
+            - containerPort: 4190
+              name: managesieve
+              protocol: TCP
+            # HTTP ports
+            - containerPort: 80
+              name: http
+              protocol: TCP
+            - containerPort: 443
+              name: https
+              protocol: TCP
+
+          envFrom:
+            - secretRef:
+                name: stalwart-secrets
+
+          resources:
+            {{- toYaml .Values.stalwart.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.persistence.data.mountPath }}
+            - name: config
+              mountPath: {{ .Values.persistence.config.mountPath }}
+            - name: stalwart-config
+              mountPath: /opt/stalwart/etc
+
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            tcpSocket:
+              port: 143
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          {{- end }}
+
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            tcpSocket:
+              port: 143
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          {{- end }}
+
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: stalwart-data
+        - name: config
+          persistentVolumeClaim:
+            claimName: stalwart-config
+        - name: stalwart-config
+          configMap:
+            name: stalwart-config

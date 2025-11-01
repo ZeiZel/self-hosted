@@ -46,11 +46,15 @@ vaultwarden:
 
     # Email config
     email:
-      enabled: false
-      # host: smtp.gmail.com
-      # port: 587
-      # from: noreply@example.com
-      # fromName: Vaultwarden
+      enabled: true
+      host: "stalwart.code.svc.cluster.local"  # Stalwart in the same cluster
+      port: 587  # Submission port
+      from: "noreply@mail.local"
+      fromName: "Vaultwarden"
+      username: "noreply@mail.local"  # User email in Stalwart
+      password: "changeme"  # User password in Stalwart
+      useTls: true
+      useSsl: false
 
     twoFactor:
       email: false
