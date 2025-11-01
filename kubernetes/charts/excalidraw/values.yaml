@@ -95,7 +95,7 @@ persistence:
   # Application data
   data:
     enabled: true
-    size: 50Gi
+    size: 5Gi
     mountPath: /data
     accessMode: ReadWriteOnce
 

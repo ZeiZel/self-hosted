@@ -22,7 +22,7 @@ prometheus:
   persistence:
     enabled: true
     storageClass: standard
-    size: 30Gi
+    size: 3Gi
     mountPath: /prometheus
 
   # Retention
@@ -54,7 +54,7 @@ loki:
   persistence:
     enabled: true
     storageClass: standard
-    size: 20Gi
+    size: 2Gi
     mountPath: /loki
 
   # Retention

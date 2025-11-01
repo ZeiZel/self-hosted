@@ -86,7 +86,7 @@ persistence:
   # Media (user uploads, icons)
   media:
     enabled: true
-    size: 10Gi
+    size: 1Gi
     mountPath: /media
 
   # Custom templates

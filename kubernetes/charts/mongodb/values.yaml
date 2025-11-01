@@ -33,7 +33,7 @@ persistence:
   enabled: true
   storageClass: standard          # или openebs-hostpath
   accessMode: ReadWriteOnce
-  size: 30Gi
+  size: 3Gi
   mountPath: /data/db
   configdbPath: /data/configdb
 

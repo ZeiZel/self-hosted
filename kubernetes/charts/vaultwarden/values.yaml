@@ -75,7 +75,7 @@ persistence:
   # Data directory
   data:
     enabled: true
-    size: 20Gi
+    size: 2Gi
     mountPath: /data
     accessMode: ReadWriteOnce
 

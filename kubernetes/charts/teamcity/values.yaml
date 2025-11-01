@@ -26,7 +26,7 @@ server:
   persistence:
     enabled: true
     storageClass: standard
-    size: 50Gi
+    size: 5Gi
     mountPath: /data/teamcity_server/datadir
 
 # TeamCity Agent Image
@@ -54,7 +54,7 @@ agent:
   persistence:
     enabled: true
     storageClass: standard
-    size: 30Gi
+    size: 3Gi
     mountPath: /data/teamcity_agent/work
 
 # PostgreSQL (внешний)

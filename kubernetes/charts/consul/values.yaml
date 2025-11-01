@@ -16,7 +16,7 @@ server:
     enabled: true
     storageClass: standard
     accessMode: ReadWriteOnce
-    size: 20Gi
+    size: 2Gi
     mountPath: /consul/data
 
   # Resources

@@ -89,7 +89,7 @@ persistence:
   # Data directory (SQLite database, blobs, etc)
   data:
     enabled: true
-    size: 50Gi
+    size: 5Gi
     mountPath: /opt/stalwart/data
     accessMode: ReadWriteOnce
 

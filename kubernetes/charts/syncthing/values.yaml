@@ -74,7 +74,7 @@ persistence:
   # Synced files directory (/var/syncthing/Sync)
   sync:
     enabled: true
-    size: 100Gi
+    size: 1Gi
     mountPath: /var/syncthing/Sync
     accessMode: ReadWriteOnce
 

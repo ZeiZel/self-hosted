@@ -80,21 +80,21 @@ persistence:
   # GitLab configs и data
   gitlabData:
     enabled: true
-    size: 50Gi
+    size: 5Gi
     mountPath: /var/opt/gitlab
     accessMode: ReadWriteOnce
 
   # GitLab registry
   gitlabRegistry:
     enabled: true
-    size: 20Gi
+    size: 2Gi
     mountPath: /registry
     accessMode: ReadWriteOnce
 
   # GitLab pages
   gitlabPages:
     enabled: true
-    size: 20Gi
+    size: 2Gi
     mountPath: /var/opt/gitlab/pages
     accessMode: ReadWriteOnce
 

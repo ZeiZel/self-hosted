@@ -32,7 +32,7 @@ master:
     enabled: true
     storageClass: standard
     accessMode: ReadWriteOnce
-    size: 20Gi
+    size: 2Gi
     mountPath: /data
 
 # Replica config
@@ -57,7 +57,7 @@ replica:
     enabled: true
     storageClass: standard
     accessMode: ReadWriteOnce
-    size: 20Gi
+    size: 2Gi
     mountPath: /data
 
 # Authentication

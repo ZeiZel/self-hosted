@@ -43,7 +43,7 @@ persistence:
   # Files directory
   files:
     enabled: true
-    size: 100Gi
+    size: 1Gi
     mountPath: /mnt/data
     accessMode: ReadWriteOnce
 
