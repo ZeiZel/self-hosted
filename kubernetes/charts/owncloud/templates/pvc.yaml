@@ -1,0 +1,28 @@
+# Files PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: owncloud-files
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.files.accessMode }}
+  storageClassName: {{ .Values.persistence.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.files.size }}
+
+---
+# Config PVC
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: owncloud-config
+  namespace: {{ .Values.namespace }}
+spec:
+  accessModes:
+    - {{ .Values.persistence.config.accessMode }}
+  storageClassName: {{ .Values.persistence.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.persistence.config.size }}

@@ -1,0 +1,41 @@
+namespace: code
+
+owncloud:
+  replicaCount: 1
+  admin:
+    user: "admin"
+    password: "{{ .Values.secrets.owncloudAdminPassword }}"
+  config:
+    domain: "owncloud.{{ .Values.infra.host }}.local"
+
+persistence:
+  enabled: true
+  storageClass: openebs-hostpath
+  files:
+    size: 100Gi
+  config:
+    size: 5Gi
+
+postgresql:
+  external: true
+  host: "postgresql.code.svc.cluster.local"
+  password: "{{ .Values.secrets.postgresPassword }}"
+
+redis:
+  enabled: true
+  host: "valkey-master.code.svc.cluster.local"
+
+ingress:
+  enabled: true
+  host: owncloud.{{ .Values.infra.host }}.local
+
+cronjobs:
+  enabled: true
+  schedule: "*/15 * * * *"
+
+consul:
+  enabled: true
+  host: "consul.consul.svc.cluster.local"
+  tags:
+    - owncloud
+    - file-sharing

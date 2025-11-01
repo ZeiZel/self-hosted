@@ -1,0 +1,77 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: owncloud-config
+  namespace: {{ .Values.namespace }}
+data:
+  # OwnCloud конфигурация
+  domain: {{ .Values.owncloud.config.domain }}
+  protocol: {{ .Values.owncloud.config.protocol }}
+  defaultLanguage: {{ .Values.owncloud.config.defaultLanguage }}
+  logLevel: {{ .Values.env.OWNCLOUD_LOG_LEVEL }}
+  appsEnable: {{ .Values.env.OWNCLOUD_APPS_ENABLE }}
+
+  # config.php (основная конфигурация)
+  config.php: |
+    <?php
+    $CONFIG = array (
+      'instanceid' => 'oc{{ randAlphaNum 10 | lower }}',
+      'passwordsalt' => '{{ randAlphaNum 48 }}',
+      'trusted_domains' =>
+      array (
+        0 => '{{ .Values.owncloud.config.domain }}',
+      ),
+      'datadirectory' => '/mnt/data',
+      'overwriteprotocol' => '{{ .Values.owncloud.config.protocol }}',
+      'overwritehost' => '{{ .Values.owncloud.config.domain }}',
+      'overwritewebroot' => '/',
+      'overwritecondaddr' => '',
+      'check_user_agent' => false,
+      'default_phone_region' => 'US',
+      'allow_user_to_change_display_name' => true,
+      'lost_password_link' => 'disabled',
+      'default_app' => 'files',
+      'enable_avatars' => true,
+      'enable_previews' => true,
+      'preview_max_x' => 1024,
+      'preview_max_y' => 768,
+      'preview_max_scale_factor' => 1,
+      'preview_libreoffice_path' => '/usr/bin/libreoffice',
+      'preview_imaginary_url' => 'http://imaginary:9000',
+      'preview_imaginary_signingSecret' => '',
+      'enabledPreviewProviders' =>
+      array (
+        0 => 'OC\\Preview\\PNG',
+        1 => 'OC\\Preview\\JPEG',
+        2 => 'OC\\Preview\\GIF',
+        3 => 'OC\\Preview\\BMP',
+        4 => 'OC\\Preview\\XBitmap',
+        5 => 'OC\\Preview\\Movie',
+        6 => 'OC\\Preview\\MSOfficeDoc',
+        7 => 'OC\\Preview\\MSOffice2003',
+        8 => 'OC\\Preview\\MSOffice2007',
+        9 => 'OC\\Preview\\OpenDocument',
+        10 => 'OC\\Preview\\StarOffice',
+        11 => 'OC\\Preview\\SVG',
+        12 => 'OC\\Preview\\PDF',
+        13 => 'OC\\Preview\\Text',
+        14 => 'OC\\Preview\\MarkDown',
+        15 => 'OC\\Preview\\Imaginary',
+      ),
+      'memcache.local' => '\\OC\\Memcache\\APCu',
+      'memcache.locking' => '\\OC\\Memcache\\Redis',
+      'redis' =>
+      array (
+        'host' => '{{ .Values.redis.host }}',
+        'port' => {{ .Values.redis.port }},
+        'timeout' => 0.0,
+        'password' => '{{ .Values.redis.password }}',
+        'dbindex' => {{ .Values.redis.database }},
+      ),
+      'mail_from_address' => 'admin',
+      'mail_smtpmode' => 'smtp',
+      'mail_sendmailmode' => 'pipe',
+      'filesystem_check_changes_warning_against_mtime' => false,
+      'filelocking.enabled' => true,
+      'filelocking.ttl' => 3600,
+    );

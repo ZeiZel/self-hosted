@@ -1,0 +1,40 @@
+{{- if .Values.cronjobs.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: owncloud-cron
+  namespace: {{ .Values.namespace }}
+  labels:
+    app: owncloud-cron
+spec:
+  schedule: "{{ .Values.cronjobs.schedule }}"
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: owncloud
+          containers:
+            - name: owncloud-cron
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  php -f /var/www/owncloud/cron.php
+
+              resources:
+                {{- toYaml .Values.cronjobs.resources | nindent 16 }}
+
+              volumeMounts:
+                - name: files
+                  mountPath: {{ .Values.persistence.files.mountPath }}
+
+          volumes:
+            - name: files
+              persistentVolumeClaim:
+                claimName: owncloud-files
+
+          restartPolicy: OnFailure
+{{- end }}
