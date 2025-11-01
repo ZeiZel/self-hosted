@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: vaultwarden-config
+  namespace: {{ .Values.namespace }}
+data:
+  # base config
+  DOMAIN: {{ .Values.vaultwarden.config.domain }}
+  PROTOCOL: {{ .Values.vaultwarden.config.protocol }}
+  ROCKET_ADDRESS: "0.0.0.0"
+  ROCKET_PORT: "80"
+  ROCKET_WORKERS: "10"
+
+  # Web Vault
+  WEB_VAULT_ENABLED: "true"
+  WEB_VAULT_VERSION: {{ .Values.vaultwarden.config.webVault.version }}
+
+  # Admin
+  ADMIN_ENABLED: "{{ .Values.vaultwarden.config.admin.enabled }}"
+  ADMIN_PATH: "/admin"
+
+  # SignUps
+  SIGNUPS_ALLOWED: "{{ .Values.vaultwarden.config.allowSignups }}"
+  INVITATIONS_ORG_NAME: {{ .Values.vaultwarden.config.invitationsOrganizationName }}
+
+  # Organizations
+  ORGANIZATIONS_ALLOW_NEW: "{{ .Values.vaultwarden.config.organizations.allowNew }}"
+
+  # Two Factor
+  EMAIL_TWO_FACTOR_ENFORCED: "{{ .Values.vaultwarden.config.twoFactor.email }}"
+
+  # Icons service
+  ICON_CACHE_TTL: "2592000"
+  ICON_CACHE_NEGTTL: "259200"
+  ICON_DOWNLOAD_TIMEOUT: "10"
+
+  # Logging
+  LOG_LEVEL: {{ .Values.vaultwarden.config.logLevel }}
+
+  # Security
+  IP_HEADER: "X-Forwarded-For"
+  DOMAIN_ORIGIN: {{ .Values.vaultwarden.config.domain }}
+  DOMAIN_PATH: "/"
+  SHOW_PASSWORD_HINT: "true"
+
+  # Attachments cleanup
+  TRASH_AUTO_DELETE_DAYS: "30"
+
+  # Rate limiting
+  LOGIN_RATELIMIT_SECONDS: "60"
+  LOGIN_RATELIMIT_MAX_BURST: "10"
