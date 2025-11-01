@@ -1,0 +1,47 @@
+{{- if .Values.runner.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: gitlab-runner
+  namespace: {{ .Values.runner.kubernetes.namespace }}
+  labels:
+    app: gitlab-runner
+spec:
+  replicas: {{ .Values.runner.replicas }}
+  selector:
+    matchLabels:
+      app: gitlab-runner
+  template:
+    metadata:
+      labels:
+        app: gitlab-runner
+    spec:
+      serviceAccountName: gitlab-runner
+
+      containers:
+        - name: runner
+          image: {{ .Values.runner.image }}
+          imagePullPolicy: IfNotPresent
+
+          env:
+            - name: CI_SERVER_URL
+              value: {{ .Values.runner.gitlabUrl }}
+            - name: RUNNER_TOKEN
+              value: {{ .Values.runner.runnerToken }}
+            - name: RUNNER_TAG_LIST
+              value: "kubernetes,gitlab"
+            - name: RUNNER_LOCKED
+              value: "false"
+
+          resources:
+            {{- toYaml .Values.runner.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: docker
+              mountPath: /var/run/docker.sock
+
+      volumes:
+        - name: docker
+          hostPath:
+            path: /var/run/docker.sock
+{{- end }}
