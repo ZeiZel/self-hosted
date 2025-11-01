@@ -1,102 +1,157 @@
-replicaCount: 1
+# Namespace
+namespace: service
+
+# Dashy Image
 image:
   repository: lissy93/dashy
+  tag: "3.1.1"
   pullPolicy: IfNotPresent
-  tag: "release-3.1.1"
-strategyType: Recreate
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
-serviceAccount:
-  create: true
-  automount: true
-  annotations: {}
-  name: ""
-podAnnotations: {}
-podLabels: {}
-probs:
-  failureThreshold: 3
-  timeoutSeconds: 10
-  periodSeconds: 90
-  initialDelaySeconds: 40
-  path: "/"
-podSecurityContext: {}
-securityContext: {}
-service:
-  type: ClusterIP
-  port: 8080
-ingress:
-  enabled: false
-  className: ""
-  annotations: {}
-  hosts:
-    - host: chart-example.local
-      paths:
-        - path: /
-          pathType: ImplementationSpecific
-  tls: []
-resources: {}
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 10
-  targetCPUUtilizationPercentage: 80
-volumes: []
-volumeMounts: []
-nodeSelector: {}
-tolerations: []
-affinity: {}
-env:
-  NODE_ENV: "production"
-  PORT: 8080
-  existingSecret: ""
-static:
+
+# Dashy Server конфигурация
+dashy:
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 250m
+      memory: 256Mi
+
+  # Конфигурация Dashy
+  config:
+    # Page meta info
+    pageInfo:
+      title: "My Dashboard"
+      description: "Welcome to your dashboard!"
+      navLinks:
+        - title: "GitHub"
+          path: "https://github.com/Lissy93/dashy"
+
+    # App settings
+    appConfig:
+      theme: "colorful"
+      layout: "auto"
+      iconSize: "medium"
+      language: "en"
+      startingView: "default"
+      defaultOpeningMethod: "newtab"
+      statusCheck: true
+      statusCheckInterval: 60
+      faviconApi: "google"
+      enableMultiTasking: true
+      allowConfigEdit: true
+      enableServiceWorker: true
+      disableConfiguration: false
+      hideComponents:
+        hideHeading: false
+        hideNav: false
+        hideSearch: false
+        hideSettings: false
+        hideFooter: false
+
+    # Sections with items
+    sections:
+      - name: "System Stats"
+        icon: "fas fa-tachometer-alt"
+        widgets:
+          - type: "gl-current-cpu"
+            options:
+              hostname: "localhost"
+          - type: "gl-current-mem"
+            options:
+              hostname: "localhost"
+          - type: "gl-disk-space"
+            options:
+              hostname: "localhost"
+      - name: "Services"
+        icon: "fas fa-rocket"
+        items:
+          - title: "GitLab"
+            description: "Git repository management"
+            icon: "hl-gitlab"
+            url: "http://gitlab.local"
+            target: "newtab"
+            statusCheck: true
+
+          - title: "YouTrack"
+            description: "Issue tracking"
+            icon: "hl-youtrack"
+            url: "http://youtrack.local"
+            target: "newtab"
+            statusCheck: true
+
+          - title: "Grafana"
+            description: "Monitoring dashboard"
+            icon: "hl-grafana"
+            url: "http://grafana.local"
+            target: "newtab"
+            statusCheck: true
+
+# Persistent Storage
+persistence:
   enabled: true
-  existingSecret: ""
-  configMapContent:
-    conf: |-
-      # Page meta info, like heading, footer text and nav links
-      pageInfo:
-        title: Dashy
-        description: Welcome to your new dashboard!
-        navLinks:
-          - title: GitHub
-            path: https://github.com/Lissy93/dashy
-          - title: Documentation
-            path: https://dashy.to/docs
+  storageClass: standard
 
-      # Optional app settings and configuration
-      appConfig:
-        theme: colorful
+  # Config directory
+  config:
+    enabled: true
+    size: 5Gi
+    mountPath: /app/public
+    accessMode: ReadWriteOnce
 
-      # Main content - An array of sections, each containing an array of items
-      sections:
-        - name: Getting Started
-          icon: fas fa-rocket
-          items:
-            - title: Dashy Live
-              description: Development a project management links for Dashy
-              icon: https://i.ibb.co/qWWpD0v/astro-dab-128.png
-              url: https://live.dashy.to/
-              target: newtab
-            - title: GitHub
-              description: Source Code, Issues and Pull Requests
-              url: https://github.com/lissy93/dashy
-              icon: favicon
-            - title: Docs
-              description: Configuring & Usage Documentation
-              provider: Dashy.to
-              icon: far fa-book
-              url: https://dashy.to/docs
-            - title: Showcase
-              description: See how others are using Dashy
-              url: https://github.com/Lissy93/dashy/blob/master/docs/showcase.md
-              icon: far fa-grin-hearts
-            - title: Config Guide
-              description: See full list of configuration options
-              url: https://github.com/Lissy93/dashy/blob/master/docs/configuring.md
-              icon: fas fa-wrench
-            - title: Support
-              description: Get help with Dashy, raise a bug, or get in contact
-              url: https://github.com/Lissy93/dashy/blob/master/.github/SUPPORT.md
-              icon: far fa-hands-helping
+# Ingress через Traefik
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+
+  host: dashy.local
+  path: /
+
+  tls:
+    enabled: true
+    secretName: dashy-tls
+
+# Consul интеграция
+consul:
+  enabled: true
+  host: "consul.consul.svc.cluster.local"
+  port: 8500
+  datacenter: dc1
+  tags:
+    - dashy
+    - dashboard
+
+# Security
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Health Checks
+probes:
+  liveness:
+    enabled: true
+    path: "/"
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  readiness:
+    enabled: true
+    path: "/"
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+# Authentication (опционально через Traefik ForwardAuth)
+auth:
+  enabled: false
+  # Если используется Authentik:
+  # forwardAuth:
+  #   address: "http://authentik.authentik.svc.cluster.local/outpost.goauthentik.io/auth/traefik"

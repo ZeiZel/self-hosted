@@ -1,0 +1,59 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dashy-config
+  namespace: {{ .Values.namespace }}
+data:
+  conf.yml: |
+    ---
+    # Page meta info, like heading, footer text and nav links
+    pageInfo:
+      title: {{ .Values.dashy.config.pageInfo.title }}
+      description: {{ .Values.dashy.config.pageInfo.description }}
+      {{- if .Values.dashy.config.pageInfo.navLinks }}
+      navLinks:
+        {{- range .Values.dashy.config.pageInfo.navLinks }}
+        - title: {{ .title }}
+          path: {{ .path }}
+        {{- end }}
+      {{- end }}
+
+    # Optional app settings and configuration
+    appConfig:
+      theme: {{ .Values.dashy.config.appConfig.theme }}
+      layout: {{ .Values.dashy.config.appConfig.layout }}
+      iconSize: {{ .Values.dashy.config.appConfig.iconSize }}
+      language: {{ .Values.dashy.config.appConfig.language }}
+      startingView: {{ .Values.dashy.config.appConfig.startingView }}
+      defaultOpeningMethod: {{ .Values.dashy.config.appConfig.defaultOpeningMethod }}
+      statusCheck: {{ .Values.dashy.config.appConfig.statusCheck }}
+      statusCheckInterval: {{ .Values.dashy.config.appConfig.statusCheckInterval }}
+      faviconApi: {{ .Values.dashy.config.appConfig.faviconApi }}
+      enableMultiTasking: {{ .Values.dashy.config.appConfig.enableMultiTasking }}
+      allowConfigEdit: {{ .Values.dashy.config.appConfig.allowConfigEdit }}
+      enableServiceWorker: {{ .Values.dashy.config.appConfig.enableServiceWorker }}
+      disableConfiguration: {{ .Values.dashy.config.appConfig.disableConfiguration }}
+      hideComponents:
+        hideHeading: {{ .Values.dashy.config.appConfig.hideComponents.hideHeading }}
+        hideNav: {{ .Values.dashy.config.appConfig.hideComponents.hideNav }}
+        hideSearch: {{ .Values.dashy.config.appConfig.hideComponents.hideSearch }}
+        hideSettings: {{ .Values.dashy.config.appConfig.hideComponents.hideSettings }}
+        hideFooter: {{ .Values.dashy.config.appConfig.hideComponents.hideFooter }}
+
+    # Main content - An array of sections, each containing an array of items
+    sections:
+      {{- range .Values.dashy.config.sections }}
+      - name: {{ .name }}
+        icon: {{ .icon }}
+        items:
+          {{- range .items }}
+          - title: {{ .title }}
+            description: {{ .description }}
+            icon: {{ .icon }}
+            url: {{ .url }}
+            target: {{ .target }}
+            {{- if .statusCheck }}
+            statusCheck: {{ .statusCheck }}
+            {{- end }}
+          {{- end }}
+      {{- end }}

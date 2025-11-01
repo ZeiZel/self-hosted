@@ -1,6 +1,11 @@
 apiVersion: v2
 name: dashy
-description: infrastructure
+description: A Helm chart for Dashy - Ultimate Dashboard
 type: application
-version: 0.0.1
-appVersion: "1.16.0"
+version: 1.0.0
+appVersion: "3.1.1"
+home: https://dashy.to
+sources:
+  - https://github.com/Lissy93/dashy
+maintainers:
+  - name: DevOps Team
