@@ -9,7 +9,7 @@ data:
       "datacenter": "{{ .Values.agentConfig.datacenter }}",
       "domain": "{{ .Values.agentConfig.domain }}",
       "server": true,
-      "ui": {{ .Values.ui.enabled | lower }},
+      "ui": {{ .Values.ui.enabled }},
       "node_meta": {
         "environment": "kubernetes"
       },
@@ -18,9 +18,9 @@ data:
       "bind_addr": "0.0.0.0",
       "advertise_addr": "${POD_IP}",
       "retry_join": [
-        {{- range $i := until (int .Values.server.replicas) }}
+        {{ range $i := until (int .Values.server.replicas) }}
         "consul-server-{{ $i }}.consul-headless.{{ $.Values.namespace }}.svc.cluster.local"{{ if ne $i (sub (int $.Values.server.replicas) 1) }},{{ end }}
-        {{- end }}
+        {{ end }}
       ],
       "metrics": {
         "prometheus_retention_time": "{{ .Values.metrics.prometheusRetentionTime }}"

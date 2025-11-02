@@ -1,4 +1,6 @@
+# build releases list
 releases:
+# bring apps list from ./apps/_others.yaml
 {{- range $release, $v := .Values.apps }}
 - name: {{ $release }}
   labels:

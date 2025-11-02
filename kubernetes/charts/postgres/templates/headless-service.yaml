@@ -1,16 +1,21 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "postgresql.serviceName" . }}
+  name: {{ include "postgresql.headlessServiceName" . }}
   namespace: {{ .Values.namespace }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
 spec:
-  type: {{ .Values.postgresql.service.type }}
+  clusterIP: None
+  publishNotReadyAddresses: true
   ports:
     - port: {{ .Values.postgresql.service.port }}
       targetPort: 5432
       name: postgresql
+    {{- if .Values.monitoring.exporter.enabled }}
+    - port: {{ .Values.monitoring.exporter.port }}
+      targetPort: {{ .Values.monitoring.exporter.port }}
+      name: metrics
+    {{- end }}
   selector:
     {{- include "postgresql.selectorLabels" . | nindent 4 }}
-    statefulset.kubernetes.io/pod-name: {{ include "postgresql.fullname" . }}-0

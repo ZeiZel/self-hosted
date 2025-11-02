@@ -1,21 +1,67 @@
-{{- if not .Values.configs.existingSecret -}}
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  namespace: {{ .Release.Namespace }}
-  name: {{ template "postgres.fullname" . }}-config
+  name: {{ include "postgresql.configMapName" . }}
+  namespace: {{ .Values.namespace }}
   labels:
-    app: {{ template "postgres.name" . }}
-    chart: {{ template "postgres.chart" . }}
-    release: {{ .Release.Name }}
-    heritage: {{ .Release.Service }}
+    {{- include "postgresql.labels" . | nindent 4 }}
+    postgresql.version: "{{ include "postgresql.version" . }}"
 data:
-{{- range $key, $value := .Values.configs }}
-  {{ $key }}: {{ $value | quote }}
-{{- end }}
-  DBHOST: "{{ include "postgres.fullname" . }}"
-  DBPORT: "{{ printf (toJson .Values.service.port) }}"
-  PGDATA: "{{ .Values.configs.PGDATA }}"
-  POSTGRES_USER: "{{ .Values.configs.POSTGRES_USER }}"
-  POSTGRES_HOST_AUTH_METHOD: "{{ .Values.configs.POSTGRES_HOST_AUTH_METHOD }}"
-{{- end }}
+  postgresql.conf: |
+    # PostgreSQL {{ include "postgresql.version" . }} Configuration
+
+    # Connection Settings
+    max_connections = {{ .Values.postgresql.config.maxConnections }}
+    max_wal_senders = {{ .Values.postgresql.config.maxWalSenders }}
+    max_replication_slots = {{ .Values.postgresql.config.maxReplicationSlots }}
+    wal_keep_size = {{ .Values.postgresql.config.walKeepSize }}
+
+    # Memory Settings
+    shared_buffers = {{ .Values.postgresql.config.sharedBuffers }}
+    effective_cache_size = {{ .Values.postgresql.config.effectiveCacheSize }}
+    maintenance_work_mem = {{ .Values.postgresql.config.maintenanceWorkMem }}
+    work_mem = {{ .Values.postgresql.config.workMem }}
+    wal_buffers = {{ .Values.postgresql.config.walBuffers }}
+
+    # Checkpoint Settings
+    checkpoint_completion_target = {{ .Values.postgresql.config.checkpointCompletionTarget }}
+    min_wal_size = {{ .Values.postgresql.config.minWalSize }}
+    max_wal_size = {{ .Values.postgresql.config.maxWalSize }}
+
+    # WAL Settings
+    wal_level = replica
+
+    {{- if eq .Values.postgresqlVersion "18" }}
+    # PostgreSQL 18 specific settings
+    # Enable new I/O subsystem for 3x performance improvement
+    io_combine_limit = 128kb
+    io_direct_flags = 'wal,data'
+    {{- end }}
+
+    {{- if or (eq .Values.postgresqlVersion "17") (eq .Values.postgresqlVersion "18") }}
+    # PostgreSQL 17+ specific settings
+    # Incremental backup support
+    backup_label = 'backup_in_progress'
+    {{- end }}
+
+    # Optimizer Settings
+    random_page_cost = {{ .Values.postgresql.config.randomPageCost }}
+    effective_io_concurrency = {{ .Values.postgresql.config.effectiveIoConccurrency }}
+    default_statistics_target = {{ .Values.postgresql.config.defaultStatisticsTarget }}
+
+    # Query Planning
+    enable_incremental_sort = {{ .Values.postgresql.config.enableIncrementalSort }}
+    enable_partition_pruning = {{ .Values.postgresql.config.enablePartitionPruning }}
+    enable_async_append = {{ .Values.postgresql.config.enableAsyncAppend }}
+    enable_parallel_hash = {{ .Values.postgresql.config.enableParallelHash }}
+
+    # Logging
+    log_statement = '{{ .Values.postgresql.config.logStatement }}'
+    log_connections = {{ .Values.postgresql.config.logConnections }}
+    log_disconnections = {{ .Values.postgresql.config.logDisconnections }}
+    log_duration = {{ .Values.postgresql.config.logDuration }}
+    log_lock_waits = {{ .Values.postgresql.config.logLockWaits }}
+    log_checkpoints = {{ .Values.postgresql.config.logCheckpoints }}
+    log_autovacuum_min_duration = 0
+    log_error_verbosity = {{ .Values.postgresql.config.logErrorVerbosity }}
+    log_line_prefix = '%t [%p]: [%l-1] user=%u,db=%d,app=%a,client=%h '

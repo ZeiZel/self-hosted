@@ -1,3 +1,4 @@
+# build
 bases:
   - .helmfile/environments.yaml.gotmpl
 ---

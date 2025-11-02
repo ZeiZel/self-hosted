@@ -1,15 +1,16 @@
+# values entrypoints
 templates:
   .default: &default
     missingFileHandler: Info
     values:
-      # Apps
+      # Apps - get list of all apps
       - apps/*.*
-      # Env
+      # Env - get values from envs (high priority)
       - envs/{{ .Environment.Name }}/*.*
-      # Values
+      # Values - get val per env (mid priority)
       - envs/{{ .Environment.Name }}/values/*.*
     secrets:
-      # Secrets
+      # Secrets - Values from envs/<env>/secrets (highest priority)
       - envs/{{ .Environment.Name }}/secrets/*.*
 
 environments:

@@ -13,10 +13,10 @@ metadata:
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
-    - host: {{ .Values.ingress.hosts[0].host }}
+    - host: {{ (index .Values.ingress.hosts 0).host }}
       http:
         paths:
-          {{- range .Values.ingress.hosts[0].paths }}
+          {{- range (index .Values.ingress.hosts 0).paths }}
             - path: {{ .path }}
             pathType: {{ .pathType }}
             backend:
@@ -28,7 +28,7 @@ spec:
   {{- if .Values.ingress.tls.enabled }}
   tls:
     - hosts:
-        - {{ .Values.ingress.hosts[0].host }}
+        - {{ (index .Values.ingress.hosts 0).host }}
       secretName: {{ .Values.ingress.tls.secretName }}
   {{- end }}
 {{- end }}

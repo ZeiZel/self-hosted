@@ -1,6 +1,17 @@
 apiVersion: v2
-name: postgres
-description: A Helm chart for Kubernetes
+name: postgresql
+description: A comprehensive Helm chart for PostgreSQL with HA, backups, monitoring
 type: application
-version: 0.1.0
-appVersion: "1.16.0"
+version: 2.0.0
+appVersion: "18.1"
+home: https://www.postgresql.org
+sources:
+  - https://github.com/postgres/postgres
+maintainers:
+  - name: DevOps Team
+keywords:
+  - postgresql
+  - database
+  - ha
+  - backup
+  - patroni

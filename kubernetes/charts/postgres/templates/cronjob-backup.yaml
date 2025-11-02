@@ -1,0 +1,52 @@
+{{- if .Values.backup.enabled }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "postgresql.fullname" . }}-backup
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "postgresql.backupJobLabels" . | nindent 4 }}
+spec:
+  schedule: "{{ .Values.backup.schedule }}"
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "postgresql.backupJobLabels" . | nindent 12 }}
+        spec:
+          serviceAccountName: {{ include "postgresql.fullname" . }}
+          containers:
+            - name: backup
+              image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+              imagePullPolicy: {{ .Values.image.pullPolicy }}
+
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  BACKUP_FILE="/backups/backup-$(date +%Y%m%d-%H%M%S).sql.gz"
+                  pg_dump -U {{ .Values.postgresql.config.superuser }} \
+                    -h {{ include "postgresql.serviceName" . }} \
+                    -d {{ .Values.postgresql.config.database }} | gzip > $BACKUP_FILE
+                  echo "Backup created: $BACKUP_FILE"
+
+              env:
+                - name: PGPASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "postgresql.secretName" . }}
+                      key: POSTGRES_PASSWORD
+
+              volumeMounts:
+                - name: backups
+                  mountPath: {{ .Values.persistence.backups.mountPath }}
+
+          volumes:
+            - name: backups
+              persistentVolumeClaim:
+                claimName: {{ include "postgresql.fullname" . }}-backups
+
+          restartPolicy: OnFailure
+          backoffLimit: 3
+{{- end }}

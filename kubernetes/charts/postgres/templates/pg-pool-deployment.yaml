@@ -1,0 +1,38 @@
+{{- if .Values.pgbouncer.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "postgresql.fullname" . }}-pgbouncer
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "pgbouncer.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.pgbouncer.replicas }}
+  selector:
+    matchLabels:
+      {{- include "postgresql.selectorLabels" . | nindent 6 }}
+      app.kubernetes.io/component: connection-pool
+  template:
+    metadata:
+      labels:
+        {{- include "pgbouncer.labels" . | nindent 8 }}
+    spec:
+      containers:
+        - name: pgbouncer
+          image: "{{ .Values.pgbouncer.image.repository }}:{{ .Values.pgbouncer.image.tag }}"
+
+          ports:
+            - containerPort: {{ .Values.pgbouncer.service.port }}
+              name: pgbouncer
+
+          env:
+            - name: PGBOUNCER_POOL_MODE
+              value: {{ .Values.pgbouncer.config.poolMode }}
+            - name: PGBOUNCER_MAX_CLIENT_CONN
+              value: "{{ .Values.pgbouncer.config.maxClientConn }}"
+            - name: PGBOUNCER_DEFAULT_POOL_SIZE
+              value: "{{ .Values.pgbouncer.config.defaultPoolSize }}"
+
+          resources:
+            {{- toYaml .Values.pgbouncer.resources | nindent 12 }}
+{{- end }}

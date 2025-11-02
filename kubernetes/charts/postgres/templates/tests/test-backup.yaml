@@ -1,0 +1,46 @@
+{{- if .Values.backup.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ include "postgresql.fullname" . }}-test-backup
+  namespace: {{ .Values.namespace }}
+  labels:
+    {{- include "postgresql.labels" . | nindent 4 }}
+    app.kubernetes.io/component: test
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": hook-succeeded,hook-failed
+spec:
+  serviceAccountName: {{ include "postgresql.fullname" . }}
+  containers:
+    - name: backup-test
+      image: "{{ .Values.tests.image.repository }}:{{ .Values.tests.image.tag }}"
+
+      command:
+        - /bin/sh
+        - -c
+        - |
+          set -e
+          echo "Testing database backup capability..."
+          BACKUP_FILE="/tmp/test-backup-$(date +%Y%m%d-%H%M%S).sql"
+
+          pg_dump -U {{ .Values.postgresql.config.superuser }} \
+            -h {{ include "postgresql.serviceName" . }} \
+            -d {{ .Values.postgresql.config.database }} > $BACKUP_FILE
+
+          if [ -s "$BACKUP_FILE" ]; then
+            echo "✓ Backup test passed! Backup size: $(du -h $BACKUP_FILE | cut -f1)"
+          else
+            echo "✗ Backup test failed - empty file"
+            exit 1
+          fi
+
+      env:
+        - name: PGPASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "postgresql.secretName" . }}
+              key: POSTGRES_PASSWORD
+
+  restartPolicy: Never
+{{- end }}

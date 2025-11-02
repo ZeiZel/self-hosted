@@ -5,17 +5,69 @@ apps:
     repo: traefik
     chart: trafik
     namespace: default
+    version: v37.2.0
   cert-manager:
     repo: jetstack
     chart: cert-manager
     version: v1.7.0
     namespace: default
+    needs: [ traefik ]
   penpot:
     repo: penpot
     chart: penpot
     namespace: default
+    needs: [ traefik ]
 
   # INTERNAL
+
+  ## dbs
+  valkey:
+    repo: charts
+    chart: valkey
+    namespace: db
+    version: v1.0.0
+  postgres:
+    repo: charts
+    chart: postgres
+    namespace: db
+    version: v2.0.0
+  minio:
+    repo: charts
+    chart: minio
+    namespace: db
+    version: 1.0.0
+  mongodb:
+    repo: charts
+    chart: mongodb
+    namespace: db
+    version: 1.0.0
+
+  ## service
+  vault:
+    repo: charts
+    chart: vault
+    namespace: default
+    version: v1.0.0
+  monitoring:
+    repo: charts
+    chart: monitoring
+    version: v1.0.0
+    namespace: default
+  dashy:
+    repo: charts
+    chart: dashy
+    namespace: default
+    version: v1.0.0
+  consul:
+    repo: charts
+    chart: consul
+    version: v1.0.0
+    namespace: default
+  authentik:
+    repo: charts
+    chart: authentik
+    namespace: default
+    version: v1.0.0
 
   ## productivity
   notesnook:
@@ -79,54 +131,5 @@ apps:
   ownCloud:
     repo: charts
     chart: ownCloud
-    namespace: default
-    version: v1.0.0
-
-  ## dbs
-  valkey:
-    repo: charts
-    chart: valkey
-    namespace: db
-    version: v1.0.0
-  postgres:
-    repo: charts
-    chart: postgres
-    namespace: db
-    version: v1.0.0
-  minio:
-    repo: charts
-    chart: minio
-    namespace: db
-    version: 1.0.0
-  mongodb:
-    repo: charts
-    chart: mongodb
-    namespace: db
-    version: 1.0.0
-
-  ## service
-  vault:
-    repo: charts
-    chart: vault
-    namespace: default
-    version: v1.0.0
-  monitoring:
-    repo: charts
-    chart: monitoring
-    version: v1.0.0
-    namespace: default
-  dashy:
-    repo: charts
-    chart: dashy
-    namespace: default
-    version: v1.0.0
-  consul:
-    repo: charts
-    chart: consul
-    version: v1.0.0
-    namespace: default
-  authentik:
-    repo: charts
-    chart: authentik
     namespace: default
     version: v1.0.0
