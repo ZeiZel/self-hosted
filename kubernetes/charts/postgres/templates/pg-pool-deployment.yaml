@@ -3,7 +3,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ include "postgresql.fullname" . }}-pgbouncer
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "pgbouncer.labels" . | nindent 4 }}
 spec:

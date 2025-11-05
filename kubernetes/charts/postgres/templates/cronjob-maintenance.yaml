@@ -4,7 +4,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: {{ include "postgresql.fullname" . }}-vacuum
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
     app.kubernetes.io/component: maintenance
@@ -48,7 +48,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: {{ include "postgresql.fullname" . }}-analyze
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "postgresql.labels" . | nindent 4 }}
     app.kubernetes.io/component: maintenance

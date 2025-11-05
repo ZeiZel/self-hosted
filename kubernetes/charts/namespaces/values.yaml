@@ -1,0 +1,54 @@
+# Namespace creation settings
+create: true
+
+# Namespaces to create
+namespaces:
+  # Ingress and routing
+  ingress:
+    enabled: true
+    description: "Ingress controllers and network policies"
+
+  # Core services
+  service:
+    enabled: true
+    description: "Core services: Consul, Vault, Authentik, Monitoring"
+
+  # Databases
+  db:
+    enabled: true
+    description: "Databases: PostgreSQL, MongoDB, Redis, MinIO"
+
+  # Applications
+  productivity:
+    enabled: true
+    description: "Productivity apps: Notesnook, Excalidraw"
+
+  code:
+    enabled: true
+    description: "Code management: GitLab, YouTrack, TeamCity, Hub"
+
+  social:
+    enabled: true
+    description: "Social and communication: Stoat, Stalwart Mail"
+
+  data:
+    enabled: true
+    description: "Data storage: Vaultwarden, Syncthing, OwnCloud"
+
+  auth:
+    enabled: true
+    description: "Authentication: Authentik"
+
+  monitoring:
+    enabled: true
+    description: "Monitoring: Prometheus, Grafana, Loki"
+
+# Global labels applied to all namespaces
+globalLabels:
+  app.kubernetes.io/managed-by: Helm
+  app.kubernetes.io/part-of: self-hosted-infrastructure
+
+# Namespace-specific labels
+namespaceLabels: {}
+  # Example:
+# istio-injection: enabled

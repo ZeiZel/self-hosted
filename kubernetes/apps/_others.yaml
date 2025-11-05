@@ -1,23 +1,19 @@
 apps:
+  namespaces:
+    repo: charts
+    chart: namespaces
+    namespace: default
+    installed: true
+
   # EXTERNAL
   traefik:
     repo: traefik
     chart: traefik
     namespace: ingress
     version: v37.2.0
-    installed: true
     createNamespace: true
-    hooks:
-      - events: [ "presync" ]
-        showlogs: true
-        command: "sh"
-        args:
-          - "-c"
-          - |
-            set -e
-            echo "Installing Gateway API CRDs..."
-            kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
-            sleep 5
+    needs:
+      - default/namespaces
 
   cert-manager:
     repo: jetstack

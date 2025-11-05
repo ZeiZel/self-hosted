@@ -3,7 +3,7 @@ apiVersion: batch/v1
 kind: CronJob
 metadata:
   name: {{ include "postgresql.fullname" . }}-backup
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Release.Namespace }}
   labels:
     {{- include "postgresql.backupJobLabels" . | nindent 4 }}
 spec:

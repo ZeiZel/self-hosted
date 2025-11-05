@@ -1,0 +1,16 @@
+apiVersion: v2
+name: namespaces
+description: Creates and manages all cluster namespaces for self-hosted applications
+type: application
+version: 1.0.0
+appVersion: "1.0.0"
+keywords:
+  - namespaces
+  - infrastructure
+  - helm
+maintainers:
+  - name: ZeiZel
+    email: valera2003lvov@yandex.ru
+home: https://github.com/ZeiZel
+sources:
+  - https://github.com/ZeiZel/self-hosted

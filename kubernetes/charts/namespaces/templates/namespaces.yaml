@@ -1,0 +1,53 @@
+{{- if .Values.create }}
+{{- $release := .Release.Name }}
+{{- $namespace := .Release.Namespace }}
+{{- $chart := include "namespaces.chart" . }}
+{{- $labels := include "namespaces.labels" . }}
+{{- $globalLabels := include "namespaces.namespace.labels" . }}
+
+{{- range $name, $config := .Values.namespaces }}
+{{- if $config.enabled }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $name }}
+  labels:
+    # Helm metadata
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/instance: {{ $release }}
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: {{ $chart }}
+
+    # Global labels
+    {{ $globalLabels | nindent 4 }}
+
+    # Namespace identification
+    namespace.type: {{ $name }}
+
+  annotations:
+    # Helm ownership annotations
+    meta.helm.sh/release-name: {{ $release }}
+    meta.helm.sh/release-namespace: {{ $namespace }}
+
+    # Documentation and description
+    description: {{ $config.description | quote }}
+    managed-by: "helm-release: {{ $release }}"
+    created-at: {{ now | date "2006-01-02T15:04:05Z07:00" }}
+
+spec:
+# Namespace quotas (optional)
+# resourceQuota:
+#   hard:
+#     requests.cpu: "10"
+#     requests.memory: "20Gi"
+#     limits.cpu: "20"
+#     limits.memory: "40Gi"
+
+{{- end }}
+{{- end }}
+
+{{- else }}
+# Namespace creation is disabled
+# Set 'create: true' in values.yaml to create namespaces
+{{- end }}

@@ -2,7 +2,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: mongodb
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Release.Namespace }}
 spec:
   serviceName: mongodb-headless
   replicas: {{ .Values.mongodb.replicaCount }}
@@ -123,7 +123,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: mongodb-arbiter
-  namespace: {{ .Values.namespace }}
+  namespace: {{ .Release.Namespace }}
 spec:
   serviceName: mongodb-arbiter-headless
   replicas: 1
