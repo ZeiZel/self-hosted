@@ -1,5 +1,8 @@
 # Namespace
-namespace: monitoring
+namespace: service
+
+create:
+  namespace: true
 
 # Prometheus config
 prometheus:

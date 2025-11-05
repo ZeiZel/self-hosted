@@ -1,5 +1,8 @@
 namespace: data
 
+create:
+  namespace: true
+
 # Vaultwarden Image
 image:
   repository: vaultwarden/server

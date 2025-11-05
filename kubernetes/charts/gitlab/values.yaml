@@ -1,6 +1,9 @@
 # Namespace
 namespace: code
 
+create:
+  namespace: true
+
 # GitLab Image
 image:
   repository: gitlab/gitlab-ce

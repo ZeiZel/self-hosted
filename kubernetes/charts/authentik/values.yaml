@@ -1,5 +1,8 @@
 # Namespace
-namespace: authentik
+namespace: service
+
+create:
+  namespace: true
 
 # Authentik
 image:

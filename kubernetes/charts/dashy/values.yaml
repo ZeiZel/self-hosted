@@ -1,6 +1,9 @@
 # Namespace
 namespace: service
 
+create:
+  namespace: true
+
 # Dashy Image
 image:
   repository: lissy93/dashy

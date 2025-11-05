@@ -1,4 +1,7 @@
-namespace: notesnook
+namespace: productivity
+
+create:
+  namespace: true
 
 # MongoDB (external)
 mongodb:

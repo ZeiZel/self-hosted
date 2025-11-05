@@ -1,4 +1,7 @@
-namespace: consul
+namespace: service
+
+create:
+  namespace: true
 
 # Consul Server
 server:

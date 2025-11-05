@@ -1,5 +1,8 @@
 # Namespace
-namespace: mailer
+namespace: social
+
+create:
+  namespace: true
 
 # Stalwart Image
 image:

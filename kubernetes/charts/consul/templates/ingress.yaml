@@ -13,11 +13,12 @@ metadata:
 spec:
   ingressClassName: {{ .Values.ingress.className }}
   rules:
-    - host: {{ (index .Values.ingress.hosts 0).host }}
+  {{- range .Values.ingress.hosts }}
+    - host: {{ .host }}
       http:
         paths:
-          {{- range (index .Values.ingress.hosts 0).paths }}
-            - path: {{ .path }}
+          {{- range .paths }}
+          - path: {{ .path }}
             pathType: {{ .pathType }}
             backend:
               service:
@@ -25,6 +26,7 @@ spec:
                 port:
                   number: {{ $.Values.server.service.port }}
           {{- end }}
+  {{- end }}
   {{- if .Values.ingress.tls.enabled }}
   tls:
     - hosts:

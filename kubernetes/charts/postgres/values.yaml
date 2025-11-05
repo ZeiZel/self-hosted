@@ -1,5 +1,8 @@
 # Namespace
-namespace: code
+namespace: db
+
+create:
+  namespace: true
 
 # Global labels
 global:

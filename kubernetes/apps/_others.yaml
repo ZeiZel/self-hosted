@@ -1,135 +1,236 @@
 apps:
-
   # EXTERNAL
   traefik:
     repo: traefik
-    chart: trafik
-    namespace: default
+    chart: traefik
+    namespace: ingress
     version: v37.2.0
+    installed: true
+    createNamespace: true
+    hooks:
+      - events: [ "presync" ]
+        showlogs: true
+        command: "sh"
+        args:
+          - "-c"
+          - |
+            set -e
+            echo "Installing Gateway API CRDs..."
+            kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+            sleep 5
+
   cert-manager:
     repo: jetstack
     chart: cert-manager
-    version: v1.7.0
-    namespace: default
-    needs: [ traefik ]
+    version: v1.15.0
+    namespace: service
+    needs:
+      - ingress/traefik
+      - service/consul
+
   penpot:
     repo: penpot
     chart: penpot
-    namespace: default
-    needs: [ traefik ]
+    namespace: productivity
+    version: v0.28.0
+    needs:
+      - ingress/traefik
+      - service/consul
 
-  # INTERNAL
-
-  ## dbs
+  # DATABASES
   valkey:
     repo: charts
     chart: valkey
     namespace: db
     version: v1.0.0
+    needs:
+      - ingress/traefik
+
   postgres:
     repo: charts
     chart: postgres
     namespace: db
     version: v2.0.0
+    needs:
+      - ingress/traefik
+
   minio:
     repo: charts
     chart: minio
     namespace: db
     version: 1.0.0
+    needs:
+      - ingress/traefik
+
   mongodb:
     repo: charts
     chart: mongodb
     namespace: db
     version: 1.0.0
+    needs:
+      - ingress/traefik
 
-  ## service
-  vault:
-    repo: charts
-    chart: vault
-    namespace: default
-    version: v1.0.0
-  monitoring:
-    repo: charts
-    chart: monitoring
-    version: v1.0.0
-    namespace: default
-  dashy:
-    repo: charts
-    chart: dashy
-    namespace: default
-    version: v1.0.0
+  # SERVICES
   consul:
     repo: charts
     chart: consul
     version: v1.0.0
-    namespace: default
+    namespace: service
+    installed: true
+    needs:
+      - ingress/traefik
+
+  vault:
+    repo: charts
+    chart: vault
+    namespace: service
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+
+  monitoring:
+    repo: charts
+    chart: monitoring
+    version: v1.0.0
+    namespace: service
+    needs:
+      - ingress/traefik
+      - service/consul
+
+  dashy:
+    repo: charts
+    chart: dashy
+    namespace: service
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+
   authentik:
     repo: charts
     chart: authentik
-    namespace: default
+    namespace: service
     version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - db/postgres
+      - db/valkey
 
-  ## productivity
+  # PRODUCTIVITY
   notesnook:
     repo: charts
     chart: notesnook
-    namespace: default
+    namespace: productivity
     version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+
   excalidraw:
     repo: charts
     chart: excalidraw
-    namespace: default
+    namespace: productivity
     version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
 
-  ## JB
+  # CODE (JetBrains + GitLab)
   hub:
     repo: charts
     chart: hub
-    namespace: default
+    namespace: code
     version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - db/postgres
+
   youtrack:
     repo: charts
     chart: youtrack
-    namespace: default
+    namespace: code
     version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - code/hub
+      - db/postgres
+
   teamcity:
     repo: charts
     chart: teamcity
-    namespace: default
+    namespace: code
     version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - db/postgres
 
-  ## code
   gitlab:
     repo: charts
     chart: gitlab
-    namespace: default
+    namespace: code
     version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - db/postgres
+      - db/valkey
 
-  ## socials
+  # SOCIAL
   stoat:
     repo: charts
     chart: stoat
-    namespace: default
+    namespace: social
     version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - db/valkey
+      - db/mongodb
+      - db/minio
+      - service/authentik
+
   stalwart:
     repo: charts
     chart: stalwart
-    namespace: default
+    namespace: social
     version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - service/authentik
 
-  ## datas
+  # DATA
   vaultwarden:
     repo: charts
     chart: vaultwarden
-    namespace: default
+    namespace: data
     version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - db/postgres
+
   syncthing:
     repo: charts
     chart: syncthing
-    namespace: default
+    namespace: data
     version: v1.0.0
-  ownCloud:
+    needs:
+      - ingress/traefik
+      - service/consul
+
+  owncloud:
     repo: charts
-    chart: ownCloud
-    namespace: default
+    chart: owncloud
+    namespace: data
     version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - db/postgres
+      - db/valkey

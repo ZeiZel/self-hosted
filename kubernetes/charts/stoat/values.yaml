@@ -1,5 +1,8 @@
 # Namespace
-namespace: code
+namespace: social
+
+create:
+  namespace: true
 
 # Revolt Backend (API) Image
 api:

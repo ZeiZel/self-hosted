@@ -1,6 +1,9 @@
 # Namespace
 namespace: code
 
+create:
+  namespace: true
+
 # TeamCity Server Image
 server:
   image:

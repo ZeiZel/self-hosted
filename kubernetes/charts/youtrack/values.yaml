@@ -1,6 +1,9 @@
 # Namespace
 namespace: code
 
+create:
+  namespace: true
+
 # YouTrack Image
 image:
   repository: jetbrains/youtrack

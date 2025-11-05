@@ -1,5 +1,8 @@
 # Namespace
-namespace: authentik
+namespace: code
+
+create:
+  namespace: true
 
 # Hub Image
 image:

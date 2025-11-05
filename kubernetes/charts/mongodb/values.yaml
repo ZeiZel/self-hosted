@@ -1,6 +1,9 @@
 # Namespace
 namespace: db
 
+create:
+  namespace: true
+
 # MongoDB конфигурация
 mongodb:
   image: mongo:7.0.12

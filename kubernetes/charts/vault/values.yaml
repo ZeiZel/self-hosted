@@ -1,5 +1,8 @@
 # Namespace
-namespace: vault
+namespace: service
+
+create:
+  namespace: true
 
 # Vault Image
 image:

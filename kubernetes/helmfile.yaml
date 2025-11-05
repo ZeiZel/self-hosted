@@ -6,7 +6,8 @@ bases:
   - .helmfile/repositories.yaml
   - .helmfile/releases.yaml.gotmpl
 helmDefaults:
-  wait: true
-  atomic: true
+  wait: false
+  atomic: false
+  force: true
   devel: true
   createNamespace: true

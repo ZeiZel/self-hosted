@@ -1,5 +1,8 @@
 # Namespace
-namespace: code
+namespace: productivity
+
+create:
+  namespace: true
 
 # Excalidraw Image (Frontend)
 image:

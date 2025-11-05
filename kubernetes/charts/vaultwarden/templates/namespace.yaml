@@ -1,6 +1,15 @@
+---
+{{- if .Values.create.namespace }}
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: {{ .Values.namespace }}
+  name: {{ .Release.Namespace }}
   labels:
-    name: {{ .Values.namespace }}
+    name: {{ .Release.Namespace }}
+    app.kubernetes.io/name: {{ .Chart.Name }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/managed-by: Helm
+  annotations:
+    meta.helm.sh/release-name: {{ .Release.Name }}
+    meta.helm.sh/release-namespace: {{ .Release.Namespace }}
+{{- end }}

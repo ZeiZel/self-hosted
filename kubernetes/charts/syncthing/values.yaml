@@ -1,5 +1,8 @@
 # Namespace
-namespace: code
+namespace: data
+
+create:
+  namespace: true
 
 # Syncthing Image
 image:

@@ -1,4 +1,8 @@
 namespace: db
+
+create:
+  namespace: true
+
 replicaCount: 1
 mode: standalone  # or distributed
 
