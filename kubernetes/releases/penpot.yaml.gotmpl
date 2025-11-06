@@ -5,3 +5,12 @@ global:
 persistence:
   assets:
     enabled: true
+
+ingress:
+  enabled: true
+  className: traefik
+  hosts:
+    - penpot.localhost
+  paths:
+    - /
+  annotations: {}
