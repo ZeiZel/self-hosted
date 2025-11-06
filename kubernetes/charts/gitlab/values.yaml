@@ -167,7 +167,7 @@ runner:
 
   # Kubernetes executor
   kubernetes:
-    namespace: "gitlab-runner"
+    namespace: code
     image: "alpine:latest"
     privileged: true
 

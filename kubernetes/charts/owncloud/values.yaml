@@ -73,7 +73,7 @@ redis:
   host: "valkey-master.code.svc.cluster.local"
   port: 6379
   password: ""
-  database: 0
+  database: "0"
 
 # Ingress through Traefik
 ingress:

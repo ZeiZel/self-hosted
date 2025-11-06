@@ -6,7 +6,7 @@ create:
 # MongoDB (external)
 mongodb:
   external: true
-  host: "mongo.code.svc.cluster.local" # or DNS name of MongoDB
+  host: "mongo.db.svc.cluster.local" # or DNS name of MongoDB
   port: 27017
   replicaSet: "rs0"
   database: "notesnook"
@@ -17,7 +17,7 @@ mongodb:
 # MinIO (external)
 minio:
   external: true
-  endpoint: "http://minio.code.svc.cluster.local:9000" # or DNS name of MongoDB
+  endpoint: "http://minio.db.svc.cluster.local:9000" # or DNS name of MongoDB
   accessKey: "minioadmin"
   secretKey: "minioadmin"
   bucketName: "attachments"
@@ -26,7 +26,7 @@ minio:
 # Consul (external)
 consul:
   enabled: true
-  host: "consul.consul.svc.cluster.local"
+  host: "consul.service.svc.cluster.local"
   port: 8500
   datacenter: "dc1"
   tags:
