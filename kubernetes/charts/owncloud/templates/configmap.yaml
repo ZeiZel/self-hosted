@@ -5,11 +5,11 @@ metadata:
   namespace: {{ .Release.Namespace }}
 data:
   # OwnCloud конфигурация
-  domain: {{ .Values.owncloud.config.domain }}
-  protocol: {{ .Values.owncloud.config.protocol }}
-  defaultLanguage: {{ .Values.owncloud.config.defaultLanguage }}
-  logLevel: {{ .Values.env.OWNCLOUD_LOG_LEVEL }}
-  appsEnable: {{ .Values.env.OWNCLOUD_APPS_ENABLE }}
+  domain: {{ .Values.owncloud.config.domain | quote }}
+  protocol: {{ .Values.owncloud.config.protocol | quote }}
+  defaultLanguage: {{ .Values.owncloud.config.defaultLanguage | quote }}
+  logLevel: {{ .Values.env.OWNCLOUD_LOG_LEVEL | quote }}
+  appsEnable: {{ .Values.env.OWNCLOUD_APPS_ENABLE | quote }}
 
   # config.php (основная конфигурация)
   config.php: |

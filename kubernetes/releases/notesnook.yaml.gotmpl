@@ -10,13 +10,13 @@ environment:
 
 mongodb:
   external: true
-  host: "mongodb-0.mongodb-headless.code.svc.cluster.local"
+  host: "mongodb-0.mongodb-headless.db.svc.cluster.local"
   port: 27017
   replicaSet: "rs0"
 
 minio:
   external: true
-  endpoint: "http://minio.code.svc.cluster.local:9000"
+  endpoint: "http://minio.db.svc.cluster.local:9000"
   accessKey: "minioadmin"
   secretKey: "minioadmin"
   bucketName: "attachments"

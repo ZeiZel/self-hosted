@@ -1,9 +1,6 @@
 # Namespace
 namespace: data
 
-create:
-  namespace: true
-
 # OwnCloud Image
 image:
   repository: owncloud/server

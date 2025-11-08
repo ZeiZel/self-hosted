@@ -1,18 +1,280 @@
 namespace: productivity
 
+# ============================================
+# Global Configuration
+# ============================================
 global:
-  postgresqlEnabled: true
-  valkeyEnabled: true
+  postgresqlEnabled: false  # Используем внешний PostgreSQL
+  redisEnabled: false       # Используем внешний Redis/Valkey
+  imagePullSecrets: []
 
+# ============================================
+# Core Configuration
+# ============================================
+config:
+  # Public URI - измени на свой домен
+  publicUri: "https://penpot.{{ .Values.infra.host | default "localhost" }}"
+
+  # Feature flags
+  flags: >-
+    enable-registration
+    enable-login-with-password
+    enable-login-with-oidc
+    enable-smtp
+    disable-onboarding-questions
+    disable-demo-users
+    disable-demo-warning
+
+  # Secret key для сессий - ЗАМЕНИ НА СВОЙ!
+  # Генерируй: python3 -c "import secrets; print(secrets.token_urlsafe(64))"
+  apiSecretKey: "{{ .Values.secrets.penpotApiSecretKey | default "CHANGE-ME-PLEASE-USE-STRONG-SECRET-KEY" }}"
+
+  # Whitelist доменов для регистрации (пустой = все разрешены)
+  registrationDomainWhitelist: ""
+
+  # Отключи телеметрию
+  telemetryEnabled: false
+
+# ============================================
+# PostgreSQL Configuration (External)
+# ============================================
+postgresql:
+  host: "postgres.db.svc.cluster.local"
+  port: 5432
+  username: "penpot"
+  password: "{{ .Values.secrets.postgresPassword }}"
+  database: "penpot"
+  existingSecret: ""
+
+# ============================================
+# Redis/Valkey Configuration (External)
+# ============================================
+redis:
+  host: "valkey-master.db.svc.cluster.local"
+  port: 6379
+  database: "0"
+
+# ============================================
+# Assets Storage (Filesystem)
+# ============================================
+assets:
+  storageBackend: "assets-fs"
+  filesystem:
+    directory: "/opt/data/assets"
+  # Для S3 (MinIO):
+  # storageBackend: "assets-s3"
+  # s3:
+  #   accessKeyID: "{{ .Values.secrets.minioAccessKey }}"
+  #   secretAccessKey: "{{ .Values.secrets.minioSecretKey }}"
+  #   region: "us-east-1"
+  #   bucket: "penpot-assets"
+  #   endpointURI: "https://minio.db.svc.cluster.local:9000"
+
+# ============================================
+# SMTP Configuration
+# ============================================
+smtp:
+  enabled: true
+  defaultFrom: "noreply@{{ .Values.infra.host | default "localhost" }}"
+  defaultReplyTo: "support@{{ .Values.infra.host | default "localhost" }}"
+  host: "stalwart.social.svc.cluster.local"
+  port: "587"
+  username: "zeizel"
+  password: "zeizel"
+  tls: true
+  ssl: false
+
+# ============================================
+# Authentik OIDC Configuration
+# ============================================
+providers:
+  oidc:
+    enabled: true
+    baseURI: "https://auth.{{ .Values.infra.host | default "localhost" }}/application/o/penpot/"
+    clientID: "{{ .Values.secrets.oidcClientId }}"
+    clientSecret: "{{ .Values.secrets.oidcClientSecret }}"
+    # Optional: явные URI (auto-discovery если не указаны)
+    authURI: ""
+    tokenURI: ""
+    userURI: ""
+    # Roles (опционально)
+    roles: ""
+    rolesAttribute: ""
+    # Scopes
+    scopes: "openid profile email"
+    # Атрибуты
+    nameAttribute: "name"
+    emailAttribute: "email"
+
+  # Отключи другие провайдеры
+  google:
+    enabled: false
+  github:
+    enabled: false
+  gitlab:
+    enabled: false
+  ldap:
+    enabled: false
+
+# ============================================
+# Backend Configuration
+# ============================================
+backend:
+  image:
+    repository: penpotapp/backend
+    tag: "2.4.3"
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 6060
+
+  resources:
+    requests:
+      cpu: 200m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+  podSecurityContext:
+    fsGroup: 1001
+
+  containerSecurityContext:
+    runAsUser: 1001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - all
+    readOnlyRootFilesystem: false
+
+# ============================================
+# Frontend Configuration
+# ============================================
+frontend:
+  image:
+    repository: penpotapp/frontend
+    tag: "2.4.3"
+    pullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  podSecurityContext:
+    fsGroup: 1001
+
+  containerSecurityContext:
+    runAsUser: 1001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - all
+    readOnlyRootFilesystem: false
+
+# ============================================
+# Exporter Configuration
+# ============================================
+exporter:
+  image:
+    repository: penpotapp/exporter
+    tag: "2.4.3"
+    imagePullPolicy: IfNotPresent
+
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 6061
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+  podSecurityContext:
+    fsGroup: 1001
+
+  containerSecurityContext:
+    runAsUser: 1001
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - all
+    readOnlyRootFilesystem: false
+
+# ============================================
+# Persistence Configuration
+# ============================================
 persistence:
   assets:
     enabled: true
+    storageClass: "openebs-hostpath"  # Измени на свой StorageClass
+    size: 20Gi
+    accessModes:
+      - ReadWriteOnce
+    annotations: {}
 
+  exporter:
+    enabled: false  # Включи если replicaCount > 1
+    storageClass: "openebs-hostpath"
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+
+# ============================================
+# Ingress Configuration (Traefik)
+# ============================================
 ingress:
   enabled: true
   className: traefik
+
+  annotations:
+    # Cert-Manager для TLS
+    cert-manager.io/cluster-issuer: "letsencrypt"
+
+    # Traefik middlewares
+    traefik.ingress.kubernetes.io/router.entrypoints: "websecure"
+    traefik.ingress.kubernetes.io/router.tls: "true"
+
+    # Опционально: Authentik Forward Auth (если нужен дополнительный слой защиты)
+    # traefik.ingress.kubernetes.io/router.middlewares: "service-authentik-forwardauth@kubernetescrd"
+
+  # Hosts
   hosts:
-    - penpot.localhost
-  paths:
-    - /
+    - penpot.{{ .Values.infra.host | default "localhost" | lower }}
+
+  path: "/pen"
+
+  # TLS Configuration
+  tls:
+    - secretName: penpot-tls
+      hosts:
+        - penpot.{{ .Values.infra.host | default "localhost" | lower }}
+
+# ============================================
+# Service Account
+# ============================================
+serviceAccount:
+  enabled: true
   annotations: {}
+  name: "penpot"
+
