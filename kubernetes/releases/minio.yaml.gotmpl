@@ -11,7 +11,7 @@ persistence:
 ingress:
   enabled: true
   hosts:
-    - host: {{ .Values.infra.host }}.local
+    - host: {{ .Values.infra.host }}
       paths:
         - path: /
           pathType: Prefix

@@ -2,6 +2,14 @@ namespace: service
 
 crds:
   enabled: true
+  keep: true
 
 prometheus:
-  enabled: false
+  enabled: true
+
+global:
+  logLevel: 2
+
+serviceAccount:
+  create: true
+  name: cert-manager

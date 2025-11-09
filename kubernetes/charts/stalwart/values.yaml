@@ -51,10 +51,10 @@ stalwart:
   # Конфигурация Stalwart
   config:
     # Domain configuration
-    domain: "mail.local"
+    domain: "mail.localhost"
     hostnames:
-      - "mail.local"
-      - "smtp.mail.local"
+      - "mail.localhost"
+      - "smtp.mail.localhost"
 
     # TLS
     tls:
@@ -143,7 +143,7 @@ ingress:
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
 
-  host: mail.local
+  host: mail.localhost
   path: /
 
   tls:

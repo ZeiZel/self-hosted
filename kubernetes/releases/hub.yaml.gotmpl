@@ -2,7 +2,7 @@ namespace: code
 
 hub:
   config:
-    baseUrl: "http://hub.{{ .Values.infra.host }}.local"
+    baseUrl: "http://hub.{{ .Values.infra.host }}"
 
 persistence:
   storageClass: openebs-hostpath
@@ -20,7 +20,7 @@ postgresql:
 
 ingress:
   enabled: true
-  host: hub.{{ .Values.infra.host }}.local
+  host: hub.{{ .Values.infra.host }}
 
 consul:
   enabled: true

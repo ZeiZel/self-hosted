@@ -9,7 +9,7 @@ authentik:
     port: 587
     username: "your-email@gmail.com"
     password: "{{ .Values.secrets.smtpPassword }}"
-    from: "authentik@{{ .Values.infra.host }}.local"
+    from: "authentik@{{ .Values.infra.host }}"
 
 # ========== Connect to external PostgreSQL ==========
 postgresql:
@@ -43,7 +43,7 @@ persistence:
 ingress:
   enabled: true
   hosts:
-    - host: authentik.{{ .Values.infra.host }}.local
+    - host: authentik.{{ .Values.infra.host }}
       paths:
         - path: /
           pathType: Prefix

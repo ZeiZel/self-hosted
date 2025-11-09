@@ -7,7 +7,7 @@ create:
 # Excalidraw Image (Frontend)
 image:
   repository: excalidraw/excalidraw
-  tag: "0.16.0"
+  tag: "latest"
   pullPolicy: IfNotPresent
 
 # Excalidraw Server конфигурация
@@ -130,12 +130,12 @@ ingress:
 
   # Frontend ingress
   frontend:
-    host: excalidraw.local
+    host: excalidraw.localhost
     path: /
 
   # Server ingress (для WebSocket)
   server:
-    host: excalidraw-api.local
+    host: excalidraw-api.localhost
     path: /
 
   tls:

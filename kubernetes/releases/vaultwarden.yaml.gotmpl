@@ -3,7 +3,7 @@ namespace: data
 vaultwarden:
   replicaCount: 1
   config:
-    domain: "https://vaultwarden.{{ .Values.infra.host }}.local"
+    domain: "https://vaultwarden.{{ .Values.infra.host }}"
     protocol: "https"
     admin:
       enabled: true
@@ -31,7 +31,7 @@ postgresql:
 
 ingress:
   enabled: true
-  host: vaultwarden.{{ .Values.infra.host }}.local
+  host: vaultwarden.{{ .Values.infra.host }}
 
 consul:
   enabled: true

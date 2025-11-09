@@ -24,21 +24,21 @@ dashy:
           - title: "Consul"
             description: "Service discovery"
             icon: "hl-consul"
-            url: "http://consul.{{ .Values.infra.host }}.local"
+            url: "http://consul.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
           - title: "Traefik"
             description: "Reverse proxy"
             icon: "hl-traefik"
-            url: "http://traefik.{{ .Values.infra.host }}.local"
+            url: "http://traefik.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
           - title: "Vault"
             description: "Secrets management"
             icon: "hl-vault"
-            url: "http://vault.{{ .Values.infra.host }}.local"
+            url: "http://vault.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
@@ -49,21 +49,21 @@ dashy:
           - title: "GitLab"
             description: "Git repository"
             icon: "hl-gitlab"
-            url: "http://gitlab.{{ .Values.infra.host }}.local"
+            url: "http://gitlab.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
           - title: "TeamCity"
             description: "CI/CD"
             icon: "fab fa-jenkins"
-            url: "http://teamcity.{{ .Values.infra.host }}.local"
+            url: "http://teamcity.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
           - title: "YouTrack"
             description: "Issue tracking"
             icon: "fas fa-tasks"
-            url: "http://youtrack.{{ .Values.infra.host }}.local"
+            url: "http://youtrack.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
@@ -74,21 +74,21 @@ dashy:
           - title: "Grafana"
             description: "Metrics & logs"
             icon: "hl-grafana"
-            url: "http://grafana.{{ .Values.infra.host }}.local"
+            url: "http://grafana.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
           - title: "Prometheus"
             description: "Metrics collection"
             icon: "hl-prometheus"
-            url: "http://prometheus.{{ .Values.infra.host }}.local"
+            url: "http://prometheus.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
           - title: "Loki"
             description: "Log aggregation"
             icon: "fas fa-file-alt"
-            url: "http://loki.{{ .Values.infra.host }}.local"
+            url: "http://loki.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
@@ -99,14 +99,14 @@ dashy:
           - title: "Revolt"
             description: "Chat platform"
             icon: "fas fa-comment-dots"
-            url: "http://revolt.{{ .Values.infra.host }}.local"
+            url: "http://revolt.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
           - title: "Stalwart Mail"
             description: "Mail server"
             icon: "fas fa-envelope"
-            url: "http://mail.{{ .Values.infra.host }}.local"
+            url: "http://mail.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
@@ -117,21 +117,21 @@ dashy:
           - title: "OwnCloud"
             description: "File sharing"
             icon: "hl-owncloud"
-            url: "http://owncloud.{{ .Values.infra.host }}.local"
+            url: "http://owncloud.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
           - title: "Syncthing"
             description: "File sync"
             icon: "fas fa-sync"
-            url: "http://syncthing.{{ .Values.infra.host }}.local"
+            url: "http://syncthing.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
           - title: "MinIO"
             description: "Object storage"
             icon: "hl-minio"
-            url: "http://minio.{{ .Values.infra.host }}.local"
+            url: "http://minio.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
@@ -142,14 +142,14 @@ dashy:
           - title: "Authentik"
             description: "SSO & Auth"
             icon: "fas fa-lock"
-            url: "http://authentik.{{ .Values.infra.host }}.local"
+            url: "http://authentik.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
           - title: "Vaultwarden"
             description: "Password manager"
             icon: "hl-bitwarden"
-            url: "http://vaultwarden.{{ .Values.infra.host }}.local"
+            url: "http://vaultwarden.{{ .Values.infra.host }}"
             target: "newtab"
             statusCheck: true
 
@@ -161,7 +161,7 @@ persistence:
 
 ingress:
   enabled: true
-  host: dashy.{{ .Values.infra.host }}.local
+  host: dashy.{{ .Values.infra.host }}
 
 consul:
   enabled: true

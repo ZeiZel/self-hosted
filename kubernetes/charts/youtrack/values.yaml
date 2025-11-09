@@ -28,7 +28,7 @@ youtrack:
 
   # Конфигурация YouTrack
   config:
-    baseUrl: "http://youtrack.local"
+    baseUrl: "http://youtrack.localhost"
     listenPort: 8080
     jvmOptions: "-Xmx1024m"
 
@@ -131,5 +131,5 @@ probes:
 
 # Environment variables
 env:
-  YOUTRACK_BASE_URL: "http://youtrack.local"
+  YOUTRACK_BASE_URL: "http://youtrack.localhost"
   YOUTRACK_LISTEN_PORT: "8080"

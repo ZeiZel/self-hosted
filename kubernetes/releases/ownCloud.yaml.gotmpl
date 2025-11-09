@@ -6,7 +6,7 @@ owncloud:
     user: "admin"
     password: "{{ .Values.secrets.owncloudAdminPassword }}"
   config:
-    domain: "owncloud.{{ .Values.infra.host }}.local"
+    domain: "owncloud.{{ .Values.infra.host }}"
 
 persistence:
   enabled: true
@@ -27,7 +27,7 @@ redis:
 
 ingress:
   enabled: true
-  host: owncloud.{{ .Values.infra.host }}.local
+  host: owncloud.{{ .Values.infra.host }}
 
 cronjobs:
   enabled: true

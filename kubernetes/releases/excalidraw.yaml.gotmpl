@@ -9,7 +9,7 @@ excalidraw:
     appTitle: "Excalidraw - Collaborative Whiteboard"
     collaboration:
       enabled: true
-      socketServer: "wss://excalidraw-api.{{ .Values.infra.host }}.local"
+      socketServer: "wss://excalidraw-api.{{ .Values.infra.host }}"
 
 # Enable full-featured server для persistence и collaboration
 server:
@@ -30,9 +30,9 @@ persistence:
 ingress:
   enabled: true
   frontend:
-    host: excalidraw.{{ .Values.infra.host }}.local
+    host: excalidraw.{{ .Values.infra.host }}
   server:
-    host: excalidraw-api.{{ .Values.infra.host }}.local
+    host: excalidraw-api.{{ .Values.infra.host }}
 
 consul:
   enabled: true

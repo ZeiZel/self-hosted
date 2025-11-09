@@ -232,7 +232,7 @@ ingress:
 
   pgadmin:
     enabled: true
-    host: pgadmin.local
+    host: pgadmin.localhost
     path: /
     tls:
       enabled: true

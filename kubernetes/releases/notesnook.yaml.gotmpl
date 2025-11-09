@@ -4,9 +4,9 @@ environment:
   INSTANCE_NAME: "notesnook-instance"
   NOTESNOOK_API_SECRET: "{{ .Values.secrets.notesnookSecret }}"
   DISABLE_ACCOUNT_CREATION: "0"
-  NOTESNOOK_APP_PUBLIC_URL: "http://notesnook.{{ .Values.infra.host }}.local"
-  AUTH_SERVER_PUBLIC_URL: "http://identity.notesnook.{{ .Values.infra.host }}.local"
-  ATTACHMENTS_SERVER_PUBLIC_URL: "http://sse.notesnook.{{ .Values.infra.host }}.local"
+  NOTESNOOK_APP_PUBLIC_URL: "http://notesnook.{{ .Values.infra.host }}"
+  AUTH_SERVER_PUBLIC_URL: "http://identity.notesnook.{{ .Values.infra.host }}"
+  ATTACHMENTS_SERVER_PUBLIC_URL: "http://sse.notesnook.{{ .Values.infra.host }}"
 
 mongodb:
   external: true
@@ -24,12 +24,12 @@ minio:
 
 ingress:
   hosts:
-    - host: notesnook.{{ .Values.infra.host }}.local
+    - host: notesnook.{{ .Values.infra.host }}
       service: notesnook-server
       port: 8010
-    - host: identity.notesnook.{{ .Values.infra.host }}.local
+    - host: identity.notesnook.{{ .Values.infra.host }}
       service: identity-server
       port: 8011
-    - host: sse.notesnook.{{ .Values.infra.host }}.local
+    - host: sse.notesnook.{{ .Values.infra.host }}
       service: sse-server
       port: 8012

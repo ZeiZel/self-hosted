@@ -115,8 +115,9 @@ ingress:
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
-
-  host: dashy.local
+  certManager:
+    issuer: ca-issuer
+  host: dashy.localhost
   path: /
 
   tls:

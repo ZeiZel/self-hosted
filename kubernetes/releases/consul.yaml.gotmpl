@@ -16,7 +16,7 @@ connectInject:
 ingress:
   enabled: true
   hosts:
-    - host: consul.{{ .Values.infra.host }}.local
+    - host: consul.{{ .Values.infra.host }}
       paths:
         - path: /
           pathType: Prefix

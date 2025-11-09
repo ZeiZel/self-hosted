@@ -2,7 +2,7 @@ namespace: code
 
 gitlab:
   config:
-    external_url: "http://gitlab.{{ .Values.infra.host }}.local"
+    external_url: "http://gitlab.{{ .Values.infra.host }}"
     smtp:
       address: "smtp.gmail.com"
       port: 587
@@ -26,9 +26,9 @@ objectStorage:
 ingress:
   enabled: true
   hosts:
-    - host: gitlab.{{ .Values.infra.host }}.local
+    - host: gitlab.{{ .Values.infra.host }}
       path: /
-    - host: registry.gitlab.{{ .Values.infra.host }}.local
+    - host: registry.gitlab.{{ .Values.infra.host }}
       path: /
 
 persistence:
@@ -43,7 +43,7 @@ persistence:
 
 runner:
   enabled: true
-  gitlabUrl: "http://gitlab.{{ .Values.infra.host }}.local"
+  gitlabUrl: "http://gitlab.{{ .Values.infra.host }}"
   runnerToken: "{{ .Values.secrets.gitlabRunnerToken }}"
 
 consul:

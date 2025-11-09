@@ -1,28 +1,26 @@
 apps:
+  # BASE
+
   namespaces:
     repo: charts
     chart: namespaces
     namespace: default
-    installed: true
+    version: v1.0.0
 
   # EXTERNAL
+
   traefik:
     repo: traefik
     chart: traefik
     namespace: ingress
     version: v37.2.0
     createNamespace: true
-    needs:
-      - default/namespaces
 
   cert-manager:
     repo: jetstack
     chart: cert-manager
-    version: v1.15.0
+    version: v1.19.1
     namespace: service
-    needs:
-      - ingress/traefik
-      - service/consul
 
   penpot:
     repo: penpot
@@ -67,12 +65,12 @@ apps:
       - ingress/traefik
 
   # SERVICES
+
   consul:
     repo: charts
     chart: consul
     version: v1.0.0
     namespace: service
-    installed: true
     needs:
       - ingress/traefik
 

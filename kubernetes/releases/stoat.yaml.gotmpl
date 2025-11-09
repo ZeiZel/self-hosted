@@ -8,9 +8,9 @@ web:
 
 revolt:
   config:
-    apiUrl: "http://api.revolt.{{ .Values.infra.host }}.local"
-    appUrl: "http://revolt.{{ .Values.infra.host }}.local"
-    publicUrl: "http://revolt.{{ .Values.infra.host }}.local"
+    apiUrl: "http://api.revolt.{{ .Values.infra.host }}"
+    appUrl: "http://revolt.{{ .Values.infra.host }}"
+    publicUrl: "http://revolt.{{ .Values.infra.host }}"
 
 mongodb:
   enabled: true
@@ -30,17 +30,17 @@ s3:
 
 saml:
   enabled: true
-  idpUrl: "http://authentik.authentik.svc.cluster.local"
-  entrypoint: "http://authentik.authentik.svc.cluster.local/application/saml/revolt/sso/binding/redirect/"
-  issuer: "http://revolt.{{ .Values.infra.host }}.local"
+  idpUrl: "http://authentik.service.svc.cluster.local"
+  entrypoint: "http://authentik.service.svc.cluster.local/application/saml/revolt/sso/binding/redirect/"
+  issuer: "http://revolt.{{ .Values.infra.host }}"
   cert: "{{ .Values.secrets.authentikSamlCert }}"
 
 ingress:
   enabled: true
   api:
-    host: api.revolt.{{ .Values.infra.host }}.local
+    host: api.revolt.{{ .Values.infra.host }}
   web:
-    host: revolt.{{ .Values.infra.host }}.local
+    host: revolt.{{ .Values.infra.host }}
 
 consul:
   enabled: true

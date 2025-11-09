@@ -38,7 +38,7 @@ pgbouncer:
 pgadmin:
   enabled: true
   config:
-    email: "admin@{{ .Values.infra.host }}.local"
+    email: "admin@{{ .Values.infra.host }}"
     password: "{{ .Values.secrets.pgadminPassword }}"
 
 monitoring:
@@ -48,7 +48,7 @@ monitoring:
 
 ingress:
   pgadmin:
-    host: pgadmin.{{ .Values.infra.host }}.local
+    host: pgadmin.{{ .Values.infra.host }}.localhost
 
 consul:
   enabled: true

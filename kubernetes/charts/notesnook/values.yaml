@@ -80,13 +80,13 @@ ingress:
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
   hosts:
-    - host: notesnook.local
+    - host: notesnook.localhost
       service: notesnook-server
       port: 8010
-    - host: identity.notesnook.local
+    - host: identity.notesnook.localhost
       service: identity-server
       port: 8011
-    - host: sse.notesnook.local
+    - host: sse.notesnook.localhost
       service: sse-server
       port: 8012
   tls:
@@ -98,9 +98,9 @@ environment:
   INSTANCE_NAME: "notesnook-instance"
   NOTESNOOK_API_SECRET: "replace-with-a-long-random-string"
   DISABLE_ACCOUNT_CREATION: "0"
-  NOTESNOOK_APP_PUBLIC_URL: "http://notesnook.local"
-  AUTH_SERVER_PUBLIC_URL: "http://identity.notesnook.local"
-  ATTACHMENTS_SERVER_PUBLIC_URL: "http://sse.notesnook.local"
+  NOTESNOOK_APP_PUBLIC_URL: "http://notesnook.localhost"
+  AUTH_SERVER_PUBLIC_URL: "http://identity.notesnook.localhost"
+  ATTACHMENTS_SERVER_PUBLIC_URL: "http://sse.notesnook.localhost"
 
 # SMTP
 smtp:

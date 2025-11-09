@@ -1,17 +1,71 @@
 namespace: ingress
 
-installCRDs: true
+installCRDs: false
+
+dashboard:
+  enabled: true
+
+rbac:
+  enabled: true
+
 ingressRoute:
   dashboard:
     enabled: true
     matchRule: Host(`traefik.localhost`)
     entryPoints:
       - web
+
 providers:
+  kubernetesCRD:
+    enabled: true
+    allowCrossNamespace: true
+    namespaces: []
+
+  kubernetesIngress:
+    enabled: true
+    allowExternalNameServices: true
+    namespaces: []
+    publishedService:
+      enabled: true
+
   kubernetesGateway:
     enabled: true
+
 gateway:
   listeners:
     web:
       namespacePolicy:
         from: All
+
+ports:
+  web:
+    port: 8000
+    expose:
+      default: true
+    exposedPort: 80
+    protocol: TCP
+
+  websecure:
+    port: 8443
+    expose:
+      default: true
+    exposedPort: 443
+    protocol: TCP
+    tls:
+      enabled: true
+
+  traefik:
+    port: 9000
+    expose:
+      default: false
+    protocol: TCP
+
+service:
+  enabled: true
+  type: LoadBalancer
+
+logs:
+  general:
+    level: INFO
+  access:
+    enabled: false

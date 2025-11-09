@@ -2,7 +2,7 @@ namespace: code
 
 youtrack:
   config:
-    baseUrl: "http://youtrack.{{ .Values.infra.host }}.local"
+    baseUrl: "http://youtrack.{{ .Values.infra.host }}"
 
 persistence:
   enabled: true
@@ -37,7 +37,7 @@ gitlab:
 
 ingress:
   enabled: true
-  host: youtrack.{{ .Values.infra.host }}.local
+  host: youtrack.{{ .Values.infra.host }}
 
 consul:
   enabled: true

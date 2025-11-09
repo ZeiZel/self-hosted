@@ -28,11 +28,11 @@ ingress:
   enabled: true
   hosts:
     prometheus:
-      host: prometheus.{{ .Values.infra.host }}.local
+      host: prometheus.{{ .Values.infra.host }}
     loki:
-      host: loki.{{ .Values.infra.host }}.local
+      host: loki.{{ .Values.infra.host }}
     grafana:
-      host: grafana.{{ .Values.infra.host }}.local
+      host: grafana.{{ .Values.infra.host }}
 
 consul:
   enabled: true
