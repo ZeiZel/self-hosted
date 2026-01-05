@@ -2,10 +2,10 @@
 sidebar_position: 3
 ---
 
-# Прогресс развития репозитория
+# Repository Development Progress
 
-- [ ] Описать все технологии в композах
-- [ ] Поднять чарты
+- [ ] Describe all technologies in compose files
+- [ ] Create charts
   - [ ] syncthing
   - [ ] Services
     - [x] traefik
@@ -17,7 +17,7 @@ sidebar_position: 3
     - [ ] hub
     - [ ] gitlab
     - [ ] teamcity
-  - [x] glance (замена dashy)
+  - [x] glance (replacement for dashy)
   - [ ] DBs
     - [ ] postgres
     - [ ] valkey
@@ -32,9 +32,9 @@ sidebar_position: 3
     - Grafana
     - Loki
     - Prometheus
-- [ ] Подготовить к локальному деплою
+- [ ] Prepare for local deployment
   - [ ]
-- [ ] Подготовить к деплою в прод
-  - [x] Ansible (server_security, kubespray, client_setup роли)
-  - [x] Terraform (управление локальными машинами)
-  - [x] Kubernetes (pangolin-client, новые сервисы)
+- [ ] Prepare for production deployment
+  - [x] Ansible (server_security, kubespray, client_setup roles)
+  - [x] Terraform (local machine management)
+  - [x] Kubernetes (pangolin-client, new services)

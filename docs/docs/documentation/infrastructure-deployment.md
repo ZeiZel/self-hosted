@@ -2,7 +2,7 @@
 sidebar_position: 5
 ---
 
-# Развёртка базовой инфраструктуры
+# Basic Infrastructure Deployment
 
 На этом этапе мы развернём базовые инфраструктурные компоненты, которые необходимы для работы всех остальных сервисов: Traefik (ingress controller), Consul (service discovery), и Vault (управление секретами).
 
@@ -17,23 +17,23 @@ Helmfile автоматически развернёт сервисы в пра�
 
 Все остальные сервисы зависят от этих базовых компонентов.
 
-## Развёртка базовых сервисов
+## Deployment базовых of Services
 
 ### Выполнение развёртки
 
-Перейдите в директорию с Kubernetes конфигурацией:
+Navigate to директорию с Kubernetes конфигурацией:
 
 ```bash
 cd kubernetes
 ```
 
-Убедитесь, что Helmfile инициализирован (см. [Развёртка Kubernetes кластера](./kubernetes-deployment.md#инициализация-helmfile)):
+Make sure, что Helmfile инициализирован (см. [Развёртка Kubernetes кластера](./kubernetes-deployment.md#инициализация-helmfile)):
 
 ```bash
 helmfile init --force
 ```
 
-Запустите развёртку базовой инфраструктуры:
+Run развёртку базовой инфраструктуры:
 
 ```bash
 helmfile -e k8s apply
@@ -45,21 +45,21 @@ helmfile -e k8s apply
 3. Развернёт сервисы в правильном порядке
 4. Создаст все необходимые ресурсы в Kubernetes
 
-### Проверка статуса
+### Verification статуса
 
-Проверьте список всех релизов:
+Check список всех релизов:
 
 ```bash
 helmfile -e k8s list
 ```
 
-Проверьте статус подов:
+Check статус подов:
 
 ```bash
 kubectl get pods --all-namespaces
 ```
 
-Убедитесь, что все системные поды запущены:
+Make sure, что все системные поды запущены:
 
 ```bash
 kubectl get pods -n ingress
@@ -70,21 +70,21 @@ kubectl get pods -n service
 
 Traefik - современный reverse proxy и load balancer, используемый как ingress controller.
 
-### Проверка Traefik
+### Verification Traefik
 
-Проверьте статус подов Traefik:
+Check статус подов Traefik:
 
 ```bash
 kubectl get pods -n ingress -l app.kubernetes.io/name=traefik
 ```
 
-Проверьте сервисы:
+Check сервисы:
 
 ```bash
 kubectl get svc -n ingress
 ```
 
-### Проверка ingress
+### Verification ingress
 
 После развёртки других сервисов, проверьте ingress:
 
@@ -96,15 +96,15 @@ kubectl get ingress --all-namespaces
 
 Consul обеспечивает service discovery, health checking и service mesh функциональность.
 
-### Проверка Consul
+### Verification Consul
 
-Проверьте статус подов Consul:
+Check статус подов Consul:
 
 ```bash
 kubectl get pods -n service -l app=consul
 ```
 
-Проверьте UI Consul (если включен):
+Check UI Consul (если включен):
 
 ```bash
 kubectl get ingress -n service -l app=consul
@@ -120,9 +120,9 @@ Vault - система управления секретами с централ
 
 После развёртки Vault необходимо его инициализировать.
 
-#### 1. Проверка доступности
+#### 1. Verification доступности
 
-Убедитесь, что Vault запущен:
+Make sure, что Vault запущен:
 
 ```bash
 kubectl get pods -n service -l app=vault
@@ -163,10 +163,10 @@ Initial Root Token: s.xxxxxxxxxxxxxxxxxxxxx
 Для каждого пода Vault выполните unseal:
 
 ```bash
-# Получите список подов Vault
+# Get list of Vault pods
 kubectl get pods -n service -l app=vault
 
-# Для каждого пода выполните unseal (минимум 3 раза с разными ключами)
+# Execute unseal for each pod (минимум 3 раза с разными ключами)
 kubectl exec -n service vault-0 -- vault operator unseal <unseal-key-1>
 kubectl exec -n service vault-0 -- vault operator unseal <unseal-key-2>
 kubectl exec -n service vault-0 -- vault operator unseal <unseal-key-3>
@@ -174,7 +174,7 @@ kubectl exec -n service vault-0 -- vault operator unseal <unseal-key-3>
 # Повторите для других подов (vault-1, vault-2, если есть)
 ```
 
-Проверьте статус:
+Check статус:
 
 ```bash
 kubectl exec -n service deployment/vault -- vault status
@@ -182,9 +182,9 @@ kubectl exec -n service deployment/vault -- vault status
 
 Статус должен показать `Sealed: false`.
 
-#### 4. Настройка Vault для Kubernetes
+#### 4. Configuration Vault для Kubernetes
 
-Запустите скрипт настройки Vault:
+Run скрипт настройки Vault:
 
 ```bash
 cd kubernetes/scripts
@@ -227,7 +227,7 @@ kubectl exec -n service deployment/vault -- vault write auth/userpass/users/admi
 
 Затем используйте новый пользователь для входа вместо root token.
 
-### Синхронизация секретов с Vault
+### Синхронизация Secrets с Vault
 
 После настройки Vault, синхронизируйте секреты из `_all.yaml`:
 
@@ -251,75 +251,75 @@ cd kubernetes/scripts
 
 Рекомендуется настроить автоматическое распечатывание для production окружений.
 
-## Проверка работы базовой инфраструктуры
+## Verification работы базовой инфраструктуры
 
 После развёртки всех компонентов, проверьте:
 
 ### Traefik
 
 ```bash
-# Проверка подов
+# Verification подов
 kubectl get pods -n ingress
 
-# Проверка сервисов
+# Verification of Services
 kubectl get svc -n ingress
 
-# Проверка ingress routes
+# Verification ingress routes
 kubectl get ingressroute --all-namespaces
 ```
 
 ### Consul
 
 ```bash
-# Проверка подов
+# Verification подов
 kubectl get pods -n service -l app=consul
 
-# Проверка сервисов в Consul
+# Verification of Services в Consul
 kubectl exec -n service deployment/consul -- consul members
 ```
 
 ### Vault
 
 ```bash
-# Проверка статуса
+# Verification статуса
 kubectl exec -n service deployment/vault -- vault status
 
-# Проверка списка секретов
+# Verification списка Secrets
 kubectl exec -n service deployment/vault -- vault kv list secret/
 ```
 
-## Устранение неполадок
+## Troubleshooting
 
-### Проблема: Traefik не запускается
+### Issue: Traefik не запускается
 
-Проверьте логи:
+Check логи:
 
 ```bash
 kubectl logs -n ingress -l app.kubernetes.io/name=traefik
 ```
 
-Проверьте конфигурацию:
+Check конфигурацию:
 
 ```bash
 kubectl get configmap -n ingress
 kubectl describe pod -n ingress -l app.kubernetes.io/name=traefik
 ```
 
-### Проблема: Consul не может подключиться к узлам
+### Issue: Consul не может подключиться к узлам
 
-Проверьте сетевые политики:
+Check сетевые политики:
 
 ```bash
 kubectl get networkpolicies -n service
 ```
 
-Проверьте логи:
+Check логи:
 
 ```bash
 kubectl logs -n service -l app=consul
 ```
 
-### Проблема: Vault запечатан (Sealed)
+### Issue: Vault запечатан (Sealed)
 
 Выполните unseal:
 
@@ -329,25 +329,26 @@ kubectl exec -n service deployment/vault -- vault operator unseal <unseal-key>
 
 Нужно выполнить минимум 3 раза с разными ключами.
 
-### Проблема: Не могу синхронизировать секреты
+### Issue: Не могу синхронизировать секреты
 
-Проверьте, что Vault распечатан:
+Check, что Vault распечатан:
 
 ```bash
 kubectl exec -n service deployment/vault -- vault status
 ```
 
-Проверьте права доступа:
+Check права доступа:
 
 ```bash
 kubectl exec -n service deployment/vault -- vault auth list
 ```
 
-## Следующие шаги
+## Next Steps
 
 После успешной развёртки базовой инфраструктуры:
 
 1. [Развёртка сервисов](./services-deployment.md) - развёртка всех остальных сервисов (базы данных, приложения, мониторинг)
+
 
 
 

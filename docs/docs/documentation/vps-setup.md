@@ -2,36 +2,36 @@
 sidebar_position: 2
 ---
 
-# Подключение и настройка удалённого устройства (VPS)
+# Connecting and Configuring Remote Device (VPS)
 
-На этом этапе мы настроим удалённый VPS сервер, на котором будет развёрнут Pangolin сервер для организации Wireguard туннеля и доступа к сервисам.
+At this stage, we will configure a remote VPS server where the Pangolin server will be deployed to establish a Wireguard tunnel and access services.
 
-## Требования к VPS
+## VPS Requirements
 
-Минимальные требования для VPS сервера:
+Minimum requirements for VPS server:
 
-- **CPU:** 2 ядра
+- **CPU:** 2 cores
 - **RAM:** 2 GB
-- **Диск:** 20 GB SSD
-- **ОС:** Ubuntu 20.04/22.04 или Debian 11/12
-- **Сеть:** Статический IP адрес
-- **Открытые порты:**
+- **Disk:** 20 GB SSD
+- **OS:** Ubuntu 20.04/22.04 or Debian 11/12
+- **Network:** Static IP address
+- **Open ports:**
   - 22 (SSH)
   - 80 (HTTP)
   - 443 (HTTPS)
   - 51820/UDP (WireGuard)
 
-Рекомендуемые требования для production:
+Recommended requirements for production:
 
-- **CPU:** 4 ядра
+- **CPU:** 4 cores
 - **RAM:** 4 GB
-- **Диск:** 40 GB SSD
+- **Disk:** 40 GB SSD
 
-## Настройка inventory
+## Inventory Configuration
 
-Перед развёрткой необходимо настроить inventory файл с параметрами вашего VPS.
+Before deployment, you need to configure the inventory file with your VPS parameters.
 
-Откройте файл `ansible/pangolin/inventory/hosts.yml` и настройте секцию `vps`:
+Open the file `ansible/pangolin/inventory/hosts.yml` and configure the `vps` section:
 
 ```yaml
 all:
@@ -39,18 +39,18 @@ all:
     vps:
       hosts:
         pangolin_vps:
-          ansible_host: YOUR_VPS_IP_ADDRESS  # Замените на IP вашего VPS
-          ansible_user: root  # или другой пользователь с sudo правами
+          ansible_host: YOUR_VPS_IP_ADDRESS  # Replace with your VPS IP
+          ansible_user: root  # or another user with sudo rights
           ansible_port: 22
 
           pangolin_role: server
-          pangolin_domain: "yourdomain.com"  # Ваш домен для Pangolin
-          pangolin_admin_email: "admin@yourdomain.com"  # Email администратора
+          pangolin_domain: "yourdomain.com"  # Your domain for Pangolin
+          pangolin_admin_email: "admin@yourdomain.com"  # Administrator email
 ```
 
-### Настройка переменных
+### Variable Configuration
 
-Также можно настроить глобальные переменные в том же файле (секция `vars`):
+You can also configure global variables in the same file (in the `vars` section):
 
 ```yaml
   vars:
@@ -72,180 +72,179 @@ all:
     fail2ban_ssh_findtime: 600
 ```
 
-## Развёртка Pangolin сервера на VPS
+## Deploying Pangolin Server on VPS
 
-Развёртка выполняется через Ansible playbook, который автоматически:
+Deployment is performed through an Ansible playbook that automatically:
 
-1. Настраивает базовую безопасность сервера
-2. Устанавливает необходимые пакеты
-3. Устанавливает Docker
-4. Развёртывает Pangolin сервер
-5. Настраивает firewall
+1. Configures basic server security
+2. Installs necessary packages
+3. Installs Docker
+4. Deploys Pangolin server
+5. Configures firewall
 
-### Выполнение развёртки
+### Executing Deployment
 
-Перейдите в директорию с Ansible playbooks:
+Navigate to the directory with Ansible playbooks:
 
 ```bash
 cd ansible/pangolin
 ```
 
-Запустите playbook для развёртки VPS:
+Run the playbook to deploy VPS:
 
 ```bash
 ansible-playbook -i inventory/hosts.yml playbooks/deploy_vps.yml
 ```
 
-Playbook выполнит следующие роли:
+The playbook will execute the following roles:
 
-- `server_security` - настройка безопасности (отключение root SSH, создание нового пользователя, настройка fail2ban, firewall)
-- `common` - установка базовых пакетов, настройка системы
-- `docker` - установка Docker
-- `pangolin_server` - развёртка Pangolin сервера
+- `server_security` - security configuration (disabling root SSH, creating new user, configuring fail2ban, firewall)
+- `common` - installing basic packages, system configuration
+- `docker` - Docker installation
+- `pangolin_server` - Pangolin server deployment
 
-### Что делает playbook
+### What the Playbook Does
 
-1. **Настройка безопасности:**
-   - Создание нового пользователя с sudo правами
-   - Настройка SSH ключей
-   - Настройка fail2ban для защиты от брутфорса
-   - Настройка UFW firewall
-   - Открытие необходимых портов
+1. **Security Configuration:**
+   - Creating a new user with sudo rights
+   - Configuring SSH keys
+   - Configuring fail2ban for brute force protection
+   - Configuring UFW firewall
+   - Opening necessary ports
 
-2. **Установка системных пакетов:**
-   - Обновление системы
-   - Установка необходимых пакетов (curl, gnupg, python3-pip, ufw, wireguard)
-   - Настройка sysctl для WireGuard (IP forwarding)
+2. **System Package Installation:**
+   - System update
+   - Installing necessary packages (curl, gnupg, python3-pip, ufw, wireguard)
+   - Configuring sysctl for WireGuard (IP forwarding)
 
-3. **Установка Docker:**
-   - Установка Docker CE
-   - Добавление пользователя в группу docker
-   - Настройка Docker Compose
+3. **Docker Installation:**
+   - Installing Docker CE
+   - Adding user to docker group
+   - Configuring Docker Compose
 
-4. **Развёртка Pangolin:**
-   - Создание директорий для Pangolin (`/opt/pangolin`)
-   - Генерация конфигурационных файлов
-   - Развёртка через Docker Compose
-   - Ожидание готовности сервиса
+4. **Pangolin Deployment:**
+   - Creating directories for Pangolin (`/opt/pangolin`)
+   - Generating configuration files
+   - Deployment via Docker Compose
+   - Waiting for service readiness
 
-## Проверка работы Pangolin
+## Checking Pangolin Operation
 
-После завершения развёртки, проверьте статус контейнеров:
+After deployment completion, check container status:
 
 ```bash
 ssh user@your-vps-ip "cd /opt/pangolin && docker-compose ps"
 ```
 
-Должны быть запущены контейнеры:
-- `pangolin` - основной сервис Pangolin
-- `gerbil` - WireGuard сервер
+The following containers should be running:
+- `pangolin` - main Pangolin service
+- `gerbil` - WireGuard server
 - `traefik` - reverse proxy
 
-Проверьте логи Pangolin:
+Check Pangolin logs:
 
 ```bash
 ssh user@your-vps-ip "cd /opt/pangolin && docker-compose logs pangolin"
 ```
 
-## Начальная настройка Pangolin через веб-интерфейс
+## Initial Pangolin Configuration via Web Interface
 
-После успешной развёртки Pangolin, необходимо выполнить первоначальную настройку через веб-интерфейс.
+After successful Pangolin deployment, you need to perform initial configuration through the web interface.
 
-1. **Откройте веб-интерфейс:**
+1. **Open Web Interface:**
 
-Перейдите по адресу: `https://yourdomain.com/auth/initial-setup`
+Navigate to: `https://yourdomain.com/auth/initial-setup`
 
-Или, если домен ещё не настроен, по IP: `https://YOUR_VPS_IP`
+Or, if the domain is not yet configured, by IP: `https://YOUR_VPS_IP`
 
-2. **Выполните первоначальную настройку:**
+2. **Perform Initial Configuration:**
 
-- Создайте административный аккаунт
-- Настройте базовые параметры
-- Сохраните конфигурацию
+- Create an administrative account
+- Configure basic parameters
+- Save configuration
 
-3. **Проверьте доступность API:**
+3. **Check API Availability:**
 
 ```bash
 curl https://yourdomain.com/api/v1/
 ```
 
-Должен вернуться ответ от API Pangolin.
+You should receive a response from the Pangolin API.
 
-## Проверка Wireguard туннеля
+## Checking Wireguard Tunnel
 
-После настройки Pangolin, можно проверить статус WireGuard:
+After configuring Pangolin, you can check WireGuard status:
 
 ```bash
 ssh user@your-vps-ip "docker exec gerbil wg show"
 ```
 
-Вы должны увидеть интерфейс WireGuard с настройками сервера.
+You should see the WireGuard interface with server settings.
 
-### Настройка DNS записи
+### DNS Record Configuration
 
-Для работы с доменом, настройте DNS запись:
+To work with a domain, configure a DNS record:
 
-**A запись:**
+**A record:**
 ```
 yourdomain.com -> YOUR_VPS_IP
 ```
 
-**Или, если используете поддомен:**
+**Or, if using a subdomain:**
 ```
 pangolin.yourdomain.com -> YOUR_VPS_IP
 ```
 
-После настройки DNS подождите несколько минут для распространения изменений.
+After configuring DNS, wait a few minutes for changes to propagate.
 
-## Устранение неполадок
+## Troubleshooting
 
-### Проблема: Pangolin не запускается
+### Issue: Pangolin Won't Start
 
-Проверьте логи:
+Check logs:
 
 ```bash
 ssh user@your-vps-ip "cd /opt/pangolin && docker-compose logs"
 ```
 
-Проверьте доступность портов:
+Check port availability:
 
 ```bash
 ssh user@your-vps-ip "sudo netstat -tulpn | grep -E '3001|51820|80|443'"
 ```
 
-### Проблема: Не могу подключиться по HTTPS
+### Issue: Cannot Connect via HTTPS
 
-Убедитесь, что:
-- Домен правильно настроен в DNS
-- Порты 80 и 443 открыты в firewall
-- Traefik запущен и работает
+Make sure:
+- Domain is correctly configured in DNS
+- Ports 80 and 443 are open in firewall
+- Traefik is running and working
 
-Проверьте логи Traefik:
+Check Traefik logs:
 
 ```bash
 ssh user@your-vps-ip "cd /opt/pangolin && docker-compose logs traefik"
 ```
 
-### Проблема: WireGuard не работает
+### Issue: WireGuard Not Working
 
-Проверьте статус WireGuard:
+Check WireGuard status:
 
 ```bash
 ssh user@your-vps-ip "docker exec gerbil wg show"
 ```
 
-Убедитесь, что порт 51820/UDP открыт:
+Make sure port 51820/UDP is open:
 
 ```bash
 ssh user@your-vps-ip "sudo ufw status | grep 51820"
 ```
 
-## Следующие шаги
+## Next Steps
 
-После успешной настройки VPS и Pangolin сервера:
+After successfully configuring VPS and Pangolin server:
 
-1. [Развёртка Kubernetes кластера](./kubernetes-deployment.md) - настройка локального Kubernetes кластера для сервисов
-
+1. [Kubernetes Cluster Deployment](./kubernetes-deployment.md) - configuring local Kubernetes cluster for services
 
 
 

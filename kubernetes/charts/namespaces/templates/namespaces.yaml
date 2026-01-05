@@ -24,7 +24,7 @@
           meta.helm.sh/release-namespace: {{ $namespace }}
           description: {{ $config.description | quote }}
           managed-by: "helm-release: {{ $release }}"
-          created-at: {{ now | date "2006-01-02T15:04:05Z07:00" }}
+          created-at: {{ now | date "2026-01-01T15:04:05Z07:00" }}
       spec:
     {{- end }}
   {{- end }}

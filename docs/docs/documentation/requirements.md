@@ -2,306 +2,305 @@
 sidebar_position: 10
 ---
 
-# Ресурсы и требования
+# Resources and Requirements
 
-В этом разделе описаны требования к ресурсам для развёртки всей инфраструктуры.
+This section describes the resource requirements for deploying the entire infrastructure.
 
-## Требования к VPS
+## VPS Requirements
 
-VPS сервер используется для размещения Pangolin сервера, который обеспечивает VPN туннель и reverse proxy для доступа к сервисам.
+The VPS server is used to host the Pangolin server, which provides a VPN tunnel and reverse proxy for accessing services.
 
-### Минимальные требования
+### Minimum Requirements
 
-- **CPU:** 2 ядра
+- **CPU:** 2 cores
 - **RAM:** 2 GB
-- **Диск:** 20 GB SSD
-- **ОС:** Ubuntu 20.04/22.04 или Debian 11/12
-- **Сеть:** Статический IP адрес, минимум 100 Mbps
-- **Открытые порты:**
+- **Disk:** 20 GB SSD
+- **OS:** Ubuntu 20.04/22.04 or Debian 11/12
+- **Network:** Static IP address, minimum 100 Mbps
+- **Open ports:**
   - 22 (SSH)
-  - 80 (HTTP) - для Let's Encrypt
+  - 80 (HTTP) - for Let's Encrypt
   - 443 (HTTPS)
   - 51820/UDP (WireGuard)
 
-### Рекомендуемые требования
+### Recommended Requirements
 
-- **CPU:** 4 ядра
+- **CPU:** 4 cores
 - **RAM:** 4 GB
-- **Диск:** 40 GB SSD
-- **Сеть:** Статический IP, 1 Gbps
+- **Disk:** 40 GB SSD
+- **Network:** Static IP, 1 Gbps
 
-### Дополнительные требования
+### Additional Requirements
 
-- **Домен:** Рекомендуется иметь домен для работы с Let's Encrypt
-- **DNS:** Возможность настройки DNS записей (A, MX, TXT)
+- **Domain:** It is recommended to have a domain for working with Let's Encrypt
+- **DNS:** Ability to configure DNS records (A, MX, TXT)
 
-## Требования к локальному серверу (Kubernetes)
+## Local Server Requirements (Kubernetes)
 
-Локальный сервер используется для размещения Kubernetes кластера со всеми сервисами.
+The local server is used to host the Kubernetes cluster with all services.
 
-### Минимальные требования для Master node
+### Minimum Requirements for Master Node
 
-- **CPU:** 2 ядра
+- **CPU:** 2 cores
 - **RAM:** 2 GB
-- **Диск:** 20 GB SSD
-- **ОС:** Ubuntu 20.04/22.04 или аналогичная
-- **Сеть:** Стабильное подключение к интернету
+- **Disk:** 20 GB SSD
+- **OS:** Ubuntu 20.04/22.04 or similar
+- **Network:** Stable internet connection
 
-### Минимальные требования для Worker node
+### Minimum Requirements for Worker Node
 
-- **CPU:** 4 ядра
+- **CPU:** 4 cores
 - **RAM:** 4 GB
-- **Диск:** 50 GB SSD
-- **ОС:** Ubuntu 20.04/22.04 или аналогичная
-- **Сеть:** Стабильное подключение к интернету
+- **Disk:** 50 GB SSD
+- **OS:** Ubuntu 20.04/22.04 or similar
+- **Network:** Stable internet connection
 
-### Рекомендуемые требования для Master node
+### Recommended Requirements for Master Node
 
-- **CPU:** 4 ядра
+- **CPU:** 4 cores
 - **RAM:** 4 GB
-- **Диск:** 50 GB SSD
-- **HA:** 3 master узла для высокой доступности
+- **Disk:** 50 GB SSD
+- **HA:** 3 master nodes for high availability
 
-### Рекомендуемые требования для Worker node
+### Recommended Requirements for Worker Node
 
-- **CPU:** 8 ядер
+- **CPU:** 8 cores
 - **RAM:** 16 GB
-- **Диск:** 100 GB SSD
-- **Количество:** Минимум 3 worker узла
+- **Disk:** 100 GB SSD
+- **Quantity:** Minimum 3 worker nodes
 
-### Требования к хранилищу
+### Storage Requirements
 
-- **Storage Class:** Рекомендуется использовать SSD storage
-- **Минимальный объём:** 200 GB для всех persistent volumes
-- **Рекомендуемый объём:** 500 GB+
+- **Storage Class:** It is recommended to use SSD storage
+- **Minimum volume:** 200 GB for all persistent volumes
+- **Recommended volume:** 500 GB+
 
-### Сетевые требования
+### Network Requirements
 
-- **Локальная сеть:** Все узлы должны быть в одной сети
-- **Bandwidth:** Минимум 1 Gbps между узлами
-- **Latency:** Низкая задержка между узлами (< 1ms)
+- **Local network:** All nodes must be on the same network
+- **Bandwidth:** Minimum 1 Gbps between nodes
+- **Latency:** Low latency between nodes (< 1ms)
 
-## Требования к локальной машине (управление)
+## Local Machine Requirements (Management)
 
-Локальная машина используется для управления всей инфраструктурой через Ansible, Terraform, kubectl и другие инструменты.
+The local machine is used to manage the entire infrastructure through Ansible, Terraform, kubectl, and other tools.
 
-### Операционная система
+### Operating System
 
-- **macOS:** 10.15+ (рекомендуется)
-- **Linux:** Ubuntu 20.04+ или аналогичный дистрибутив
-- **Windows:** Windows 10/11 с WSL2 (Ubuntu)
+- **macOS:** 10.15+ (recommended)
+- **Linux:** Ubuntu 20.04+ or similar distribution
+- **Windows:** Windows 10/11 with WSL2 (Ubuntu)
 
-### Установленные инструменты
+### Installed Tools
 
-Все инструменты должны быть установлены (см. [Подготовка локального устройства](./preparation.md)):
+All tools must be installed (see [Local Device Preparation](./preparation.md)):
 
 - **Ansible:** 2.9+
 - **Terraform:** 1.0+
 - **kubectl:** 1.28+
 - **Helm:** 3.8+
 - **Helmfile:** 0.155+
-- **Docker:** 20.10+ (опционально, для локальной разработки)
+- **Docker:** 20.10+ (optional, for local development)
 - **GPG:** 2.2+
 - **SOPS:** 3.7+
 
-### Требования к сети
+### Network Requirements
 
-- **SSH доступ:** Доступ к VPS и Kubernetes узлам
-- **Интернет:** Для загрузки образов и пакетов
-- **Bandwidth:** Минимум 10 Mbps для комфортной работы
+- **SSH access:** Access to VPS and Kubernetes nodes
+- **Internet:** For downloading images and packages
+- **Bandwidth:** Minimum 10 Mbps for comfortable work
 
-### Системные требования
+### System Requirements
 
-- **RAM:** 8 GB (рекомендуется)
-- **Диск:** 20 GB свободного места
-- **CPU:** 2+ ядра
+- **RAM:** 8 GB (recommended)
+- **Disk:** 20 GB free space
+- **CPU:** 2+ cores
 
-## Детальные требования по ресурсам сервисов
+## Detailed Service Resource Requirements
 
-### Базы данных
+### Databases
 
 #### PostgreSQL
 
-- **CPU:** 1-2 ядра
+- **CPU:** 1-2 cores
 - **RAM:** 1-2 GB
-- **Диск:** 20-50 GB (зависит от объёма данных)
-- **Replicas:** 3 (для HA)
+- **Disk:** 20-50 GB (depends on data volume)
+- **Replicas:** 3 (for HA)
 
 #### MongoDB
 
-- **CPU:** 1-2 ядра
+- **CPU:** 1-2 cores
 - **RAM:** 2-4 GB
-- **Диск:** 20-50 GB
-- **Replica Set:** 3 узла
+- **Disk:** 20-50 GB
+- **Replica Set:** 3 nodes
 
 #### ValKey
 
-- **CPU:** 0.5-1 ядро
+- **CPU:** 0.5-1 core
 - **RAM:** 512 MB - 1 GB
-- **Диск:** 5-10 GB
+- **Disk:** 5-10 GB
 - **Architecture:** Replication (1 master + 2 replicas)
 
 #### MinIO
 
-- **CPU:** 1-2 ядра
+- **CPU:** 1-2 cores
 - **RAM:** 1-2 GB
-- **Диск:** 50-500 GB (зависит от объёма хранилища)
+- **Disk:** 50-500 GB (depends on storage volume)
 
-### Инфраструктурные сервисы
+### Infrastructure Services
 
 #### Traefik
 
-- **CPU:** 0.5-1 ядро
+- **CPU:** 0.5-1 core
 - **RAM:** 256-512 MB
-- **Replicas:** 2-3 (для HA)
+- **Replicas:** 2-3 (for HA)
 
 #### Consul
 
-- **CPU:** 0.5-1 ядро
+- **CPU:** 0.5-1 core
 - **RAM:** 512 MB - 1 GB
-- **Replicas:** 3-5 (для HA)
+- **Replicas:** 3-5 (for HA)
 
 #### Vault
 
-- **CPU:** 1-2 ядра
+- **CPU:** 1-2 cores
 - **RAM:** 512 MB - 1 GB
-- **Диск:** 10-20 GB
-- **Replicas:** 3 (для HA)
+- **Disk:** 10-20 GB
+- **Replicas:** 3 (for HA)
 
 #### Prometheus
 
-- **CPU:** 1-2 ядра
+- **CPU:** 1-2 cores
 - **RAM:** 2-4 GB
-- **Диск:** 50-200 GB (зависит от retention)
+- **Disk:** 50-200 GB (depends on retention)
 
 #### Grafana
 
-- **CPU:** 0.5-1 ядро
+- **CPU:** 0.5-1 core
 - **RAM:** 512 MB - 1 GB
-- **Диск:** 5-10 GB
+- **Disk:** 5-10 GB
 
 #### Loki
 
-- **CPU:** 1-2 ядра
+- **CPU:** 1-2 cores
 - **RAM:** 2-4 GB
-- **Диск:** 50-200 GB (зависит от retention)
+- **Disk:** 50-200 GB (depends on retention)
 
-### Приложения
+### Applications
 
 #### GitLab
 
-- **CPU:** 4-8 ядер
+- **CPU:** 4-8 cores
 - **RAM:** 8-16 GB
-- **Диск:** 50-200 GB
+- **Disk:** 50-200 GB
 
 #### TeamCity
 
-- **CPU:** 2-4 ядра (server) + 2-4 ядра на агента
-- **RAM:** 2-4 GB (server) + 2-4 GB на агента
-- **Диск:** 20-50 GB (server) + 10-20 GB на агента
+- **CPU:** 2-4 cores (server) + 2-4 cores per agent
+- **RAM:** 2-4 GB (server) + 2-4 GB per agent
+- **Disk:** 20-50 GB (server) + 10-20 GB per agent
 
 #### YouTrack
 
-- **CPU:** 2-4 ядра
+- **CPU:** 2-4 cores
 - **RAM:** 2-4 GB
-- **Диск:** 20-50 GB
+- **Disk:** 20-50 GB
 
 #### Vaultwarden
 
-- **CPU:** 0.5-1 ядро
+- **CPU:** 0.5-1 core
 - **RAM:** 512 MB - 1 GB
-- **Диск:** 10-50 GB (зависит от количества пользователей)
+- **Disk:** 10-50 GB (depends on number of users)
 
 #### Notesnook
 
-- **CPU:** 1-2 ядра (server + identity + SSE)
+- **CPU:** 1-2 cores (server + identity + SSE)
 - **RAM:** 2-4 GB
-- **Диск:** 10-50 GB
+- **Disk:** 10-50 GB
 
 #### Authentik
 
-- **CPU:** 1-2 ядра
+- **CPU:** 1-2 cores
 - **RAM:** 1-2 GB
-- **Диск:** 10-20 GB
+- **Disk:** 10-20 GB
 
-## Суммарные требования
+## Total Requirements
 
-### Минимальная конфигурация (для тестирования)
+### Minimum Configuration (for testing)
 
 **VPS:**
-- 2 CPU, 2 GB RAM, 20 GB диск
+- 2 CPU, 2 GB RAM, 20 GB disk
 
 **Kubernetes (1 master + 1 worker):**
-- Master: 2 CPU, 2 GB RAM, 20 GB диск
-- Worker: 4 CPU, 4 GB RAM, 50 GB диск
-- **Итого:** 6 CPU, 6 GB RAM, 70 GB диск
+- Master: 2 CPU, 2 GB RAM, 20 GB disk
+- Worker: 4 CPU, 4 GB RAM, 50 GB disk
+- **Total:** 6 CPU, 6 GB RAM, 70 GB disk
 
-**Рекомендация:** Подходит только для тестирования, не для production.
+**Recommendation:** Suitable only for testing, not for production.
 
-### Рекомендуемая конфигурация (для production)
+### Recommended Configuration (for production)
 
 **VPS:**
-- 4 CPU, 4 GB RAM, 40 GB диск
+- 4 CPU, 4 GB RAM, 40 GB disk
 
 **Kubernetes (3 masters + 3 workers):**
-- Masters: 3 × (4 CPU, 4 GB RAM, 50 GB диск) = 12 CPU, 12 GB RAM, 150 GB диск
-- Workers: 3 × (8 CPU, 16 GB RAM, 100 GB диск) = 24 CPU, 48 GB RAM, 300 GB диск
-- **Итого:** 36 CPU, 60 GB RAM, 450 GB диск
+- Masters: 3 × (4 CPU, 4 GB RAM, 50 GB disk) = 12 CPU, 12 GB RAM, 150 GB disk
+- Workers: 3 × (8 CPU, 16 GB RAM, 100 GB disk) = 24 CPU, 48 GB RAM, 300 GB disk
+- **Total:** 36 CPU, 60 GB RAM, 450 GB disk
 
-**Рекомендация:** Оптимальная конфигурация для полнофункциональной production системы.
+**Recommendation:** Optimal configuration for a fully functional production system.
 
-### Масштабирование
+### Scaling
 
-Для больших нагрузок можно:
-- Добавить дополнительные worker узлы
-- Увеличить ресурсы существующих узлов
-- Использовать горизонтальное масштабирование подов
-- Настроить автоскейлинг
+For larger loads, you can:
+- Add additional worker nodes
+- Increase resources on existing nodes
+- Use horizontal pod scaling
+- Configure autoscaling
 
-## Оценка стоимости
+## Cost Estimation
 
-### VPS (примерно)
+### VPS (approximately)
 
-- Минимальная: $10-20/месяц
-- Рекомендуемая: $20-40/месяц
+- Minimum: $10-20/month
+- Recommended: $20-40/month
 
-### Локальный сервер (примерно)
+### Local Server (approximately)
 
-- Минимальная конфигурация: $500-1000 (одноразово)
-- Рекомендуемая конфигурация: $2000-5000 (одноразово)
+- Minimum configuration: $500-1000 (one-time)
+- Recommended configuration: $2000-5000 (one-time)
 
-Или можно использовать облачные сервисы (AWS, GCP, Azure) с аналогичными требованиями.
+Or you can use cloud services (AWS, GCP, Azure) with similar requirements.
 
-## Оптимизация ресурсов
+## Resource Optimization
 
-### Рекомендации по оптимизации
+### Optimization Recommendations
 
-1. **Используйте SSD** для всех дисков
-2. **Настройте ресурсы подов** в values.yaml согласно реальным потребностям
-3. **Включите горизонтальное масштабирование** для приложений
-4. **Используйте resource quotas** для ограничения использования ресурсов
-5. **Настройте node affinity** для оптимального размещения подов
-6. **Регулярно очищайте** неиспользуемые образы и данные
+1. **Use SSD** for all disks
+2. **Configure pod resources** in values.yaml according to actual needs
+3. **Enable horizontal scaling** for applications
+4. **Use resource quotas** to limit resource usage
+5. **Configure node affinity** for optimal pod placement
+6. **Regularly clean up** unused images and data
 
-### Мониторинг использования ресурсов
+### Resource Usage Monitoring
 
-Регулярно проверяйте использование ресурсов:
+Regularly check resource usage:
 
 ```bash
 kubectl top nodes
 kubectl top pods --all-namespaces
 ```
 
-Используйте Grafana для визуализации использования ресурсов и планирования масштабирования.
+Use Grafana to visualize resource usage and plan scaling.
 
-## Следующие шаги
+## Next Steps
 
-После оценки требований:
+After assessing requirements:
 
-1. Подготовьте необходимое оборудование
-2. Настройте сеть
-3. Начните с [Подготовки локального устройства](./preparation.md)
-
+1. Prepare necessary equipment
+2. Configure network
+3. Start with [Local Device Preparation](./preparation.md)
 
 
 

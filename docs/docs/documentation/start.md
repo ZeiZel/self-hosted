@@ -2,9 +2,9 @@
 sidebar_position: 1
 ---
 
-# Поддержание проекта
+# Project Maintenance
 
-В этой главе поговорим, о том:
-- как поддерживать актуальность проекта
-- каким образом тут построен процесс контрибьюции
-- как быть
+In this chapter, we'll discuss:
+- how to keep the project up to date
+- how the contribution process is structured here
+- what to do

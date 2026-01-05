@@ -2,9 +2,9 @@
 sidebar_position: 3
 ---
 
-# Поддержка документации
+# Documentation Support
 
-Обновление версии
+Version update
 
 ```bash
 npm run docusaurus docs:version 1.0

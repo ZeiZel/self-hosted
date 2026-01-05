@@ -2,15 +2,15 @@
 sidebar_position: 1
 ---
 
-# Подготовка локального устройства
+# Local Device Preparation
 
-Перед началом развёртки инфраструктуры необходимо подготовить локальное устройство для управления всей системой. На этом устройстве будут устанавливаться инструменты для работы с Ansible, Terraform, Kubernetes и другими компонентами.
+Before starting infrastructure deployment, you need to prepare a local device for managing the entire system. This device will have tools installed for working with Ansible, Terraform, Kubernetes, and other components.
 
-## Установка необходимых инструментов
+## Installing Required Tools
 
 ### Ansible
 
-Ansible используется для автоматизации развёртки и настройки серверов.
+Ansible is used for automating deployment and server configuration.
 
 **macOS:**
 ```bash
@@ -23,14 +23,14 @@ sudo apt update
 sudo apt install -y ansible
 ```
 
-**Проверка установки:**
+**Installation Check:**
 ```bash
 ansible --version
 ```
 
 ### Terraform
 
-Terraform используется для управления инфраструктурой и генерации inventory файлов.
+Terraform is used for infrastructure management and inventory file generation.
 
 **macOS:**
 ```bash
@@ -39,20 +39,20 @@ brew install terraform
 
 **Linux:**
 ```bash
-# Скачайте последнюю версию с https://www.terraform.io/downloads
+# Download the latest version from https://www.terraform.io/downloads
 wget https://releases.hashicorp.com/terraform/1.6.0/terraform_1.6.0_linux_amd64.zip
 unzip terraform_1.6.0_linux_amd64.zip
 sudo mv terraform /usr/local/bin/
 ```
 
-**Проверка установки:**
+**Installation Check:**
 ```bash
 terraform --version
 ```
 
 ### kubectl
 
-Kubectl - инструмент командной строки для работы с Kubernetes кластером.
+Kubectl is a command-line tool for working with Kubernetes clusters.
 
 **macOS:**
 ```bash
@@ -65,14 +65,14 @@ curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stabl
 sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
 ```
 
-**Проверка установки:**
+**Installation Check:**
 ```bash
 kubectl version --client
 ```
 
 ### Helm
 
-Helm - менеджер пакетов для Kubernetes.
+Helm is a package manager for Kubernetes.
 
 **macOS:**
 ```bash
@@ -84,14 +84,14 @@ brew install helm
 curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 ```
 
-**Проверка установки:**
+**Installation Check:**
 ```bash
 helm version
 ```
 
 ### Helmfile
 
-Helmfile - инструмент для управления множеством Helm charts.
+Helmfile is a tool for managing multiple Helm charts.
 
 **macOS:**
 ```bash
@@ -105,27 +105,27 @@ tar -xzf helmfile_0.155.0_linux_amd64.tar.gz
 sudo mv helmfile /usr/local/bin/
 ```
 
-**Проверка установки:**
+**Installation Check:**
 ```bash
 helmfile version
 ```
 
 ### Helm Secrets Plugin
 
-Плагин для работы с зашифрованными секретами через SOPS.
+Plugin for working with encrypted secrets via SOPS.
 
 ```bash
 helm plugin install https://github.com/jkroepke/helm-secrets
 ```
 
-**Проверка установки:**
+**Installation Check:**
 ```bash
 helm plugin list
 ```
 
-### GPG и SOPS
+### GPG and SOPS
 
-GPG используется для шифрования секретов, SOPS - для работы с зашифрованными файлами.
+GPG is used for encrypting secrets, SOPS is for working with encrypted files.
 
 **macOS:**
 ```bash
@@ -138,15 +138,15 @@ sudo apt update
 sudo apt install -y gnupg sops
 ```
 
-**Проверка установки:**
+**Installation Check:**
 ```bash
 gpg --version
 sops --version
 ```
 
-### Docker (опционально)
+### Docker (optional)
 
-Docker может использоваться для локальной разработки и тестирования.
+Docker can be used for local development and testing.
 
 **macOS:**
 ```bash
@@ -160,26 +160,26 @@ sudo sh get-docker.sh
 sudo usermod -aG docker $USER
 ```
 
-**Проверка установки:**
+**Installation Check:**
 ```bash
 docker --version
 ```
 
-## Настройка SSH ключей
+## SSH Key Configuration
 
-Для доступа к удалённым серверам необходимо настроить SSH ключи.
+You need to configure SSH keys to access remote servers.
 
-### Генерация SSH ключа
+### SSH Key Generation
 
-Если у вас ещё нет SSH ключа:
+If you don't have an SSH key yet:
 
 ```bash
 ssh-keygen -t ed25519 -C "your_email@example.com"
 ```
 
-Следуйте инструкциям и сохраните ключ в стандартном расположении `~/.ssh/id_ed25519`.
+Follow the instructions and save the key in the standard location `~/.ssh/id_ed25519`.
 
-### Добавление ключа в SSH агент
+### Adding Key to SSH Agent
 
 **macOS:**
 ```bash
@@ -193,75 +193,75 @@ eval "$(ssh-agent -s)"
 ssh-add ~/.ssh/id_ed25519
 ```
 
-### Копирование публичного ключа на сервер
+### Copying Public Key to Server
 
-После получения доступа к VPS серверу, скопируйте публичный ключ:
+After gaining access to the VPS server, copy the public key:
 
 ```bash
 ssh-copy-id -i ~/.ssh/id_ed25519.pub user@your-vps-ip
 ```
 
-Или вручную:
+Or manually:
 
 ```bash
 cat ~/.ssh/id_ed25519.pub | ssh user@your-vps-ip "mkdir -p ~/.ssh && cat >> ~/.ssh/authorized_keys"
 ```
 
-## Настройка GPG ключей для SOPS
+## GPG Key Configuration for SOPS
 
-SOPS использует GPG для шифрования секретов.
+SOPS uses GPG for encrypting secrets.
 
-### Генерация GPG ключа
+### GPG Key Generation
 
 ```bash
 gpg --full-generate-key
 ```
 
-Выберите:
-- Тип ключа: RSA and RSA (default)
-- Размер ключа: 4096
-- Срок действия: можно выбрать 0 (без срока)
-- Реальное имя и email
+Choose:
+- Key type: RSA and RSA (default)
+- Key size: 4096
+- Expiration: you can choose 0 (no expiration)
+- Real name and email
 
-### Экспорт публичного ключа
+### Exporting Public Key
 
-После генерации ключа, экспортируйте его для использования в SOPS:
+After generating the key, export it for use in SOPS:
 
 ```bash
 gpg --list-secret-keys --keyid-format LONG
 ```
 
-Найдите строку вида `sec   rsa4096/XXXXXXXXXXXX 2024-01-01`, где `XXXXXXXXXXXX` - это ID ключа.
+Find a line like `sec   rsa4096/XXXXXXXXXXXX 2024-01-01`, where `XXXXXXXXXXXX` is the key ID.
 
-Экспортируйте публичный ключ:
+Export the public key:
 
 ```bash
 gpg --armor --export YOUR_KEY_ID > my-gpg-key.pub
 ```
 
-Сохраните этот ключ - он понадобится для настройки `.sops.yaml`.
+Save this key - it will be needed for configuring `.sops.yaml`.
 
-### Настройка GPG_TTY
+### GPG_TTY Configuration
 
-Для работы GPG в терминале установите переменную окружения:
+For GPG to work in the terminal, set the environment variable:
 
 ```bash
-echo 'export GPG_TTY=$(tty)' >> ~/.bashrc  # или ~/.zshrc
-source ~/.bashrc  # или source ~/.zshrc
+echo 'export GPG_TTY=$(tty)' >> ~/.bashrc  # or ~/.zshrc
+source ~/.bashrc  # or source ~/.zshrc
 ```
 
-## Клонирование репозитория
+## Cloning the Repository
 
-Клонируйте репозиторий проекта:
+Clone the project repository:
 
 ```bash
 git clone https://github.com/your-username/self-hosted.git
 cd self-hosted
 ```
 
-## Настройка .sops.yaml
+## .sops.yaml Configuration
 
-Создайте файл `.sops.yaml` в корне проекта для автоматической работы с секретами:
+Create a `.sops.yaml` file in the project root for automatic secret management:
 
 ```yaml
 ---
@@ -269,37 +269,37 @@ creation_rules:
   - pgp: YOUR_GPG_KEY_ID
 ```
 
-Замените `YOUR_GPG_KEY_ID` на ID вашего GPG ключа, который вы получили ранее.
+Replace `YOUR_GPG_KEY_ID` with your GPG key ID that you obtained earlier.
 
-Пример файла `.sops.yaml`:
+Example `.sops.yaml` file:
 ```yaml
 ---
 creation_rules:
   - pgp: 1E89965BF6B3B6D4AA02D096FEB9EA0B2906786F
 ```
 
-## Проверка доступа к удалённому серверу (VPS)
+## Checking Remote Server (VPS) Access
 
-Перед развёрткой убедитесь, что у вас есть:
+Before deployment, make sure you have:
 
-1. **IP адрес VPS сервера**
-2. **SSH доступ к серверу**
-3. **Права root или пользователя с sudo правами**
+1. **VPS server IP address**
+2. **SSH access to the server**
+3. **Root rights or user with sudo rights**
 
-Проверьте доступ:
+Check access:
 
 ```bash
 ssh user@your-vps-ip
 ```
 
-Если подключение успешно, вы готовы к следующему шагу - настройке удалённого устройства.
+If the connection is successful, you are ready for the next step - remote device configuration.
 
-## Проверка всех установленных инструментов
+## Checking All Installed Tools
 
-Убедитесь, что все инструменты установлены правильно:
+Make sure all tools are installed correctly:
 
 ```bash
-echo "=== Проверка установленных инструментов ==="
+echo "=== Checking Installed Tools ==="
 ansible --version
 terraform --version
 kubectl version --client
@@ -308,17 +308,16 @@ helmfile version
 helm plugin list
 gpg --version
 sops --version
-docker --version  # если установлен
+docker --version  # if installed
 ```
 
-Все инструменты должны быть установлены и готовы к работе.
+All tools should be installed and ready to use.
 
-## Следующие шаги
+## Next Steps
 
-После завершения подготовки локального устройства, переходите к:
+After completing local device preparation, proceed to:
 
-1. [Подключение и настройка удалённого устройства](./vps-setup.md) - настройка VPS сервера и развёртка Pangolin
-
+1. [Connecting and Configuring Remote Device](./vps-setup.md) - VPS server configuration and Pangolin deployment
 
 
 

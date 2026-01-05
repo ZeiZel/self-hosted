@@ -2,11 +2,11 @@
 sidebar_position: 3
 ---
 
-# Развёртка Kubernetes кластера
+# Deployment Kubernetes Cluster
 
 На этом этапе мы развернём Kubernetes кластер на локальном сервере, который будет использоваться для запуска всех сервисов.
 
-## Требования к локальному серверу
+## Requirements к локальному серверу
 
 Минимальные требования для Kubernetes кластера:
 
@@ -36,7 +36,7 @@ sidebar_position: 3
 
 Для полнофункционального кластера рекомендуется минимум 3 worker узла.
 
-## Настройка inventory для Kubernetes
+## Configuration inventory для Kubernetes
 
 Перед развёрткой необходимо настроить inventory файл с информацией о узлах кластера.
 
@@ -74,7 +74,7 @@ all:
         #   ip: 192.168.1.22
 ```
 
-### Настройка переменных Kubespray
+### Configuration переменных Kubespray
 
 Также можно настроить параметры Kubespray в секции `vars`:
 
@@ -86,19 +86,19 @@ all:
     kubespray_version: "release-2.23"
 ```
 
-## Развёртка Kubernetes через Kubespray
+## Deployment Kubernetes через Kubespray
 
 Развёртка выполняется через Ansible playbook, который использует Kubespray для автоматической установки Kubernetes.
 
 ### Выполнение развёртки
 
-Перейдите в директорию с Ansible playbooks:
+Navigate to директорию с Ansible playbooks:
 
 ```bash
 cd ansible/pangolin
 ```
 
-Запустите playbook для развёртки Kubernetes:
+Run playbook для развёртки Kubernetes:
 
 ```bash
 ansible-playbook -i inventory/hosts.yml playbooks/deploy_local_k8s.yml
@@ -140,7 +140,7 @@ Kubespray автоматически:
 - Настраивает сертификаты для безопасной коммуникации
 - Настраивает высокую доступность (если несколько master узлов)
 
-## Проверка кластера
+## Verification кластера
 
 После завершения развёртки, проверьте статус кластера.
 
@@ -158,9 +158,9 @@ scp ubuntu@k8s-master-1:/home/ubuntu/.kube/config ~/.kube/config
 cat ~/.kube/config
 ```
 
-### Проверка узлов
+### Verification узлов
 
-Проверьте статус всех узлов:
+Check статус всех узлов:
 
 ```bash
 kubectl get nodes
@@ -175,9 +175,9 @@ k8s-worker-1    Ready    <none>          4m    v1.28.0
 k8s-worker-2    Ready    <none>          4m    v1.28.0
 ```
 
-### Проверка системных подов
+### Verification системных подов
 
-Проверьте, что все системные поды запущены:
+Check, что все системные поды запущены:
 
 ```bash
 kubectl get pods --all-namespaces
@@ -197,7 +197,7 @@ kube-system   coredns-xxx                              1/1     Running   0      
 
 После успешной развёртки Kubernetes кластера, необходимо инициализировать Helmfile для управления Helm charts.
 
-Перейдите в директорию с Kubernetes конфигурацией:
+Navigate to директорию с Kubernetes конфигурацией:
 
 ```bash
 cd kubernetes
@@ -215,7 +215,7 @@ helmfile init --force
 - `.helmfile/environments.yaml.gotmpl` - настройки окружений
 - `.helmfile/releases.yaml.gotmpl` - автоматически генерируемый список релизов
 
-## Настройка Gateway API
+## Configuration Gateway API
 
 Некоторые сервисы требуют Gateway API для работы. Установите Gateway API CRDs:
 
@@ -223,7 +223,7 @@ helmfile init --force
 kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
 ```
 
-Проверьте установку:
+Check установку:
 
 ```bash
 kubectl get crd | grep gateway
@@ -231,71 +231,72 @@ kubectl get crd | grep gateway
 
 Должны быть созданы CRDs для Gateway API.
 
-## Устранение неполадок
+## Troubleshooting
 
-### Проблема: Узлы не в статусе Ready
+### Issue: Узлы не в статусе Ready
 
-Проверьте статус узла:
+Check статус узла:
 
 ```bash
 kubectl describe node k8s-worker-1
 ```
 
-Проверьте логи kubelet на узле:
+Check логи kubelet на узле:
 
 ```bash
 ssh ubuntu@k8s-worker-1 "sudo journalctl -u kubelet -n 50"
 ```
 
-### Проблема: Поды не запускаются
+### Issue: Поды не запускаются
 
-Проверьте статус подов:
+Check статус подов:
 
 ```bash
 kubectl get pods --all-namespaces
 kubectl describe pod <pod-name> -n <namespace>
 ```
 
-Проверьте события:
+Check события:
 
 ```bash
 kubectl get events --sort-by='.lastTimestamp'
 ```
 
-### Проблема: Нет доступа к кластеру
+### Issue: Нет доступа к кластеру
 
-Проверьте kubeconfig:
+Check kubeconfig:
 
 ```bash
 kubectl config view
 kubectl cluster-info
 ```
 
-Убедитесь, что вы можете подключиться к API серверу:
+Make sure, что вы можете подключиться к API серверу:
 
 ```bash
 kubectl get nodes
 ```
 
-### Проблема: Сетевая связность между подами
+### Issue: Сетевая связность между подами
 
-Проверьте статус сетевого плагина:
+Check статус сетевого плагина:
 
 ```bash
 kubectl get pods -n kube-system | grep calico  # или flannel, в зависимости от плагина
 ```
 
-Проверьте сетевые политики:
+Check сетевые политики:
 
 ```bash
 kubectl get networkpolicies --all-namespaces
 ```
 
-## Следующие шаги
+## Next Steps
 
 После успешной развёртки Kubernetes кластера:
 
 1. [Настройка секретов](./secrets-setup.md) - настройка GPG ключей и SOPS для управления секретами
+
 
 
 

@@ -2,28 +2,27 @@
 sidebar_position: 2
 ---
 
-# Что нам нужно для старта
+# What We Need to Get Started
 
-## Утилиты
+## Utilities
 
-- docker - контейнеризация
-- kubernetes - оркестрация
+- docker - containerization
+- kubernetes - orchestration
   - helm
   - helmfile
-- terraform - выделение ресурсов
-- ansible - автоматизация подготовки окружений
-- sops - работа с зашированными переменными
+- terraform - resource allocation
+- ansible - environment preparation automation
+- sops - working with encrypted variables
 
-## Команды запуска
+## Startup Commands
 
 
 
-Инициализация helmfile
+Helmfile initialization
 
 ```bash
 helmfile init --force
 ```
 
-Кластерной базой является [kubespray](https://github.com/kubernetes-sigs/kubespray?tab=readme-ov-file)
-
+The cluster base is [kubespray](https://github.com/kubernetes-sigs/kubespray?tab=readme-ov-file)
 

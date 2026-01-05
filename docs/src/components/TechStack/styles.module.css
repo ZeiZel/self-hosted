@@ -1,0 +1,62 @@
+.techStack {
+	margin: 2rem 0;
+}
+
+.title {
+	font-size: 1.5rem;
+	font-weight: 600;
+	margin-bottom: 1.5rem;
+	text-align: center;
+	color: var(--ifm-heading-color);
+}
+
+.grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+	gap: 1rem;
+}
+
+.techItem {
+	padding: 1rem;
+	display: flex;
+	align-items: center;
+	gap: 1rem;
+	transition: all 0.2s ease;
+	border: 1px solid var(--ifm-color-emphasis-200);
+}
+
+.techItem:hover {
+	border-color: var(--ifm-color-primary);
+	transform: translateY(-2px);
+	box-shadow: 0 4px 12px rgba(99, 102, 241, 0.1);
+}
+
+.icon {
+	font-size: 2rem;
+	flex-shrink: 0;
+}
+
+.content {
+	flex: 1;
+}
+
+.name {
+	font-size: 1rem;
+	font-weight: 600;
+	margin: 0 0 0.25rem 0;
+	color: var(--ifm-heading-color);
+}
+
+.description {
+	font-size: 0.85rem;
+	color: var(--ifm-color-content-secondary);
+	margin: 0;
+	line-height: 1.4;
+}
+
+@media (max-width: 768px) {
+	.grid {
+		grid-template-columns: 1fr;
+	}
+}
+

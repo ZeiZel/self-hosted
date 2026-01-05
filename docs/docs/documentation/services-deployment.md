@@ -2,7 +2,7 @@
 sidebar_position: 6
 ---
 
-# Развёртка сервисов
+# Deployment of Services
 
 После развёртки базовой инфраструктуры можно приступить к развёртке всех остальных сервисов. Helmfile автоматически учтёт зависимости между сервисами и развернёт их в правильном порядке.
 
@@ -18,17 +18,17 @@ sidebar_position: 6
 6. **Социальные сервисы** (Stoat, Stalwart)
 7. **Сервисы данных** (Vaultwarden, Syncthing, ownCloud)
 
-## Развёртка всех сервисов
+## Deployment всех of Services
 
 ### Выполнение развёртки
 
-Перейдите в директорию с Kubernetes конфигурацией:
+Navigate to директорию с Kubernetes конфигурацией:
 
 ```bash
 cd kubernetes
 ```
 
-Запустите развёртку всех сервисов:
+Run развёртку всех сервисов:
 
 ```bash
 helmfile -e k8s apply
@@ -36,15 +36,15 @@ helmfile -e k8s apply
 
 Эта команда развернёт все сервисы, учитывая зависимости. Процесс может занять 30-60 минут в зависимости от количества сервисов и скорости загрузки образов.
 
-### Проверка статуса
+### Verification статуса
 
-Проверьте статус всех релизов:
+Check статус всех релизов:
 
 ```bash
 helmfile -e k8s list
 ```
 
-Проверьте статус подов по namespace:
+Check статус подов по namespace:
 
 ```bash
 kubectl get pods -n db
@@ -393,37 +393,37 @@ kubectl get events --all-namespaces --sort-by='.lastTimestamp'
 kubectl logs -n <namespace> -l app=<app-name> -f
 ```
 
-## Устранение неполадок
+## Troubleshooting
 
-### Проблема: Поды не запускаются
+### Issue: Поды не запускаются
 
-Проверьте события:
+Check события:
 
 ```bash
 kubectl describe pod <pod-name> -n <namespace>
 kubectl get events -n <namespace> --sort-by='.lastTimestamp'
 ```
 
-Проверьте логи:
+Check логи:
 
 ```bash
 kubectl logs <pod-name> -n <namespace>
 ```
 
-### Проблема: Ошибки инициализации баз данных
+### Issue: Ошибки инициализации баз данных
 
-Проверьте статус баз данных:
+Check статус баз данных:
 
 ```bash
 kubectl get pods -n db
 kubectl logs -n db <database-pod>
 ```
 
-Убедитесь, что базы данных полностью запущены перед развёрткой зависимых сервисов.
+Make sure, что базы данных полностью запущены перед развёрткой зависимых сервисов.
 
-### Проблема: Недостаточно ресурсов
+### Issue: Недостаточно ресурсов
 
-Проверьте использование ресурсов:
+Check использование ресурсов:
 
 ```bash
 kubectl top nodes
@@ -432,22 +432,23 @@ kubectl top pods --all-namespaces
 
 При необходимости добавьте ресурсы на узлы или уменьшите количество реплик в values.yaml.
 
-### Проблема: Ошибки загрузки образов
+### Issue: Ошибки загрузки образов
 
-Проверьте статус подов:
+Check статус подов:
 
 ```bash
 kubectl get pods --all-namespaces | grep ImagePullBackOff
 ```
 
-Убедитесь, что узлы могут загружать образы из registry.
+Make sure, что узлы могут загружать образы из registry.
 
-## Следующие шаги
+## Next Steps
 
 После успешной развёртки всех сервисов:
 
 1. [Настройка Pangolin и Wireguard туннеля](./pangolin-setup.md) - настройка VPN туннеля для доступа к сервисам
 2. [Настройка сервисов](./services-configuration.md) - первоначальная настройка каждого сервиса
+
 
 
 
