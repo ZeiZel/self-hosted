@@ -6,10 +6,105 @@ on:
       - main
 
 jobs:
+  check-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      charts-changed: ${{ steps.check.outputs.charts-changed }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Check for chart changes
+        id: check
+        run: |
+          if git diff --name-only HEAD~1 HEAD | grep -q "^kubernetes/charts/"; then
+            echo "charts-changed=true" >> $GITHUB_OUTPUT
+            echo "Charts have been modified"
+          else
+            echo "charts-changed=false" >> $GITHUB_OUTPUT
+            echo "No chart changes detected"
+          fi
+
+  validate-charts:
+    needs: check-changes
+    if: needs.check-changes.outputs.charts-changed == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Helm
+        uses: azure/setup-helm@v4
+
+      - name: Add Helm repos
+        run: |
+          helm repo add harbor https://helm.goharbor.io
+          helm repo add devtron https://charts.devtron.ai
+          helm repo update
+
+      - name: Validate charts
+        run: |
+          set -e
+          failed_charts=()
+          
+          for chart_dir in kubernetes/charts/*/; do
+            if [ ! -f "${chart_dir}Chart.yaml" ]; then
+              continue
+            fi
+            
+            chart_name=$(basename "$chart_dir")
+            echo "Validating chart: $chart_name"
+            
+            # Build dependencies if Chart.yaml contains dependencies
+            if grep -q "^dependencies:" "${chart_dir}Chart.yaml"; then
+              echo "  Building dependencies for $chart_name..."
+              helm dependency build "$chart_dir" || {
+                echo "  ❌ Failed to build dependencies for $chart_name"
+                failed_charts+=("$chart_name (dependencies)")
+                continue
+              }
+            fi
+            
+            # Lint chart
+            echo "  Linting $chart_name..."
+            helm lint "$chart_dir" || {
+              echo "  ❌ Lint failed for $chart_name"
+              failed_charts+=("$chart_name (lint)")
+              continue
+            }
+            
+            # Dry-run package
+            echo "  Dry-run packaging $chart_name..."
+            helm package --dry-run "$chart_dir" > /dev/null || {
+              echo "  ❌ Package dry-run failed for $chart_name"
+              failed_charts+=("$chart_name (package)")
+              continue
+            }
+            
+            echo "  ✅ $chart_name validated successfully"
+          done
+          
+          if [ ${#failed_charts[@]} -gt 0 ]; then
+            echo ""
+            echo "❌ Validation failed for the following charts:"
+            printf '  - %s\n' "${failed_charts[@]}"
+            exit 1
+          fi
+          
+          echo ""
+          echo "✅ All charts validated successfully"
+
   release:
+    needs: [check-changes, validate-charts]
+    if: needs.check-changes.outputs.charts-changed == 'true'
     permissions:
       contents: write
       packages: write
+      pages: write
 
     runs-on: ubuntu-latest
     steps:
@@ -28,8 +123,22 @@ jobs:
 
       - name: Add Helm repos
         run: |
-          helm repo add firefly-iii https://firefly-iii.github.io/kubernetes/
-          helm repo add self-hosted https://zeizel.github.io/self-hosted/
+          helm repo add harbor https://helm.goharbor.io
+          helm repo add devtron https://charts.devtron.ai
+          helm repo update
+
+      - name: Build chart dependencies
+        run: |
+          for chart_dir in kubernetes/charts/*/; do
+            if [ -f "${chart_dir}Chart.yaml" ] && grep -q "^dependencies:" "${chart_dir}Chart.yaml"; then
+              chart_name=$(basename "$chart_dir")
+              echo "Building dependencies for $chart_name..."
+              helm dependency build "$chart_dir" || {
+                echo "Error: Failed to build dependencies for $chart_name"
+                exit 1
+              }
+            fi
+          done
 
       - name: Run chart-releaser
         uses: helm/chart-releaser-action@v1.6.0
