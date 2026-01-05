@@ -1,0 +1,46 @@
+---
+- name: Ensure .ssh directory exists
+  file:
+    path: "{{ ansible_env.HOME }}/.ssh"
+    state: directory
+    mode: '0700'
+
+- name: Configure SSH config for Pangolin tunnel
+  blockinfile:
+    path: "{{ ansible_env.HOME }}/.ssh/config"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - Pangolin"
+    block: |
+      Host {{ pangolin_tunnel_host | default('pangolin-tunnel') }}
+        HostName {{ pangolin_server_endpoint }}
+        User {{ pangolin_ssh_user | default('admin') }}
+        Port {{ pangolin_ssh_port | default(22) }}
+        ProxyCommand ssh -W %h:%p {{ pangolin_jump_host | default('') }}
+        IdentityFile {{ pangolin_ssh_key_path | default('~/.ssh/id_rsa') }}
+        ServerAliveInterval 60
+        ServerAliveCountMax 3
+    create: yes
+
+- name: Add SSH key for Pangolin access
+  authorized_key:
+    user: "{{ ansible_user }}"
+    state: present
+    key: "{{ item }}"
+  loop: "{{ pangolin_ssh_keys | default([]) }}"
+  when: pangolin_ssh_keys is defined
+
+- name: Test SSH connection through Pangolin
+  command: ssh -o ConnectTimeout=5 -o StrictHostKeyChecking=no {{ pangolin_tunnel_host }} "echo 'Connection successful'"
+  register: ssh_test
+  changed_when: false
+  failed_when: false
+  when: pangolin_test_connection | default(false)
+
+- name: Display SSH connection status
+  debug:
+    msg: "SSH connection test: {{ 'Success' if ssh_test.rc == 0 else 'Failed' }}"
+  when: pangolin_test_connection | default(false) and ssh_test is defined
+
+
+
+
+

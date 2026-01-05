@@ -1,0 +1,86 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+
+- name: Install security packages
+  apt:
+    name:
+      - unattended-upgrades
+      - apt-listchanges
+      - ufw
+      - fail2ban
+      - openssl
+      - sudo
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+
+- name: Create new user
+  user:
+    name: "{{ new_user_name | default('admin') }}"
+    groups: sudo
+    shell: /bin/bash
+    create_home: yes
+    password: "{{ new_user_password | default(secure_password) | password_hash('sha512') }}"
+  no_log: true
+
+- name: Add SSH public key for new user
+  authorized_key:
+    user: "{{ new_user_name | default('admin') }}"
+    state: present
+    key: "{{ item }}"
+  loop: "{{ new_user_ssh_keys | default([]) }}"
+  when: new_user_ssh_keys is defined
+
+- name: Configure SSH to disable root login
+  lineinfile:
+    path: /etc/ssh/sshd_config
+    regexp: "{{ item.regexp }}"
+    line: "{{ item.line }}"
+    backup: yes
+  loop:
+    - { regexp: '^#?PermitRootLogin', line: 'PermitRootLogin no' }
+    - { regexp: '^#?PasswordAuthentication', line: 'PasswordAuthentication no' }
+    - { regexp: '^#?PubkeyAuthentication', line: 'PubkeyAuthentication yes' }
+    - { regexp: '^#?X11Forwarding', line: 'X11Forwarding no' }
+  notify: restart sshd
+
+- name: Generate strong password using openssl
+  shell: openssl rand -base64 32
+  register: openssl_password
+  changed_when: false
+  no_log: true
+
+- name: Set generated password fact
+  set_fact:
+    generated_password: "{{ openssl_password.stdout }}"
+  no_log: true
+
+- name: Configure UFW firewall
+  ufw:
+    rule: "{{ item.rule }}"
+    port: "{{ item.port }}"
+    proto: "{{ item.proto | default('tcp') }}"
+  loop: "{{ firewall_rules | default([]) }}"
+  when: firewall_rules is defined
+
+- name: Enable UFW firewall
+  ufw:
+    state: enabled
+    policy: deny
+
+- name: Disable unnecessary services
+  systemd:
+    name: "{{ item }}"
+    enabled: no
+    state: stopped
+  loop: "{{ unnecessary_services | default([]) }}"
+  ignore_errors: yes
+
+
+
+
+

@@ -1,0 +1,31 @@
+all:
+  hosts:
+{% for host in groups['k8s_masters'] + groups['k8s_workers'] %}
+    {{ hostvars[host]['inventory_hostname'] }}:
+      ansible_host: {{ hostvars[host]['ansible_host'] }}
+      ip: {{ hostvars[host]['ansible_host'] }}
+      access_ip: {{ hostvars[host]['ansible_host'] }}
+{% endfor %}
+  children:
+    kube_control_plane:
+      hosts:
+{% for host in groups['k8s_masters'] %}
+        {{ hostvars[host]['inventory_hostname'] }}:
+{% endfor %}
+    kube_node:
+      hosts:
+{% for host in groups['k8s_workers'] %}
+        {{ hostvars[host]['inventory_hostname'] }}:
+{% endfor %}
+    etcd:
+      hosts:
+{% for host in groups['k8s_masters'] %}
+        {{ hostvars[host]['inventory_hostname'] }}:
+{% endfor %}
+    calico_rr:
+      hosts: {}
+
+
+
+
+

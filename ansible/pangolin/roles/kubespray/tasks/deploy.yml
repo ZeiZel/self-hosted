@@ -1,0 +1,65 @@
+---
+- name: Check cluster connectivity
+  command: >
+    {{ kubespray_install_dir }}/venv/bin/ansible
+    -i {{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml
+    all -m ping
+  register: connectivity_check
+  changed_when: false
+  failed_when: false
+
+- name: Display connectivity status
+  debug:
+    msg: "{{ connectivity_check.stdout }}"
+
+- name: Run kubespray cluster deployment
+  command: >
+    {{ kubespray_install_dir }}/venv/bin/ansible-playbook
+    -i {{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml
+    {{ kubespray_install_dir }}/kubespray/cluster.yml
+    -b
+    -v
+  environment:
+    ANSIBLE_HOST_KEY_CHECKING: "False"
+  register: kubespray_deploy
+  async: 3600
+  poll: 30
+
+- name: Wait for kubespray deployment to complete
+  async_status:
+    jid: "{{ kubespray_deploy.ansible_job_id }}"
+  register: job_result
+  until: job_result.finished
+  retries: 120
+  delay: 30
+
+- name: Check deployment result
+  fail:
+    msg: "Kubespray deployment failed"
+  when: job_result.failed
+
+- name: Copy kubeconfig to local machine
+  fetch:
+    src: "{{ kubespray_kubeconfig_path | default('/root/.kube/config') }}"
+    dest: "{{ kubespray_local_kubeconfig_path | default('~/.kube/config') }}"
+    flat: yes
+  when: kubespray_copy_kubeconfig | default(true)
+
+- name: Verify cluster is running
+  command: >
+    {{ kubespray_install_dir }}/venv/bin/ansible
+    -i {{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml
+    kube_control_plane[0]
+    -m shell
+    -a "kubectl get nodes"
+  register: cluster_status
+  changed_when: false
+
+- name: Display cluster status
+  debug:
+    msg: "{{ cluster_status.stdout }}"
+
+
+
+
+

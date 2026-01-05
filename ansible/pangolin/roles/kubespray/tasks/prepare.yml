@@ -1,0 +1,56 @@
+---
+- name: Check if kubespray directory exists
+  stat:
+    path: "{{ kubespray_install_dir }}/kubespray"
+  register: kubespray_dir
+
+- name: Clone kubespray repository
+  git:
+    repo: "https://github.com/kubernetes-sigs/kubespray.git"
+    dest: "{{ kubespray_install_dir }}/kubespray"
+    version: "{{ kubespray_version | default('release-2.23') }}"
+    force: "{{ kubespray_force_clone | default(false) }}"
+  when: not kubespray_dir.stat.exists
+
+- name: Install Python dependencies
+  pip:
+    requirements: "{{ kubespray_install_dir }}/kubespray/requirements.txt"
+    virtualenv: "{{ kubespray_install_dir }}/venv"
+    virtualenv_command: "{{ kubespray_venv_command | default('python3 -m venv') }}"
+  become: false
+
+- name: Create kubespray inventory directory
+  file:
+    path: "{{ kubespray_install_dir }}/inventory/{{ cluster_name }}"
+    state: directory
+    mode: '0755'
+
+- name: Copy sample inventory
+  command: >
+    cp -rf
+    {{ kubespray_install_dir }}/kubespray/inventory/sample
+    {{ kubespray_install_dir }}/inventory/{{ cluster_name }}
+  args:
+    creates: "{{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml"
+  when: not kubespray_inventory_exists | default(false)
+
+- name: Generate inventory from template
+  template:
+    src: inventory.yaml.j2
+    dest: "{{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml"
+    mode: '0644'
+
+- name: Copy kubespray configuration
+  template:
+    src: "{{ item }}.j2"
+    dest: "{{ kubespray_install_dir }}/inventory/{{ cluster_name }}/{{ item }}"
+    mode: '0644'
+  loop:
+    - group_vars/all/all.yml
+    - group_vars/k8s_cluster/addons.yml
+  when: kubespray_custom_config | default(false)
+
+
+
+
+

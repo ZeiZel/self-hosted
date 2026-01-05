@@ -1,0 +1,8 @@
+---
+- name: Deploy Pangolin Client on Local Server Only
+  hosts: local
+  become: yes
+  roles:
+    - common
+    - docker
+    - client_setup

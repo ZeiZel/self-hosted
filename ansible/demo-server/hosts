@@ -1,2 +1,0 @@
-[demo]
-127.0.0.1 ansible_user=zeizel ansible_connection=local

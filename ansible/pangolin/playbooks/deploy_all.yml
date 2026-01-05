@@ -1,0 +1,16 @@
+---
+- name: Deploy Pangolin Server on VPS
+  hosts: vps
+  become: yes
+  roles:
+    - common
+    - docker
+    - pangolin_server
+
+- name: Deploy Pangolin Client on Local Server
+  hosts: local
+  become: yes
+  roles:
+    - common
+    - docker
+    - pangolin_client

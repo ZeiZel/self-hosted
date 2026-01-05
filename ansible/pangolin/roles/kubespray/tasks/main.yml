@@ -1,0 +1,11 @@
+---
+- name: Include preparation tasks
+  include_tasks: prepare.yml
+
+- name: Include deployment tasks
+  include_tasks: deploy.yml
+
+
+
+
+
