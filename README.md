@@ -2,15 +2,16 @@
 
 ## Services
 
-- 🌐 Caddy — reverse proxy + HTTPS
-- 🎯 Dashy — center dashboard
-- 🧠 Jetbrains Hub - YouTrack, Hub, Teamcity
+- 🌐 Traefik — reverse proxy + HTTPS
+- Pangolin - connect through VPN between machines
+- ~~Dashy~~ **Glance** — center dashboard with high customizable
+- 🧠 Jetbrains - YouTrack, Hub, Teamcity
 - 📊 Grafana + Prometheus — monitoring
 - 📦 ELK (Elasticsearch, Logstash, Kibana) — logging
 - 🧭 Consul (+ Fabio, Register and Prometheus exporter) — discovery
 - 🔑 Vault — secret vault
 - 🤫 Vaultwarden - collect passwords
-- 💬 Revolt — community (Maybe Matrix Element)
+- 💬 Stoat (prev Revolt) — community
 - 🛠 GitLab — CI/CD + Git-repo
 - 📝 Notesnook (notesnook-sync-server) — notes
 - 🔐 Authentik — SSO authn
@@ -150,6 +151,159 @@ If docker image can't access to file, you should change ownership for folder
 ```bash
 sudo chown -R $(id -un):$(id -gn) ~/data
 ```
+
+## Quick Start (Manual Setup)
+
+Быстрый запуск проекта без использования `install.sh`. Предполагается, что у вас настроен SSH config с хостами `server` и `vps`.
+
+### 1. Настройка Terraform
+
+Создайте `terraform/terraform.tfvars`:
+
+```bash
+cat > terraform/terraform.tfvars << 'EOF'
+local_servers = [
+  {
+    name       = "server"
+    hostname   = "server.local"
+    ip_address = "192.168.31.100"
+    role       = "master"
+    ssh_user   = "zeizel"
+    ssh_key    = "~/.ssh/id_rsa"
+  }
+]
+
+local_clients = []
+EOF
+```
+
+### 2. Запуск Terraform
+
+```bash
+cd terraform
+terraform init
+terraform plan
+terraform apply -auto-approve
+cd ..
+```
+
+### 3. Настройка Ansible Inventory для VPS
+
+Обновите `ansible/pangolin/inventory/hosts.yml`, добавив VPS в секцию `vps`:
+
+```yaml
+vps:
+  hosts:
+    pangolin_vps:
+      ansible_host: 80.90.178.207
+      ansible_user: root
+      ansible_port: 22
+      pangolin_role: server
+      pangolin_domain: "yourdomain.com"  # Замените на ваш домен
+      pangolin_admin_email: "admin@yourdomain.com"  # Замените на ваш email
+```
+
+### 4. Настройка GPG/SOPS (если еще не настроено)
+
+```bash
+# Создать GPG ключ (если еще нет)
+gpg --full-generate-key
+
+# Получить ID ключа
+GPG_KEY_ID=$(gpg --list-secret-keys --keyid-format LONG | grep -E "^sec" | head -1 | grep -oE "[A-F0-9]{40}")
+
+# Настроить .sops.yaml
+cat > kubernetes/.sops.yaml << EOF
+---
+creation_rules:
+  - pgp: ${GPG_KEY_ID}
+EOF
+
+# Настроить GPG_TTY
+export GPG_TTY=$(tty)
+```
+
+### 5. Развёртка через Ansible
+
+```bash
+cd ansible/pangolin
+
+# Базовая настройка локального сервера
+ansible-playbook -i inventory/hosts.yml playbooks/deploy_local.yml
+
+# Развёртка Kubernetes кластера (если есть k8s серверы)
+ansible-playbook -i inventory/hosts.yml playbooks/deploy_local_k8s.yml
+
+# Развёртка VPS (Pangolin server)
+ansible-playbook -i inventory/hosts.yml playbooks/deploy_vps.yml
+
+cd ../..
+```
+
+### 6. Развёртка Kubernetes сервисов
+
+```bash
+cd kubernetes
+
+# Инициализация helmfile
+helmfile init --force
+
+# Установка Gateway API
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+
+# Настройка Vault (опционально)
+./scripts/vault-setup.sh
+
+# Развёртка всех сервисов
+helmfile -e k8s apply
+
+cd ..
+```
+
+### Полный блок команд (копировать и выполнить)
+
+```bash
+# 1. Terraform конфигурация
+cat > terraform/terraform.tfvars << 'EOF'
+local_servers = [
+  {
+    name       = "server"
+    hostname   = "server.local"
+    ip_address = "192.168.31.100"
+    role       = "master"
+    ssh_user   = "zeizel"
+    ssh_key    = "~/.ssh/id_rsa"
+  }
+]
+local_clients = []
+EOF
+
+# 2. Terraform
+cd terraform && terraform init && terraform apply -auto-approve && cd ..
+
+# 3. Ansible - базовая настройка
+cd ansible/pangolin && ansible-playbook -i inventory/hosts.yml playbooks/deploy_local.yml && cd ../..
+
+# 4. Ansible - Kubernetes (если нужно)
+cd ansible/pangolin && ansible-playbook -i inventory/hosts.yml playbooks/deploy_local_k8s.yml && cd ../..
+
+# 5. Ansible - VPS (если нужно)
+cd ansible/pangolin && ansible-playbook -i inventory/hosts.yml playbooks/deploy_vps.yml && cd ../..
+
+# 6. Kubernetes - инициализация
+cd kubernetes && helmfile init --force && cd ..
+
+# 7. Kubernetes - Gateway API
+kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
+
+# 8. Kubernetes - развёртка сервисов
+cd kubernetes && helmfile -e k8s apply && cd ..
+```
+
+**Примечание:** Перед выполнением убедитесь, что:
+- Настроен SSH config с хостами `server` и `vps`
+- Настроен GPG ключ для SOPS (см. раздел "Create keys" выше)
+- Обновлен `ansible/pangolin/inventory/hosts.yml` с правильными данными VPS
 
 ## Original idea
 
