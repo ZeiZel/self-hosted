@@ -4,7 +4,7 @@ sidebar_position: 1
 
 # Какие сервисы тут представлены
 
-- [Dashy](https://dashy.to/docs/deployment#kubernetes) - наш дашборд со всеми сервисами
+- [Glance](https://github.com/zurdi15/glance) - современный дашборд со всеми сервисами (замена Dashy)
 - Продуктивность
   - [Notesnook](https://notesnook.com/) - удобный open-source продукт для real-time ведения заметок
   - [Excalidraw](https://github.com/alswl/excalidraw-collaboration) - удобная замена FigJam
@@ -23,7 +23,7 @@ sidebar_position: 1
   - [TeamCity](https://www.jetbrains.com/ru-ru/teamcity/) - организатор CI/CD
   - [JB Hub](https://www.jetbrains.com/hub/) - менеджер для коннекта YouTrack, Teamcity и остальных к ним причастных сервисов
 - Общие хранилища
-  - [Harbor](https://habr.com/ru/articles/937168/)
+  - [Harbor](https://goharbor.io/) - container registry
   - [Sonatype Nexus](https://help.sonatype.com/en/installing-iq-server.html)
 - Удалённое хранение данных
   - [Syncthing](https://syncthing.net/)
@@ -40,7 +40,8 @@ sidebar_position: 1
 Инструменты-помощники:
 
 - [Мониторинг](https://habr.com/ru/articles/766102/)
-  - [Bytebase](https://www.bytebase.com/)
+  - [Devtron](https://devtron.ai/) - Kubernetes dashboard и CI/CD платформа
+  - [Bytebase](https://www.bytebase.com/) - управление схемами баз данных
   - [Prometheus](https://prometheus.io/docs/prometheus/latest/installation/)
   - [Loki](https://grafana.com/docs/loki/latest/setup/install/helm/)
   - [Grafana](https://grafana.com/docs/grafana/latest/setup-grafana/installation/kubernetes/)

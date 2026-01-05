@@ -17,7 +17,7 @@ sidebar_position: 3
     - [ ] hub
     - [ ] gitlab
     - [ ] teamcity
-  - [ ] dashy
+  - [x] glance (замена dashy)
   - [ ] DBs
     - [ ] postgres
     - [ ] valkey
@@ -35,5 +35,6 @@ sidebar_position: 3
 - [ ] Подготовить к локальному деплою
   - [ ]
 - [ ] Подготовить к деплою в прод
-  - [ ] Ansible
-  - [ ] Terraform
+  - [x] Ansible (server_security, kubespray, client_setup роли)
+  - [x] Terraform (управление локальными машинами)
+  - [x] Kubernetes (pangolin-client, новые сервисы)
