@@ -89,7 +89,7 @@ const themeConfig: ThemeConfig = {
         items: [
           {
             label: "Getting Started",
-            to: "/docs/intro",
+            to: "/docs/getting-started/overview",
           },
           {
             label: "Services",

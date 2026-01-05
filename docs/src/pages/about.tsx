@@ -3,7 +3,7 @@ import Link from '@docusaurus/Link';
 import useDocusaurusContext from '@docusaurus/useDocusaurusContext';
 import Layout from '@theme/Layout';
 import Heading from '@theme/Heading';
-import { aboutTranslations } from './about-i18n';
+import { aboutTranslations } from '@site/src/i18n/about';
 
 export default function AboutPage(): ReactNode {
 	const { i18n } = useDocusaurusContext();

@@ -7,7 +7,7 @@ import Heading from '@theme/Heading';
 import ServiceCard from '@site/src/components/ServiceCard';
 import TechStack from '@site/src/components/TechStack';
 import QuickStartLinks from '@site/src/components/QuickStartLinks';
-import { translations } from './i18n';
+import { translations } from '@site/src/i18n';
 
 import styles from './index.module.css';
 
@@ -25,7 +25,7 @@ function HomepageHeader(): ReactNode {
 				<div className={styles.buttons}>
 					<Link
 						className='button button--primary button--lg'
-						to='/docs/intro'
+						to='/docs/getting-started/overview'
 					>
 						{t.hero.getStarted}
 					</Link>

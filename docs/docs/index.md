@@ -20,9 +20,9 @@ This repository provides a complete self-hosted infrastructure solution for deve
 
 ## Quick Navigation
 
-- [Getting Started](./getting-started/overview.md) - Start here if you're new
-- [Services Overview](./services/overview.md) - Learn about available services
-- [Deployment Guides](./deployment/overview.md) - Choose your deployment method
+- [Getting Started](./getting-started/overview) - Start here if you're new
+- [Services Overview](./services/overview) - Learn about available services
+- [Deployment Guides](./deployment/overview) - Choose your deployment method
 
 ## Features
 
