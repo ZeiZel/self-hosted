@@ -3,13 +3,13 @@ services:
   postgres:
     image: postgres:latest
     container_name: vw-postgres
-    ports: [$POSTGRESQL_OUT_PORT:5432]
+    ports: [${POSTGRESQL_OUT_PORT:-5432}:5432]
     environment:
-      POSTGRES_USER: ${PG_LOGIN}
-      POSTGRES_PASSWORD: ${PG_PASS}
-      POSTGRES_DB: ${PG_NAME}
+      POSTGRES_USER: ${PG_LOGIN:-postgres}
+      POSTGRES_PASSWORD: ${PG_PASS:-postgres}
+      POSTGRES_DB: ${PG_NAME:-postgres}
     volumes: ['data:/var/lib/postgresql/data']
-    networks: [db-net]
+    networks: [postgresql-net]
     restart: unless-stopped
     healthcheck:
       test: [CMD-SHELL, 'pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}']
@@ -20,4 +20,5 @@ services:
 volumes:
   data:
 networks:
-  db-net:
+  postgresql-net:
+

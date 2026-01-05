@@ -1,0 +1,41 @@
+---
+services:
+  postgres:
+    image: postgres:latest
+    container_name: bytebase-postgres
+    environment:
+      POSTGRES_USER: ${PG_LOGIN:-bytebase}
+      POSTGRES_PASSWORD: ${PG_PASS:-bytebase}
+      POSTGRES_DB: ${PG_NAME:-bytebase}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - bytebase-net
+    restart: unless-stopped
+    healthcheck:
+      test: [CMD-SHELL, 'pg_isready -d $${POSTGRES_DB:-bytebase} -U $${POSTGRES_USER:-bytebase}']
+      start_period: 20s
+      interval: 30s
+      retries: 5
+      timeout: 5s
+
+  bytebase:
+    image: bytebase/bytebase:3.6.1
+    container_name: bytebase
+    ports: [ 8080:8080 ]
+    environment:
+      PG_URL: postgres://${PG_LOGIN:-bytebase}:${PG_PASS:-bytebase}@postgres:${PG_PORT:-5432}/${PG_NAME:-bytebase}
+    volumes:
+      - data:/var/opt/bytebase
+    networks:
+      - bytebase-net
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+networks:
+  bytebase-net:
+volumes:
+  data:
+  postgres-data:
+

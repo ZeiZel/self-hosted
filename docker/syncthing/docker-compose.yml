@@ -14,7 +14,7 @@ services:
       - 22000:22000/tcp  # Sync protocol
       - 22000:22000/udp  # Sync discovery
       - 21027:21027/udp  # Local discovery
-    networks: [syncthing-net, shared-net]
+    networks: [syncthing-net]
     restart: unless-stopped
   syncthing-exporter:
     image: smnielsen/syncthing-exporter
@@ -25,12 +25,11 @@ services:
     ports:
       - 9639:9639  # Metrics endpoint
     depends_on: [syncthing]
-    networks: [syncthing-net, shared-net, metrics-net]
+    networks: [syncthing-net, metrics-net]
     restart: unless-stopped
 volumes:
   data:
   backup:
 networks:
   syncthing-net:
-  shared-net:
   metrics-net:

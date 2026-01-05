@@ -20,7 +20,7 @@ services:
       - ./config/server.json:/consul/config/server.json:ro
       - data:/consul/data:rw
     networks:
-      - shared-net
+      - sd-net
       - consul-net
   consul-agent:
     image: hashicorp/consul:latest
@@ -59,7 +59,7 @@ services:
     depends_on:
       - consul-server
     networks:
-      - shared-net
+      - sd-net
       - consul-net
   fabio:
     image: fabiolb/fabio:latest
@@ -78,5 +78,5 @@ volumes:
   data:
 networks:
   consul-net:
-  shared-net:
+  sd-net:
   monitoring-net:

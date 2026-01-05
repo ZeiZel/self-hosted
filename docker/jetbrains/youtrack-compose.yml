@@ -4,16 +4,16 @@ services:
     image: jetbrains/youtrack:2025.1.74704
     container_name: youtrack
     restart: always
-    ports: [$YOUTRACK_OUT_PORT:8080]
+    ports: [${YOUTRACK_OUT_PORT:-8080}:8080]
     volumes:
       - data:/opt/youtrack/data
       - logs:/opt/youtrack/logs
       - backups:/opt/youtrack/backups
       - conf:/opt/youtrack/conf
-    networks: [shared-net]
+    networks: [youtrack-net]
 
 networks:
-  shared-net:
+  youtrack-net:
     driver: bridge
 
 volumes:
