@@ -75,3 +75,14 @@ buckets:
     policy: none
   - name: backups
     policy: none
+
+# Consul integration
+consul:
+  enabled: true
+  host: "consul.consul.svc.cluster.local"
+  port: 8500
+  datacenter: dc1
+  tags:
+    - minio
+    - s3
+    - storage

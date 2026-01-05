@@ -15,12 +15,16 @@ spec:
     metadata:
       labels:
         app: prometheus
-      {{- if .Values.consul.enabled }}
       annotations:
+        {{- if .Values.consul.enabled }}
         consul.hashicorp.com/connect-inject: "true"
         consul.hashicorp.com/connect-service: "prometheus"
         consul.hashicorp.com/connect-service-port: "9090"
-      {{- end }}
+        {{- end }}
+        # Prometheus self-monitoring
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
     spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}

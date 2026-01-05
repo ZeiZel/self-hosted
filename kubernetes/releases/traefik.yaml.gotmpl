@@ -31,6 +31,15 @@ providers:
   kubernetesGateway:
     enabled: true
 
+  # HTTP provider for Pangolin integration
+  # Note: This requires additional configuration in Traefik deployment
+  # Add to Traefik command args or create ConfigMap with:
+  # providers:
+  #   http:
+  #     endpoint: "http://pangolin-client.infrastructure.svc.cluster.local:3001/api/v1/traefik-config"
+  #     pollInterval: "5s"
+  # See: ansible/pangolin/roles/pangolin_server/templates/traefik_config.yml.j2 for reference
+
 gateway:
   listeners:
     web:

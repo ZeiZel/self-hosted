@@ -1,0 +1,14 @@
+apiVersion: v2
+name: glance
+description: A Helm chart for Glance - Modern dashboard
+type: application
+version: 0.1.0
+appVersion: "latest"
+home: https://github.com/zurdi15/glance
+sources:
+  - https://github.com/zurdi15/glance
+
+
+
+
+

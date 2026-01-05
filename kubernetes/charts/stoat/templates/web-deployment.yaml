@@ -14,12 +14,28 @@ spec:
     metadata:
       labels:
         app: revolt-web
-      {{- if .Values.consul.enabled }}
       annotations:
+        {{- if .Values.consul.enabled }}
         consul.hashicorp.com/connect-inject: "true"
         consul.hashicorp.com/connect-service: "revolt-web"
         consul.hashicorp.com/connect-service-port: "3000"
-      {{- end }}
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        # Vault Agent Injector
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "revolt"
+        vault.hashicorp.com/agent-inject-secret-secrets: "secret/data/stoat/secrets"
+        vault.hashicorp.com/agent-inject-template-secrets: |
+          {{`{{- with secret "secret/data/stoat/secrets" -}}`}}
+          {{`{{- range $key, $value := .Data.data -}}`}}
+          {{`{{ $key }}={{ $value }}`}}
+          {{`{{- end -}}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
     spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}

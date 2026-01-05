@@ -21,6 +21,8 @@ apps:
     chart: cert-manager
     version: v1.19.1
     namespace: service
+    needs:
+      - service/vault
 
   penpot:
     repo: penpot
@@ -30,6 +32,7 @@ apps:
     needs:
       - ingress/traefik
       - service/consul
+      - service/vault
 
   # DATABASES
   valkey:
@@ -39,6 +42,7 @@ apps:
     version: v1.0.0
     needs:
       - ingress/traefik
+      - service/vault
 
   postgres:
     repo: charts
@@ -47,6 +51,7 @@ apps:
     version: v2.0.0
     needs:
       - ingress/traefik
+      - service/vault
 
   minio:
     repo: charts
@@ -55,6 +60,7 @@ apps:
     version: 1.0.0
     needs:
       - ingress/traefik
+      - service/vault
 
   mongodb:
     repo: charts
@@ -63,6 +69,7 @@ apps:
     version: 1.0.0
     needs:
       - ingress/traefik
+      - service/vault
 
   # SERVICES
 
@@ -91,15 +98,58 @@ apps:
     needs:
       - ingress/traefik
       - service/consul
+      - service/vault
 
-  dashy:
+  glance:
     repo: charts
-    chart: dashy
-    namespace: service
+    chart: glance
+    namespace: infrastructure
     version: v1.0.0
     needs:
       - ingress/traefik
       - service/consul
+      - service/vault
+
+  devtron:
+    repo: charts
+    chart: devtron
+    namespace: devtroncd
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - db/postgres
+      - service/vault
+
+  bytebase:
+    repo: charts
+    chart: bytebase
+    namespace: infrastructure
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - db/postgres
+      - service/vault
+
+  harbor:
+    repo: charts
+    chart: harbor
+    namespace: infrastructure
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - db/postgres
+      - db/valkey
+      - service/vault
+
+  pangolin-client:
+    repo: charts
+    chart: pangolin-client
+    namespace: infrastructure
+    version: v1.0.0
+    needs:
+      - service/consul
+      - service/vault
 
   authentik:
     repo: charts
@@ -111,6 +161,7 @@ apps:
       - service/consul
       - db/postgres
       - db/valkey
+      - service/vault
 
   # PRODUCTIVITY
   notesnook:
@@ -121,6 +172,7 @@ apps:
     needs:
       - ingress/traefik
       - service/consul
+      - service/vault
 
   excalidraw:
     repo: charts
@@ -130,6 +182,7 @@ apps:
     needs:
       - ingress/traefik
       - service/consul
+      - service/vault
 
   # CODE (JetBrains + GitLab)
   hub:
@@ -141,6 +194,7 @@ apps:
       - ingress/traefik
       - service/consul
       - db/postgres
+      - service/vault
 
   youtrack:
     repo: charts
@@ -152,6 +206,7 @@ apps:
       - service/consul
       - code/hub
       - db/postgres
+      - service/vault
 
   teamcity:
     repo: charts
@@ -162,6 +217,7 @@ apps:
       - ingress/traefik
       - service/consul
       - db/postgres
+      - service/vault
 
   gitlab:
     repo: charts
@@ -173,6 +229,7 @@ apps:
       - service/consul
       - db/postgres
       - db/valkey
+      - service/vault
 
   # SOCIAL
   stoat:
@@ -187,6 +244,7 @@ apps:
       - db/mongodb
       - db/minio
       - service/authentik
+      - service/vault
 
   stalwart:
     repo: charts
@@ -197,6 +255,7 @@ apps:
       - ingress/traefik
       - service/consul
       - service/authentik
+      - service/vault
 
   # DATA
   vaultwarden:
@@ -208,6 +267,7 @@ apps:
       - ingress/traefik
       - service/consul
       - db/postgres
+      - service/vault
 
   syncthing:
     repo: charts
@@ -217,6 +277,7 @@ apps:
     needs:
       - ingress/traefik
       - service/consul
+      - service/vault
 
   owncloud:
     repo: charts
@@ -228,3 +289,4 @@ apps:
       - service/consul
       - db/postgres
       - db/valkey
+      - service/vault

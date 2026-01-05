@@ -57,7 +57,7 @@ persistence:
 # PostgreSQL (внешний)
 postgresql:
   external: true
-  host: "postgresql.authentik.svc.cluster.local"
+  host: "postgresql.db.svc.cluster.local"
   port: 5432
   username: "hub"
   password: "changeme"
@@ -101,3 +101,13 @@ probes:
     enabled: true
     initialDelaySeconds: 30
     periodSeconds: 5
+
+# Vault integration (requires Vault policies and secrets to be configured)
+vault:
+  enabled: false
+  # Note: Before enabling, configure Vault:
+  # 1. Create policy for hub service
+  # 2. Create secret at secret/data/hub/secrets
+  # 3. Enable Kubernetes auth method in Vault
+  # 4. Create role binding ServiceAccount to Vault policy
+  # See: kubernetes/docs/VAULT_MIGRATION.md

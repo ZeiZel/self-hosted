@@ -14,15 +14,33 @@ spec:
     metadata:
       labels:
         app: gitlab
-      {{- if .Values.consul.enabled }}
       annotations:
+        {{- if .Values.consul.enabled }}
         consul.hashicorp.com/connect-inject: "true"
         consul.hashicorp.com/connect-service: "gitlab"
         consul.hashicorp.com/connect-service-port: "80"
-      {{- end }}
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        # Vault Agent Injector
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "gitlab"
+        vault.hashicorp.com/agent-inject-secret-secrets: "secret/data/gitlab/secrets"
+        vault.hashicorp.com/agent-inject-template-secrets: |
+          {{`{{- with secret "secret/data/gitlab/secrets" -}}`}}
+          {{`{{- range $key, $value := .Data.data -}}`}}
+          {{`{{ $key }}={{ $value }}`}}
+          {{`{{- end -}}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
     spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
+
+      serviceAccountName: gitlab
 
       containers:
         - name: gitlab

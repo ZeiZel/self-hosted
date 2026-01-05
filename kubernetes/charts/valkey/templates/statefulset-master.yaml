@@ -19,6 +19,11 @@ spec:
       labels:
         app: valkey
         component: master
+      annotations:
+        # Prometheus metrics (requires redis_exporter sidecar)
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9121"
+        prometheus.io/path: "/metrics"
     spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}

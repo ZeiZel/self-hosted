@@ -13,11 +13,15 @@ spec:
     metadata:
       labels:
         app: mongodb
-      {{- if .Values.consul.enabled }}
       annotations:
+        {{- if .Values.consul.enabled }}
         consul.hashicorp.com/connect-inject: "true"
         consul.hashicorp.com/connect-service-port: "27017"
-      {{- end }}
+        {{- end }}
+        # Prometheus metrics (requires mongodb_exporter sidecar)
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9216"
+        prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: mongodb
       securityContext:

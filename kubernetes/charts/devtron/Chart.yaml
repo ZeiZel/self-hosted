@@ -1,0 +1,14 @@
+apiVersion: v2
+name: devtron
+description: A Helm chart for Devtron Kubernetes dashboard (wrapper over official chart)
+type: application
+version: 0.1.0
+appVersion: "latest"
+home: https://devtron.ai
+sources:
+  - https://github.com/devtron-labs/devtron
+dependencies:
+  - name: devtron-operator
+    version: "0.25.0"
+    repository: "https://charts.devtron.ai"
+

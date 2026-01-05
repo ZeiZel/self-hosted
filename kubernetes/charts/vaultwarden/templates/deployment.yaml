@@ -14,13 +14,27 @@ spec:
     metadata:
       labels:
         app: vaultwarden
-      {{- if .Values.consul.enabled }}
       annotations:
+        {{- if .Values.consul.enabled }}
         consul.hashicorp.com/connect-inject: "true"
         consul.hashicorp.com/connect-service: "vaultwarden"
         consul.hashicorp.com/connect-service-port: "8080"
         consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
-      {{- end }}
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        # Vault Agent Injector
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "vaultwarden"
+        vault.hashicorp.com/agent-inject-secret-database: "secret/data/vaultwarden/database"
+        vault.hashicorp.com/agent-inject-template-database: |
+          {{`{{- with secret "secret/data/vaultwarden/database" -}}`}}
+          DATABASE_URL={{`{{ .Data.data.connection_string }}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
     spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
@@ -37,10 +51,22 @@ spec:
               name: http
 
           envFrom:
+            {{- if not .Values.vault.enabled }}
             - secretRef:
                 name: vaultwarden-secrets
+            {{- else }}
+            # Secrets loaded from Vault via /vault/secrets/secrets file
+            - secretRef:
+                name: vaultwarden-secrets
+            {{- end }}
             - configMapRef:
                 name: vaultwarden-config
+          {{- if .Values.vault.enabled }}
+          env:
+            # Load secrets from Vault file
+            - name: VAULT_SECRETS_FILE
+              value: "/vault/secrets/secrets"
+          {{- end }}
 
           resources:
             {{- toYaml .Values.vaultwarden.resources | nindent 12 }}

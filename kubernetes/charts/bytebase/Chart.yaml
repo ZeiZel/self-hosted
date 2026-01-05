@@ -1,0 +1,14 @@
+apiVersion: v2
+name: bytebase
+description: A Helm chart for Bytebase - Database schema change and version control
+type: application
+version: 0.1.0
+appVersion: "latest"
+home: https://www.bytebase.com
+sources:
+  - https://github.com/bytebase/bytebase
+
+
+
+
+

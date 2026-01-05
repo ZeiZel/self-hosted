@@ -14,13 +14,29 @@ spec:
     metadata:
       labels:
         app: revolt-api
-      {{- if .Values.consul.enabled }}
       annotations:
+        {{- if .Values.consul.enabled }}
         consul.hashicorp.com/connect-inject: "true"
         consul.hashicorp.com/connect-service: "revolt-api"
         consul.hashicorp.com/connect-service-port: "8000"
         consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
-      {{- end }}
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        # Vault Agent Injector
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "revolt"
+        vault.hashicorp.com/agent-inject-secret-secrets: "secret/data/stoat/secrets"
+        vault.hashicorp.com/agent-inject-template-secrets: |
+          {{`{{- with secret "secret/data/stoat/secrets" -}}`}}
+          {{`{{- range $key, $value := .Data.data -}}`}}
+          {{`{{ $key }}={{ $value }}`}}
+          {{`{{- end -}}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8000"
+        prometheus.io/path: "/metrics"
     spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
@@ -37,10 +53,21 @@ spec:
               name: http
 
           envFrom:
+            {{- if not .Values.vault.enabled }}
             - secretRef:
                 name: revolt-secrets
+            {{- else }}
+            # Secrets loaded from Vault via /vault/secrets/secrets file
+            # Note: Application should read from /vault/secrets/secrets or use envFrom with file
+            {{- end }}
             - configMapRef:
                 name: revolt-config
+          {{- if .Values.vault.enabled }}
+          env:
+            # Path to Vault secrets file
+            - name: VAULT_SECRETS_FILE
+              value: "/vault/secrets/secrets"
+          {{- end }}
 
           resources:
             {{- toYaml .Values.api.resources | nindent 12 }}

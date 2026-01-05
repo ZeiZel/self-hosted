@@ -14,12 +14,28 @@ spec:
     metadata:
       labels:
         app: teamcity-server
-      {{- if .Values.consul.enabled }}
       annotations:
+        {{- if .Values.consul.enabled }}
         consul.hashicorp.com/connect-inject: "true"
         consul.hashicorp.com/connect-service: "teamcity"
         consul.hashicorp.com/connect-service-port: "8111"
-      {{- end }}
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        # Vault Agent Injector
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "teamcity"
+        vault.hashicorp.com/agent-inject-secret-secrets: "secret/data/teamcity/secrets"
+        vault.hashicorp.com/agent-inject-template-secrets: |
+          {{`{{- with secret "secret/data/teamcity/secrets" -}}`}}
+          {{`{{- range $key, $value := .Data.data -}}`}}
+          {{`{{ $key }}={{ $value }}`}}
+          {{`{{- end -}}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8111"
+        prometheus.io/path: "/metrics"
     spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}

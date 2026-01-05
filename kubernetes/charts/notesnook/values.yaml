@@ -96,6 +96,16 @@ ingress:
 # envs
 environment:
   INSTANCE_NAME: "notesnook-instance"
+
+# Vault integration (requires Vault policies and secrets to be configured)
+vault:
+  enabled: false
+  # Note: Before enabling, configure Vault:
+  # 1. Create policy for notesnook service
+  # 2. Create secret at secret/data/notesnook/secrets
+  # 3. Enable Kubernetes auth method in Vault
+  # 4. Create role binding ServiceAccount to Vault policy
+  # See: kubernetes/docs/VAULT_MIGRATION.md
   NOTESNOOK_API_SECRET: "replace-with-a-long-random-string"
   DISABLE_ACCOUNT_CREATION: "0"
   NOTESNOOK_APP_PUBLIC_URL: "http://notesnook.localhost"

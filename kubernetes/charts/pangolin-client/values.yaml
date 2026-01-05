@@ -1,0 +1,61 @@
+namespace: infrastructure
+
+create:
+  namespace: true
+
+image:
+  repository: fosrl/pangolin
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+pangolin:
+  serverEndpoint: "yourdomain.com"
+  clientName: "k8s-cluster"
+  port: 3001
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+persistence:
+  enabled: true
+  storageClass: standard
+  accessMode: ReadWriteOnce
+  size: 1Gi
+  mountPath: /var/certificates
+
+ingress:
+  enabled: false
+  className: traefik
+  host: pangolin-client.local
+  tls:
+    enabled: true
+    secretName: pangolin-client-tls
+
+consul:
+  enabled: false
+  tags: []
+
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+probes:
+  liveness:
+    enabled: true
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  readiness:
+    enabled: true
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+
+
+
+

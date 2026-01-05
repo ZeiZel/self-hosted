@@ -1,0 +1,74 @@
+namespace: infrastructure
+
+glance:
+  replicaCount: 1
+
+  config:
+    pageInfo:
+      title: "Home Center Dashboard"
+      description: "Self-hosted infrastructure dashboard"
+      navLinks:
+        - title: "GitHub"
+          path: "https://github.com"
+        - title: "Documentation"
+          path: "https://docs.example.com"
+
+    appConfig:
+      theme: "dark"
+      layout: "auto"
+      iconSize: "medium"
+      language: "en"
+      startingView: "default"
+      defaultOpeningMethod: "newTab"
+      statusCheck: true
+      statusCheckInterval: 300
+      faviconApi: "https://favicon.io"
+      enableMultiTasking: true
+      allowConfigEdit: true
+      enableServiceWorker: true
+      disableConfiguration: false
+
+      hideComponents:
+        hideHeading: false
+        hideNav: false
+        hideSearch: false
+        hideSettings: false
+        hideFooter: false
+
+    sections:
+      - name: "Infrastructure"
+        items:
+          - title: "Devtron Dashboard"
+            description: "Kubernetes Dashboard"
+            icon: "fa fa-cube"
+            url: "http://devtron.{{ .Values.infra.host }}"
+          - title: "Grafana"
+            description: "Monitoring Dashboard"
+            icon: "fa fa-chart-line"
+            url: "http://grafana.{{ .Values.infra.host }}"
+          - title: "Bytebase"
+            description: "Database Management"
+            icon: "fa fa-database"
+            url: "http://bytebase.{{ .Values.infra.host }}"
+          - title: "Harbor"
+            description: "Container Registry"
+            icon: "fa fa-box"
+            url: "http://harbor.{{ .Values.infra.host }}"
+
+ingress:
+  enabled: true
+  className: traefik
+  host: glance.{{ .Values.infra.host }}
+  tls:
+    enabled: true
+    secretName: glance-tls
+
+consul:
+  enabled: true
+  tags:
+    - glance
+
+
+
+
+

@@ -107,7 +107,7 @@ persistence:
 postgresql:
   enabled: false
   external: true
-  host: "postgresql.code.svc.cluster.local"
+  host: "postgresql.db.svc.cluster.local"
   port: 5432
   username: "stalwart"
   password: "changeme"
@@ -116,14 +116,14 @@ postgresql:
 # Redis/ValKey (для кэширования и сессий)
 redis:
   enabled: false
-  host: "valkey-master.code.svc.cluster.local"
+  host: "valkey-master.db.svc.cluster.local"
   port: 6379
   password: ""
 
 # LDAP Authentication (Authentik)
 ldap:
   enabled: true
-  host: "authentik-ldap.authentik.svc.cluster.local"  # Authentik LDAP interface
+  host: "authentik.service.svc.cluster.local"  # Authentik LDAP interface
   port: 389
   bindDN: "cn=admin,dc=authentik,dc=local"
   bindPassword: "changeme"
@@ -189,3 +189,13 @@ nodePort:
   imaps: 993
   pop3: 110
   pop3s: 995
+
+# Vault integration (requires Vault policies and secrets to be configured)
+vault:
+  enabled: false
+  # Note: Before enabling, configure Vault:
+  # 1. Create policy for stalwart service
+  # 2. Create secret at secret/data/stalwart/secrets
+  # 3. Enable Kubernetes auth method in Vault
+  # 4. Create role binding ServiceAccount to Vault policy
+  # See: kubernetes/docs/VAULT_MIGRATION.md

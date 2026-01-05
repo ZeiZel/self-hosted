@@ -131,7 +131,7 @@ backup:
     storage:
       type: "s3"
       s3Bucket: "postgresql-backups"
-      s3Endpoint: "http://minio.code.svc.cluster.local:9000"
+      s3Endpoint: "http://minio.db.svc.cluster.local:9000"
       s3AccessKey: "minioadmin"
       s3SecretKey: "minioadmin"
       s3Region: "us-east-1"

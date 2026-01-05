@@ -1,0 +1,125 @@
+namespace: infrastructure
+
+create:
+  namespace: true
+
+# Glance Image
+image:
+  repository: zurdi15/glance
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+# Glance Server конфигурация
+glance:
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 80
+
+  config:
+    pageInfo:
+      title: "Home Center Dashboard"
+      description: "Self-hosted infrastructure dashboard"
+      navLinks:
+        - title: "GitHub"
+          path: "https://github.com"
+        - title: "Documentation"
+          path: "https://docs.example.com"
+
+    appConfig:
+      theme: "dark"
+      layout: "auto"
+      iconSize: "medium"
+      language: "en"
+      startingView: "default"
+      defaultOpeningMethod: "newTab"
+      statusCheck: true
+      statusCheckInterval: 300
+      faviconApi: "https://favicon.io"
+      enableMultiTasking: true
+      allowConfigEdit: true
+      enableServiceWorker: true
+      disableConfiguration: false
+
+      hideComponents:
+        hideHeading: false
+        hideNav: false
+        hideSearch: false
+        hideSettings: false
+        hideFooter: false
+
+    sections:
+      - name: "Infrastructure"
+        items:
+          - title: "Kubernetes Dashboard"
+            description: "Devtron Dashboard"
+            icon: "fa fa-cube"
+            url: "http://devtron.local"
+          - title: "Monitoring"
+            description: "Grafana"
+            icon: "fa fa-chart-line"
+            url: "http://grafana.local"
+
+# Resources
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Persistence
+persistence:
+  config:
+    enabled: true
+    storageClass: standard
+    accessMode: ReadWriteOnce
+    size: 1Gi
+    mountPath: /app/user-data
+
+# Ingress
+ingress:
+  enabled: true
+  className: traefik
+  host: glance.localhost
+  annotations: {}
+  tls:
+    enabled: true
+    secretName: glance-tls
+
+# Security Context
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Probes
+probes:
+  liveness:
+    enabled: true
+    path: /
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  readiness:
+    enabled: true
+    path: /
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+# Consul integration
+consul:
+  enabled: false
+  tags: []
+
+# Vault integration (requires Vault policies and secrets to be configured)
+vault:
+  enabled: false
+  # Note: Before enabling, configure Vault:
+  # 1. Create policy for glance service
+  # 2. Create secret at secret/data/glance/secrets
+  # 3. Enable Kubernetes auth method in Vault
+  # 4. Create role binding ServiceAccount to Vault policy
+  # See: kubernetes/docs/VAULT_MIGRATION.md
+

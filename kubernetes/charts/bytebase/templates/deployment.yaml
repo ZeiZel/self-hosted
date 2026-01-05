@@ -1,0 +1,105 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "bytebase.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "bytebase.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.bytebase.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "bytebase.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "bytebase.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- if .Values.consul.enabled }}
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "bytebase"
+        consul.hashicorp.com/connect-service-port: "{{ .Values.bytebase.service.port }}"
+        {{- if .Values.consul.tags }}
+        consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
+        {{- end }}
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        # Vault Agent Injector
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "bytebase"
+        vault.hashicorp.com/agent-inject-secret-secrets: "secret/data/bytebase/secrets"
+        vault.hashicorp.com/agent-inject-template-secrets: |
+          {{`{{- with secret "secret/data/bytebase/secrets" -}}`}}
+          {{`{{- range $key, $value := .Data.data -}}`}}
+          {{`{{ $key }}={{ $value }}`}}
+          {{`{{- end -}}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.bytebase.service.port }}"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+        - name: bytebase
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: {{ .Values.bytebase.service.port }}
+              name: http
+          env:
+            - name: BYTEBASE_DATA_DIR
+              value: "{{ .Values.bytebase.config.dataDir }}"
+            - name: BYTEBASE_PORT
+              value: "{{ .Values.bytebase.config.port }}"
+            - name: BYTEBASE_MODE
+              value: "{{ .Values.bytebase.config.mode }}"
+            - name: BYTEBASE_DEMO
+              value: "{{ .Values.bytebase.config.demo }}"
+            {{- if .Values.bytebase.postgres.external }}
+            - name: BYTEBASE_PG_HOST
+              value: "{{ .Values.bytebase.postgres.host }}"
+            - name: BYTEBASE_PG_PORT
+              value: "{{ .Values.bytebase.postgres.port }}"
+            - name: BYTEBASE_PG_DATABASE
+              value: "{{ .Values.bytebase.postgres.database }}"
+            - name: BYTEBASE_PG_USER
+              value: "{{ .Values.bytebase.postgres.user }}"
+            - name: BYTEBASE_PG_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "bytebase.fullname" . }}-secrets
+                  key: postgres-password
+            {{- end }}
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath }}
+          {{- end }}
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: {{ .Values.bytebase.service.port }}
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          {{- end }}
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: {{ .Values.bytebase.service.port }}
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          {{- end }}
+      {{- if .Values.persistence.enabled }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "bytebase.fullname" . }}-pvc
+      {{- end }}
+

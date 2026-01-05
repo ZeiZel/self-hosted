@@ -50,7 +50,7 @@ vaultwarden:
     # Email config
     email:
       enabled: true
-      host: "stalwart.code.svc.cluster.local"  # Stalwart in the same cluster
+      host: "stalwart.social.svc.cluster.local"  # Stalwart in the same cluster
       port: 587  # Submission port
       from: "noreply@mail.local"
       fromName: "Vaultwarden"
@@ -86,7 +86,7 @@ persistence:
 postgresql:
   enabled: true
   external: true
-  host: "postgresql.code.svc.cluster.local"
+  host: "postgresql.db.svc.cluster.local"
   port: 5432
   username: "vaultwarden"
   password: "changeme"
@@ -134,3 +134,12 @@ probes:
     enabled: true
     initialDelaySeconds: 30
     periodSeconds: 5
+
+# Vault integration (requires Vault policies and secrets to be configured)
+vault:
+  enabled: false
+  # Note: Before enabling, configure Vault:
+  # 1. Create policy for vaultwarden service
+  # 2. Create secret at secret/data/vaultwarden/database with connection_string
+  # 3. Enable Kubernetes auth method in Vault
+  # 4. Create role binding ServiceAccount to Vault policy

@@ -74,7 +74,7 @@ revolt:
 mongodb:
   enabled: true
   external: true
-  host: "mongodb-revolt.code.svc.cluster.local"
+  host: "mongodb.db.svc.cluster.local"
   port: 27017
   username: "revolt"
   password: "changeme"
@@ -84,14 +84,14 @@ mongodb:
 # Redis/ValKey (для кэширования)
 redis:
   enabled: true
-  host: "valkey-master.code.svc.cluster.local"
+  host: "valkey-master.db.svc.cluster.local"
   port: 6379
   password: ""
 
 # S3/MinIO (для хранения файлов)
 s3:
   enabled: true
-  endpoint: "http://minio.code.svc.cluster.local:9000"
+  endpoint: "http://minio.db.svc.cluster.local:9000"
   region: "us-east-1"
   accessKey: "minioadmin"
   secretKey: "minioadmin"
@@ -113,8 +113,8 @@ persistence:
 # SAML2 Authentication (Authentik)
 saml:
   enabled: true
-  idpUrl: "http://authentik.authentik.svc.cluster.local"
-  entrypoint: "http://authentik.authentik.svc.cluster.local/application/saml/revolt/sso/binding/redirect/"
+  idpUrl: "http://authentik.service.svc.cluster.local"
+  entrypoint: "http://authentik.service.svc.cluster.local/application/saml/revolt/sso/binding/redirect/"
   issuer: "http://revolt.local"
   cert: ""  # Поместить сертификат Authentik
   identifierFormat: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
@@ -176,3 +176,13 @@ smtp:
   from: "noreply@revolt.local"
   username: ""
   password: ""
+
+# Vault integration (requires Vault policies and secrets to be configured)
+vault:
+  enabled: false
+  # Note: Before enabling, configure Vault:
+  # 1. Create policy for stoat service
+  # 2. Create secret at secret/data/stoat/secrets
+  # 3. Enable Kubernetes auth method in Vault
+  # 4. Create role binding ServiceAccount to Vault policy
+  # See: kubernetes/docs/VAULT_MIGRATION.md

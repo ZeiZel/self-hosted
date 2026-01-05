@@ -19,7 +19,24 @@ spec:
         consul.hashicorp.com/connect-service-port: "8010"
         # Tags for service discovery
         consul.hashicorp.com/service-tags: "notesnook,backend"
+        {{- if .Values.vault.enabled }}
+        # Vault Agent Injector
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "notesnook-server"
+        vault.hashicorp.com/agent-inject-secret-secrets: "secret/data/notesnook/secrets"
+        vault.hashicorp.com/agent-inject-template-secrets: |
+          {{`{{- with secret "secret/data/notesnook/secrets" -}}`}}
+          {{`{{- range $key, $value := .Data.data -}}`}}
+          {{`{{ $key }}={{ $value }}`}}
+          {{`{{- end -}}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8010"
+        prometheus.io/path: "/metrics"
     spec:
+      serviceAccountName: notesnook-server
       containers:
         - name: server
           image: {{ .Values.notesnookServer.image }}

@@ -57,7 +57,7 @@ persistence:
 # PostgreSQL (external)
 postgresql:
   external: true
-  host: "postgresql.code.svc.cluster.local"
+  host: "postgresql.db.svc.cluster.local"
   port: 5432
   username: "owncloud"
   password: "changeme"
@@ -67,7 +67,7 @@ postgresql:
 # Redis/ValKey (external) - session cache
 redis:
   enabled: true
-  host: "valkey-master.code.svc.cluster.local"
+  host: "valkey-master.db.svc.cluster.local"
   port: 6379
   password: ""
   database: "0"
@@ -132,3 +132,13 @@ probes:
 env:
   OWNCLOUD_LOG_LEVEL: "2"
   OWNCLOUD_APPS_ENABLE: "files,admin,comments,notifications,search,sharing,checksums,dav,oauth2"
+
+# Vault integration (requires Vault policies and secrets to be configured)
+vault:
+  enabled: false
+  # Note: Before enabling, configure Vault:
+  # 1. Create policy for owncloud service
+  # 2. Create secret at secret/data/owncloud/secrets
+  # 3. Enable Kubernetes auth method in Vault
+  # 4. Create role binding ServiceAccount to Vault policy
+  # See: kubernetes/docs/VAULT_MIGRATION.md

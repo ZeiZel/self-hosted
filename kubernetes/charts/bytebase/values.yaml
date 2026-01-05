@@ -1,0 +1,88 @@
+namespace: infrastructure
+
+create:
+  namespace: true
+
+image:
+  repository: bytebase/bytebase
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+bytebase:
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 8080
+
+  # PostgreSQL connection (use external postgres)
+  postgres:
+    external: true
+    host: "postgres-0.postgres-headless.db.svc.cluster.local"
+    port: 5432
+    database: "bytebase"
+    user: "bytebase"
+    password: "" # Set in secrets
+
+  # Bytebase configuration
+  config:
+    dataDir: "/var/opt/bytebase"
+    port: 8080
+    mode: "prod"
+    demo: false
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+persistence:
+  enabled: true
+  storageClass: standard
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: /var/opt/bytebase
+
+ingress:
+  enabled: true
+  className: traefik
+  host: bytebase.localhost
+  annotations: {}
+  tls:
+    enabled: true
+    secretName: bytebase-tls
+
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+probes:
+  liveness:
+    enabled: true
+    path: /healthz
+    initialDelaySeconds: 60
+    periodSeconds: 30
+  readiness:
+    enabled: true
+    path: /healthz
+    initialDelaySeconds: 30
+    periodSeconds: 10
+
+consul:
+  enabled: false
+  tags: []
+
+# Vault integration (requires Vault policies and secrets to be configured)
+vault:
+  enabled: false
+  # Note: Before enabling, configure Vault:
+  # 1. Create policy for bytebase service
+  # 2. Create secret at secret/data/bytebase/secrets
+  # 3. Enable Kubernetes auth method in Vault
+  # 4. Create role binding ServiceAccount to Vault policy
+  # See: kubernetes/docs/VAULT_MIGRATION.md
+

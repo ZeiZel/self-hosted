@@ -12,6 +12,23 @@ spec:
     metadata:
       labels:
         app: sse-server
+      annotations:
+        {{- if .Values.vault.enabled }}
+        # Vault Agent Injector
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "notesnook-server"
+        vault.hashicorp.com/agent-inject-secret-secrets: "secret/data/notesnook/secrets"
+        vault.hashicorp.com/agent-inject-template-secrets: |
+          {{`{{- with secret "secret/data/notesnook/secrets" -}}`}}
+          {{`{{- range $key, $value := .Data.data -}}`}}
+          {{`{{ $key }}={{ $value }}`}}
+          {{`{{- end -}}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.sseServer.service.port }}"
+        prometheus.io/path: "/metrics"
     spec:
       containers:
         - name: sse

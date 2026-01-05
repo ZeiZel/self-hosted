@@ -4,7 +4,7 @@ metadata:
   name: notesnook
   namespace: {{ .Release.Namespace }}
   annotations:
-    {{- with .Values.ingress.annotations }}
+  {{- with .Values.ingress.annotations }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
 spec:

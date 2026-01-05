@@ -132,6 +132,16 @@ probes:
     initialDelaySeconds: 10
     periodSeconds: 5
 
+# Vault integration (requires Vault policies and secrets to be configured)
+vault:
+  enabled: false
+  # Note: Before enabling, configure Vault:
+  # 1. Create policy for syncthing service
+  # 2. Create secret at secret/data/syncthing/secrets
+  # 3. Enable Kubernetes auth method in Vault
+  # 4. Create role binding ServiceAccount to Vault policy
+  # See: kubernetes/docs/VAULT_MIGRATION.md
+
 # Sync config folder
 folders:
   enabled: true

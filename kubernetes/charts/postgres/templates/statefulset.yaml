@@ -23,6 +23,10 @@ spec:
         consul.hashicorp.com/connect-service: "postgresql"
         consul.hashicorp.com/connect-service-port: "5432"
         {{- end }}
+        # Prometheus metrics (requires postgres_exporter sidecar)
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9187"
+        prometheus.io/path: "/metrics"
     spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}

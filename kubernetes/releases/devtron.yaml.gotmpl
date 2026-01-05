@@ -1,0 +1,46 @@
+namespace: devtroncd
+
+devtron:
+  installer:
+    modules:
+      - cicd
+
+  argo-cd:
+    enabled: true
+
+  security:
+    enabled: true
+    trivy:
+      enabled: true
+
+  notifier:
+    enabled: true
+
+  monitoring:
+    grafana:
+      enabled: true
+
+  postgresql:
+    external: true
+    host: "postgres-0.postgres-headless.db.svc.cluster.local"
+    port: "5432"
+    database: "devtron"
+    username: "devtron"
+    password: "{{ .Values.secrets.devtronPostgresPassword }}"
+
+  ingress:
+    enabled: true
+    className: traefik
+    host: devtron.{{ .Values.infra.host }}
+    tls:
+      enabled: true
+      secretName: devtron-tls
+
+  prometheus:
+    external: true
+    url: "http://prometheus.monitoring.svc.cluster.local:9090"
+
+
+
+
+

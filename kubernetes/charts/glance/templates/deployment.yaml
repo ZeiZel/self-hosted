@@ -1,0 +1,92 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "glance.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "glance.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.glance.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "glance.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "glance.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- if .Values.consul.enabled }}
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "glance"
+        consul.hashicorp.com/connect-service-port: "80"
+        {{- if .Values.consul.tags }}
+        consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
+        {{- end }}
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        # Vault Agent Injector
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "glance"
+        vault.hashicorp.com/agent-inject-secret-secrets: "secret/data/glance/secrets"
+        vault.hashicorp.com/agent-inject-template-secrets: |
+          {{`{{- with secret "secret/data/glance/secrets" -}}`}}
+          {{`{{- range $key, $value := .Data.data -}}`}}
+          {{`{{ $key }}={{ $value }}`}}
+          {{`{{- end -}}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
+    spec:
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+        - name: glance
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - containerPort: 80
+              name: http
+          env:
+            - name: PORT
+              value: "80"
+            - name: NODE_ENV
+              value: "production"
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          {{- if .Values.persistence.config.enabled }}
+          volumeMounts:
+            - name: config
+              mountPath: {{ .Values.persistence.config.mountPath }}
+            - name: glance-config
+              mountPath: /app/user-data/config.yml
+              subPath: config.yml
+          {{- end }}
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: 80
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+          {{- end }}
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: 80
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+          {{- end }}
+      {{- if .Values.persistence.config.enabled }}
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: {{ include "glance.fullname" . }}-config
+        - name: glance-config
+          configMap:
+            name: {{ include "glance.fullname" . }}-config
+      {{- end }}
+

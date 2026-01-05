@@ -15,12 +15,16 @@ spec:
     metadata:
       labels:
         app: vault
-      {{- if .Values.consul.enabled }}
       annotations:
+        {{- if .Values.consul.enabled }}
         consul.hashicorp.com/connect-inject: "true"
         consul.hashicorp.com/connect-service: "vault"
         consul.hashicorp.com/connect-service-port: "8200"
-      {{- end }}
+        {{- end }}
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8200"
+        prometheus.io/path: "/v1/sys/metrics"
     spec:
       affinity:
         podAntiAffinity:

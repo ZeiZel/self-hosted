@@ -14,6 +14,30 @@ spec:
     metadata:
       labels:
         app: authentik-worker
+      annotations:
+        {{- if .Values.consul.enabled }}
+        # Consul Connect
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "authentik-worker"
+        consul.hashicorp.com/connect-service-port: "9000"
+        consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        # Vault Agent Injector
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "authentik"
+        vault.hashicorp.com/agent-inject-secret-secrets: "secret/data/authentik/secrets"
+        vault.hashicorp.com/agent-inject-template-secrets: |
+          {{`{{- with secret "secret/data/authentik/secrets" -}}`}}
+          {{`{{- range $key, $value := .Data.data -}}`}}
+          {{`{{ $key }}={{ $value }}`}}
+          {{`{{- end -}}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9000"
+        prometheus.io/path: "/metrics"
     spec:
       serviceAccountName: authentik
       securityContext:

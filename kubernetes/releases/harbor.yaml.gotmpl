@@ -1,0 +1,40 @@
+namespace: infrastructure
+
+harbor:
+  externalDatabase:
+    postgresql:
+      host: "postgres-0.postgres-headless.db.svc.cluster.local"
+      port: "5432"
+      database: "registry"
+      username: "harbor"
+      password: "{{ .Values.secrets.harborPostgresPassword }}"
+
+  externalRedis:
+    host: "valkey-headless.db.svc.cluster.local"
+    port: "6379"
+    password: "{{ .Values.secrets.harborRedisPassword }}"
+
+  harborAdminPassword: "{{ .Values.secrets.harborAdminPassword }}"
+  secretKey: "{{ .Values.secrets.harborSecretKey }}"
+
+  expose:
+    type: ingress
+    ingress:
+      className: traefik
+      hosts:
+        core: harbor.{{ .Values.infra.host }}
+        notary: notary.harbor.{{ .Values.infra.host }}
+      tls:
+        enabled: true
+        secretName: harbor-tls
+
+  oidc:
+    enabled: true
+    name: "authentik"
+    endpoint: "https://authentik.{{ .Values.infra.host }}/application/o/harbor/"
+    verifyCert: true
+
+
+
+
+

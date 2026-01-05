@@ -1,0 +1,57 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "glance.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "glance.labels" . | nindent 4 }}
+data:
+  config.yml: |
+    pageInfo:
+      title: {{ .Values.glance.config.pageInfo.title }}
+      description: {{ .Values.glance.config.pageInfo.description }}
+      {{- if .Values.glance.config.pageInfo.navLinks }}
+      navLinks:
+        {{- range .Values.glance.config.pageInfo.navLinks }}
+        - title: {{ .title }}
+          path: {{ .path }}
+        {{- end }}
+      {{- end }}
+    appConfig:
+      theme: {{ .Values.glance.config.appConfig.theme }}
+      layout: {{ .Values.glance.config.appConfig.layout }}
+      iconSize: {{ .Values.glance.config.appConfig.iconSize }}
+      language: {{ .Values.glance.config.appConfig.language }}
+      startingView: {{ .Values.glance.config.appConfig.startingView }}
+      defaultOpeningMethod: {{ .Values.glance.config.appConfig.defaultOpeningMethod }}
+      statusCheck: {{ .Values.glance.config.appConfig.statusCheck }}
+      statusCheckInterval: {{ .Values.glance.config.appConfig.statusCheckInterval }}
+      faviconApi: {{ .Values.glance.config.appConfig.faviconApi }}
+      enableMultiTasking: {{ .Values.glance.config.appConfig.enableMultiTasking }}
+      allowConfigEdit: {{ .Values.glance.config.appConfig.allowConfigEdit }}
+      enableServiceWorker: {{ .Values.glance.config.appConfig.enableServiceWorker }}
+      disableConfiguration: {{ .Values.glance.config.appConfig.disableConfiguration }}
+      hideComponents:
+        hideHeading: {{ .Values.glance.config.appConfig.hideComponents.hideHeading }}
+        hideNav: {{ .Values.glance.config.appConfig.hideComponents.hideNav }}
+        hideSearch: {{ .Values.glance.config.appConfig.hideComponents.hideSearch }}
+        hideSettings: {{ .Values.glance.config.appConfig.hideComponents.hideSettings }}
+        hideFooter: {{ .Values.glance.config.appConfig.hideComponents.hideFooter }}
+      {{- if .Values.glance.config.sections }}
+      sections:
+        {{- range .Values.glance.config.sections }}
+        - name: {{ .name }}
+          items:
+            {{- range .items }}
+            - title: {{ .title }}
+              description: {{ .description }}
+              icon: {{ .icon }}
+              url: {{ .url }}
+            {{- end }}
+        {{- end }}
+      {{- end }}
+
+
+
+
+
