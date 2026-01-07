@@ -1,0 +1,117 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+  tags:
+    - security
+    - hardening
+
+- name: Install required packages
+  apt:
+    name:
+      - openssl
+      - sudo
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+  tags:
+    - security
+    - hardening
+
+- name: Generate secure password for new user
+  set_fact:
+    generated_user_password: "{{ lookup('password', '/dev/null length=32 chars=ascii_letters,digits,punctuation') }}"
+  no_log: true
+  when: new_user_password is not defined
+  tags:
+    - security
+    - hardening
+
+- name: Save password to local file (for manual vault update)
+  copy:
+    content: |
+      # Auto-generated password for user {{ new_user_name | default('admin') }} on {{ inventory_hostname }}
+      # Generated on {{ ansible_date_time.iso8601 }}
+      # 
+      # IMPORTANT: Add this to your group_vars/vault.yml file manually:
+      # new_user_password: "{{ generated_user_password }}"
+      #
+      # Or use: ansible-vault edit group_vars/vault.yml
+      new_user_password: "{{ generated_user_password }}"
+    dest: "{{ playbook_dir }}/.generated_password_{{ inventory_hostname }}.txt"
+    mode: '0600'
+  delegate_to: localhost
+  run_once: true
+  no_log: true
+  when: new_user_password is not defined
+
+- name: Display password info
+  debug:
+    msg: |
+      ============================================
+      Password for user {{ new_user_name | default('admin') }} has been generated.
+      
+      The password is saved in: .generated_password_{{ inventory_hostname }}.txt
+      
+      IMPORTANT: 
+      1. Save this password to group_vars/vault.yml manually:
+         ansible-vault edit group_vars/vault.yml
+         Add: new_user_password: "<password from file>"
+      
+      2. Delete the temporary file after saving:
+         rm .generated_password_{{ inventory_hostname }}.txt
+      
+      3. The password will be used for the user account on the server.
+      ============================================
+  when: new_user_password is not defined
+
+- name: Check if user already exists
+  getent:
+    database: passwd
+    key: "{{ new_user_name | default('admin') }}"
+  register: user_exists
+  changed_when: false
+  failed_when: false
+  tags:
+    - security
+    - hardening
+
+- name: Create new user
+  user:
+    name: "{{ new_user_name | default('admin') }}"
+    groups: sudo
+    shell: /bin/bash
+    create_home: yes
+    password: "{{ new_user_password | default(generated_user_password) | password_hash('sha512') }}"
+  no_log: true
+  when: user_exists.ansible_facts.getent_passwd is not defined
+  tags:
+    - security
+    - hardening
+
+- name: Add SSH public key for new user
+  authorized_key:
+    user: "{{ new_user_name | default('admin') }}"
+    state: present
+    key: "{{ item }}"
+    comment: "Ansible managed key"
+  loop: "{{ new_user_ssh_keys | default([]) }}"
+  when: new_user_ssh_keys is defined
+  no_log: false
+  tags:
+    - security
+    - hardening
+
+- name: Ensure new user has sudo access without password
+  lineinfile:
+    path: /etc/sudoers.d/{{ new_user_name | default('admin') }}
+    line: "{{ new_user_name | default('admin') }} ALL=(ALL) NOPASSWD: ALL"
+    create: yes
+    mode: '0440'
+    validate: 'visudo -cf %s'
+  tags:
+    - security
+    - hardening
+

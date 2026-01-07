@@ -1,0 +1,44 @@
+---
+- name: Check if Docker is already installed
+  command: docker --version
+  register: docker_version_check
+  changed_when: false
+  failed_when: false
+
+- name: Install Docker using official script
+  shell: |
+    curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
+    sh /tmp/get-docker.sh
+    rm /tmp/get-docker.sh
+  when: 
+    - docker_version_check.rc != 0
+    - ansible_os_family == "Debian"
+  args:
+    creates: /usr/bin/docker
+
+- name: Add users to docker group
+  user:
+    name: "{{ item }}"
+    groups: docker
+    append: yes
+  loop: "{{ docker_users }}"
+  notify: restart docker
+
+- name: Enable and start Docker service
+  systemd:
+    name: docker
+    enabled: yes
+    state: started
+
+- name: Check if docker-compose exists
+  stat:
+    path: /usr/local/bin/docker-compose
+  register: docker_compose_stat
+  changed_when: false
+
+- name: Install Docker Compose standalone
+  get_url:
+    url: "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64"
+    dest: /usr/local/bin/docker-compose
+    mode: '0755'
+  when: not docker_compose_stat.stat.exists

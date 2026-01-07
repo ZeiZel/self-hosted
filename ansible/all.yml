@@ -1,0 +1,68 @@
+---
+# Main Ansible Playbook
+# Run with tags to execute specific role groups
+#
+# Examples:
+#   ansible-playbook -i inventory/hosts.ini all.yml --tags security
+#   ansible-playbook -i inventory/hosts.ini all.yml --tags server-setup
+#   ansible-playbook -i inventory/hosts.ini all.yml --tags kubespray
+#   ansible-playbook -i inventory/hosts.ini all.yml --tags pangolin-server
+#   ansible-playbook -i inventory/hosts.ini all.yml --tags pangolin-client
+#   ansible-playbook -i inventory/hosts.ini all.yml --limit server --tags security,server-setup,pangolin-server
+
+- name: Server Security Hardening
+  hosts: all
+  become: yes
+  tags:
+    - security
+    - hardening
+    - ubuntu
+  roles:
+    - security
+
+- name: Server Setup and Configuration
+  hosts: all
+  become: yes
+  tags:
+    - server-setup
+    - setup
+    - ubuntu
+  roles:
+    - server_setup
+
+- name: Install Kubespray and Deploy Kubernetes Cluster
+  hosts: k8s_masters:k8s_workers
+  become: yes
+  tags:
+    - kubespray
+    - k8s
+    - kubernetes
+  roles:
+    - common
+    - docker
+    - kubespray
+
+- name: Deploy Pangolin Server
+  hosts: vps
+  become: yes
+  tags:
+    - pangolin-server
+    - server
+    - pangolin
+  roles:
+    - common
+    - docker
+    - pangolin_server
+
+- name: Deploy Pangolin Client
+  hosts: local:clients
+  become: yes
+  tags:
+    - pangolin-client
+    - client
+    - pangolin
+  roles:
+    - common
+    - docker
+    - pangolin_client
+

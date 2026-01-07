@@ -1,0 +1,16 @@
+---
+- name: Include user management tasks
+  include_tasks: user_management.yml
+
+- name: Include SSH hardening tasks
+  include_tasks: ssh_hardening.yml
+
+- name: Include firewall configuration
+  include_tasks: firewall.yml
+
+- name: Include system hardening tasks
+  include_tasks: system_hardening.yml
+
+- name: Include fail2ban tasks
+  include_tasks: fail2ban.yml
+

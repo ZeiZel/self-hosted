@@ -1,9 +1,0 @@
----
-- name: Deploy Pangolin Server on VPS Only
-  hosts: vps
-  become: yes
-  roles:
-    - server_security
-    - common
-    - docker
-    - pangolin_server

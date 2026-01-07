@@ -1,0 +1,44 @@
+---
+- name: Check if SSH config backup exists
+  stat:
+    path: /etc/ssh/sshd_config.backup
+  register: ssh_backup_exists
+  changed_when: false
+  tags:
+    - security
+    - hardening
+
+- name: Backup SSH config
+  copy:
+    src: /etc/ssh/sshd_config
+    dest: /etc/ssh/sshd_config.backup
+    remote_src: yes
+    mode: '0644'
+  when: not ssh_backup_exists.stat.exists
+  tags:
+    - security
+    - hardening
+
+- name: Deploy hardened SSH config
+  template:
+    src: sshd_config.j2
+    dest: /etc/ssh/sshd_config
+    mode: '0644'
+    backup: yes
+  notify: restart sshd
+  tags:
+    - security
+    - hardening
+
+- name: Display SSH connection info
+  debug:
+    msg: |
+      SSH configuration updated!
+      New SSH port: {{ ssh_port | default(2678) }}
+      New user: {{ new_user_name | default('admin') }}
+      IMPORTANT: Make sure you can connect with the new user and port before closing this session!
+      Connection command: ssh -p {{ ssh_port | default(2678) }} {{ new_user_name | default('admin') }}@{{ ansible_host }}
+  tags:
+    - security
+    - hardening
+

@@ -1,0 +1,46 @@
+---
+docker_edition: 'ce'
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-compose-plugin
+
+docker_users:
+  - "{{ ansible_user }}"
+
+firewall_allowed_tcp_ports:
+  - 2678    # SSH (custom port)
+  - 80      # HTTP
+  - 443     # HTTPS
+
+firewall_allowed_udp_ports:
+  - 51820   # WireGuard
+  - 21820   # WireGuard alt
+
+sysctl_config:
+  net.ipv4.ip_forward: 1
+  net.ipv4.conf.all.src_valid_mark: 1
+  net.ipv6.conf.all.forwarding: 1
+
+# Security settings
+new_user_name: "admin"
+ssh_port: 2678
+fail2ban_dest_email: "admin@yourdomain.com"
+fail2ban_ssh_maxretry: 5
+fail2ban_ssh_bantime: 3600
+fail2ban_ssh_findtime: 600
+
+# Pangolin settings
+pangolin_version: "latest"
+gerbil_version: "latest"
+traefik_version: "v3.4.0"
+pangolin_install_dir: "/opt/pangolin"
+wireguard_network: "10.99.0.0/24"
+wireguard_server_ip: "10.99.0.1"
+wireguard_port: 51820
+
+# Kubespray settings
+k8s_cluster_name: "local-cluster"
+kubespray_install_dir: "/opt/kubespray"
+kubespray_version: "release-2.23"

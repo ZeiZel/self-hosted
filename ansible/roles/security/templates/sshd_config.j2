@@ -1,0 +1,52 @@
+# SSH Server Configuration
+# Managed by Ansible - do not edit manually
+
+# Port configuration
+Port {{ ssh_port | default(2678) }}
+
+# Protocol
+Protocol 2
+
+# Host keys
+HostKey /etc/ssh/ssh_host_rsa_key
+HostKey /etc/ssh/ssh_host_ecdsa_key
+HostKey /etc/ssh/ssh_host_ed25519_key
+
+# Privilege separation
+UsePrivilegeSeparation sandbox
+
+# Authentication
+PermitRootLogin no
+PasswordAuthentication no
+PubkeyAuthentication yes
+AuthorizedKeysFile .ssh/authorized_keys
+
+# Allow specific user
+AllowUsers {{ new_user_name | default('admin') }}
+
+# Security settings
+StrictModes yes
+MaxAuthTries 3
+MaxSessions 2
+ClientAliveInterval 300
+ClientAliveCountMax 2
+LoginGraceTime 60
+
+# Disable features
+X11Forwarding no
+PermitEmptyPasswords no
+ChallengeResponseAuthentication no
+UsePAM yes
+
+# Ciphers and algorithms
+Ciphers chacha20-poly1305@openssh.com,aes256-gcm@openssh.com,aes128-gcm@openssh.com,aes256-ctr,aes192-ctr,aes128-ctr
+MACs hmac-sha2-512-etm@openssh.com,hmac-sha2-256-etm@openssh.com,hmac-sha2-512,hmac-sha2-256
+KexAlgorithms curve25519-sha256@libssh.org,diffie-hellman-group-exchange-sha256
+
+# Logging
+SyslogFacility AUTH
+LogLevel VERBOSE
+
+# Banner
+Banner /etc/issue.net
+

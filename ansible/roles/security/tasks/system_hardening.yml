@@ -1,0 +1,57 @@
+---
+- name: Install security packages
+  apt:
+    name:
+      - unattended-upgrades
+      - apt-listchanges
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+  tags:
+    - security
+    - hardening
+
+- name: Disable unnecessary services
+  systemd:
+    name: "{{ item }}"
+    enabled: no
+    state: stopped
+  loop: "{{ unnecessary_services | default(['bluetooth', 'cups', 'cups-browsed']) }}"
+  ignore_errors: yes
+  tags:
+    - security
+    - hardening
+
+- name: Configure automatic security updates
+  apt:
+    name: unattended-upgrades
+    state: present
+  when: ansible_os_family == "Debian"
+  tags:
+    - security
+    - hardening
+
+- name: Configure sysctl security settings
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+  loop:
+    - { key: 'net.ipv4.ip_forward', value: '0' }
+    - { key: 'net.ipv4.conf.all.send_redirects', value: '0' }
+    - { key: 'net.ipv4.conf.default.send_redirects', value: '0' }
+    - { key: 'net.ipv4.conf.all.accept_redirects', value: '0' }
+    - { key: 'net.ipv4.conf.default.accept_redirects', value: '0' }
+    - { key: 'net.ipv4.conf.all.secure_redirects', value: '0' }
+    - { key: 'net.ipv4.conf.default.secure_redirects', value: '0' }
+    - { key: 'net.ipv4.icmp_echo_ignore_broadcasts', value: '1' }
+    - { key: 'net.ipv4.icmp_ignore_bogus_error_responses', value: '1' }
+    - { key: 'net.ipv4.tcp_syncookies', value: '1' }
+    - { key: 'net.ipv4.conf.all.log_martians', value: '1' }
+    - { key: 'net.ipv4.conf.default.log_martians', value: '1' }
+  when: security_hardening_sysctl | default(true)
+  tags:
+    - security
+    - hardening
+
