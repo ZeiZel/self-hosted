@@ -24,7 +24,7 @@
 - notesnook (server, identity, sse)
 - vaultwarden
 - stoat (api, web)
-- owncloud
+- nextcloud
 - stalwart
 - gitlab
 - teamcity
@@ -64,7 +64,7 @@ annotations:
 - ✅ notesnook (server, identity, sse)
 - ✅ vaultwarden
 - ✅ stoat (api, web)
-- ✅ owncloud
+- ✅ nextcloud
 - ✅ stalwart
 - ✅ monitoring (prometheus, grafana, loki)
 - ✅ postgres
@@ -112,7 +112,7 @@ annotations:
 - ✅ vault (ServiceAccount, ClusterRole для Vault и Injector)
 - ✅ vaultwarden (RBAC)
 - ✅ stoat (RBAC)
-- ✅ owncloud (RBAC)
+- ✅ nextcloud (RBAC)
 - ✅ stalwart (RBAC)
 - ✅ gitlab (RBAC)
 - ✅ teamcity (RBAC)
@@ -141,7 +141,7 @@ annotations:
 - ✅ notesnook (Ingress + IngressRoute)
 - ✅ vaultwarden
 - ✅ stoat
-- ✅ owncloud
+- ✅ nextcloud
 - ✅ stalwart
 - ✅ gitlab
 - ✅ teamcity
@@ -225,8 +225,8 @@ annotations:
   - `valkey-master.code.svc.cluster.local` → `valkey-master.db.svc.cluster.local`
   - `minio.code.svc.cluster.local:9000` → `minio.db.svc.cluster.local:9000`
 
-#### 4. OwnCloud
-- **Файл**: `kubernetes/charts/owncloud/values.yaml`
+#### 4. Nextcloud
+- **Файл**: `kubernetes/charts/nextcloud/values.yaml`
 - **Проблема**: Использует `postgresql.code.svc.cluster.local` и `valkey-master.code.svc.cluster.local`
 - **Исправление**: 
   - `postgresql.code.svc.cluster.local` → `postgresql.db.svc.cluster.local`
@@ -322,7 +322,7 @@ annotations:
 - `productivity` - Notesnook, Excalidraw
 - `code` - GitLab, YouTrack, TeamCity, Hub
 - `social` - Stoat, Stalwart
-- `data` - Vaultwarden, Syncthing, OwnCloud
+- `data` - Vaultwarden, Syncthing, Nextcloud
 - `infrastructure` - Bytebase, Glance, Pangolin-client
 
 **Рекомендации**: Структура namespace логична и хорошо организована.

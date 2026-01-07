@@ -22,7 +22,7 @@ Each service in the `docker/` directory has its own `docker-compose.yml` file, a
 - `mailer/` - Mail server (Stalwart)
 - `monitoring/` - Monitoring stack
 - `notes/` - Notesnook
-- `own-cloud/` - ownCloud
+- `nextcloud/` - Nextcloud
 - `postgresql/` - PostgreSQL database
 - `redis/` - Redis cache
 - `secrets/` - Vault

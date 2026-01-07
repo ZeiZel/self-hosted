@@ -15,7 +15,7 @@
 - 🛠 GitLab — CI/CD + Git-repo
 - 📝 Notesnook (notesnook-sync-server) — notes
 - 🔐 Authentik — SSO authn
-- ☁️ Syncthing (or ownCloud if find sync-server) - synchronise data in cloud
+- ☁️ Syncthing (or Nextcloud if find sync-server) - synchronise data in cloud
 
 ## Stack
 

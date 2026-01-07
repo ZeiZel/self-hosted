@@ -27,7 +27,7 @@ sidebar_position: 1
   - [Sonatype Nexus](https://help.sonatype.com/en/installing-iq-server.html)
 - Удалённое хранение данных
   - [Syncthing](https://syncthing.net/)
-  - [ownCloud](https://owncloud.com/)
+  - [Nextcloud](https://nextcloud.com/)
 - Авторизация
   - [Authintik](https://goauthentik.io/) - прекрасное решение, которое поддерживает нужный нам SAML2
 - Базы данных

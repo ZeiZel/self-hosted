@@ -178,7 +178,7 @@ function ServicesSection(): ReactNode {
 		{
 			title: 'Storage',
 			category: 'Storage',
-			description: 'Syncthing, ownCloud, MinIO for data synchronization',
+			description: 'Syncthing, Nextcloud, MinIO for data synchronization',
 			icon: '☁️',
 			link: '/docs/services/storage',
 		},

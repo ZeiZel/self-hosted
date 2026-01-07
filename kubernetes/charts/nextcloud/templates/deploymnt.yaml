@@ -1,33 +1,33 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: owncloud
+  name: nextcloud
   namespace: {{ .Release.Namespace }}
   labels:
-    app: owncloud
+    app: nextcloud
 spec:
-  replicas: {{ .Values.owncloud.replicaCount }}
+  replicas: {{ .Values.nextcloud.replicaCount }}
   selector:
     matchLabels:
-      app: owncloud
+      app: nextcloud
   template:
     metadata:
       labels:
-        app: owncloud
+        app: nextcloud
       annotations:
         {{- if .Values.consul.enabled }}
         consul.hashicorp.com/connect-inject: "true"
-        consul.hashicorp.com/connect-service: "owncloud"
+        consul.hashicorp.com/connect-service: "nextcloud"
         consul.hashicorp.com/connect-service-port: "8080"
         consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
         {{- end }}
         {{- if .Values.vault.enabled }}
         # Vault Agent Injector
         vault.hashicorp.com/agent-inject: "true"
-        vault.hashicorp.com/role: "owncloud"
-        vault.hashicorp.com/agent-inject-secret-secrets: "secret/data/owncloud/secrets"
+        vault.hashicorp.com/role: "nextcloud"
+        vault.hashicorp.com/agent-inject-secret-secrets: "secret/data/nextcloud/secrets"
         vault.hashicorp.com/agent-inject-template-secrets: |
-          {{`{{- with secret "secret/data/owncloud/secrets" -}}`}}
+          {{`{{- with secret "secret/data/nextcloud/secrets" -}}`}}
           {{`{{- range $key, $value := .Data.data -}}`}}
           {{`{{ $key }}={{ $value }}`}}
           {{`{{- end -}}`}}
@@ -41,10 +41,10 @@ spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}
 
-      serviceAccountName: owncloud
+      serviceAccountName: nextcloud
 
       containers:
-        - name: owncloud
+        - name: nextcloud
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
 
@@ -54,23 +54,23 @@ spec:
 
           envFrom:
             - secretRef:
-                name: owncloud-secrets
+                name: nextcloud-secrets
             - configMapRef:
-                name: owncloud-config
+                name: nextcloud-config
 
           env:
-            - name: OWNCLOUD_DOMAIN
-              value: "{{ .Values.owncloud.config.domain }}"
+            - name: NEXTCLOUD_DOMAIN
+              value: "{{ .Values.nextcloud.config.domain }}"
 
           resources:
-            {{- toYaml .Values.owncloud.resources | nindent 12 }}
+            {{- toYaml .Values.nextcloud.resources | nindent 12 }}
 
           volumeMounts:
             - name: files
               mountPath: {{ .Values.persistence.files.mountPath }}
             - name: config
               mountPath: {{ .Values.persistence.config.mountPath }}
-            - name: owncloud-config
+            - name: nextcloud-config
               mountPath: /etc/templates
 
           {{- if .Values.probes.liveness.enabled }}
@@ -108,8 +108,8 @@ spec:
             - name: PGPASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: owncloud-secrets
-                  key: OWNCLOUD_DB_PASSWORD
+                  name: nextcloud-secrets
+                  key: NEXTCLOUD_DB_PASSWORD
 
         # Ожидание Redis
         {{- if .Values.redis.enabled }}
@@ -129,10 +129,11 @@ spec:
       volumes:
         - name: files
           persistentVolumeClaim:
-            claimName: owncloud-files
+            claimName: nextcloud-files
         - name: config
           persistentVolumeClaim:
-            claimName: owncloud-config
-        - name: owncloud-config
+            claimName: nextcloud-config
+        - name: nextcloud-config
           configMap:
-            name: owncloud-config
+            name: nextcloud-config
+

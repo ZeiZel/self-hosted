@@ -9,10 +9,10 @@ storage "raft" {
 listener "tcp" {
   address       = "0.0.0.0:8200"
   cluster_address = "0.0.0.0:8201"
-  tls_disable   = "false"
-  tls_cert_file = "/certs/fullchain.crt"
-  tls_key_file  = "/certs/key.key"
+  tls_disable   = "true"
+  # tls_cert_file = "/certs/fullchain.crt"
+  # tls_key_file  = "/certs/key.key"
 }
 
-api_addr     = "https://vault.local:8200"
-cluster_addr = "https://vault.local:8201"
+api_addr     = "http://vault.local:8200"
+cluster_addr = "http://vault.local:8201"

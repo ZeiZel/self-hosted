@@ -25,7 +25,7 @@ sidebar_position: 3
     - [ ] mongo
   - [ ] notesnook
   - [ ] vaultwarden
-  - [ ] owncloud
+  - [ ] nextcloud
   - [ ] stoat
   - [ ] stalwart
   - [ ] Monitoring

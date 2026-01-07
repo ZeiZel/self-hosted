@@ -27,7 +27,7 @@ sidebar_position: 1
   - [Sonatype Nexus](https://help.sonatype.com/en/installing-iq-server.html)
 - Remote Data Storage
   - [Syncthing](https://syncthing.net/)
-  - [ownCloud](https://owncloud.com/)
+  - [Nextcloud](https://nextcloud.com/)
 - Authentication
   - [Authintik](https://goauthentik.io/) - great solution that supports SAML2 we need
 - Databases

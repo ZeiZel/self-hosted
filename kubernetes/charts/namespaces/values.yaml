@@ -33,7 +33,7 @@ namespaces:
 
   data:
     enabled: true
-    description: "Data storage: Vaultwarden, Syncthing, OwnCloud"
+    description: "Data storage: Vaultwarden, Syncthing, Nextcloud"
 
   auth:
     enabled: true

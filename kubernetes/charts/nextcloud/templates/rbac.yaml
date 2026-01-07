@@ -1,14 +1,14 @@
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: owncloud
+  name: nextcloud
   namespace: {{ .Release.Namespace }}
 
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole
 metadata:
-  name: owncloud
+  name: nextcloud
 rules:
   - apiGroups: [""]
     resources: ["pods"]
@@ -21,12 +21,13 @@ rules:
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRoleBinding
 metadata:
-  name: owncloud
+  name: nextcloud
 roleRef:
   apiGroup: rbac.authorization.k8s.io
   kind: ClusterRole
-  name: owncloud
+  name: nextcloud
 subjects:
   - kind: ServiceAccount
-    name: owncloud
+    name: nextcloud
     namespace: {{ .Release.Namespace }}
+

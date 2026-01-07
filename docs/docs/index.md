@@ -11,7 +11,7 @@ This repository provides a complete self-hosted infrastructure solution for deve
 ## What You'll Find Here
 
 - **Version Control Systems** - GitLab for code management
-- **Cloud Storage Solutions** - Syncthing, ownCloud for data synchronization
+- **Cloud Storage Solutions** - Syncthing, Nextcloud for data synchronization
 - **Design Tools** - Excalidraw for collaborative design
 - **Communication** - Stoat (Revolt) for team chat and collaboration
 - **Secure Authentication** - Authentik for SSO between services

@@ -19,7 +19,7 @@ This infrastructure includes a comprehensive set of self-hosted services organiz
 ## Storage
 
 - **[Syncthing](https://syncthing.net/)** - Continuous file synchronization
-- **[ownCloud](https://owncloud.com/)** - File sharing and collaboration platform
+- **[Nextcloud](https://nextcloud.com/)** - File sharing and collaboration platform
 - **[MinIO](https://www.min.io/)** - S3-compatible object storage
 
 ## Development

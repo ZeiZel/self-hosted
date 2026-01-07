@@ -2,19 +2,19 @@
 apiVersion: batch/v1
 kind: CronJob
 metadata:
-  name: owncloud-cron
+  name: nextcloud-cron
   namespace: {{ .Release.Namespace }}
   labels:
-    app: owncloud-cron
+    app: nextcloud-cron
 spec:
   schedule: "{{ .Values.cronjobs.schedule }}"
   jobTemplate:
     spec:
       template:
         spec:
-          serviceAccountName: owncloud
+          serviceAccountName: nextcloud
           containers:
-            - name: owncloud-cron
+            - name: nextcloud-cron
               image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
               imagePullPolicy: {{ .Values.image.pullPolicy }}
 
@@ -22,7 +22,7 @@ spec:
                 - /bin/sh
                 - -c
                 - |
-                  php -f /var/www/owncloud/cron.php
+                  php -f /var/www/html/cron.php
 
               resources:
                 {{- toYaml .Values.cronjobs.resources | nindent 16 }}
@@ -34,7 +34,8 @@ spec:
           volumes:
             - name: files
               persistentVolumeClaim:
-                claimName: owncloud-files
+                claimName: nextcloud-files
 
           restartPolicy: OnFailure
 {{- end }}
+

@@ -104,7 +104,7 @@ secrets:
   notesnookSecret: ENC[...]
   stalwartLdapPassword: ENC[...]
   youtrackGitlabToken: ENC[...]
-  owncloudAdminPassword: ENC[...]
+  nextcloudAdminPassword: ENC[...]
   penpotApiSecretKey: ENC[...]
 
   # MinIO
@@ -194,9 +194,9 @@ secrets:
 
 - `youtrackGitlabToken` - токен для интеграции с GitLab
 
-### OwnCloud
+### Nextcloud
 
-- `owncloudAdminPassword` - пароль администратора
+- `nextcloudAdminPassword` - пароль администратора
 
 ### Penpot
 

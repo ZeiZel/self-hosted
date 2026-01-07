@@ -1,0 +1,12 @@
+apiVersion: v2
+name: nextcloud
+description: A Helm chart for Nextcloud file sharing and collaboration
+type: application
+version: 1.0.0
+appVersion: "latest"
+home: https://nextcloud.com
+sources:
+  - https://github.com/nextcloud/docker
+maintainers:
+  - name: DevOps Team
+

@@ -279,9 +279,9 @@ apps:
       - service/consul
       - service/vault
 
-  owncloud:
+  nextcloud:
     repo: charts
-    chart: owncloud
+    chart: nextcloud
     namespace: data
     version: v1.0.0
     needs:

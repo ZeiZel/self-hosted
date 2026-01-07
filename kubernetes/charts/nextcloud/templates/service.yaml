@@ -1,15 +1,16 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: owncloud
+  name: nextcloud
   namespace: {{ .Release.Namespace }}
   labels:
-    app: owncloud
+    app: nextcloud
 spec:
-  type: {{ .Values.owncloud.service.type }}
+  type: {{ .Values.nextcloud.service.type }}
   ports:
-    - port: {{ .Values.owncloud.service.port }}
+    - port: {{ .Values.nextcloud.service.port }}
       targetPort: 8080
       name: http
   selector:
-    app: owncloud
+    app: nextcloud
+

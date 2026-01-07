@@ -28,7 +28,7 @@ helm install namespaces ./charts/namespaces
 - **productivity**: Notesnook, Excalidraw
 - **code**: GitLab, YouTrack, TeamCity, Hub
 - **social**: Stoat, Stalwart Mail
-- **data**: Vaultwarden, Syncthing, OwnCloud
+- **data**: Vaultwarden, Syncthing, Nextcloud
 - **auth**: Authentication services
 - **monitoring**: Prometheus, Grafana, Loki
 

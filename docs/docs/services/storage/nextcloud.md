@@ -2,9 +2,9 @@
 sidebar_position: 2
 ---
 
-# ownCloud
+# Nextcloud
 
-ownCloud is a file sharing and collaboration platform for self-hosting.
+Nextcloud is a file sharing and collaboration platform for self-hosting.
 
 ## Features
 
@@ -19,14 +19,14 @@ ownCloud is a file sharing and collaboration platform for self-hosting.
 ### Docker Compose
 
 ```bash
-cd docker/own-cloud
+cd docker/nextcloud
 docker-compose up -d
 ```
 
 ### Kubernetes
 
 ```bash
-helmfile -e k8s apply -l name=owncloud
+helmfile -e k8s apply -l name=nextcloud
 ```
 
 ## Configuration
@@ -36,9 +36,9 @@ Default credentials:
 - **Password:** admin (change on first login)
 
 Access at:
-- **URL:** `http://localhost:8080` (Docker) or `https://owncloud.<your-domain>` (Kubernetes)
+- **URL:** `http://localhost:8080` (Docker) or `https://nextcloud.<your-domain>` (Kubernetes)
 
 ## Documentation
 
-For more information, visit the [official ownCloud documentation](https://doc.owncloud.com/).
+For more information, visit the [official Nextcloud documentation](https://docs.nextcloud.com/).
 

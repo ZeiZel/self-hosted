@@ -16,7 +16,7 @@ sidebar_position: 6
 4. **Сервисы продуктивности** (Notesnook, Excalidraw, Penpot)
 5. **Сервисы разработки** (GitLab, TeamCity, YouTrack, JetBrains Hub)
 6. **Социальные сервисы** (Stoat, Stalwart)
-7. **Сервисы данных** (Vaultwarden, Syncthing, ownCloud)
+7. **Сервисы данных** (Vaultwarden, Syncthing, Nextcloud)
 
 ## Развёртка всех сервисов
 
@@ -363,18 +363,18 @@ kubectl get ingress -n data -l app=syncthing
 
 **Доступ:** `syncthing.local`
 
-### ownCloud
+### Nextcloud
 
-ownCloud - система облачного хранения файлов.
+Nextcloud - система облачного хранения файлов.
 
 **Проверка:**
 
 ```bash
-kubectl get pods -n data -l app=owncloud
-kubectl get ingress -n data -l app=owncloud
+kubectl get pods -n data -l app=nextcloud
+kubectl get ingress -n data -l app=nextcloud
 ```
 
-**Доступ:** `owncloud.local`
+**Доступ:** `nextcloud.local`
 
 **Начальная настройка:** Войдите с администратором (пароль в секретах).
 

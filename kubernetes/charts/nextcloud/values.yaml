@@ -1,14 +1,14 @@
 # Namespace
 namespace: data
 
-# OwnCloud Image
+# Nextcloud Image
 image:
-  repository: owncloud/server
-  tag: "11.0.0"
+  repository: nextcloud/server
+  tag: "latest"
   pullPolicy: IfNotPresent
 
-# OwnCloud Web Server config
-owncloud:
+# Nextcloud Web Server config
+nextcloud:
   replicaCount: 1
 
   service:
@@ -28,9 +28,9 @@ owncloud:
     user: "admin"
     password: "changeme"
 
-  # OwnCloud Config
+  # Nextcloud Config
   config:
-    domain: "owncloud.local"
+    domain: "nextcloud.local"
     protocol: "http"
     trustedDomains: []
     defaultLanguage: "en"
@@ -44,14 +44,14 @@ persistence:
   files:
     enabled: true
     size: 1Gi
-    mountPath: /mnt/data
+    mountPath: /var/www/html/data
     accessMode: ReadWriteOnce
 
   # Config directory
   config:
     enabled: true
     size: 5Gi
-    mountPath: /etc/owncloud
+    mountPath: /var/www/html/config
     accessMode: ReadWriteOnce
 
 # PostgreSQL (external)
@@ -59,9 +59,9 @@ postgresql:
   external: true
   host: "postgresql.db.svc.cluster.local"
   port: 5432
-  username: "owncloud"
+  username: "nextcloud"
   password: "changeme"
-  database: "owncloud"
+  database: "nextcloud"
   ssl: false
 
 # Redis/ValKey (external) - session cache
@@ -80,12 +80,12 @@ ingress:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     traefik.ingress.kubernetes.io/router.tls: "true"
 
-  host: owncloud.local
+  host: nextcloud.local
   path: /
 
   tls:
     enabled: true
-    secretName: owncloud-tls
+    secretName: nextcloud-tls
 
 # Cron Jobs config
 cronjobs:
@@ -106,7 +106,7 @@ consul:
   port: 8500
   datacenter: dc1
   tags:
-    - owncloud
+    - nextcloud
     - file-sharing
 
 # Security
@@ -130,15 +130,15 @@ probes:
 
 # Environment variables
 env:
-  OWNCLOUD_LOG_LEVEL: "2"
-  OWNCLOUD_APPS_ENABLE: "files,admin,comments,notifications,search,sharing,checksums,dav,oauth2"
+  NEXTCLOUD_LOG_LEVEL: "2"
 
 # Vault integration (requires Vault policies and secrets to be configured)
 vault:
   enabled: false
   # Note: Before enabling, configure Vault:
-  # 1. Create policy for owncloud service
-  # 2. Create secret at secret/data/owncloud/secrets
+  # 1. Create policy for nextcloud service
+  # 2. Create secret at secret/data/nextcloud/secrets
   # 3. Enable Kubernetes auth method in Vault
   # 4. Create role binding ServiceAccount to Vault policy
   # See: kubernetes/docs/VAULT_MIGRATION.md
+

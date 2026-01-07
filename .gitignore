@@ -8,7 +8,7 @@
 
 /.vagrant
 /volumes
-/configs/revolt/Revolt.toml
+/**/Revolt.toml
 
 !.env.example
 

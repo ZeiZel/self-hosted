@@ -94,8 +94,8 @@ SERVICE_SECRETS["youtrack"]="youtrackGitlabToken"
 # GitLab
 SERVICE_SECRETS["gitlab"]="gitlabToken gitlabRunnerToken"
 
-# OwnCloud
-SERVICE_SECRETS["owncloud"]="owncloudAdminPassword"
+# Nextcloud
+SERVICE_SECRETS["nextcloud"]="nextcloudAdminPassword"
 
 # MongoDB
 SERVICE_SECRETS["mongodb"]="mongoPassword"

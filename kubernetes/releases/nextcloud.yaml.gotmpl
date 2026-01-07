@@ -1,12 +1,12 @@
 namespace: data
 
-owncloud:
+nextcloud:
   replicaCount: 1
   admin:
     user: "admin"
-    password: "{{ .Values.secrets.owncloudAdminPassword }}"
+    password: "{{ .Values.secrets.nextcloudAdminPassword }}"
   config:
-    domain: "owncloud.{{ .Values.infra.host }}"
+    domain: "nextcloud.{{ .Values.infra.host }}"
 
 persistence:
   enabled: true
@@ -27,7 +27,7 @@ redis:
 
 ingress:
   enabled: true
-  host: owncloud.{{ .Values.infra.host }}
+  host: nextcloud.{{ .Values.infra.host }}
 
 cronjobs:
   enabled: true
@@ -37,5 +37,6 @@ consul:
   enabled: true
   host: "consul.consul.svc.cluster.local"
   tags:
-    - owncloud
+    - nextcloud
     - file-sharing
+

@@ -64,8 +64,8 @@ if [ -n "$1" ]; then
         stoat|revolt)
             migrate_k8s_secret "social" "revolt-secrets" "stoat" "secrets"
             ;;
-        owncloud)
-            migrate_k8s_secret "data" "owncloud-secrets" "owncloud" "secrets"
+        nextcloud)
+            migrate_k8s_secret "data" "nextcloud-secrets" "nextcloud" "secrets"
             ;;
         stalwart)
             migrate_k8s_secret "social" "stalwart-secrets" "stalwart" "secrets"
@@ -90,7 +90,7 @@ if [ -n "$1" ]; then
             ;;
         *)
             echo "Неизвестный сервис: ${SERVICE}"
-            echo "Доступные сервисы: authentik, vaultwarden, stoat, owncloud, stalwart, notesnook, gitlab, teamcity, youtrack, excalidraw, bytebase"
+            echo "Доступные сервисы: authentik, vaultwarden, stoat, nextcloud, stalwart, notesnook, gitlab, teamcity, youtrack, excalidraw, bytebase"
             exit 1
             ;;
     esac
@@ -102,7 +102,7 @@ else
     echo "  - authentik"
     echo "  - vaultwarden"
     echo "  - stoat"
-    echo "  - owncloud"
+    echo "  - nextcloud"
     echo "  - stalwart"
     echo "  - notesnook"
     echo "  - gitlab"

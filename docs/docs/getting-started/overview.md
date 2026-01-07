@@ -13,7 +13,7 @@ This repository contains configurations and documentation for a complete self-ho
 - **Development Tools**: GitLab, TeamCity, YouTrack for code management and CI/CD
 - **Productivity Tools**: Notesnook, Excalidraw for collaboration
 - **Communication**: Stoat (Revolt) for team chat
-- **Storage Solutions**: Syncthing, ownCloud, MinIO for data management
+- **Storage Solutions**: Syncthing, Nextcloud, MinIO for data management
 - **Infrastructure Services**: Traefik, Consul, Vault for service discovery and secrets management
 - **Monitoring & Logging**: Grafana, Prometheus, Loki, ELK stack
 - **Authentication**: Authentik for SSO

@@ -144,7 +144,7 @@ annotations:
 - ✅ authentik
 - ✅ vaultwarden
 - ✅ stoat (revolt)
-- ✅ owncloud
+- ✅ nextcloud
 - ✅ stalwart
 - ✅ notesnook
 - ✅ gitlab
