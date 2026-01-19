@@ -1,4 +1,19 @@
 ---
+infrastructure:
+  base:
+    - namespace
+    - traefik
+    - vault
+    - consul
+  apps:
+    - stoat
+    - swalwart
+    - youtrack
+    - hub
+    - teamcity
+    - authentik
+    - vaultwarden
+
 docker_edition: 'ce'
 docker_packages:
   - docker-ce
@@ -39,8 +54,3 @@ pangolin_install_dir: "/opt/pangolin"
 wireguard_network: "10.99.0.0/24"
 wireguard_server_ip: "10.99.0.1"
 wireguard_port: 51820
-
-# Kubespray settings
-k8s_cluster_name: "local-cluster"
-kubespray_install_dir: "/opt/kubespray"
-kubespray_version: "release-2.23"

@@ -1,68 +1,48 @@
 ---
-# Main Ansible Playbook
-# Run with tags to execute specific role groups
-#
-# Examples:
-#   ansible-playbook -i inventory/hosts.ini all.yml --tags security
-#   ansible-playbook -i inventory/hosts.ini all.yml --tags server-setup
-#   ansible-playbook -i inventory/hosts.ini all.yml --tags kubespray
-#   ansible-playbook -i inventory/hosts.ini all.yml --tags pangolin-server
-#   ansible-playbook -i inventory/hosts.ini all.yml --tags pangolin-client
-#   ansible-playbook -i inventory/hosts.ini all.yml --limit server --tags security,server-setup,pangolin-server
-
-- name: Server Security Hardening
-  hosts: all
-  become: yes
-  tags:
-    - security
-    - hardening
-    - ubuntu
+- name: Host
+  hosts: local
+  become: true
   roles:
-    - security
+    - role: setup_host
 
-- name: Server Setup and Configuration
-  hosts: all
-  become: yes
-  tags:
-    - server-setup
-    - setup
-    - ubuntu
+- name: Master
+  hosts: master
   roles:
-    - server_setup
+    - role: setup_server
+    - role: docker
+    - role: security
+    - role: kubespray
+      tags: master
+      type: node
+    - role: apps
+      tags: master
+    - role: pangolin
+      tags: node
 
-- name: Install Kubespray and Deploy Kubernetes Cluster
-  hosts: k8s_masters:k8s_workers
-  become: yes
-  tags:
-    - kubespray
-    - k8s
-    - kubernetes
+- name: Worker
+  hosts: workers
   roles:
-    - common
-    - docker
-    - kubespray
+    - role: setup_server
+    - role: docker
+    - role: security
+    - role: kubespray
+      tags: worker
+      type: node
+    - role: apps
+      tags: worker
+    - role: pangolin
+      tags: node
 
-- name: Deploy Pangolin Server
-  hosts: vps
-  become: yes
-  tags:
-    - pangolin-server
-    - server
-    - pangolin
+- name: Gateway
+  hosts: gateway
   roles:
-    - common
-    - docker
-    - pangolin_server
-
-- name: Deploy Pangolin Client
-  hosts: local:clients
-  become: yes
-  tags:
-    - pangolin-client
-    - client
-    - pangolin
-  roles:
-    - common
-    - docker
-    - pangolin_client
-
+    - role: setup_server
+    - role: docker
+    - role: security
+    - role: kubespray
+      tags: worker
+      type: gateway
+    - role: apps
+      tags: gateway
+    - role: pangolin
+      tags: gateway

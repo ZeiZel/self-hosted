@@ -1,0 +1,4 @@
+Installation complete!  It may take a few minutes to spin up.
+
+Access at https://{{ .Values.global.domain }}/
+

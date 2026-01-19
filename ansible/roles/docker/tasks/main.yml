@@ -10,7 +10,7 @@
     curl -fsSL https://get.docker.com -o /tmp/get-docker.sh
     sh /tmp/get-docker.sh
     rm /tmp/get-docker.sh
-  when: 
+  when:
     - docker_version_check.rc != 0
     - ansible_os_family == "Debian"
   args:
@@ -35,10 +35,3 @@
     path: /usr/local/bin/docker-compose
   register: docker_compose_stat
   changed_when: false
-
-- name: Install Docker Compose standalone
-  get_url:
-    url: "https://github.com/docker/compose/releases/download/v2.24.0/docker-compose-linux-x86_64"
-    dest: /usr/local/bin/docker-compose
-    mode: '0755'
-  when: not docker_compose_stat.stat.exists

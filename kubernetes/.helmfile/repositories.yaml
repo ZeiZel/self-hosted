@@ -1,3 +1,4 @@
+---
 repositories:
   - name: traefik
     url: https://traefik.github.io/charts
@@ -5,3 +6,15 @@ repositories:
     url: https://charts.jetstack.io
   - name: penpot
     url: http://helm.penpot.app
+  - name: authentik
+    url: https://charts.goauthentik.io
+  - name: devtron
+    url: https://helm.devtron.ai
+  - name: gitlab
+    url: https://charts.gitlab.io/
+  - name: harbor
+    url: https://helm.goharbor.io
+  - name: nextcloud
+    url: https://nextcloud.github.io/helm/
+  - name: bitnami
+    url: https://charts.bitnami.com/bitnami

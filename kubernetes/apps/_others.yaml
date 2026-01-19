@@ -36,37 +36,37 @@ apps:
 
   # DATABASES
   valkey:
-    repo: charts
+    repo: bitnami
     chart: valkey
     namespace: db
-    version: v1.0.0
+    version: ">=0.0.0"
     needs:
       - ingress/traefik
       - service/vault
 
   postgres:
-    repo: charts
+    repo: bitnami
     chart: postgres
     namespace: db
-    version: v2.0.0
+    version: ">=0.0.0"
     needs:
       - ingress/traefik
       - service/vault
 
   minio:
-    repo: charts
+    repo: bitnami
     chart: minio
     namespace: db
-    version: 1.0.0
+    version: ">=0.0.0"
     needs:
       - ingress/traefik
       - service/vault
 
   mongodb:
-    repo: charts
+    repo: bitnami
     chart: mongodb
     namespace: db
-    version: 1.0.0
+    version: ">=0.0.0"
     needs:
       - ingress/traefik
       - service/vault

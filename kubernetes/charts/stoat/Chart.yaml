@@ -1,11 +1,6 @@
 apiVersion: v2
-name: stoat
-description: A Helm chart for Stoat (Revolt) open-source chat server
+name: revolt
+description: Revolt Chat self hosted server
 type: application
-version: 1.0.0
-appVersion: "0.8.0"
-home: https://stoat.chat/
-sources:
-  - https://github.com/stoatchat/self-hosted
-maintainers:
-  - name: DevOps Team
+version: 0.0.1
+appVersion: "0.0.1"

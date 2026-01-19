@@ -1,0 +1,43 @@
+# Ansible
+*.retry
+.ansible/
+collections/
+*.log
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+.venv/
+ENV/
+env/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Vagrant
+.vagrant/
+
+# Temporary files
+/tmp/
+*.tmp
+*.bak
+
+# Ansible facts cache
+/tmp/ansible_facts/
+*.facts
+
+# Secrets (ensure vault files are tracked but decrypted versions are not)
+*_decrypted.yml
+*.vault.yml.dec

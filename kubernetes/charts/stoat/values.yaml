@@ -1,188 +1,241 @@
-# Namespace
-namespace: social
+# Config Reference: https://github.com/revoltchat/backend/blob/stable/crates/core/config/Revolt.toml
+# Default values for revolt.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
 
-create:
-  namespace: true
+global:
+  namespace: 'revolt'
+  # Domain name used for access, ex revolt.example.com
+  domain: ''
 
-# Revolt Backend (API) Image
-api:
-  image:
-    repository: revoltchat/server
-    tag: "latest"
-    pullPolicy: IfNotPresent
+  web:
+    port: 5000
+  api:
+    port: 14702
+  bonfire:
+    port: 14703
+  autumn:
+    port: 14704
+  january:
+    port: 14705
 
+  secret:
+    vapid_key: ''
+    vapid_public_key: ''
+    encryption_key: ''
+
+  ingress:
+    enabled: false
+    className: ''
+    annotations: {}
+    extra_hosts: []
+  serviceAccount:
+    create: true
+    automount: true
+    annotations: { }
+    name: ""
+
+  subcharts:
+    mongo:
+      enabled: true  # Set to false to use external MongoDB
+      connection_url: ''
+    redis:
+      enabled: true  # Set to false to use external Redis
+      connection_url: ''
+    minio:
+      enabled: true  # Set to false to use external MinIO
+      connection_url: ''
+    rabbitmq:
+      enabled: true  # Set to false to use external RabbitMQ
+      host: ''
+      port: 5672
+      username: 'rabbituser'
+      password: 'rabbitpass'
+
+
+mongodb:
+  architecture: standalone
+  auth:
+    enabled: false
+  persistence:
+    enabled: false
+
+
+redis:
+#  image:
+#    repository: eqalpha/keydb
+#    tag: x86_64_v6.3.4
+#    pullPolicy: IfNotPresent
+  architecture: standalone
+  auth:
+    enabled: false
+  master:
+    persistence:
+      enabled: false
+
+
+rabbitmq:
   replicaCount: 1
+  auth:
+    username: "rabbituser"
+    password: "rabbitpass"
+  persistence:
+    enabled: false
 
-  service:
-    type: ClusterIP
-    port: 8000
 
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 500m
-      memory: 512Mi
+minio:
+  mode: standalone
+  rootUser: minioautumn
+  rootPassword: minioautumn
+  persistence:
+    enabled: false
+  auth:
+    rootUser: 'minioautumn'
+    rootPassword: 'minioautumn'
 
-# Revolt Frontend (Web) Image
+
+# Web app
 web:
   image:
-    repository: revoltchat/web
-    tag: "latest"
-    pullPolicy: IfNotPresent
-
+    repository: ghcr.io/revoltchat/client
+    tag: master
+    pullPolicy: Always
+  annotations: {}
+  labels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
   replicaCount: 1
-
+  resources: {}
+  livenessProbe:
+  readinessProbe:
   service:
     type: ClusterIP
-    port: 3000
+  extra_volumes: []
+  extra_volumeMounts: []
 
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 250m
-      memory: 256Mi
 
-# Revolt конфигурация
-revolt:
-  config:
-    # Domain configuration
-    apiUrl: "http://api.revolt.local"
-    appUrl: "http://revolt.local"
-    publicUrl: "http://revolt.local"
+# Revolt API Server
+api:
+  image:
+    repository: ghcr.io/revoltchat/server
+    tag: 20250210-1
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  annotations: {}
+  labels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  resources: {}
+  livenessProbe:
+  readinessProbe:
+  service:
+    type: ClusterIP
+  extra_volumes: []
+  extra_volumeMounts: []
+  configMountPath: /Revolt.toml
 
-    # Server name
-    serverName: "Revolt"
 
-    # Features
-    features:
-      inviteOnly: false
-      emailVerification: false
-      captcha: false
+# Events service
+bonfire:
+  image:
+    repository: ghcr.io/revoltchat/bonfire
+    tag: 20250210-1
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  annotations: {}
+  labels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  resources: {}
+  livenessProbe:
+  readinessProbe:
+  service:
+    type: ClusterIP
+  extra_volumes: []
+  extra_volumeMounts: []
+  configMountPath: /Revolt.toml
 
-    # File upload
-    fileUpload:
-      maxSize: 20971520  # 20MB
 
-    # Logging
-    logLevel: "info"
+# File server
+autumn:
+  image:
+    repository: ghcr.io/revoltchat/autumn
+    tag: 20250210-1
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  annotations: {}
+  labels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  resources: {}
+#  livenessProbe:
+  livenessProbe: {}
+  readinessProbe:
+  service:
+    type: ClusterIP
+  extra_volumes: []
+  extra_volumeMounts: []
+  configMountPath: /Revolt.toml
 
-# MongoDB (для Revolt)
-mongodb:
-  enabled: true
-  external: true
-  host: "mongodb.db.svc.cluster.local"
-  port: 27017
-  username: "revolt"
-  password: "changeme"
-  database: "revolt"
-  authSource: "admin"
+# Metadata and image proxy
+january:
+  image:
+    repository: ghcr.io/revoltchat/january
+    tag: 20250210-1
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  annotations: {}
+  labels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  resources: {}
+  livenessProbe:
+  readinessProbe:
+  service:
+    type: ClusterIP
+  extra_volumes: []
+  extra_volumeMounts: []
+  configMountPath: /Revolt.toml
 
-# Redis/ValKey (для кэширования)
-redis:
-  enabled: true
-  host: "valkey-master.db.svc.cluster.local"
-  port: 6379
-  password: ""
+# Regular task daemon
+crond:
+  image:
+    repository: ghcr.io/revoltchat/crond
+    tag: 20250210-1-debug
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  annotations: {}
+  labels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  resources: {}
+  livenessProbe:
+  readinessProbe:
+  extra_volumes: []
+  extra_volumeMounts: []
+  configMountPath: /Revolt.toml
 
-# S3/MinIO (для хранения файлов)
-s3:
-  enabled: true
-  endpoint: "http://minio.db.svc.cluster.local:9000"
-  region: "us-east-1"
-  accessKey: "minioadmin"
-  secretKey: "minioadmin"
-  bucket: "revolt"
-  usePathStyle: true
-
-# Persistent Storage
-persistence:
-  enabled: true
-  storageClass: standard
-
-  # API data
-  data:
-    enabled: true
-    size: 5Gi
-    mountPath: /data
-    accessMode: ReadWriteOnce
-
-# SAML2 Authentication (Authentik)
-saml:
-  enabled: true
-  idpUrl: "http://authentik.service.svc.cluster.local"
-  entrypoint: "http://authentik.service.svc.cluster.local/application/saml/revolt/sso/binding/redirect/"
-  issuer: "http://revolt.local"
-  cert: ""  # Поместить сертификат Authentik
-  identifierFormat: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
-  nameIDFormat: "urn:oasis:names:tc:SAML:1.1:nameid-format:emailAddress"
-
-# Ingress через Traefik
-ingress:
-  enabled: true
-  className: traefik
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-
-  # API Ingress
-  api:
-    host: api.revolt.local
-    path: /
-
-  # Web Ingress
-  web:
-    host: revolt.local
-    path: /
-
-  tls:
-    enabled: true
-    secretName: revolt-tls
-
-# Consul интеграция
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  port: 8500
-  datacenter: dc1
-  tags:
-    - revolt
-    - chat-server
-
-# Security
-securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-
-# Health Checks
-probes:
-  liveness:
-    enabled: true
-    initialDelaySeconds: 60
-    periodSeconds: 10
-  readiness:
-    enabled: true
-    initialDelaySeconds: 30
-    periodSeconds: 5
-
-# SMTP (for email notifications)
-smtp:
-  enabled: false
-  host: "smtp.example.com"
-  port: 587
-  from: "noreply@revolt.local"
-  username: ""
-  password: ""
-
-# Vault integration (requires Vault policies and secrets to be configured)
-vault:
-  enabled: false
-  # Note: Before enabling, configure Vault:
-  # 1. Create policy for stoat service
-  # 2. Create secret at secret/data/stoat/secrets
-  # 3. Enable Kubernetes auth method in Vault
-  # 4. Create role binding ServiceAccount to Vault policy
-  # See: kubernetes/docs/VAULT_MIGRATION.md
+# Push notification daemon
+pushd:
+  image:
+    repository: ghcr.io/revoltchat/pushd
+    tag: 20250210-1
+    pullPolicy: IfNotPresent
+  replicaCount: 1
+  annotations: {}
+  labels: {}
+  nodeSelector: {}
+  tolerations: []
+  affinity: {}
+  resources: {}
+  livenessProbe:
+  readinessProbe:
+  extra_volumes: []
+  extra_volumeMounts: []
+  configMountPath: /Revolt.toml

@@ -1,0 +1,51 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "revolt.fullname" . }}-config
+  namespace: {{ .Values.global.namespace }}
+  annotations:
+    "helm.sh/resource-policy": keep
+data:
+  Revolt.toml: |
+    production = false
+
+    [database]
+    mongodb = {{ .Values.global.subcharts.mongo.connection_url | default (printf "mongodb://%s-mongodb" (include "revolt.fullname" .)) | quote }}
+    redis = {{ .Values.global.subcharts.redis.connection_url | default (printf "redis://%s-redis-master" (include "revolt.fullname" .)) | quote }}
+
+    [rabbit]
+    host = {{ .Values.global.subcharts.rabbitmq.host | default (printf "%s-rabbitmq" (include "revolt.fullname" .)) | quote }}
+    port = {{ .Values.global.subcharts.rabbitmq.port }}
+    username = {{ .Values.global.subcharts.rabbitmq.username | quote }}
+    password = {{ .Values.global.subcharts.rabbitmq.password | quote }}
+
+
+    [hosts]
+    app = "https://{{ .Values.global.domain }}"
+    api = "https://{{ .Values.global.domain }}/api"
+    events = "wss://{{ .Values.global.domain }}/ws"
+    autumn = "https://{{ .Values.global.domain }}/autumn"
+    january = "https://{{ .Values.global.domain }}/january"
+
+    [pushd.vapid]
+    private_key = "{{ .Values.global.secret.vapid_key }}"
+    public_key = "{{ .Values.global.secret.vapid_public_key }}"
+
+    [files]
+    encryption_key = "{{ .Values.global.secret.encryption_key }}"
+
+
+
+    [files.s3]
+    # S3 protocol endpoint
+    endpoint = {{ .Values.global.subcharts.minio.connection_url | default (printf "redis://%s-minio:9000" (include "revolt.fullname" .)) | quote }}
+    # Whether to use path-style buckets
+    # Generally true, except for MinIO
+    path_style_buckets = false
+    # S3 region name
+    region = "minio"
+    # S3 protocol key ID
+    access_key_id = "minioautumn"
+    # S3 protocol access key
+    secret_access_key = "minioautumn"
+    default_bucket = "revolt-uploads"

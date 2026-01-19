@@ -1,0 +1,14 @@
+namespace: infrastructure
+
+pangolin:
+  serverEndpoint: "{{ .Values.infra.pangolinServerEndpoint }}"
+  clientName: "k8s-cluster"
+
+ingress:
+  enabled: false
+
+consul:
+  enabled: true
+  tags:
+    - pangolin
+    - vpn
