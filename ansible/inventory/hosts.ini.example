@@ -16,34 +16,3 @@
 # Kubernetes master nodes
 # Example:
 # master1 ansible_host=192.168.1.10 ansible_user=admin ansible_port=2678
-
-[k8s_workers]
-# Kubernetes worker nodes
-# Example:
-# worker1 ansible_host=192.168.1.20 ansible_user=admin ansible_port=2678
-
-[clients]
-# Additional client machines
-# Example:
-# client1 ansible_host=192.168.1.30 ansible_user=admin ansible_port=2678
-
-# Group variables
-[vps:vars]
-pangolin_role=server
-pangolin_domain=yourdomain.com
-pangolin_admin_email=admin@yourdomain.com
-
-[local:vars]
-pangolin_role=client
-pangolin_server_endpoint=yourdomain.com
-
-[k8s_masters:vars]
-# Kubernetes master node variables
-
-[k8s_workers:vars]
-# Kubernetes worker node variables
-
-[clients:vars]
-pangolin_role=client
-pangolin_server_endpoint=yourdomain.com
-

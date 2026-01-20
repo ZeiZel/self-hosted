@@ -2,11 +2,13 @@
 - name: Host
   hosts: local
   become: true
+  gather_facts: true
   roles:
     - role: setup_host
 
 - name: Master
   hosts: master
+  gather_facts: true
   roles:
     - role: setup_server
     - role: docker
@@ -21,6 +23,7 @@
 
 - name: Worker
   hosts: workers
+  gather_facts: true
   roles:
     - role: setup_server
     - role: docker
@@ -35,6 +38,7 @@
 
 - name: Gateway
   hosts: gateway
+  gather_facts: true
   roles:
     - role: setup_server
     - role: docker

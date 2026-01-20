@@ -41,3 +41,6 @@ Thumbs.db
 # Secrets (ensure vault files are tracked but decrypted versions are not)
 *_decrypted.yml
 *.vault.yml.dec
+
+inventory/**
+!inventory/hosts.ini.example

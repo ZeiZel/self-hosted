@@ -28,7 +28,3 @@
 
 /**/charts
 !/kubernetes/charts
-
-# Ansible
-ansible/inventory/hosts.ini
-ansible/group_vars/vault.yml
