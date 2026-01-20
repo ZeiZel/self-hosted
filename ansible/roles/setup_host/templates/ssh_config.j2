@@ -1,0 +1,17 @@
+# SSH Client Configuration
+# Managed by Ansible - Self-Hosted Infrastructure
+
+# Recommended settings for self-hosted infrastructure
+Host *
+    ServerAliveInterval 60
+    ServerAliveCountMax 3
+    TCPKeepAlive yes
+    Compression yes
+    IdentityFile ~/.ssh/{{ setup_host_ssh_key_name }}
+
+# You can add specific host configurations below
+# Example:
+# Host myserver
+#     HostName 192.168.1.100
+#     User admin
+#     Port 2678

@@ -1,62 +1,52 @@
 ---
-- name: Update apt cache
-  apt:
-    update_cache: yes
-    cache_valid_time: 3600
-  when: ansible_os_family == "Debian"
+- name: Ubuntu setup
+  ignore_errors: true
+  become: true
+  when: ansible_facts['os_family'] == "Debian"
+  block:
+    - name: Update distro release
+      command: "sudo do-release-upgrade"
 
-- name: Install required system packages
-  apt:
-    name:
-      - apt-transport-https
-      - ca-certificates
-      - curl
-      - gnupg
-      - lsb-release
-      - python3-pip
-      - ufw
-      - wireguard
-      - wireguard-tools
-    state: present
-    update_cache: yes
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
 
-- name: Install Python Docker modules
-  pip:
-    name:
-      - docker
-      - docker-compose
-    state: present
+    - name: Install required system packages
+      apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - curl
+          - gnupg
+          - lsb-release
+          - python3-pip
+          - ufw
+          - wireguard
+          - wireguard-tools
+        state: present
+        update_cache: yes
 
-- name: Configure sysctl for WireGuard
-  sysctl:
-    name: "{{ item.key }}"
-    value: "{{ item.value }}"
-    state: present
-    reload: yes
-  loop: "{{ sysctl_config | dict2items }}"
+    - name: Activate autoupgrades
+      tags: autoupgrades
+      block:
+        - name: Install required system packages
+          apt:
+            name:
+              - unattended-upgrades
+            state: present
+            update_cache: yes
 
-- name: Enable and start UFW
-  ufw:
-    state: enabled
-    policy: deny
+        - name: Enable autoupdates
+          sysctl:
+            state: present
+            name: unattended-upgrades.service
+            reload: true
 
-- name: Allow SSH through firewall
-  ufw:
-    rule: allow
-    port: '22'
-    proto: tcp
+    - name: Install time
+      timezone:
+        name: Europe/Moscow
 
-- name: Allow TCP ports through firewall
-  ufw:
-    rule: allow
-    port: "{{ item }}"
-    proto: tcp
-  loop: "{{ firewall_allowed_tcp_ports }}"
-  when: pangolin_role == 'server'
-
-- name: Allow UDP ports through firewall
-  ufw:
-    rule: allow
-    port: "{{ item }}"
-    proto: udp
-  loop: "{{ firewall_allowed_udp_ports }}"
+    - name: Reboot
+      reboot:
+        reboot_timeout: 60s

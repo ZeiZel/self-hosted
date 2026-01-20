@@ -1,0 +1,82 @@
+---
+- name: Check if SSH client is installed
+  command: which ssh
+  register: ssh_check
+  changed_when: false
+  failed_when: false
+
+- name: Display SSH client status
+  debug:
+    msg: "SSH client is {{ 'installed' if ssh_check.rc == 0 else 'NOT installed' }}"
+
+- name: Ensure .ssh directory exists
+  file:
+    path: "{{ ansible_env.HOME }}/.ssh"
+    state: directory
+    mode: '0700'
+
+- name: Check if SSH key already exists
+  stat:
+    path: "{{ ansible_env.HOME }}/.ssh/{{ setup_host_ssh_key_name }}"
+  register: ssh_key_check
+
+- name: Generate SSH key pair
+  openssh_keypair:
+    path: "{{ ansible_env.HOME }}/.ssh/{{ setup_host_ssh_key_name }}"
+    type: "{{ setup_host_ssh_key_type }}"
+    size: "{{ setup_host_ssh_key_size | default(omit) }}"
+    comment: "{{ setup_host_ssh_key_comment }}"
+    state: present
+  when: not ssh_key_check.stat.exists
+
+- name: Set proper permissions on SSH private key
+  file:
+    path: "{{ ansible_env.HOME }}/.ssh/{{ setup_host_ssh_key_name }}"
+    mode: '0600'
+
+- name: Set proper permissions on SSH public key
+  file:
+    path: "{{ ansible_env.HOME }}/.ssh/{{ setup_host_ssh_key_name }}.pub"
+    mode: '0644'
+
+- name: Check if SSH config exists
+  stat:
+    path: "{{ ansible_env.HOME }}/.ssh/config"
+  register: ssh_config_check
+
+- name: Create SSH config from template
+  template:
+    src: ssh_config.j2
+    dest: "{{ ansible_env.HOME }}/.ssh/config"
+    mode: '0644'
+  when: not ssh_config_check.stat.exists and setup_host_create_ssh_config
+
+- name: Add recommended SSH settings to existing config
+  blockinfile:
+    path: "{{ ansible_env.HOME }}/.ssh/config"
+    block: |
+      # Recommended settings for self-hosted infrastructure
+      Host *
+          ServerAliveInterval 60
+          ServerAliveCountMax 3
+          TCPKeepAlive yes
+          Compression yes
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - Self-Hosted Infrastructure"
+    create: yes
+    mode: '0644'
+  when: ssh_config_check.stat.exists and setup_host_create_ssh_config
+
+- name: Display SSH public key
+  slurp:
+    src: "{{ ansible_env.HOME }}/.ssh/{{ setup_host_ssh_key_name }}.pub"
+  register: ssh_public_key
+  when: not ssh_key_check.stat.exists
+
+- name: Show generated SSH public key
+  debug:
+    msg: |
+      SSH key pair generated successfully!
+      Public key: {{ (ssh_public_key.content | b64decode).strip() }}
+      
+      Add this public key to your remote servers' ~/.ssh/authorized_keys file.
+  when: not ssh_key_check.stat.exists

@@ -1,0 +1,47 @@
+---
+- name: Check {{ dependency.name }} version
+  command: "{{ homebrew_install_path }}/bin/{{ dependency.name }} --version"
+  register: "{{ dependency.name }}_version"
+  changed_when: false
+  failed_when: false
+  loop: "{{ setup_host_tools }}"
+  loop_control:
+    loop_var: dependency
+
+- name: Check SSH client
+  command: ssh -V
+  register: ssh_version
+  changed_when: false
+  failed_when: false
+
+- name: Display installation summary
+  debug:
+    msg:
+      - "==============================================="
+      - "Setup Host - Installation Summary"
+      - "==============================================="
+      - "Homebrew: {{ brew_version.stdout_lines[0] if brew_version.rc == 0 else 'NOT INSTALLED' }}"
+      - "Git: {{ git_version.stdout if git_version.rc == 0 else 'NOT INSTALLED' }}"
+      - "Python3: {{ python_version.stdout if python_version.rc == 0 else 'NOT INSTALLED' }}"
+      - "Ansible: {{ ansible_version.stdout_lines[0] if ansible_version.rc == 0 else 'NOT INSTALLED' }}"
+      - "kubectl: {{ kubectl_version.stdout if kubectl_version.rc == 0 else 'NOT INSTALLED' }}"
+      - "Helm: {{ helm_version.stdout if helm_version.rc == 0 else 'NOT INSTALLED' }}"
+      - "Helmfile: {{ helmfile_version.stdout_lines[0] if helmfile_version.rc == 0 else 'NOT INSTALLED' }}"
+      - "SSH: {{ ssh_version.stderr if ssh_version.rc == 0 else 'NOT INSTALLED' }}"
+      - "==============================================="
+      - "SSH Key: {{ ansible_env.HOME }}/.ssh/{{ setup_host_ssh_key_name }}"
+      - "==============================================="
+
+- name: Verify all required tools are installed
+  assert:
+    that:
+      - brew_version.rc == 0
+      - git_version.rc == 0 or 'git' not in setup_host_tools
+      - python_version.rc == 0 or 'python3' not in setup_host_tools
+      - ansible_version.rc == 0 or 'ansible' not in setup_host_tools
+      - kubectl_version.rc == 0 or 'kubectl' not in setup_host_tools
+      - helm_version.rc == 0 or 'helm' not in setup_host_tools
+      - helmfile_version.rc == 0 or 'helmfile' not in setup_host_tools
+      - ssh_version.rc == 0
+    fail_msg: "Some required tools failed to install. Please check the output above."
+    success_msg: "All required tools are installed successfully!"

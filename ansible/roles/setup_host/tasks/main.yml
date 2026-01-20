@@ -1,6 +1,33 @@
 ---
-- name: Update apt cache
-  apt:
-    update_cache: yes
-    cache_valid_time: 3600
-  when: ansible_os_family == "Debian"
+- name: Display setup_host role start message
+  debug:
+    msg: "Starting host machine setup for {{ ansible_os_family }} on {{ ansible_hostname }}"
+
+- name: Include Homebrew installation tasks
+  include_tasks: ./operations/homebrew.yml
+  tags:
+    - setup_host
+    - homebrew
+
+- name: Include dependencies installation tasks
+  include_tasks: ./operations/dependencies.yml
+  tags:
+    - setup_host
+    - dependencies
+
+- name: Include SSH configuration tasks
+  include_tasks: ./operations/ssh.yml
+  tags:
+    - setup_host
+    - ssh
+
+- name: Include verification tasks
+  include_tasks: ./operations/verify.yml
+  when: setup_host_verify_installation
+  tags:
+    - setup_host
+    - verify
+
+- name: Display setup_host role completion message
+  debug:
+    msg: "Host machine setup completed successfully! You can now proceed with infrastructure deployment."

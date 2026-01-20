@@ -1,0 +1,27 @@
+---
+- name: Ensure Homebrew is in PATH
+  set_fact:
+    brew_command: "{{ homebrew_install_path }}/bin/brew"
+
+- name: Install dependencies via Homebrew
+  community.general.homebrew:
+    name: "{{ dependency.name }}"
+    state: present
+    path: "{{ homebrew_install_path }}/bin"
+  ignore_errors: yes
+  loop: "{{ setup_host_tools }}"
+  loop_control:
+    loop_var: dependency
+
+- name: Install Python packages required for Ansible
+  pip:
+    name:
+      - jinja2
+      - netaddr
+      - pbr
+      - hvac
+      - jmespath
+      - ruamel.yaml
+    state: present
+    break_system_packages: true
+  ignore_errors: yes

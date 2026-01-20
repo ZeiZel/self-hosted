@@ -1,0 +1,63 @@
+---
+- name: Check if Homebrew is installed
+  stat:
+    path: "{{ homebrew_install_path }}/bin/brew"
+  register: homebrew_check
+
+- name: Install Homebrew on macOS
+  shell: |
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  when:
+    - not homebrew_check.stat.exists
+    - ansible_facts['os_family'] == "Darwin"
+  environment:
+    NONINTERACTIVE: "1"
+
+- name: Install Homebrew on Linux
+  shell: |
+    /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+  when:
+    - not homebrew_check.stat.exists
+    - ansible_facts['os_family'] != "Darwin"
+  environment:
+    NONINTERACTIVE: "1"
+
+- name: Add Homebrew to PATH for Linux (current session)
+  set_fact:
+    ansible_env: "{{ ansible_env | combine({'PATH': homebrew_install_path + '/bin:' + ansible_env.PATH}) }}"
+  when:
+    - ansible_facts['os_family'] != "Darwin"
+    - not homebrew_check.stat.exists
+
+- name: Add Homebrew to shell profile (macOS)
+  lineinfile:
+    path: "{{ ansible_env.HOME }}/.zprofile"
+    line: 'eval "$(/opt/homebrew/bin/brew shellenv)"'
+    create: yes
+    mode: '0644'
+  when: ansible_facts['os_family'] == "Darwin"
+
+- name: Add Homebrew to shell profile (Linux bash)
+  blockinfile:
+    path: "{{ ansible_env.HOME }}/.bashrc"
+    block: |
+      eval "$({{ homebrew_install_path }}/bin/brew shellenv)"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - Homebrew"
+    create: yes
+    mode: '0644'
+  when: ansible_facts['os_family'] != "Darwin"
+
+- name: Add Homebrew to shell profile (Linux zsh)
+  blockinfile:
+    path: "{{ ansible_env.HOME }}/.zshrc"
+    block: |
+      eval "$({{ homebrew_install_path }}/bin/brew shellenv)"
+    marker: "# {mark} ANSIBLE MANAGED BLOCK - Homebrew"
+    create: yes
+    mode: '0644'
+  when: ansible_facts['os_family'] != "Darwin"
+
+- name: Update Homebrew
+  command: "{{ homebrew_install_path }}/bin/brew update"
+  changed_when: false
+  when: homebrew_check.stat.exists or not homebrew_check.stat.exists
