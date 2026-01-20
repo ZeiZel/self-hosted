@@ -8,20 +8,12 @@
     name: "{{ dependency.name }}"
     state: present
     path: "{{ homebrew_install_path }}/bin"
-  ignore_errors: yes
   loop: "{{ setup_host_tools }}"
   loop_control:
     loop_var: dependency
 
 - name: Install Python packages required for Ansible
   pip:
-    name:
-      - jinja2
-      - netaddr
-      - pbr
-      - hvac
-      - jmespath
-      - ruamel.yaml
+    name: "{{ setup_host_python_packages }}"
     state: present
     break_system_packages: true
-  ignore_errors: yes

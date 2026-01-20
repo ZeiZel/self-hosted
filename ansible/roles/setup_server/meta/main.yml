@@ -1,13 +1,16 @@
 galaxy_info:
-  role_name: setup
-  description: setup server
+  role_name: setup_server
+  description: Prepare server with base configuration (timezone, packages, updates)
   author: Lvov Valery
   license: MIT
   min_ansible_version: 2.20.1
   platforms:
     - name: Ubuntu
       versions:
-        - all
-    - name: Darwin
+        - focal
+        - jammy
+    - name: Debian
       versions:
-        - all
+        - buster
+        - bullseye
+        - bookworm

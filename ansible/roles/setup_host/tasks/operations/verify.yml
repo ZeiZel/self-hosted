@@ -1,12 +1,45 @@
 ---
-- name: Check {{ dependency.name }} version
-  command: "{{ homebrew_install_path }}/bin/{{ dependency.name }} --version"
-  register: "{{ dependency.name }}_version"
+- name: Check Homebrew version
+  command: "{{ homebrew_install_path }}/bin/brew --version"
+  register: brew_version
   changed_when: false
   failed_when: false
-  loop: "{{ setup_host_tools }}"
-  loop_control:
-    loop_var: dependency
+
+- name: Check Git version
+  command: "{{ homebrew_install_path }}/bin/git --version"
+  register: git_version
+  changed_when: false
+  failed_when: false
+
+- name: Check Python3 version
+  command: "{{ homebrew_install_path }}/bin/python3 --version"
+  register: python_version
+  changed_when: false
+  failed_when: false
+
+- name: Check Ansible version
+  command: "{{ homebrew_install_path }}/bin/ansible --version"
+  register: ansible_version
+  changed_when: false
+  failed_when: false
+
+- name: Check kubectl version
+  command: "{{ homebrew_install_path }}/bin/kubectl version --client"
+  register: kubectl_version
+  changed_when: false
+  failed_when: false
+
+- name: Check Helm version
+  command: "{{ homebrew_install_path }}/bin/helm version"
+  register: helm_version
+  changed_when: false
+  failed_when: false
+
+- name: Check Helmfile version
+  command: "{{ homebrew_install_path }}/bin/helmfile --version"
+  register: helmfile_version
+  changed_when: false
+  failed_when: false
 
 - name: Check SSH client
   command: ssh -V
@@ -36,12 +69,12 @@
   assert:
     that:
       - brew_version.rc == 0
-      - git_version.rc == 0 or 'git' not in setup_host_tools
-      - python_version.rc == 0 or 'python3' not in setup_host_tools
-      - ansible_version.rc == 0 or 'ansible' not in setup_host_tools
-      - kubectl_version.rc == 0 or 'kubectl' not in setup_host_tools
-      - helm_version.rc == 0 or 'helm' not in setup_host_tools
-      - helmfile_version.rc == 0 or 'helmfile' not in setup_host_tools
+      - git_version.rc == 0 or 'git' not in (setup_host_tools | map(attribute='name') | list)
+      - python_version.rc == 0 or 'python3' not in (setup_host_tools | map(attribute='name') | list)
+      - ansible_version.rc == 0 or 'ansible' not in (setup_host_tools | map(attribute='name') | list)
+      - kubectl_version.rc == 0 or 'kubectl' not in (setup_host_tools | map(attribute='name') | list)
+      - helm_version.rc == 0 or 'helm' not in (setup_host_tools | map(attribute='name') | list)
+      - helmfile_version.rc == 0 or 'helmfile' not in (setup_host_tools | map(attribute='name') | list)
       - ssh_version.rc == 0
     fail_msg: "Some required tools failed to install. Please check the output above."
     success_msg: "All required tools are installed successfully!"

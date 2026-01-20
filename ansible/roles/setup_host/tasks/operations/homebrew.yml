@@ -32,7 +32,7 @@
 - name: Add Homebrew to shell profile (macOS)
   lineinfile:
     path: "{{ ansible_env.HOME }}/.zprofile"
-    line: 'eval "$(/opt/homebrew/bin/brew shellenv)"'
+    line: 'eval "$({{ homebrew_install_path }}/bin/brew shellenv)"'
     create: yes
     mode: '0644'
   when: ansible_facts['os_family'] == "Darwin"
@@ -60,4 +60,3 @@
 - name: Update Homebrew
   command: "{{ homebrew_install_path }}/bin/brew update"
   changed_when: false
-  when: homebrew_check.stat.exists or not homebrew_check.stat.exists

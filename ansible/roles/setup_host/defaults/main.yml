@@ -24,5 +24,14 @@ setup_host_ssh_key_comment: "{{ ansible_user }}@{{ ansible_hostname }}"
 # SSH config management
 setup_host_create_ssh_config: true
 
+# Python packages required for Ansible
+setup_host_python_packages:
+  - jinja2
+  - netaddr
+  - pbr
+  - hvac
+  - jmespath
+  - ruamel.yaml
+
 # Verification settings
 setup_host_verify_installation: true
