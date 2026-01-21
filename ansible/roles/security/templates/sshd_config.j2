@@ -2,7 +2,7 @@
 # Managed by Ansible - do not edit manually
 
 # Port configuration
-Port {{ ssh_port | default(2678) }}
+Port {{ ssh.port | default(2678) }}
 
 # Protocol
 Protocol 2
@@ -22,7 +22,7 @@ PubkeyAuthentication yes
 AuthorizedKeysFile .ssh/authorized_keys
 
 # Allow specific user
-AllowUsers {{ new_user_name | default('admin') }}
+AllowUsers {{ user.name | default('admin') }}
 
 # Security settings
 StrictModes yes
@@ -49,4 +49,3 @@ LogLevel VERBOSE
 
 # Banner
 Banner /etc/issue.net
-

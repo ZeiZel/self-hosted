@@ -51,7 +51,7 @@
     rule: allow
     port: "{{ item }}"
     proto: tcp
-  loop: "{{ firewall_allowed_tcp_ports }}"
+  loop: "{{ firewall.allowed_tcp_ports }}"
   when: pangolin_role == 'server'
 
 - name: Allow UDP ports through firewall
@@ -59,4 +59,4 @@
     rule: allow
     port: "{{ item }}"
     proto: udp
-  loop: "{{ firewall_allowed_udp_ports }}"
+  loop: "{{ firewall.allowed_udp_ports }}"

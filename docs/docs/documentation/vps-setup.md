@@ -67,9 +67,9 @@ You can also configure global variables in the same file (in the `vars` section)
     # Security settings
     new_user_name: "admin"
     fail2ban_dest_email: "admin@yourdomain.com"
-    fail2ban_ssh_maxretry: 5
-    fail2ban_ssh_bantime: 3600
-    fail2ban_ssh_findtime: 600
+    fail2ban.ssh.maxretry: 5
+    fail2ban.ssh.bantime: 3600
+    fail2ban.ssh.findtime: 600
 ```
 
 ## Deploying Pangolin Server on VPS

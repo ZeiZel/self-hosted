@@ -4,19 +4,13 @@
   register: fail2ban_installed
   changed_when: false
   failed_when: false
-  tags:
-    - security
-    - hardening
 
 - name: Install fail2ban
   apt:
     name: fail2ban
     state: present
     update_cache: yes
-  when: ansible_os_family == "Debian" and fail2ban_installed.rc != 0
-  tags:
-    - security
-    - hardening
+  when: fail2ban_installed.rc != 0
 
 - name: Create fail2ban jail.local
   template:
@@ -26,18 +20,12 @@
     group: root
     mode: '0644'
   notify: restart fail2ban
-  tags:
-    - security
-    - hardening
 
 - name: Check if fail2ban SSH filter exists
   stat:
     path: /etc/fail2ban/filter.d/sshd.local
   register: fail2ban_filter_exists
   changed_when: false
-  tags:
-    - security
-    - hardening
 
 - name: Create fail2ban filter for SSH
   copy:
@@ -64,31 +52,18 @@
     group: root
     mode: '0644'
   notify: restart fail2ban
-  tags:
-    - security
-    - hardening
 
 - name: Enable and start fail2ban
   systemd:
     name: fail2ban
     enabled: yes
     state: started
-  tags:
-    - security
-    - hardening
 
 - name: Check fail2ban status
   command: fail2ban-client status
   register: fail2ban_status
   changed_when: false
-  tags:
-    - security
-    - hardening
 
 - name: Display fail2ban status
   debug:
     var: fail2ban_status.stdout_lines
-  tags:
-    - security
-    - hardening
-

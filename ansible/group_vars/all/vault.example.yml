@@ -1,6 +1,8 @@
 user:
   name: ''
   password: ''
+  ssh_keys: []
+  email: 'example@gmail.com'
 
 root:
   name: ''
