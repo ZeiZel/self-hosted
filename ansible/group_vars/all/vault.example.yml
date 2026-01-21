@@ -1,0 +1,10 @@
+user:
+  name: ''
+  password: ''
+
+root:
+  name: ''
+  password: ''
+
+ssh:
+  port: 22

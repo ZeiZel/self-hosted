@@ -44,3 +44,5 @@ Thumbs.db
 
 inventory/**
 !inventory/hosts.ini.example
+
+group_vars/**/vault.yml

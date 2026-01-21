@@ -1,15 +1,17 @@
 # Ansible
 
+На один из серверов нужно установить proxmox, чтобы поднять на виртуалках k8s кластер
+
 Roles:
-- setup_host
-- setup_server
+- [x] setup_host
+- [x] setup_server
   - gateway
   - master
   - node
-- docker
-- security
-- kubespray
-- infrastructure
+- [x] docker
+- [ ] security
+- [ ] kubespray
+- [ ] infrastructure
   - base
     - namespace
     - traefik
@@ -23,6 +25,6 @@ Roles:
     - teamcity
     - authentik
     - vaultwarden
-- pangolin
+- [ ] pangolin
   - gateway
   - node

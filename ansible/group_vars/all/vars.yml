@@ -1,4 +1,5 @@
 ---
+# deployed apps
 infrastructure:
   base:
     - namespace
@@ -15,17 +16,9 @@ infrastructure:
     - vaultwarden
 
 docker_edition: 'ce'
-docker_packages:
-  - docker-ce
-  - docker-ce-cli
-  - containerd.io
-  - docker-compose-plugin
-
-docker_users:
-  - "{{ ansible_user }}"
 
 firewall_allowed_tcp_ports:
-  - 2678    # SSH (custom port)
+  - "{{ ssh.port }}"    # SSH (custom port)
   - 80      # HTTP
   - 443     # HTTPS
 

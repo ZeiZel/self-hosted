@@ -14,7 +14,10 @@ repositories:
     url: https://charts.gitlab.io/
   - name: harbor
     url: https://helm.goharbor.io
+    docs: https://github.com/goharbor/harbor-helm
   - name: nextcloud
     url: https://nextcloud.github.io/helm/
+    docs: https://github.com/nextcloud/helm
   - name: bitnami
     url: https://charts.bitnami.com/bitnami
+    docs: https://github.com/bitnami/charts
