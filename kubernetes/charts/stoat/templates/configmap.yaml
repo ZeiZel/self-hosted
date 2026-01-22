@@ -39,7 +39,7 @@ data:
 
     [files.s3]
     # S3 protocol endpoint
-    endpoint = {{ .Values.global.subcharts.minio.connection_url | default (printf "redis://%s-minio:9000" (include "revolt.fullname" .)) | quote }}
+    endpoint = {{ .Values.global.subcharts.minio.connection_url | default (printf "http://%s-minio:9000" (include "revolt.fullname" .)) | quote }}
     # Whether to use path-style buckets
     # Generally true, except for MinIO
     path_style_buckets = false
@@ -50,3 +50,22 @@ data:
     # S3 protocol access key
     secret_access_key = "minioautumn"
     default_bucket = "revolt-uploads"
+
+    {{- if .Values.smtp }}
+    {{- if .Values.smtp.enabled }}
+    [smtp]
+    # SMTP server for sending emails
+    host = {{ .Values.smtp.host | quote }}
+    port = {{ .Values.smtp.port }}
+    {{- if .Values.smtp.username }}
+    username = {{ .Values.smtp.username | quote }}
+    {{- end }}
+    {{- if .Values.smtp.password }}
+    password = {{ .Values.smtp.password | quote }}
+    {{- end }}
+    from = {{ .Values.smtp.from | quote }}
+    {{- if .Values.smtp.secure }}
+    secure = {{ .Values.smtp.secure }}
+    {{- end }}
+    {{- end }}
+    {{- end }}

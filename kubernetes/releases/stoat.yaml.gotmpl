@@ -1,50 +1,77 @@
 namespace: social
 
+# Global configuration
+global:
+  domain: "revolt.{{ .Values.infra.host }}"
+  
+  # Disable subcharts - use external services
+  subcharts:
+    mongo:
+      enabled: false
+      connection_url: "mongodb://mongodb-0.mongodb-headless.db.svc.cluster.local:27017"
+    
+    redis:
+      enabled: false
+      connection_url: "redis://valkey-master.db.svc.cluster.local:6379"
+    
+    minio:
+      enabled: false
+      connection_url: "http://minio.db.svc.cluster.local:9000"
+    
+    rabbitmq:
+      enabled: false
+      host: "rabbitmq.db.svc.cluster.local"
+      port: 5672
+      username: "rabbituser"
+      password: "{{ .Values.secrets.rabbitmqPassword }}"
+
+  # Secrets for VAPID and encryption
+  secret:
+    vapid_key: "{{ .Values.secrets.stoatVapidPrivateKey }}"
+    vapid_public_key: "{{ .Values.secrets.stoatVapidPublicKey }}"
+    encryption_key: "{{ .Values.secrets.stoatEncryptionKey }}"
+
+  # Ingress configuration
+  ingress:
+    enabled: true
+    className: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    extra_hosts: []
+
+# Service replicas
 api:
   replicaCount: 1
 
 web:
   replicaCount: 1
 
-revolt:
-  config:
-    apiUrl: "http://api.revolt.{{ .Values.infra.host }}"
-    appUrl: "http://revolt.{{ .Values.infra.host }}"
-    publicUrl: "http://revolt.{{ .Values.infra.host }}"
+bonfire:
+  replicaCount: 1
 
-mongodb:
+autumn:
+  replicaCount: 1
+
+january:
+  replicaCount: 1
+
+# SMTP configuration for email notifications via Stalwart
+smtp:
   enabled: true
-  external: true
-  host: "mongodb-0.mongodb-headless.code.svc.cluster.local"
-  password: "{{ .Values.secrets.mongoPassword }}"
+  host: "stalwart.social.svc.cluster.local"
+  port: 587  # submission port with STARTTLS
+  secure: false  # Use STARTTLS instead of direct TLS
+  from: "revolt@{{ .Values.infra.host }}"
+  username: "{{ .Values.secrets.smtpUsername }}"
+  password: "{{ .Values.secrets.smtpPassword }}"
 
-redis:
-  enabled: true
-  host: "valkey-master.code.svc.cluster.local"
-
-s3:
-  enabled: true
-  endpoint: "http://minio.code.svc.cluster.local:9000"
-  accessKey: "minioadmin"
-  secretKey: "minioadmin"
-
-saml:
-  enabled: true
-  idpUrl: "http://authentik.service.svc.cluster.local"
-  entrypoint: "http://authentik.service.svc.cluster.local/application/saml/revolt/sso/binding/redirect/"
-  issuer: "http://revolt.{{ .Values.infra.host }}"
-  cert: "{{ .Values.secrets.authentikSamlCert }}"
-
-ingress:
-  enabled: true
-  api:
-    host: api.revolt.{{ .Values.infra.host }}
-  web:
-    host: revolt.{{ .Values.infra.host }}
-
+# Consul service discovery
 consul:
   enabled: true
-  host: "consul.consul.svc.cluster.local"
+  host: "consul.service.svc.cluster.local"
+  port: 8500
+  datacenter: dc1
   tags:
     - revolt
+    - stoat
     - chat-server

@@ -1,0 +1,44 @@
+namespace: db
+
+replicaCount: 1
+
+auth:
+  username: rabbituser
+  password: "{{ .Values.secrets.rabbitmqPassword }}"
+  erlangCookie: "{{ .Values.secrets.rabbitmqErlangCookie }}"
+
+persistence:
+  enabled: true
+  storageClass: openebs-hostpath
+  size: 2Gi
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+# Enable management plugin
+plugins: "rabbitmq_management"
+
+# Consul integration for service discovery
+consul:
+  enabled: true
+  datacenter: dc1
+
+# Service configuration
+service:
+  type: ClusterIP
+  ports:
+    amqp: 5672
+    management: 15672
+
+# Disable clustering for standalone mode
+clustering:
+  enabled: false
+
+# Metrics
+metrics:
+  enabled: false

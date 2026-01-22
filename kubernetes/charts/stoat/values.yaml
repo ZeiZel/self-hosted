@@ -38,16 +38,16 @@ global:
 
   subcharts:
     mongo:
-      enabled: true  # Set to false to use external MongoDB
+      enabled: false  # Set to false to use external MongoDB
       connection_url: ''
     redis:
-      enabled: true  # Set to false to use external Redis
+      enabled: false  # Set to false to use external Redis
       connection_url: ''
     minio:
-      enabled: true  # Set to false to use external MinIO
+      enabled: false  # Set to false to use external MinIO
       connection_url: ''
     rabbitmq:
-      enabled: true  # Set to false to use external RabbitMQ
+      enabled: false  # Set to false to use external RabbitMQ
       host: ''
       port: 5672
       username: 'rabbituser'

@@ -71,6 +71,15 @@ apps:
       - ingress/traefik
       - service/vault
 
+  rabbitmq:
+    repo: bitnami
+    chart: rabbitmq
+    namespace: db
+    version: ">=0.0.0"
+    needs:
+      - ingress/traefik
+      - service/vault
+
   # SERVICES
 
   consul:
@@ -243,8 +252,10 @@ apps:
       - db/valkey
       - db/mongodb
       - db/minio
+      - db/rabbitmq
       - service/authentik
       - service/vault
+      - social/stalwart
 
   stalwart:
     repo: charts
