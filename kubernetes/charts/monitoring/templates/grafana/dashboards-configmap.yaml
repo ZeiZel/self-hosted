@@ -1,0 +1,318 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboards-db
+  namespace: {{ .Release.Namespace }}
+  labels:
+    grafana_dashboard: "1"
+data:
+  # PostgreSQL Dashboard Configuration
+  postgresql-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "PostgreSQL Database Metrics",
+        "tags": ["postgresql", "database"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "title": "Database Connections",
+            "targets": [
+              {
+                "expr": "pg_stat_database_numbackends{datname!='template0',datname!='template1'}",
+                "legendFormat": "{{datname}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Transaction Rate",
+            "targets": [
+              {
+                "expr": "rate(pg_stat_database_xact_commit{datname!='template0',datname!='template1'}[5m])",
+                "legendFormat": "{{datname}} commits"
+              },
+              {
+                "expr": "rate(pg_stat_database_xact_rollback{datname!='template0',datname!='template1'}[5m])",
+                "legendFormat": "{{datname}} rollbacks"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Database Size",
+            "targets": [
+              {
+                "expr": "pg_database_size_bytes{datname!='template0',datname!='template1'}",
+                "legendFormat": "{{datname}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Replication Lag",
+            "targets": [
+              {
+                "expr": "pg_replication_lag",
+                "legendFormat": "{{instance}}"
+              }
+            ],
+            "type": "graph"
+          }
+        ]
+      }
+    }
+
+  # MongoDB Dashboard Configuration
+  mongodb-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "MongoDB Database Metrics",
+        "tags": ["mongodb", "database"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "title": "Operations per Second",
+            "targets": [
+              {
+                "expr": "rate(mongodb_op_counters_total[5m])",
+                "legendFormat": "{{type}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Connections",
+            "targets": [
+              {
+                "expr": "mongodb_connections",
+                "legendFormat": "{{state}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Memory Usage",
+            "targets": [
+              {
+                "expr": "mongodb_memory{type='resident'}",
+                "legendFormat": "Resident"
+              },
+              {
+                "expr": "mongodb_memory{type='virtual'}",
+                "legendFormat": "Virtual"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Replication Lag",
+            "targets": [
+              {
+                "expr": "mongodb_replset_member_replication_lag",
+                "legendFormat": "{{name}}"
+              }
+            ],
+            "type": "graph"
+          }
+        ]
+      }
+    }
+
+  # MinIO Dashboard Configuration
+  minio-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "MinIO Object Storage Metrics",
+        "tags": ["minio", "storage"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "title": "API Request Rate",
+            "targets": [
+              {
+                "expr": "rate(minio_s3_requests_total[5m])",
+                "legendFormat": "{{api}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Storage Usage",
+            "targets": [
+              {
+                "expr": "minio_bucket_usage_total_bytes",
+                "legendFormat": "{{bucket}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Network Throughput",
+            "targets": [
+              {
+                "expr": "rate(minio_s3_traffic_received_bytes[5m])",
+                "legendFormat": "Received"
+              },
+              {
+                "expr": "rate(minio_s3_traffic_sent_bytes[5m])",
+                "legendFormat": "Sent"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "API Errors",
+            "targets": [
+              {
+                "expr": "rate(minio_s3_requests_errors_total[5m])",
+                "legendFormat": "{{api}}"
+              }
+            ],
+            "type": "graph"
+          }
+        ]
+      }
+    }
+
+  # Valkey/Redis Dashboard Configuration
+  valkey-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Valkey/Redis Cache Metrics",
+        "tags": ["valkey", "redis", "cache"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "title": "Commands per Second",
+            "targets": [
+              {
+                "expr": "rate(redis_commands_processed_total[5m])",
+                "legendFormat": "{{instance}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Memory Usage",
+            "targets": [
+              {
+                "expr": "redis_memory_used_bytes",
+                "legendFormat": "Used - {{instance}}"
+              },
+              {
+                "expr": "redis_memory_max_bytes",
+                "legendFormat": "Max - {{instance}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Hit Rate",
+            "targets": [
+              {
+                "expr": "rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]))",
+                "legendFormat": "{{instance}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Connected Clients",
+            "targets": [
+              {
+                "expr": "redis_connected_clients",
+                "legendFormat": "{{instance}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Replication Lag",
+            "targets": [
+              {
+                "expr": "redis_master_repl_offset - on(instance) group_right redis_slave_repl_offset",
+                "legendFormat": "{{instance}}"
+              }
+            ],
+            "type": "graph"
+          }
+        ]
+      }
+    }
+
+  # Bytebase Dashboard Configuration  
+  bytebase-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Bytebase Metrics",
+        "tags": ["bytebase", "database-management"],
+        "timezone": "browser",
+        "panels": [
+          {
+            "title": "HTTP Request Rate",
+            "targets": [
+              {
+                "expr": "rate(http_requests_total{job='bytebase'}[5m])",
+                "legendFormat": "{{method}} {{path}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "HTTP Request Duration",
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job='bytebase'}[5m]))",
+                "legendFormat": "p95"
+              },
+              {
+                "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job='bytebase'}[5m]))",
+                "legendFormat": "p99"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Active Database Connections",
+            "targets": [
+              {
+                "expr": "bytebase_database_connections_active",
+                "legendFormat": "{{database}}"
+              }
+            ],
+            "type": "graph"
+          },
+          {
+            "title": "Migration Status",
+            "targets": [
+              {
+                "expr": "bytebase_migrations_total",
+                "legendFormat": "{{status}}"
+              }
+            ],
+            "type": "graph"
+          }
+        ]
+      }
+    }
+
+---
+# Dashboard provider configuration
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: grafana-dashboard-provider
+  namespace: {{ .Release.Namespace }}
+data:
+  dashboards.yaml: |
+    apiVersion: 1
+    providers:
+      - name: 'Database Dashboards'
+        orgId: 1
+        folder: 'Databases'
+        type: file
+        disableDeletion: false
+        updateIntervalSeconds: 10
+        allowUiUpdates: true
+        options:
+          path: /var/lib/grafana/dashboards/db

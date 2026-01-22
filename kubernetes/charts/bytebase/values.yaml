@@ -73,8 +73,10 @@ probes:
     periodSeconds: 10
 
 consul:
-  enabled: false
-  tags: []
+  enabled: true
+  tags:
+    - bytebase
+    - database
 
 # Vault integration (requires Vault policies and secrets to be configured)
 vault:

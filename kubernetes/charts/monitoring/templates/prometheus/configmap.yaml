@@ -72,3 +72,89 @@ data:
       - job_name: 'loki'
         static_configs:
           - targets: ['loki:3100']
+
+      # Database monitoring
+      # PostgreSQL Exporter (Bitnami chart includes exporter on port 9187)
+      - job_name: 'postgresql'
+        static_configs:
+          - targets:
+              - 'postgres-postgresql-0.postgres-postgresql-headless.db.svc.cluster.local:9187'
+              - 'postgres-postgresql-1.postgres-postgresql-headless.db.svc.cluster.local:9187'
+              - 'postgres-postgresql-2.postgres-postgresql-headless.db.svc.cluster.local:9187'
+        relabel_configs:
+          - source_labels: [__address__]
+            target_label: instance
+            regex: '([^:]+):.*'
+            replacement: '$1'
+
+      # MongoDB Exporter (if enabled in Bitnami chart, typically on port 9216)
+      - job_name: 'mongodb'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - db
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            action: keep
+            regex: mongodb
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            target_label: __address__
+            regex: (.+)
+            replacement: $1:9216
+
+      # MinIO Metrics (MinIO provides built-in Prometheus metrics)
+      - job_name: 'minio'
+        metrics_path: /minio/v2/metrics/cluster
+        scheme: http
+        static_configs:
+          - targets:
+              - 'minio.db.svc.cluster.local:9000'
+
+      # Valkey/Redis Exporter (if enabled in Bitnami chart, typically on port 9121)
+      - job_name: 'valkey'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - db
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            action: keep
+            regex: valkey
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            target_label: __address__
+            regex: (.+)
+            replacement: $1:9121
+
+      # Bytebase Metrics
+      - job_name: 'bytebase'
+        kubernetes_sd_configs:
+          - role: pod
+            namespaces:
+              names:
+                - infrastructure
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+            action: keep
+            regex: bytebase
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+            action: keep
+            regex: "true"
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+            action: replace
+            target_label: __address__
+            regex: (.+)
+            replacement: $1:8080
+          - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+            action: replace
+            target_label: __metrics_path__
+            regex: (.+)

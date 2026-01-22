@@ -24,12 +24,11 @@ Each service in the `docker/` directory has its own `docker-compose.yml` file, a
 - `notes/` - Notesnook
 - `nextcloud/` - Nextcloud
 - `postgresql/` - PostgreSQL database
-- `redis/` - Redis cache
 - `secrets/` - Vault
 - `syncthing/` - Syncthing file sync
 - `teamcity/` - TeamCity CI/CD
 - `trilium/` - Trilium notes
-- `valkey/` - Valkey (Redis alternative)
+- `valkey/` - Valkey (Redis-compatible cache)
 - `vaultwarden/` - Vaultwarden password manager
 
 ## Quick Start
