@@ -1,6 +1,5 @@
 {{- if .Values.global.ingress.enabled -}}
 {{- $fullName := include "revolt.fullname" . -}}
-
 ---
 {{- if and .Values.global.ingress.className (not (semverCompare ">=1.18-0" .Capabilities.KubeVersion.GitVersion)) }}
   {{- if not (hasKey .Values.global.ingress.annotations "kubernetes.io/ingress.class") }}
@@ -37,7 +36,7 @@ spec:
   tls:
     - secretName: "tls-{{ include "revolt.fullname" . }}"
       hosts:
-      - {{ .Values.global.domain }}
+        - {{ .Values.global.domain }}
   rules:
     - host: {{ .Values.global.domain }}
       http:
@@ -81,6 +80,4 @@ spec:
                 name: '{{ include "revolt.fullname" . }}-web'
                 port:
                   name: http
-
-
 {{- end }}

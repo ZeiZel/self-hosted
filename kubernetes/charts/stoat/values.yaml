@@ -3,6 +3,7 @@
 # This is a YAML-formatted file.
 # Declare variables to be passed into your templates.
 
+
 global:
   namespace: 'revolt'
   # Domain name used for access, ex revolt.example.com
@@ -62,10 +63,10 @@ mongodb:
 
 
 redis:
-#  image:
-#    repository: eqalpha/keydb
-#    tag: x86_64_v6.3.4
-#    pullPolicy: IfNotPresent
+  #  image:
+  #    repository: eqalpha/keydb
+  #    tag: x86_64_v6.3.4
+  #    pullPolicy: IfNotPresent
   architecture: standalone
   auth:
     enabled: false
@@ -172,7 +173,7 @@ autumn:
   tolerations: []
   affinity: {}
   resources: {}
-#  livenessProbe:
+  #  livenessProbe:
   livenessProbe: {}
   readinessProbe:
   service:

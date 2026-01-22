@@ -9,7 +9,8 @@ Roles:
   - master
   - node
 - [x] docker
-- [ ] security
+- [x] security
+- [ ] proxmox
 - [ ] kubespray
 - [ ] infrastructure
   - base

@@ -1,6 +1,3 @@
-# NOTE:
-# This job didn't work.  However, exec'ing into the minio container then setting the alias and creating the buckets did
-
 ---
 apiVersion: batch/v1
 kind: Job
@@ -11,7 +8,6 @@ metadata:
     {{- include "revolt.labels" . | nindent 4 }}
     revolt-app: {{ include "revolt.fullname" . }}-create-buckets
 spec:
-
   template:
     metadata:
       {{- with .Values.web.annotations }}
@@ -54,4 +50,3 @@ spec:
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-

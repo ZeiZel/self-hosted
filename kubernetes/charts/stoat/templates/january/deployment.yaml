@@ -1,83 +1,73 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: "{{ include "revolt.fullname" . }}-january"
+  name: "{{ include "revolt.fullname" . }}-crond"
   namespace: {{ .Values.global.namespace }}
   labels:
     {{- include "revolt.labels" . | nindent 4 }}
-    revolt-app: {{ include "revolt.fullname" . }}-january
+    revolt-app: {{ include "revolt.fullname" . }}-crond
 spec:
-  replicas: {{ .Values.january.replicaCount }}
+  replicas: {{ .Values.crond.replicaCount }}
   selector:
     matchLabels:
       {{- include "revolt.selectorLabels" . | nindent 6 }}
-      revolt-app: {{ include "revolt.fullname" . }}-january
+      revolt-app: {{ include "revolt.fullname" . }}-crond
   template:
     metadata:
-      {{- with .Values.january.annotations }}
+      {{- with .Values.crond.annotations }}
       annotations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
       labels:
-        revolt-app: {{ include "revolt.fullname" . }}-january
+        revolt-app: {{ include "revolt.fullname" . }}-crond
         {{- include "revolt.labels" . | nindent 8 }}
-        {{- with .Values.january.labels }}
+        {{- with .Values.crond.labels }}
         {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
       containers:
-        - name: january
-          image: "{{ .Values.january.image.repository }}:{{ .Values.january.image.tag }}"
-          imagePullPolicy: {{ .Values.january.image.pullPolicy }}
+        - name: crond
+          image: "{{ .Values.crond.image.repository }}:{{ .Values.crond.image.tag }}"
+          imagePullPolicy: {{ .Values.crond.image.pullPolicy }}
           ports:
             - name: http
-              containerPort: 14705
+              containerPort: 8000
               protocol: TCP
+          {{- if .Values.crond.livenessProbe }}
           livenessProbe:
-            {{- if .Values.january.livenessProbe }}
-            {{- toYaml .Values.january.livenessProbe | nindent 12 }}
-            {{- else }}
-            tcpSocket:
-              port: {{ .Values.global.january.port }}
-            initialDelaySeconds: 15
-            periodSeconds: 30
-            {{- end }}
+            {{- toYaml .Values.crond.livenessProbe | nindent 12 }}
+          {{- end }}
+          {{- if .Values.crond.readinessProbe }}
           readinessProbe:
-            {{- if .Values.january.readinessProbe }}
-            {{- toYaml .Values.january.readinessProbe | nindent 12 }}
-            {{- else }}
-            tcpSocket:
-              port: {{ .Values.global.january.port }}
-            initialDelaySeconds: 15
-            periodSeconds: 30
-            {{- end }}
-          {{- with .Values.january.resources }}
+            {{- toYaml .Values.crond.readinessProbe | nindent 12 }}
+          {{- end }}
+          {{- with .Values.crond.resources }}
           resources:
             {{- toYaml . | nindent 12 }}
           {{- end }}
           volumeMounts:
             - name: config
               subPath: Revolt.toml
-              mountPath: {{ .Values.january.configMountPath }}
-            {{- with .Values.january.extra_volumeMounts }}
+              mountPath: {{ .Values.crond.configMountPath }}
+            {{- with .Values.crond.extra_volumeMounts }}
             {{ toYaml . | nindent 12 }}
             {{- end }}
       volumes:
         - name: config
           configMap:
             name: {{ include "revolt.fullname" . }}-config
-        {{- with .Values.january.extra_volumes }}
+        {{- with .Values.crond.extra_volumes }}
         {{ toYaml . | nindent 8 }}
         {{- end }}
-      {{- with .Values.january.nodeSelector }}
+      {{- with .Values.crond.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.january.affinity }}
+      {{- with .Values.crond.affinity }}
       affinity:
         {{- toYaml . | nindent 8 }}
       {{- end }}
-      {{- with .Values.january.tolerations }}
+      {{- with .Values.crond.tolerations }}
       tolerations:
         {{- toYaml . | nindent 8 }}
       {{- end }}
