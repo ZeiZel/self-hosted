@@ -1,30 +1,46 @@
 namespace: service
 
+global:
+  name: consul
+  datacenter: dc1
+  domain: consul
+  metrics:
+    enabled: true
+    enableAgentMetrics: true
+
 server:
+  enabled: true
   replicas: 3
-  persistence:
-    storageClass: openebs-hostpath
-    size: 1Gi
+  storage: 1Gi
+  storageClass: openebs-hostpath
+  resources:
+    requests:
+      memory: "256Mi"
+      cpu: "100m"
+    limits:
+      memory: "512Mi"
+      cpu: "500m"
+
+client:
+  enabled: true
+  grpc: true
 
 ui:
   enabled: true
+  service:
+    type: ClusterIP
+  ingress:
+    enabled: true
+    hosts:
+      - host: consul.{{ .Values.infra.host }}
+        paths:
+          - /
+    ingressClassName: traefik
 
 connectInject:
   enabled: true
   default: false
 
-ingress:
+dns:
   enabled: true
-  hosts:
-    - host: consul.{{ .Values.infra.host }}
-      paths:
-        - path: /
-          pathType: Prefix
-
-agentConfig:
-  datacenter: dc1
-  domain: consul
-  enableCentralizedConfig: true
-
-metrics:
-  enabled: true
+  enableRedirection: true

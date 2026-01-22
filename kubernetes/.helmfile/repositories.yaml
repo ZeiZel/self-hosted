@@ -21,3 +21,6 @@ repositories:
   - name: bitnami
     url: https://charts.bitnami.com/bitnami
     docs: https://github.com/bitnami/charts
+  - name: hashicorp
+    url: https://helm.releases.hashicorp.com
+    docs: https://github.com/hashicorp/consul-k8s

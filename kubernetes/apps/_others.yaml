@@ -83,9 +83,9 @@ apps:
   # SERVICES
 
   consul:
-    repo: charts
+    repo: hashicorp
     chart: consul
-    version: v1.0.0
+    version: ">=1.0.0"
     namespace: service
     needs:
       - ingress/traefik
@@ -161,10 +161,10 @@ apps:
       - service/vault
 
   authentik:
-    repo: charts
+    repo: authentik
     chart: authentik
     namespace: service
-    version: v1.0.0
+    version: ">=2024.0.0"
     needs:
       - ingress/traefik
       - service/consul
@@ -191,6 +191,19 @@ apps:
     needs:
       - ingress/traefik
       - service/consul
+      - service/vault
+
+  affine:
+    repo: charts
+    chart: affine
+    namespace: productivity
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - db/postgres
+      - db/valkey
+      - db/minio
       - service/vault
 
   # CODE (JetBrains + GitLab)
@@ -229,10 +242,10 @@ apps:
       - service/vault
 
   gitlab:
-    repo: charts
+    repo: gitlab
     chart: gitlab
     namespace: code
-    version: v1.0.0
+    version: ">=8.0.0"
     needs:
       - ingress/traefik
       - service/consul

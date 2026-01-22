@@ -1,0 +1,27 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "affine.fullname" . }}
+  labels:
+    {{- include "affine.labels" . | nindent 4 }}
+data:
+  AFFINE_SERVER_HOST: {{ .Values.affine.host | quote }}
+  AFFINE_SERVER_PORT: {{ .Values.affine.port | quote }}
+  AFFINE_SERVER_HTTPS: {{ .Values.affine.https | quote }}
+  
+  NODE_ENV: "production"
+  NODE_OPTIONS: "--max-old-space-size=4096"
+  
+  # Server configuration
+  SERVER_NAME: {{ .Values.affine.serverName | quote }}
+  AFFINE_SERVER_EXTERNAL_URL: {{ .Values.affine.server.externalUrl | quote }}
+  
+  # Feature flags
+  AFFINE_EARLY_ACCESS_PREVIEW: {{ .Values.affine.features.earlyAccess | quote }}
+  
+  # Authentication
+  ENABLE_SIGNUP: {{ .Values.affine.auth.enableSignup | quote }}
+  ENABLE_PASSWORD_SIGNIN: {{ .Values.affine.auth.enablePassword | quote }}
+  
+  # Storage
+  STORAGE_PROVIDER: "s3"
