@@ -1,0 +1,74 @@
+{{- if .Values.networkPolicy }}
+{{- if .Values.networkPolicy.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "remnawave.fullname" . }}
+  labels:
+    {{- include "remnawave.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "remnawave.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Allow from Traefik ingress
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: ingress
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.targetPort }}
+    # Allow from Prometheus for metrics
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: service
+      ports:
+        - protocol: TCP
+          port: {{ .Values.service.metricsPort }}
+  egress:
+    # Allow to PostgreSQL
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: db
+      ports:
+        - protocol: TCP
+          port: {{ .Values.postgresql.external.port }}
+    # Allow to Redis/ValKey
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: db
+      ports:
+        - protocol: TCP
+          port: {{ .Values.redis.external.port }}
+    # Allow DNS
+    - to:
+        - namespaceSelector: {}
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Allow to external nodes (for VPN node management)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 62050
+        - protocol: TCP
+          port: 62051
+{{- end }}
+{{- end }}

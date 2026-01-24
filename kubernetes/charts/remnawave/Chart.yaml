@@ -1,0 +1,20 @@
+apiVersion: v2
+name: remnawave
+description: A Helm chart for Remnawave - powerful proxy management panel built on Xray-core
+type: application
+version: 1.0.0
+appVersion: "latest"
+keywords:
+  - remnawave
+  - vpn
+  - proxy
+  - xray
+  - vless
+  - management
+home: https://docs.remnawave.com
+sources:
+  - https://github.com/remnawave/panel
+  - https://github.com/ZeiZel/self-hosted
+maintainers:
+  - name: ZeiZel
+    email: valera2003lvov@yandex.ru

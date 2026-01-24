@@ -1,0 +1,162 @@
+replicaCount: 1
+
+image:
+  repository: remnawave/backend
+  pullPolicy: IfNotPresent
+  tag: "latest"
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+serviceAccount:
+  create: true
+  annotations: {}
+  name: ""
+
+podAnnotations: {}
+
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false
+
+service:
+  type: ClusterIP
+  port: 3000
+  targetPort: 3000
+  metricsPort: 3001
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations: {}
+  hosts:
+    - host: remnawave.local
+      paths:
+        - path: /
+          pathType: Prefix
+  tls: []
+
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+# External PostgreSQL configuration
+postgresql:
+  enabled: false
+  external:
+    host: postgres-postgresql.db.svc.cluster.local
+    port: 5432
+    username: remnawave
+    password: ""
+    database: remnawave
+
+# External Redis (ValKey) configuration
+redis:
+  enabled: false
+  external:
+    host: valkey-master.db.svc.cluster.local
+    port: 6379
+    password: ""
+    database: 0
+
+# Remnawave specific configuration
+remnawave:
+  # API Configuration
+  apiInstances: 1
+
+  # Security
+  jwt:
+    authSecret: "change_me_auth_secret"
+    apiTokensSecret: "change_me_api_tokens_secret"
+    authLifetime: 12
+
+  # Domain configuration
+  frontendDomain: "*"
+  subPublicDomain: "example.com/api/sub"
+
+  # Documentation
+  docs:
+    enabled: false
+    swaggerPath: "/docs"
+    scalarPath: "/scalar"
+
+  # Metrics (Prometheus)
+  metrics:
+    enabled: true
+    user: "admin"
+    password: "change_me_metrics"
+
+  # Telegram notifications
+  telegram:
+    enabled: false
+    botToken: ""
+    usersChatId: ""
+    nodesChatId: ""
+    crmChatId: ""
+
+  # Webhooks
+  webhook:
+    enabled: false
+    url: ""
+    secretHeader: ""
+
+  # Other settings
+  shortUuidLength: 16
+  httpLoggingEnabled: false
+  bandwidthNotificationsEnabled: false
+  notConnectedUsersNotificationsEnabled: false
+
+# Consul integration
+consul:
+  enabled: true
+  serviceName: remnawave
+  servicePort: 3000
+  datacenter: dc1
+
+# Authentik integration (OIDC)
+authentik:
+  enabled: false
+  issuer: ""
+  clientId: ""
+  clientSecret: ""
+
+# Network Policy
+networkPolicy:
+  enabled: false
+
+nodeSelector: {}
+
+tolerations: []
+
+affinity: {}
+
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 15
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3

@@ -371,6 +371,21 @@ apps:
       - db/clickhouse
       - service/vault
 
+  # INFRASTRUCTURE
+  remnawave:
+    repo: charts
+    chart: remnawave
+    namespace: infrastructure
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - service/cert-manager
+      - service/authentik
+      - db/postgres
+      - db/valkey
+      - service/vault
+
   # CONTENT
   ghost:
     repo: charts

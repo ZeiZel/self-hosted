@@ -1,0 +1,148 @@
+namespace: infrastructure
+
+image:
+  repository: remnawave/backend
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 3000
+  targetPort: 3000
+  metricsPort: 3001
+
+ingress:
+  enabled: true
+  className: traefik
+  hosts:
+    - host: remnawave.{{ .Values.infra.host }}
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts:
+        - remnawave.{{ .Values.infra.host }}
+      secretName: remnawave-tls
+      clusterIssuer: letsencrypt
+
+# PostgreSQL configuration (external - use shared cluster PostgreSQL)
+postgresql:
+  enabled: false
+  external:
+    host: postgres-postgresql.db.svc.cluster.local
+    port: 5432
+    username: remnawave
+    password: "{{ .Values.secrets.remnawavePostgresPassword }}"
+    database: remnawave
+
+# Redis/ValKey configuration (external - use shared cluster ValKey)
+redis:
+  enabled: false
+  external:
+    host: valkey-master.db.svc.cluster.local
+    port: 6379
+    password: ""
+    database: 1
+
+# Remnawave specific configuration
+remnawave:
+  apiInstances: 1
+
+  # JWT Security (IMPORTANT: generate with openssl rand -hex 64)
+  jwt:
+    authSecret: "{{ .Values.secrets.remnawaveJwtAuthSecret }}"
+    apiTokensSecret: "{{ .Values.secrets.remnawaveJwtApiSecret }}"
+    authLifetime: 24
+
+  # Domain configuration
+  frontendDomain: "https://remnawave.{{ .Values.infra.host }}"
+  subPublicDomain: "remnawave.{{ .Values.infra.host }}/api/sub"
+
+  # Documentation (disable in production)
+  docs:
+    enabled: false
+    swaggerPath: "/docs"
+    scalarPath: "/scalar"
+
+  # Prometheus metrics
+  metrics:
+    enabled: true
+    user: "prometheus"
+    password: "{{ .Values.secrets.remnawaveMetricsPassword }}"
+
+  # Telegram notifications (optional)
+  telegram:
+    enabled: false
+    botToken: ""
+    usersChatId: ""
+    nodesChatId: ""
+    crmChatId: ""
+
+  # Webhooks (optional)
+  webhook:
+    enabled: false
+    url: ""
+    secretHeader: ""
+
+  # Other settings
+  shortUuidLength: 16
+  httpLoggingEnabled: false
+  bandwidthNotificationsEnabled: true
+  notConnectedUsersNotificationsEnabled: true
+
+# Consul integration for service discovery
+consul:
+  enabled: true
+  serviceName: remnawave
+  servicePort: 3000
+  datacenter: dc1
+
+# Authentik OIDC integration (optional)
+authentik:
+  enabled: true
+  issuer: "https://authentik.{{ .Values.infra.host }}/application/o/remnawave/"
+  clientId: "{{ .Values.secrets.remnawaveOidcClientId }}"
+  clientSecret: "{{ .Values.secrets.remnawaveOidcClientSecret }}"
+
+# Resources
+resources:
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+  requests:
+    cpu: 100m
+    memory: 256Mi
+
+# Health checks
+livenessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 30
+  periodSeconds: 10
+  timeoutSeconds: 5
+  failureThreshold: 3
+
+readinessProbe:
+  httpGet:
+    path: /api/health
+    port: 3000
+  initialDelaySeconds: 15
+  periodSeconds: 5
+  timeoutSeconds: 3
+  failureThreshold: 3
+
+# Security context
+podSecurityContext:
+  fsGroup: 1000
+
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  capabilities:
+    drop:
+    - ALL
+  readOnlyRootFilesystem: false
+  allowPrivilegeEscalation: false

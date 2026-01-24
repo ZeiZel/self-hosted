@@ -1,0 +1,40 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "remnawave.fullname" . }}
+  labels:
+    {{- include "remnawave.labels" . | nindent 4 }}
+data:
+  # Application ports
+  APP_PORT: {{ .Values.service.targetPort | quote }}
+  METRICS_PORT: {{ .Values.service.metricsPort | quote }}
+
+  # API scaling
+  API_INSTANCES: {{ .Values.remnawave.apiInstances | quote }}
+
+  # Domain configuration
+  FRONT_END_DOMAIN: {{ .Values.remnawave.frontendDomain | quote }}
+  SUB_PUBLIC_DOMAIN: {{ .Values.remnawave.subPublicDomain | quote }}
+
+  # Documentation
+  IS_DOCS_ENABLED: {{ .Values.remnawave.docs.enabled | quote }}
+  SWAGGER_PATH: {{ .Values.remnawave.docs.swaggerPath | quote }}
+  SCALAR_PATH: {{ .Values.remnawave.docs.scalarPath | quote }}
+
+  # JWT settings
+  JWT_AUTH_LIFETIME: {{ .Values.remnawave.jwt.authLifetime | quote }}
+
+  # Other settings
+  SHORT_UUID_LENGTH: {{ .Values.remnawave.shortUuidLength | quote }}
+  IS_HTTP_LOGGING_ENABLED: {{ .Values.remnawave.httpLoggingEnabled | quote }}
+  BANDWIDTH_USAGE_NOTIFICATIONS_ENABLED: {{ .Values.remnawave.bandwidthNotificationsEnabled | quote }}
+  NOT_CONNECTED_USERS_NOTIFICATIONS_ENABLED: {{ .Values.remnawave.notConnectedUsersNotificationsEnabled | quote }}
+
+  # Telegram notifications
+  IS_TELEGRAM_NOTIFICATIONS_ENABLED: {{ .Values.remnawave.telegram.enabled | quote }}
+
+  # Webhook
+  WEBHOOK_ENABLED: {{ .Values.remnawave.webhook.enabled | quote }}
+
+  # Metrics
+  METRICS_USER: {{ .Values.remnawave.metrics.user | quote }}
