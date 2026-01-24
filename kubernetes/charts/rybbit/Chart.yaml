@@ -1,0 +1,16 @@
+apiVersion: v2
+name: rybbit
+description: Rybbit helmchart
+type: application
+version: 0.0.1
+appVersion: "1.0.0"
+maintainers:
+  - name: Lvov Valery
+    url: https://github.com/ZeiZel
+keywords:
+  - analytics
+  - self-hosted
+  - rybbit
+home: https://github.com/ZeiZel/self-hosted
+sources:
+  - https://github.com/ZeiZel/self-hosted/tree/main/kubernetes/charts/rybbit

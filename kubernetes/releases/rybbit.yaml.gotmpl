@@ -1,0 +1,117 @@
+namespace: data
+
+# Backend configuration
+backend:
+  enabled: true
+  replicaCount: 1
+  
+  image:
+    repository: ghcr.io/rybbit-io/rybbit-backend
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  
+  env:
+    NODE_ENV: production
+    DISABLE_SIGNUP: "false"
+    CLICKHOUSE_DB: default
+    CLICKHOUSE_HOST: "http://clickhouse.db.svc.cluster.local:8123"
+    CLICKHOUSE_USER: "default"
+    POSTGRES_HOST: "postgres-postgresql.db.svc.cluster.local"
+    POSTGRES_PORT: "5432"
+    POSTGRES_DB: "rybbit"
+    POSTGRES_USER: "postgres"
+    BASE_URL: "https://rybbit.{{ .Values.infra.host }}"
+    NEXT_PUBLIC_BACKEND_URL: "https://rybbit-api.{{ .Values.infra.host }}"
+  
+  betterSecret:
+    secretName: "rybbit-secrets"
+    authKey: "better-auth-secret"
+
+# Client configuration
+client:
+  enabled: true
+  replicaCount: 1
+  
+  image:
+    repository: ghcr.io/rybbit-io/rybbit-client
+    tag: latest
+    pullPolicy: IfNotPresent
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 1Gi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  
+  env:
+    NODE_ENV: production
+    NEXT_PUBLIC_BACKEND_URL: "https://rybbit-api.{{ .Values.infra.host }}"
+
+# PostgreSQL configuration - use external shared PostgreSQL
+postgresql:
+  enabled: false
+  auth:
+    username: postgres
+    database: rybbit
+    existingSecret: "postgres-secret"
+    secretKeys:
+      adminPasswordKey: "postgres-password"
+
+# ClickHouse configuration - use external shared ClickHouse
+clickhouse:
+  enabled: false
+  auth:
+    username: "default"
+    existingSecret: "clickhouse-secret"
+    existingSecretKey: "admin-password"
+
+# Ingress configuration
+ingress:
+  api:
+    enabled: true
+    className: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
+    hosts:
+      - host: rybbit-api.{{ .Values.infra.host }}
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: rybbit-api-tls
+        hosts:
+          - rybbit-api.{{ .Values.infra.host }}
+  
+  client:
+    enabled: true
+    className: traefik
+    annotations:
+      traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
+    hosts:
+      - host: rybbit.{{ .Values.infra.host }}
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: rybbit-client-tls
+        hosts:
+          - rybbit.{{ .Values.infra.host }}
+
+# Consul integration
+consul:
+  enabled: true
+  host: "consul-server.service.svc.cluster.local"
+  tags:
+    - rybbit
+    - analytics
+    - data

@@ -24,6 +24,15 @@ bytebase:
     user: "bytebase"
     password: "" # Set in secrets
 
+  # ClickHouse connection (use external clickhouse)
+  clickhouse:
+    external: true
+    host: "clickhouse.db.svc.cluster.local"
+    port: 8123
+    database: "default"
+    user: "default"
+    password: "" # Set in secrets
+
   # Bytebase configuration
   config:
     dataDir: "/var/opt/bytebase"

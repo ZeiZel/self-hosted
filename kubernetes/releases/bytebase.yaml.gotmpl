@@ -23,7 +23,11 @@ consul:
     - bytebase
     - database
 
-
-
-
+# Note: ClickHouse can be added as a managed database in Bytebase UI after deployment
+# Use the following connection details:
+# - Host: clickhouse.db.svc.cluster.local
+# - Port: 8123 (HTTP) or 9000 (Native)
+# - Database: default
+# - User: default
+# - Password: (from secrets)
 

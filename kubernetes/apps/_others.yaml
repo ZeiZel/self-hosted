@@ -80,6 +80,15 @@ apps:
       - ingress/traefik
       - service/vault
 
+  clickhouse:
+    repo: bitnami
+    chart: clickhouse
+    namespace: db
+    version: ">=0.0.0"
+    needs:
+      - ingress/traefik
+      - service/vault
+
   # SERVICES
 
   consul:
@@ -127,16 +136,6 @@ apps:
     needs:
       - ingress/traefik
       - db/postgres
-      - service/vault
-
-  dashy:
-    repo: bitnami
-    chart: dashy
-    namespace: infrastructure
-    version: ">=0.0.0"
-    needs:
-      - ingress/traefik
-      - service/consul
       - service/vault
 
   bytebase:
@@ -323,4 +322,16 @@ apps:
       - service/consul
       - db/postgres
       - db/valkey
+      - service/vault
+
+  rybbit:
+    repo: charts
+    chart: rybbit
+    namespace: data
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - db/postgres
+      - db/clickhouse
       - service/vault
