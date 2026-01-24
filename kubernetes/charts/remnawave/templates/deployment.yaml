@@ -1,0 +1,94 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "remnawave.fullname" . }}
+  labels:
+    {{- include "remnawave.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "remnawave.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      labels:
+        {{- include "remnawave.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      serviceAccountName: {{ include "remnawave.serviceAccountName" . }}
+      securityContext:
+        {{- toYaml .Values.podSecurityContext | nindent 8 }}
+      initContainers:
+      - name: wait-for-postgres
+        image: postgres:17-alpine
+        command:
+          - sh
+          - -c
+          - |
+            echo "Waiting for PostgreSQL to be ready..."
+            until pg_isready -h {{ .Values.postgresql.external.host }} -p {{ .Values.postgresql.external.port }}; do
+              echo "PostgreSQL is not ready yet..."
+              sleep 2
+            done
+            echo "PostgreSQL is ready!"
+      - name: wait-for-redis
+        image: busybox:1.36
+        command:
+          - sh
+          - -c
+          - |
+            echo "Waiting for Redis/ValKey to be ready..."
+            until nc -z {{ .Values.redis.external.host }} {{ .Values.redis.external.port }}; do
+              echo "Redis/ValKey is not ready yet..."
+              sleep 2
+            done
+            echo "Redis/ValKey is ready!"
+      containers:
+      - name: {{ .Chart.Name }}
+        securityContext:
+          {{- toYaml .Values.securityContext | nindent 12 }}
+        image: "{{ .Values.image.repository }}:{{ .Values.image.tag | default .Chart.AppVersion }}"
+        imagePullPolicy: {{ .Values.image.pullPolicy }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.service.targetPort }}
+          protocol: TCP
+        - name: metrics
+          containerPort: {{ .Values.service.metricsPort }}
+          protocol: TCP
+        envFrom:
+        - configMapRef:
+            name: {{ include "remnawave.fullname" . }}
+        - secretRef:
+            name: {{ include "remnawave.fullname" . }}
+        {{- if .Values.livenessProbe }}
+        livenessProbe:
+          {{- toYaml .Values.livenessProbe | nindent 12 }}
+        {{- end }}
+        {{- if .Values.readinessProbe }}
+        readinessProbe:
+          {{- toYaml .Values.readinessProbe | nindent 12 }}
+        {{- end }}
+        resources:
+          {{- toYaml .Values.resources | nindent 12 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
