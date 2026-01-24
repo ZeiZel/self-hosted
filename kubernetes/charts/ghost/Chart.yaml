@@ -1,0 +1,18 @@
+apiVersion: v2
+name: ghost
+description: Ghost - Professional publishing platform for bloggers and content creators
+type: application
+version: 0.1.0
+appVersion: "5.108.0"
+home: https://ghost.org
+sources:
+  - https://github.com/TryGhost/Ghost
+keywords:
+  - blog
+  - cms
+  - publishing
+  - content
+  - self-hosted
+maintainers:
+  - name: Zeizel
+    url: https://github.com/ZeiZel

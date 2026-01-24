@@ -1,0 +1,158 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "ghost.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ghost.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      {{- include "ghost.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "ghost.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- if .Values.consul.enabled }}
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "ghost"
+        consul.hashicorp.com/connect-service-port: "{{ .Values.service.port }}"
+        consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "{{ .Values.vault.role }}"
+        vault.hashicorp.com/agent-inject-secret-secrets: "secret/data/ghost/secrets"
+        vault.hashicorp.com/agent-inject-template-secrets: |
+          {{`{{- with secret "secret/data/ghost/secrets" -}}`}}
+          {{`{{- range $key, $value := .Data.data -}}`}}
+          {{`export {{ $key }}="{{ $value }}"`}}
+          {{`{{- end -}}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+    spec:
+      securityContext:
+        {{- toYaml .Values.securityContext | nindent 8 }}
+      containers:
+        - name: ghost
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          env:
+            # Ghost URL
+            - name: url
+              value: {{ .Values.ghost.url | quote }}
+
+            # Node environment
+            - name: NODE_ENV
+              value: {{ .Values.ghost.nodeEnv | quote }}
+
+            # Database configuration
+            - name: database__client
+              value: "mysql"
+            - name: database__connection__host
+              value: {{ .Values.mysql.host | quote }}
+            - name: database__connection__port
+              value: {{ .Values.mysql.port | quote }}
+            - name: database__connection__database
+              value: {{ .Values.mysql.database | quote }}
+            - name: database__connection__user
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ghost.fullname" . }}-secrets
+                  key: mysql-user
+            - name: database__connection__password
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ghost.fullname" . }}-secrets
+                  key: mysql-password
+
+            {{- if .Values.ghost.mail.enabled }}
+            # Mail configuration
+            - name: mail__transport
+              value: {{ .Values.ghost.mail.transport | quote }}
+            - name: mail__from
+              value: {{ .Values.ghost.mail.from | quote }}
+            - name: mail__options__host
+              value: {{ .Values.ghost.mail.host | quote }}
+            - name: mail__options__port
+              value: {{ .Values.ghost.mail.port | quote }}
+            - name: mail__options__secure
+              value: {{ .Values.ghost.mail.secure | quote }}
+            {{- if .Values.ghost.mail.user }}
+            - name: mail__options__auth__user
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ghost.fullname" . }}-secrets
+                  key: mail-user
+            - name: mail__options__auth__pass
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "ghost.fullname" . }}-secrets
+                  key: mail-password
+            {{- end }}
+            {{- end }}
+
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          {{- end }}
+
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          {{- end }}
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+
+          securityContext:
+            {{- include "ghost.containerSecurityContext" . | nindent 12 }}
+
+          {{- if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: content
+              mountPath: {{ .Values.persistence.mountPath }}
+          {{- end }}
+
+      {{- if .Values.persistence.enabled }}
+      volumes:
+        - name: content
+          persistentVolumeClaim:
+            claimName: {{ include "ghost.fullname" . }}-pvc
+      {{- end }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
