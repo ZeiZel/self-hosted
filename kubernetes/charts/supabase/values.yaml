@@ -1,0 +1,435 @@
+# Default values for supabase chart
+# This is a YAML-formatted file.
+
+# Global settings
+global:
+  imagePullSecrets: []
+  storageClass: ""
+  
+  # Pod security context
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+  
+  # Container security context
+  containerSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+
+# PostgreSQL configuration
+postgresql:
+  enabled: false  # Use external PostgreSQL
+  external: true
+  host: "postgres-postgresql.db.svc.cluster.local"
+  port: 5432
+  database: "supabase"
+  user: "postgres"
+  password: ""
+  # Use existing secret for password
+  existingSecret: ""
+  existingSecretPasswordKey: "postgres-password"
+
+# MinIO configuration (for Storage)
+minio:
+  enabled: false  # Use external MinIO
+  external: true
+  endpoint: "minio.db.svc.cluster.local:9000"
+  region: "us-east-1"
+  bucket: "supabase-storage"
+  accessKey: "minio"
+  secretKey: ""
+  existingSecret: ""
+  existingSecretAccessKey: "access-key"
+  existingSecretSecretKey: "secret-key"
+  useSSL: false
+
+# Valkey/Redis configuration (for Realtime)
+redis:
+  enabled: false  # Use external Valkey
+  external: true
+  host: "valkey-master.db.svc.cluster.local"
+  port: 6379
+  password: ""
+  existingSecret: ""
+  existingSecretPasswordKey: "redis-password"
+
+# JWT configuration
+jwt:
+  # Generate with: openssl rand -base64 32
+  secret: ""
+  existingSecret: "supabase-secrets"
+  existingSecretKey: "jwt-secret"
+  # Anon key and service role key
+  anonKey: ""
+  serviceRoleKey: ""
+  existingSecretAnonKey: "anon-key"
+  existingSecretServiceKey: "service-role-key"
+  expiry: 3600
+
+# Studio dashboard URL
+studio:
+  url: ""
+
+# API URL
+api:
+  url: ""
+  externalUrl: ""
+
+# Kong Gateway configuration
+kong:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: kong
+    tag: "2.8.1"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8000
+    targetPort: 8000
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  
+  # Kong configuration
+  config:
+    database: "off"  # DB-less mode
+    declarativeConfig: "/usr/local/kong/kong.yml"
+
+# GoTrue Auth configuration
+auth:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: supabase/gotrue
+    tag: "v2.151.0"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 9999
+    targetPort: 9999
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  
+  config:
+    siteUrl: ""
+    apiExternalUrl: ""
+    disableSignup: false
+    externalEmailEnabled: true
+    externalPhoneEnabled: false
+    jwtExpiry: 3600
+    
+    # OAuth providers
+    externalGoogleEnabled: false
+    externalGithubEnabled: false
+    
+    # SMTP configuration
+    smtp:
+      enabled: false
+      host: ""
+      port: 587
+      user: ""
+      password: ""
+      adminEmail: ""
+      senderName: "Supabase"
+
+# PostgREST configuration
+rest:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: postgrest/postgrest
+    tag: "v12.0.2"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  
+  config:
+    dbSchema: "public,storage,graphql_public"
+    dbAnonRole: "anon"
+    dbMaxRows: 1000
+    dbPreRequest: ""
+    dbExtraSearchPath: "public,extensions"
+    dbPool: 10
+
+# Realtime configuration
+realtime:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: supabase/realtime
+    tag: "v2.27.5"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 4000
+    targetPort: 4000
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  
+  config:
+    dbAfterConnectQuery: 'SET search_path TO _realtime'
+    dbEncPass: ""
+    apiJwtSecret: ""
+    maxHeaderLength: 4096
+
+# Storage configuration
+storage:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: supabase/storage-api
+    tag: "v1.0.6"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 5000
+    targetPort: 5000
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  
+  config:
+    backend: "s3"
+    fileStorageBackendPath: "/var/lib/storage"
+    fileSizeLimit: 52428800  # 50MB
+    imageTransformationEnabled: true
+    # Tenant ID for multi-tenancy
+    tenantId: "supabase"
+
+# Meta API configuration
+meta:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: supabase/postgres-meta
+    tag: "v0.80.0"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+# Studio UI configuration
+studio:
+  enabled: true
+  replicaCount: 1
+  image:
+    repository: supabase/studio
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 3000
+    targetPort: 3000
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  
+  config:
+    supabaseUrl: ""
+    supabasePublicUrl: ""
+
+# Edge Runtime (Deno Functions) configuration
+edgeRuntime:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: supabase/edge-runtime
+    tag: "v1.22.4"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8081
+    targetPort: 8081
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  
+  config:
+    verifyJwt: true
+
+# ImgProxy configuration
+imgproxy:
+  enabled: true
+  replicaCount: 2
+  image:
+    repository: darthsim/imgproxy
+    tag: "latest"
+    pullPolicy: IfNotPresent
+  
+  service:
+    type: ClusterIP
+    port: 8080
+    targetPort: 8080
+  
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+  
+  config:
+    enableWebpDetection: true
+    enforceWebp: false
+    quality: 80
+    maxSrcResolution: 50.0
+
+# Ingress configuration
+ingress:
+  # API Ingress (Kong Gateway)
+  api:
+    enabled: true
+    className: "traefik"
+    annotations:
+      traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
+    hosts:
+      - host: supabase.zeizel.localhost
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: supabase-api-tls
+        hosts:
+          - supabase.zeizel.localhost
+  
+  # Studio Ingress
+  studio:
+    enabled: true
+    className: "traefik"
+    annotations:
+      traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
+    hosts:
+      - host: supabase-studio.zeizel.localhost
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: supabase-studio-tls
+        hosts:
+          - supabase-studio.zeizel.localhost
+
+# Init job configuration
+initJob:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  
+  # PostgreSQL extensions to install
+  extensions:
+    - pg_net
+    - pgjwt
+    - pg_graphql
+    - pgvector
+    - uuid-ossp
+    - pg_stat_statements
+  
+  # Schemas to create
+  schemas:
+    - auth
+    - storage
+    - realtime
+    - _realtime
+    - graphql_public
+    - extensions
+
+# Consul integration
+consul:
+  enabled: true
+  host: "consul-server.service.svc.cluster.local"
+  tags:
+    - supabase
+    - database
+    - api
+    - db
+
+# Monitoring
+monitoring:
+  enabled: false
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}
+
+# Affinity settings
+affinity:
+  enabled: true
+  podAntiAffinity: "soft"
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []

@@ -1,0 +1,91 @@
+{{- if .Values.edgeRuntime.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "supabase.fullname" . }}-edge-runtime
+  labels:
+    {{- include "supabase.edgeRuntime.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.edgeRuntime.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "supabase.edgeRuntime.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      labels:
+        {{- include "supabase.edgeRuntime.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "supabase.podSecurityContext" . | nindent 8 }}
+      containers:
+      - name: edge-runtime
+        image: "{{ .Values.edgeRuntime.image.repository }}:{{ .Values.edgeRuntime.image.tag }}"
+        imagePullPolicy: {{ .Values.edgeRuntime.image.pullPolicy }}
+        env:
+        - name: EDGE_RUNTIME_PORT
+          value: "8081"
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "supabase.jwt.secretName" . }}
+              key: {{ .Values.jwt.existingSecretKey }}
+        - name: VERIFY_JWT
+          value: {{ .Values.edgeRuntime.config.verifyJwt | quote }}
+        ports:
+        - name: http
+          containerPort: {{ .Values.edgeRuntime.service.targetPort }}
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.edgeRuntime.resources | nindent 10 }}
+        securityContext:
+          {{- include "supabase.containerSecurityContext" . | nindent 10 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.affinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          {{- if eq .Values.affinity.podAntiAffinity "hard" }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                {{- include "supabase.edgeRuntime.selectorLabels" . | nindent 16 }}
+            topologyKey: kubernetes.io/hostname
+          {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  {{- include "supabase.edgeRuntime.selectorLabels" . | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
+          {{- end }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

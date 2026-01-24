@@ -1,0 +1,10 @@
+{{- if .Values.storage.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "supabase.fullname" . }}-storage-config
+  labels:
+    {{- include "supabase.storage.labels" . | nindent 4 }}
+data:
+  # Additional configuration can be added here if needed
+{{- end }}

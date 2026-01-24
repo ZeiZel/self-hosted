@@ -1,0 +1,87 @@
+{{- if .Values.studio.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "supabase.fullname" . }}-studio
+  labels:
+    {{- include "supabase.studio.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.studio.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "supabase.studio.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      labels:
+        {{- include "supabase.studio.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "supabase.podSecurityContext" . | nindent 8 }}
+      containers:
+      - name: studio
+        image: "{{ .Values.studio.image.repository }}:{{ .Values.studio.image.tag }}"
+        imagePullPolicy: {{ .Values.studio.image.pullPolicy }}
+        env:
+        - name: STUDIO_PG_META_URL
+          value: "http://{{ include "supabase.fullname" . }}-meta:8080"
+        - name: SUPABASE_URL
+          value: {{ include "supabase.api.url" . | quote }}
+        - name: SUPABASE_PUBLIC_URL
+          value: {{ .Values.studio.config.supabasePublicUrl | default (include "supabase.api.url" .) | quote }}
+        - name: SUPABASE_ANON_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "supabase.jwt.secretName" . }}
+              key: {{ .Values.jwt.existingSecretAnonKey }}
+        - name: SUPABASE_SERVICE_KEY
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "supabase.jwt.secretName" . }}
+              key: {{ .Values.jwt.existingSecretServiceKey }}
+        - name: LOGFLARE_API_KEY
+          value: "your-super-secret-and-long-logflare-key"
+        - name: LOGFLARE_URL
+          value: "http://analytics:4000"
+        - name: NEXT_PUBLIC_ENABLE_LOGS
+          value: "false"
+        - name: NEXT_ANALYTICS_BACKEND_PROVIDER
+          value: "postgres"
+        ports:
+        - name: http
+          containerPort: {{ .Values.studio.service.targetPort }}
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /api/profile
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /api/profile
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.studio.resources | nindent 10 }}
+        securityContext:
+          {{- include "supabase.containerSecurityContext" . | nindent 10 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

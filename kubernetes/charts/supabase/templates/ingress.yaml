@@ -1,0 +1,85 @@
+{{- if .Values.ingress.api.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "supabase.fullname" . }}-api
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+  {{- with .Values.ingress.api.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.api.className }}
+  ingressClassName: {{ .Values.ingress.api.className }}
+  {{- end }}
+  {{- if .Values.ingress.api.tls }}
+  tls:
+    {{- range .Values.ingress.api.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.api.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "supabase.fullname" $ }}-kong
+                port:
+                  number: {{ $.Values.kong.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end }}
+
+{{- if .Values.ingress.studio.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "supabase.fullname" . }}-studio
+  labels:
+    {{- include "supabase.labels" . | nindent 4 }}
+  {{- with .Values.ingress.studio.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- if .Values.ingress.studio.className }}
+  ingressClassName: {{ .Values.ingress.studio.className }}
+  {{- end }}
+  {{- if .Values.ingress.studio.tls }}
+  tls:
+    {{- range .Values.ingress.studio.tls }}
+    - hosts:
+        {{- range .hosts }}
+        - {{ . | quote }}
+        {{- end }}
+      secretName: {{ .secretName }}
+    {{- end }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.studio.hosts }}
+    - host: {{ .host | quote }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "supabase.fullname" $ }}-studio
+                port:
+                  number: {{ $.Values.studio.service.port }}
+          {{- end }}
+    {{- end }}
+{{- end }}

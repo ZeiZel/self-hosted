@@ -1,0 +1,19 @@
+apiVersion: v2
+name: supabase
+description: A Helm chart for Supabase - The open source Firebase alternative
+type: application
+version: 0.1.0
+appVersion: "1.0.0"
+maintainers:
+  - name: Lvov Valery
+    url: https://github.com/ZeiZel
+keywords:
+  - supabase
+  - postgres
+  - firebase-alternative
+  - self-hosted
+  - database
+home: https://github.com/ZeiZel/self-hosted
+sources:
+  - https://github.com/supabase/supabase
+  - https://github.com/ZeiZel/self-hosted/tree/main/kubernetes/charts/supabase

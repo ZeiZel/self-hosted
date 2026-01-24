@@ -1,0 +1,303 @@
+namespace: db
+
+# Kong Gateway configuration
+kong:
+  enabled: true
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# GoTrue Auth configuration
+auth:
+  enabled: true
+  replicaCount: 2
+  config:
+    siteUrl: "https://supabase-studio.{{ .Values.infra.host }}"
+    apiExternalUrl: "https://supabase.{{ .Values.infra.host }}"
+    disableSignup: false
+    externalEmailEnabled: true
+    externalPhoneEnabled: false
+    jwtExpiry: 3600
+    externalGoogleEnabled: false
+    externalGithubEnabled: false
+    smtp:
+      enabled: false
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+# PostgREST configuration
+rest:
+  enabled: true
+  replicaCount: 2
+  config:
+    dbSchema: "public,storage,graphql_public"
+    dbAnonRole: "anon"
+    dbMaxRows: 1000
+    dbExtraSearchPath: "public,extensions"
+    dbPool: 10
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# Realtime configuration
+realtime:
+  enabled: true
+  replicaCount: 2
+  config:
+    dbAfterConnectQuery: 'SET search_path TO _realtime'
+    maxHeaderLength: 4096
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+# Storage configuration
+storage:
+  enabled: true
+  replicaCount: 2
+  config:
+    backend: "s3"
+    fileSizeLimit: 52428800  # 50MB
+    imageTransformationEnabled: true
+    tenantId: "supabase"
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+# Meta API configuration
+meta:
+  enabled: true
+  replicaCount: 2
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+# Studio UI configuration
+studio:
+  enabled: true
+  replicaCount: 1
+  config:
+    supabasePublicUrl: "https://supabase.{{ .Values.infra.host }}"
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+
+# Edge Runtime configuration
+edgeRuntime:
+  enabled: true
+  replicaCount: 2
+  config:
+    verifyJwt: true
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# ImgProxy configuration
+imgproxy:
+  enabled: true
+  replicaCount: 2
+  config:
+    enableWebpDetection: true
+    enforceWebp: false
+    quality: 80
+    maxSrcResolution: 50.0
+  resources:
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+    requests:
+      cpu: 100m
+      memory: 256Mi
+
+# PostgreSQL configuration - use external PostgreSQL
+postgresql:
+  enabled: false
+  external: true
+  host: "postgres-postgresql.db.svc.cluster.local"
+  port: 5432
+  database: "supabase"
+  user: "postgres"
+  password: ""
+  existingSecret: "postgres-secret"
+  existingSecretPasswordKey: "postgres-password"
+
+# MinIO configuration - use external MinIO
+minio:
+  enabled: false
+  external: true
+  endpoint: "minio.db.svc.cluster.local:9000"
+  region: "us-east-1"
+  bucket: "supabase-storage"
+  accessKey: "minio"
+  secretKey: ""
+  existingSecret: "minio-secret"
+  existingSecretAccessKey: "access-key"
+  existingSecretSecretKey: "secret-key"
+  useSSL: false
+
+# Valkey/Redis configuration - use external Valkey
+redis:
+  enabled: false
+  external: true
+  host: "valkey-master.db.svc.cluster.local"
+  port: 6379
+  password: ""
+  existingSecret: ""
+  existingSecretPasswordKey: "redis-password"
+
+# JWT configuration
+jwt:
+  secret: ""
+  existingSecret: "supabase-secrets"
+  existingSecretKey: "jwt-secret"
+  anonKey: ""
+  serviceRoleKey: ""
+  existingSecretAnonKey: "anon-key"
+  existingSecretServiceKey: "service-role-key"
+  expiry: 3600
+
+# API and Studio URLs
+api:
+  url: ""
+  externalUrl: "https://supabase.{{ .Values.infra.host }}"
+
+studio:
+  url: "https://supabase-studio.{{ .Values.infra.host }}"
+
+# Ingress configuration
+ingress:
+  # API Ingress (Kong Gateway)
+  api:
+    enabled: true
+    className: "traefik"
+    annotations:
+      traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
+    hosts:
+      - host: supabase.{{ .Values.infra.host }}
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: supabase-api-tls
+        hosts:
+          - supabase.{{ .Values.infra.host }}
+  
+  # Studio Ingress
+  studio:
+    enabled: true
+    className: "traefik"
+    annotations:
+      traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
+    hosts:
+      - host: supabase-studio.{{ .Values.infra.host }}
+        paths:
+          - path: /
+            pathType: Prefix
+    tls:
+      - secretName: supabase-studio-tls
+        hosts:
+          - supabase-studio.{{ .Values.infra.host }}
+
+# Init job configuration
+initJob:
+  enabled: true
+  image:
+    repository: postgres
+    tag: "16-alpine"
+    pullPolicy: IfNotPresent
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 50m
+      memory: 128Mi
+  extensions:
+    - pg_net
+    - pgjwt
+    - pg_graphql
+    - pgvector
+    - uuid-ossp
+    - pg_stat_statements
+  schemas:
+    - auth
+    - storage
+    - realtime
+    - _realtime
+    - graphql_public
+    - extensions
+
+# Consul integration
+consul:
+  enabled: true
+  host: "consul-server.service.svc.cluster.local"
+  tags:
+    - supabase
+    - database
+    - api
+    - db
+
+# Global settings
+global:
+  imagePullSecrets: []
+  storageClass: "openebs-hostpath"
+  podSecurityContext:
+    enabled: true
+    fsGroup: 1001
+  containerSecurityContext:
+    enabled: true
+    runAsNonRoot: true
+    allowPrivilegeEscalation: false
+
+# Affinity settings
+affinity:
+  enabled: true
+  podAntiAffinity: "soft"
+
+# Node selector
+nodeSelector: {}
+
+# Tolerations
+tolerations: []
+
+# Monitoring
+monitoring:
+  enabled: false
+  serviceMonitor:
+    enabled: false
+    interval: 30s
+    scrapeTimeout: 10s
+    labels: {}

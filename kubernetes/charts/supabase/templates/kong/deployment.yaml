@@ -1,0 +1,105 @@
+{{- if .Values.kong.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "supabase.fullname" . }}-kong
+  labels:
+    {{- include "supabase.kong.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.kong.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "supabase.kong.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/kong/configmap.yaml") . | sha256sum }}
+      labels:
+        {{- include "supabase.kong.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "supabase.podSecurityContext" . | nindent 8 }}
+      containers:
+      - name: kong
+        image: "{{ .Values.kong.image.repository }}:{{ .Values.kong.image.tag }}"
+        imagePullPolicy: {{ .Values.kong.image.pullPolicy }}
+        env:
+        - name: KONG_DATABASE
+          value: "off"
+        - name: KONG_DECLARATIVE_CONFIG
+          value: "/usr/local/kong/kong.yml"
+        - name: KONG_DNS_ORDER
+          value: "LAST,A,CNAME"
+        - name: KONG_PLUGINS
+          value: "request-transformer,cors,key-auth,acl"
+        - name: KONG_NGINX_PROXY_PROXY_BUFFER_SIZE
+          value: "160k"
+        - name: KONG_NGINX_PROXY_PROXY_BUFFERS
+          value: "64 160k"
+        ports:
+        - name: http
+          containerPort: {{ .Values.kong.service.targetPort }}
+          protocol: TCP
+        - name: admin
+          containerPort: 8001
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /status
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /status
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.kong.resources | nindent 10 }}
+        volumeMounts:
+        - name: kong-config
+          mountPath: /usr/local/kong
+          readOnly: true
+        securityContext:
+          {{- include "supabase.containerSecurityContext" . | nindent 10 }}
+      volumes:
+      - name: kong-config
+        configMap:
+          name: {{ include "supabase.fullname" . }}-kong-config
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.affinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          {{- if eq .Values.affinity.podAntiAffinity "hard" }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                {{- include "supabase.kong.selectorLabels" . | nindent 16 }}
+            topologyKey: kubernetes.io/hostname
+          {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  {{- include "supabase.kong.selectorLabels" . | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
+          {{- end }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

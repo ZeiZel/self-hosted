@@ -1,0 +1,174 @@
+{{- if .Values.auth.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "supabase.fullname" . }}-auth
+  labels:
+    {{- include "supabase.auth.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.auth.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "supabase.auth.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/auth/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      labels:
+        {{- include "supabase.auth.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "supabase.podSecurityContext" . | nindent 8 }}
+      containers:
+      - name: auth
+        image: "{{ .Values.auth.image.repository }}:{{ .Values.auth.image.tag }}"
+        imagePullPolicy: {{ .Values.auth.image.pullPolicy }}
+        env:
+        - name: GOTRUE_API_HOST
+          value: "0.0.0.0"
+        - name: GOTRUE_API_PORT
+          value: "9999"
+        - name: API_EXTERNAL_URL
+          value: {{ include "supabase.api.url" . | quote }}
+        - name: GOTRUE_DB_DRIVER
+          value: "postgres"
+        - name: GOTRUE_DB_DATABASE_URL
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "supabase.postgresql.secretName" . }}
+              key: connection-uri
+        - name: GOTRUE_SITE_URL
+          value: {{ .Values.auth.config.siteUrl | default (include "supabase.studio.url" .) | quote }}
+        - name: GOTRUE_URI_ALLOW_LIST
+          value: "*"
+        - name: GOTRUE_DISABLE_SIGNUP
+          value: {{ .Values.auth.config.disableSignup | quote }}
+        - name: GOTRUE_JWT_ADMIN_ROLES
+          value: "service_role"
+        - name: GOTRUE_JWT_AUD
+          value: "authenticated"
+        - name: GOTRUE_JWT_DEFAULT_GROUP_NAME
+          value: "authenticated"
+        - name: GOTRUE_JWT_EXP
+          value: {{ .Values.jwt.expiry | quote }}
+        - name: GOTRUE_JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "supabase.jwt.secretName" . }}
+              key: {{ .Values.jwt.existingSecretKey }}
+        - name: GOTRUE_EXTERNAL_EMAIL_ENABLED
+          value: {{ .Values.auth.config.externalEmailEnabled | quote }}
+        - name: GOTRUE_EXTERNAL_PHONE_ENABLED
+          value: {{ .Values.auth.config.externalPhoneEnabled | quote }}
+        - name: GOTRUE_MAILER_AUTOCONFIRM
+          value: "false"
+        {{- if .Values.auth.config.smtp.enabled }}
+        - name: GOTRUE_SMTP_HOST
+          value: {{ .Values.auth.config.smtp.host | quote }}
+        - name: GOTRUE_SMTP_PORT
+          value: {{ .Values.auth.config.smtp.port | quote }}
+        - name: GOTRUE_SMTP_USER
+          value: {{ .Values.auth.config.smtp.user | quote }}
+        - name: GOTRUE_SMTP_PASS
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "supabase.fullname" . }}-smtp
+              key: password
+        - name: GOTRUE_SMTP_ADMIN_EMAIL
+          value: {{ .Values.auth.config.smtp.adminEmail | quote }}
+        - name: GOTRUE_SMTP_SENDER_NAME
+          value: {{ .Values.auth.config.smtp.senderName | quote }}
+        {{- end }}
+        {{- if .Values.auth.config.externalGoogleEnabled }}
+        - name: GOTRUE_EXTERNAL_GOOGLE_ENABLED
+          value: "true"
+        - name: GOTRUE_EXTERNAL_GOOGLE_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "supabase.fullname" . }}-oauth
+              key: google-client-id
+        - name: GOTRUE_EXTERNAL_GOOGLE_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "supabase.fullname" . }}-oauth
+              key: google-secret
+        {{- end }}
+        {{- if .Values.auth.config.externalGithubEnabled }}
+        - name: GOTRUE_EXTERNAL_GITHUB_ENABLED
+          value: "true"
+        - name: GOTRUE_EXTERNAL_GITHUB_CLIENT_ID
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "supabase.fullname" . }}-oauth
+              key: github-client-id
+        - name: GOTRUE_EXTERNAL_GITHUB_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "supabase.fullname" . }}-oauth
+              key: github-secret
+        {{- end }}
+        - name: GOTRUE_MAILER_URLPATHS_INVITE
+          value: "/auth/v1/verify"
+        - name: GOTRUE_MAILER_URLPATHS_CONFIRMATION
+          value: "/auth/v1/verify"
+        - name: GOTRUE_MAILER_URLPATHS_RECOVERY
+          value: "/auth/v1/verify"
+        - name: GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE
+          value: "/auth/v1/verify"
+        ports:
+        - name: http
+          containerPort: {{ .Values.auth.service.targetPort }}
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.auth.resources | nindent 10 }}
+        securityContext:
+          {{- include "supabase.containerSecurityContext" . | nindent 10 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.affinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          {{- if eq .Values.affinity.podAntiAffinity "hard" }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                {{- include "supabase.auth.selectorLabels" . | nindent 16 }}
+            topologyKey: kubernetes.io/hostname
+          {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  {{- include "supabase.auth.selectorLabels" . | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
+          {{- end }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

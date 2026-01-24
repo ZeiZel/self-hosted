@@ -1,0 +1,115 @@
+{{- if .Values.rest.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "supabase.fullname" . }}-rest
+  labels:
+    {{- include "supabase.rest.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.rest.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "supabase.rest.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+      labels:
+        {{- include "supabase.rest.selectorLabels" . | nindent 8 }}
+    spec:
+      {{- with .Values.global.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      securityContext:
+        {{- include "supabase.podSecurityContext" . | nindent 8 }}
+      containers:
+      - name: rest
+        image: "{{ .Values.rest.image.repository }}:{{ .Values.rest.image.tag }}"
+        imagePullPolicy: {{ .Values.rest.image.pullPolicy }}
+        env:
+        - name: PGRST_DB_URI
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "supabase.postgresql.secretName" . }}
+              key: connection-uri
+        - name: PGRST_DB_SCHEMAS
+          value: {{ .Values.rest.config.dbSchema | quote }}
+        - name: PGRST_DB_ANON_ROLE
+          value: {{ .Values.rest.config.dbAnonRole | quote }}
+        - name: PGRST_JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "supabase.jwt.secretName" . }}
+              key: {{ .Values.jwt.existingSecretKey }}
+        - name: PGRST_DB_USE_LEGACY_GUCS
+          value: "false"
+        - name: PGRST_APP_SETTINGS_JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: {{ include "supabase.jwt.secretName" . }}
+              key: {{ .Values.jwt.existingSecretKey }}
+        - name: PGRST_APP_SETTINGS_JWT_EXP
+          value: {{ .Values.jwt.expiry | quote }}
+        - name: PGRST_DB_EXTRA_SEARCH_PATH
+          value: {{ .Values.rest.config.dbExtraSearchPath | quote }}
+        - name: PGRST_DB_MAX_ROWS
+          value: {{ .Values.rest.config.dbMaxRows | quote }}
+        - name: PGRST_DB_POOL
+          value: {{ .Values.rest.config.dbPool | quote }}
+        - name: PGRST_SERVER_HOST
+          value: "0.0.0.0"
+        - name: PGRST_SERVER_PORT
+          value: "3000"
+        ports:
+        - name: http
+          containerPort: {{ .Values.rest.service.targetPort }}
+          protocol: TCP
+        livenessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 10
+          periodSeconds: 10
+          timeoutSeconds: 5
+          failureThreshold: 6
+        readinessProbe:
+          httpGet:
+            path: /
+            port: http
+          initialDelaySeconds: 5
+          periodSeconds: 5
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          {{- toYaml .Values.rest.resources | nindent 10 }}
+        securityContext:
+          {{- include "supabase.containerSecurityContext" . | nindent 10 }}
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.affinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          {{- if eq .Values.affinity.podAntiAffinity "hard" }}
+          requiredDuringSchedulingIgnoredDuringExecution:
+          - labelSelector:
+              matchLabels:
+                {{- include "supabase.rest.selectorLabels" . | nindent 16 }}
+            topologyKey: kubernetes.io/hostname
+          {{- else }}
+          preferredDuringSchedulingIgnoredDuringExecution:
+          - weight: 100
+            podAffinityTerm:
+              labelSelector:
+                matchLabels:
+                  {{- include "supabase.rest.selectorLabels" . | nindent 18 }}
+              topologyKey: kubernetes.io/hostname
+          {{- end }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+{{- end }}

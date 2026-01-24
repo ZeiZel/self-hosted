@@ -89,6 +89,18 @@ apps:
       - ingress/traefik
       - service/vault
 
+  supabase:
+    repo: charts
+    chart: supabase
+    namespace: db
+    version: ">=0.0.0"
+    needs:
+      - db/postgres
+      - db/minio
+      - db/valkey
+      - ingress/traefik
+      - service/vault
+
   # SERVICES
 
   consul:
