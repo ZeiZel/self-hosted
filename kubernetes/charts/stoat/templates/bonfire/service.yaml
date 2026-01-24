@@ -7,6 +7,12 @@ metadata:
   labels:
     {{- include "revolt.labels" . | nindent 4 }}
     revolt-app: {{ include "revolt.fullname" . }}-bonfire
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "stoat-bonfire"
+    consul.hashicorp.com/service-port: {{ .Values.global.bonfire.port | quote }}
+    consul.hashicorp.com/service-tags: {{ .Values.consul.tags | join "," | quote }}
+  {{- end }}
 spec:
   type: {{ .Values.bonfire.service.type }}
   ports:

@@ -5,6 +5,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "glance.labels" . | nindent 4 }}
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "glance"
+    consul.hashicorp.com/service-port: {{ .Values.glance.service.port | quote }}
+    consul.hashicorp.com/service-tags: {{ .Values.consul.tags | join "," | quote }}
+  {{- end }}
 spec:
   type: {{ .Values.glance.service.type }}
   ports:

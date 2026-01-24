@@ -5,6 +5,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: youtrack
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "youtrack"
+    consul.hashicorp.com/service-port: {{ .Values.youtrack.service.port | quote }}
+    consul.hashicorp.com/service-tags: "youtrack,issue-tracking,jetbrains"
+  {{- end }}
 spec:
   type: {{ .Values.youtrack.service.type }}
   ports:

@@ -6,6 +6,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: prometheus
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "prometheus"
+    consul.hashicorp.com/service-port: {{ .Values.prometheus.service.port | quote }}
+    consul.hashicorp.com/service-tags: "prometheus,monitoring,metrics"
+  {{- end }}
 spec:
   type: {{ .Values.prometheus.service.type }}
   ports:

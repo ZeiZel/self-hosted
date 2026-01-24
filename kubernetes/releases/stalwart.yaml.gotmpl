@@ -69,7 +69,7 @@ persistence:
 postgresql:
   enabled: false
   external: true
-  host: "postgresql.db.svc.cluster.local"
+  host: "postgres-postgresql.db.svc.cluster.local"
   port: 5432
   username: "stalwart"
   password: "{{ .Values.secrets.stalwartPostgresPassword }}"

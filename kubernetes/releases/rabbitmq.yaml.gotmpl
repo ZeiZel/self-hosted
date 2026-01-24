@@ -1,44 +1,137 @@
 namespace: db
 
-replicaCount: 1
+# RabbitMQ Architecture
+architecture: replication
 
+# Authentication
 auth:
   username: rabbituser
   password: "{{ .Values.secrets.rabbitmqPassword }}"
   erlangCookie: "{{ .Values.secrets.rabbitmqErlangCookie }}"
 
+# Replication configuration
+replicaCount: 3
+
+# Persistence
 persistence:
   enabled: true
   storageClass: openebs-hostpath
-  size: 2Gi
+  size: 8Gi
 
+# Resources
 resources:
   requests:
-    cpu: 100m
-    memory: 256Mi
-  limits:
-    cpu: 500m
+    cpu: 250m
     memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
 
-# Enable management plugin
-plugins: "rabbitmq_management"
-
-# Consul integration for service discovery
-consul:
+# Clustering
+clustering:
   enabled: true
-  datacenter: dc1
+  rebalance: true
 
-# Service configuration
+# Management UI
 service:
   type: ClusterIP
   ports:
     amqp: 5672
-    management: 15672
+    amqpTls: 5671
+    dist: 25672
+    manager: 15672
+    epmd: 4369
+    metrics: 9419
 
-# Disable clustering for standalone mode
-clustering:
-  enabled: false
+# Ingress for Management UI
+ingress:
+  enabled: true
+  ingressClassName: traefik
+  hostname: rabbitmq.{{ .Values.infra.host }}
+  path: /
+  pathType: Prefix
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt"
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+  tls: true
+  selfSigned: false
 
 # Metrics
 metrics:
+  enabled: true
+  serviceMonitor:
+    enabled: true
+    namespace: service
+    interval: 30s
+
+# Plugins
+plugins: "rabbitmq_management rabbitmq_prometheus"
+
+# Memory and disk settings
+memoryHighWatermark:
+  enabled: true
+  type: "relative"
+  value: 0.4
+
+# Consul integration
+consul:
+  enabled: true
+  host: "consul.service.svc.cluster.local"
+  port: 8500
+  datacenter: dc1
+
+# Load Balancer Definitions
+loadDefinition:
   enabled: false
+
+# Extra environment variables
+extraEnvVars:
+  - name: RABBITMQ_LOGS
+    value: "/var/log/rabbitmq/rabbitmq.log"
+  - name: RABBITMQ_LOG_LEVEL
+    value: "info"
+
+# Pod security context
+podSecurityContext:
+  enabled: true
+  fsGroup: 1001
+  runAsUser: 1001
+
+# Container security context
+containerSecurityContext:
+  enabled: true
+  runAsNonRoot: true
+  runAsUser: 1001
+
+# Liveness and readiness probes
+livenessProbe:
+  enabled: true
+  initialDelaySeconds: 120
+  timeoutSeconds: 20
+  periodSeconds: 30
+  failureThreshold: 6
+  successThreshold: 1
+
+readinessProbe:
+  enabled: true
+  initialDelaySeconds: 10
+  timeoutSeconds: 20
+  periodSeconds: 30
+  failureThreshold: 3
+  successThreshold: 1
+
+# Pod Disruption Budget
+pdb:
+  create: true
+  minAvailable: 1
+
+# Affinity for pod anti-affinity
+affinity:
+  podAntiAffinity:
+    preferredDuringSchedulingIgnoredDuringExecution:
+      - weight: 100
+        podAffinityTerm:
+          labelSelector:
+            matchLabels:
+              app.kubernetes.io/name: rabbitmq
+          topologyKey: kubernetes.io/hostname

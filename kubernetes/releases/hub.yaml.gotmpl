@@ -15,7 +15,7 @@ persistence:
 
 postgresql:
   external: true
-  host: "postgresql.authentik.svc.cluster.local"
+  host: "postgres-postgresql.db.svc.cluster.local"
   password: "{{ .Values.secrets.postgresPassword }}"
 
 ingress:

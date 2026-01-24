@@ -6,6 +6,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: syncthing
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "syncthing"
+    consul.hashicorp.com/service-port: {{ .Values.syncthing.service.gui.port | quote }}
+    consul.hashicorp.com/service-tags: "syncthing,gui,file-sync"
+  {{- end }}
 spec:
   type: {{ .Values.syncthing.service.gui.type }}
   ports:

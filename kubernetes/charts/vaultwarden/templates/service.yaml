@@ -5,6 +5,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: vaultwarden
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "vaultwarden"
+    consul.hashicorp.com/service-port: {{ .Values.vaultwarden.service.port | quote }}
+    consul.hashicorp.com/service-tags: "vaultwarden,password-manager,security"
+  {{- end }}
 spec:
   type: {{ .Values.vaultwarden.service.type }}
   ports:

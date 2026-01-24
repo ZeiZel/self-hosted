@@ -73,6 +73,10 @@ consul:
   host: "consul.consul.svc.cluster.local"
   port: 8500
   datacenter: dc1
+  tags:
+    - vault
+    - secrets-management
+    - security
 
 # Vault Agent Injector (для инъекции секретов)
 injector:

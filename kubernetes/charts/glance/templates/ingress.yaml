@@ -6,10 +6,13 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "glance.labels" . | nindent 4 }}
-  {{- if .Values.ingress.annotations }}
   annotations:
+    {{- if .Values.ingress.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer | default "letsencrypt" | quote }}
+    {{- end }}
+    {{- if .Values.ingress.annotations }}
     {{- toYaml .Values.ingress.annotations | nindent 4 }}
-  {{- end }}
+    {{- end }}
 spec:
   {{- if .Values.ingress.tls.enabled }}
   tls:

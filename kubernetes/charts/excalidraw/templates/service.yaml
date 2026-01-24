@@ -5,6 +5,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: excalidraw
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "excalidraw"
+    consul.hashicorp.com/service-port: {{ .Values.excalidraw.service.port | quote }}
+    consul.hashicorp.com/service-tags: "excalidraw,drawing,productivity"
+  {{- end }}
 spec:
   type: {{ .Values.excalidraw.service.type }}
   ports:

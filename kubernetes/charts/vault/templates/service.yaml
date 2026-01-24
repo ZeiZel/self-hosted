@@ -28,6 +28,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: vault
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "vault"
+    consul.hashicorp.com/service-port: {{ .Values.server.service.port | quote }}
+    consul.hashicorp.com/service-tags: "vault,secrets-management,security"
+  {{- end }}
 spec:
   type: {{ .Values.server.service.type }}
   ports:

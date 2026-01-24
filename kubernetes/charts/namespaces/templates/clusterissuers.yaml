@@ -1,0 +1,96 @@
+{{- if .Values.certManager.enabled }}
+---
+# Self-Signed ClusterIssuer for development/testing
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-issuer
+  labels:
+    {{- include "namespaces.labels" . | nindent 4 }}
+spec:
+  selfSigned: {}
+
+---
+# Self-Signed CA Issuer (creates a CA certificate from self-signed)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: selfsigned-ca-issuer
+  labels:
+    {{- include "namespaces.labels" . | nindent 4 }}
+spec:
+  ca:
+    secretName: selfsigned-ca-cert
+
+{{- if .Values.certManager.letsencrypt.enabled }}
+---
+# Let's Encrypt Staging Issuer (for testing)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt-staging
+  labels:
+    {{- include "namespaces.labels" . | nindent 4 }}
+spec:
+  acme:
+    # Let's Encrypt staging server
+    server: https://acme-staging-v02.api.letsencrypt.org/directory
+    email: {{ .Values.certManager.letsencrypt.email | quote }}
+    
+    # Secret to store ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt-staging
+    
+    # Enable the HTTP-01 challenge provider
+    solvers:
+    - http01:
+        ingress:
+          class: {{ .Values.certManager.letsencrypt.ingressClass | default "traefik" }}
+
+---
+# Let's Encrypt Production Issuer
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: letsencrypt
+  labels:
+    {{- include "namespaces.labels" . | nindent 4 }}
+spec:
+  acme:
+    # Let's Encrypt production server
+    server: https://acme-v02.api.letsencrypt.org/directory
+    email: {{ .Values.certManager.letsencrypt.email | quote }}
+    
+    # Secret to store ACME account private key
+    privateKeySecretRef:
+      name: letsencrypt
+    
+    # Enable the HTTP-01 challenge provider
+    solvers:
+    - http01:
+        ingress:
+          class: {{ .Values.certManager.letsencrypt.ingressClass | default "traefik" }}
+{{- end }}
+
+{{- if .Values.certManager.vault.enabled }}
+---
+# Vault PKI ClusterIssuer (for internal CA)
+apiVersion: cert-manager.io/v1
+kind: ClusterIssuer
+metadata:
+  name: vault-issuer
+  labels:
+    {{- include "namespaces.labels" . | nindent 4 }}
+spec:
+  vault:
+    server: {{ .Values.certManager.vault.server | quote }}
+    path: {{ .Values.certManager.vault.path | quote }}
+    auth:
+      kubernetes:
+        role: {{ .Values.certManager.vault.role | quote }}
+        mountPath: /v1/auth/kubernetes
+        secretRef:
+          name: cert-manager-vault-token
+          key: token
+{{- end }}
+{{- end }}

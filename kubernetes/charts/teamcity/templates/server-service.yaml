@@ -5,6 +5,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: teamcity-server
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "teamcity"
+    consul.hashicorp.com/service-port: {{ .Values.server.service.port | quote }}
+    consul.hashicorp.com/service-tags: "teamcity,ci-cd,build-server"
+  {{- end }}
 spec:
   type: {{ .Values.server.service.type }}
   ports:

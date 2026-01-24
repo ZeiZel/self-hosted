@@ -5,6 +5,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "pangolin-client.labels" . | nindent 4 }}
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "pangolin-client"
+    consul.hashicorp.com/service-port: {{ .Values.pangolin.port | quote }}
+    consul.hashicorp.com/service-tags: "pangolin,dynamic-routing,traefik-provider"
+  {{- end }}
 spec:
   type: ClusterIP
   ports:

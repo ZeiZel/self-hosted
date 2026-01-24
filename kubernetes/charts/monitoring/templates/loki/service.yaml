@@ -6,6 +6,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: loki
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "loki"
+    consul.hashicorp.com/service-port: {{ .Values.loki.service.port | quote }}
+    consul.hashicorp.com/service-tags: "loki,monitoring,logging"
+  {{- end }}
 spec:
   type: {{ .Values.loki.service.type }}
   ports:

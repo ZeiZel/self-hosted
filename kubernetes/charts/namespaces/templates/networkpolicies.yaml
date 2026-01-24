@@ -1,0 +1,270 @@
+{{- if .Values.networkPolicies.enabled }}
+---
+# Default deny all ingress traffic in ingress namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingress-default-deny
+  namespace: ingress
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+
+---
+# Allow Traefik to receive external traffic
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingress-allow-external
+  namespace: ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: traefik
+  policyTypes:
+  - Ingress
+  ingress:
+  - {}  # Allow all ingress to Traefik
+
+---
+# Allow Traefik to access all services
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ingress-allow-egress
+  namespace: ingress
+spec:
+  podSelector:
+    matchLabels:
+      app.kubernetes.io/name: traefik
+  policyTypes:
+  - Egress
+  egress:
+  - {}  # Allow Traefik to connect to any service
+
+---
+# Service namespace: Allow ingress from Traefik and inter-service communication
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: service-allow-ingress
+  namespace: service
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow from Traefik
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: ingress
+  # Allow inter-service communication
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: service
+  # Allow from all application namespaces
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          app.kubernetes.io/part-of: self-hosted-infrastructure
+
+---
+# DB namespace: Allow connections from authorized namespaces only
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: db-allow-ingress
+  namespace: db
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow from service namespace (Vault, Consul)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: service
+  # Allow from application namespaces
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          app.kubernetes.io/part-of: self-hosted-infrastructure
+    - namespaceSelector:
+        matchExpressions:
+        - key: namespace.type
+          operator: In
+          values:
+          - productivity
+          - code
+          - social
+          - data
+          - infrastructure
+
+---
+# Infrastructure namespace: Allow ingress from Traefik and service namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: infrastructure-allow-ingress
+  namespace: infrastructure
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow from Traefik
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: ingress
+  # Allow from service namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: service
+  # Allow inter-namespace communication
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: infrastructure
+
+---
+# Productivity namespace: Allow ingress from Traefik and service namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: productivity-allow-ingress
+  namespace: productivity
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow from Traefik
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: ingress
+  # Allow from service namespace (for auth, monitoring)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: service
+  # Allow inter-namespace communication
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: productivity
+
+---
+# Code namespace: Allow ingress from Traefik and service namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: code-allow-ingress
+  namespace: code
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow from Traefik
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: ingress
+  # Allow from service namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: service
+  # Allow inter-namespace communication (GitLab -> YouTrack -> Hub)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: code
+
+---
+# Social namespace: Allow ingress from Traefik and service namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: social-allow-ingress
+  namespace: social
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow from Traefik
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: ingress
+  # Allow from service namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: service
+  # Allow inter-namespace communication (Stoat -> Stalwart)
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: social
+
+---
+# Data namespace: Allow ingress from Traefik and service namespace
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: data-allow-ingress
+  namespace: data
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+  ingress:
+  # Allow from Traefik
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: ingress
+  # Allow from service namespace
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: service
+  # Allow inter-namespace communication
+  - from:
+    - namespaceSelector:
+        matchLabels:
+          namespace.type: data
+
+---
+# Allow DNS queries from all pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-dns-egress
+  namespace: {{ .Release.Namespace }}
+spec:
+  podSelector: {}
+  policyTypes:
+  - Egress
+  egress:
+  # Allow DNS
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53
+
+{{- end }}

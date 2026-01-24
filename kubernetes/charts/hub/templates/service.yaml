@@ -5,6 +5,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: hub
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "hub"
+    consul.hashicorp.com/service-port: {{ .Values.hub.service.port | quote }}
+    consul.hashicorp.com/service-tags: "hub,jetbrains,authentication"
+  {{- end }}
 spec:
   type: {{ .Values.hub.service.type }}
   ports:

@@ -14,7 +14,7 @@ authentik:
 # ========== Connect to external PostgreSQL ==========
 postgresql:
   external: true
-  host: "postgresql.code.svc.cluster.local"
+  host: "postgres-postgresql.db.svc.cluster.local"
   port: 5432
   username: "authentik"
   password: "{{ .Values.secrets.postgresPassword }}"

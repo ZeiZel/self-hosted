@@ -52,3 +52,24 @@ globalLabels:
 namespaceLabels: {}
   # Example:
 # istio-injection: enabled
+
+# Cert-Manager ClusterIssuers
+certManager:
+  enabled: true
+  
+  # Let's Encrypt configuration
+  letsencrypt:
+    enabled: true
+    email: "admin@example.com"  # Change this to your email
+    ingressClass: "traefik"
+  
+  # Vault PKI configuration (optional)
+  vault:
+    enabled: false
+    server: "http://vault.service.svc.cluster.local:8200"
+    path: "pki/sign/kubernetes"
+    role: "cert-manager"
+
+# Network Policies for namespace isolation
+networkPolicies:
+  enabled: true

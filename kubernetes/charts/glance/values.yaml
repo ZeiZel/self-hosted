@@ -110,8 +110,11 @@ probes:
 
 # Consul integration
 consul:
-  enabled: false
-  tags: []
+  enabled: true
+  tags:
+    - glance
+    - dashboard
+    - infrastructure
 
 # Vault integration (requires Vault policies and secrets to be configured)
 vault:

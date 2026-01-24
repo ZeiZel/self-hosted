@@ -5,6 +5,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: stalwart
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "stalwart"
+    consul.hashicorp.com/service-port: {{ .Values.stalwart.service.http.port | quote }}
+    consul.hashicorp.com/service-tags: "stalwart,mail-server,smtp,imap"
+  {{- end }}
 spec:
   type: {{ .Values.stalwart.service.type }}
   ports:

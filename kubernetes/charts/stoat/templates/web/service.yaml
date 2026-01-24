@@ -6,6 +6,12 @@ metadata:
   labels:
     {{- include "revolt.labels" . | nindent 4 }}
     revolt-app: {{ include "revolt.fullname" . }}-web
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "stoat-web"
+    consul.hashicorp.com/service-port: {{ .Values.global.web.port | quote }}
+    consul.hashicorp.com/service-tags: {{ .Values.consul.tags | join "," | quote }}
+  {{- end }}
 spec:
   type: {{ .Values.web.service.type }}
   ports:

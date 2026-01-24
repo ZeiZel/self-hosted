@@ -37,8 +37,11 @@ ingress:
     secretName: pangolin-client-tls
 
 consul:
-  enabled: false
-  tags: []
+  enabled: true
+  tags:
+    - pangolin
+    - dynamic-routing
+    - traefik-provider
 
 securityContext:
   runAsUser: 1000

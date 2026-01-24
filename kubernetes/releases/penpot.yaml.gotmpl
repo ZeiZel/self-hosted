@@ -39,7 +39,7 @@ config:
 # PostgreSQL Configuration (External)
 # ============================================
 postgresql:
-  host: "postgres.db.svc.cluster.local"
+  host: "postgres-postgresql.db.svc.cluster.local"
   port: 5432
   username: "penpot"
   password: "{{ .Values.secrets.postgresPassword }}"

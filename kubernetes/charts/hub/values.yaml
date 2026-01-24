@@ -84,6 +84,10 @@ consul:
   host: "consul.consul.svc.cluster.local"
   port: 8500
   datacenter: dc1
+  tags:
+    - hub
+    - jetbrains
+    - authentication
 
 # Security
 securityContext:

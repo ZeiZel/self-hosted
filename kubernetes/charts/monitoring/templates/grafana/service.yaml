@@ -6,6 +6,12 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     app: grafana
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "grafana"
+    consul.hashicorp.com/service-port: {{ .Values.grafana.service.port | quote }}
+    consul.hashicorp.com/service-tags: "grafana,monitoring,visualization"
+  {{- end }}
 spec:
   type: {{ .Values.grafana.service.type }}
   ports:

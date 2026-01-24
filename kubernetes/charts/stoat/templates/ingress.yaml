@@ -19,11 +19,12 @@ metadata:
   namespace: {{ .Values.global.namespace }}
   labels:
     {{- include "revolt.labels" . | nindent 4 }}
-  {{- with .Values.global.ingress.annotations }}
   annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    cert-manager.io/cluster-issuer: {{ .Values.global.ingress.clusterIssuer | default "letsencrypt" | quote }}
     kubernetes.io/tls-acme: "true"
+    {{- with .Values.global.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
     {{- if eq .Values.global.ingress.className "nginx" }}
     nginx.ingress.kubernetes.io/rewrite-target: /$2
     nginx.ingress.kubernetes.io/force-ssl-redirect: 'true'

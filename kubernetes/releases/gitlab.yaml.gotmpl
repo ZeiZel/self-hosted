@@ -11,7 +11,7 @@ gitlab:
 
 postgresql:
   external: true
-  host: "postgresql.code.svc.cluster.local"
+  host: "postgres-postgresql.db.svc.cluster.local"
   password: "{{ .Values.secrets.postgresPassword }}"
 
 redis:

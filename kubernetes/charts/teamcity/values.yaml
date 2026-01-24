@@ -90,6 +90,10 @@ consul:
   host: "consul.consul.svc.cluster.local"
   port: 8500
   datacenter: dc1
+  tags:
+    - teamcity
+    - ci-cd
+    - build-server
 
 # Security
 securityContext:
