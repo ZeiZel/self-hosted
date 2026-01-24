@@ -43,7 +43,6 @@ jobs:
       - name: Add Helm repos
         run: |
           helm repo add harbor https://helm.goharbor.io
-          helm repo add devtron https://charts.devtron.ai
           helm repo update
 
       - name: Validate charts
@@ -124,7 +123,6 @@ jobs:
       - name: Add Helm repos
         run: |
           helm repo add harbor https://helm.goharbor.io
-          helm repo add devtron https://charts.devtron.ai
           helm repo update
 
       - name: Build chart dependencies
@@ -146,5 +144,6 @@ jobs:
           charts_dir: kubernetes/charts
           skip_existing: true
           config: cr.yaml
+          packages_with_index: false
         env:
           CR_TOKEN: "${{ secrets.GITHUB_TOKEN }}"
