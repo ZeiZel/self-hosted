@@ -1,0 +1,270 @@
+{{- if .Values.coder.agentapi.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "coder.fullname" . }}-agentapi-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "coder.labels" . | nindent 4 }}
+    app.kubernetes.io/component: agentapi
+data:
+  agentapi.yaml: |
+    # Coder AgentAPI Configuration for AI Agents
+    # This enables AI coding assistants to connect to workspaces
+    
+    enabled: true
+    
+    # Authentication configuration
+    authentication:
+      enabled: true
+      method: "token"  # Bearer token authentication
+      token_lifetime: "{{ .Values.coder.agentapi.tokenLifetime }}"
+      
+    # Supported AI agents
+    agents:
+      # Claude Code (Anthropic)
+      - name: "claude-code"
+        enabled: true
+        description: "Anthropic Claude Code integration"
+        capabilities:
+          - file_read
+          - file_write
+          - command_execution
+          - terminal_access
+        rate_limits:
+          requests_per_minute: 100
+          concurrent_operations: 10
+      
+      # Goose (Block)
+      - name: "goose"
+        enabled: true
+        description: "Block Goose AI agent"
+        capabilities:
+          - file_read
+          - file_write
+          - command_execution
+          - git_operations
+        rate_limits:
+          requests_per_minute: 100
+          concurrent_operations: 10
+      
+      # Aider (Paul Gauthier)
+      - name: "aider"
+        enabled: true
+        description: "Aider AI pair programming"
+        capabilities:
+          - file_read
+          - file_write
+          - git_operations
+          - diff_generation
+        rate_limits:
+          requests_per_minute: 150
+          concurrent_operations: 15
+      
+      # Cursor AI
+      - name: "cursor"
+        enabled: true
+        description: "Cursor AI IDE"
+        capabilities:
+          - file_read
+          - file_write
+          - command_execution
+          - lsp_support
+        rate_limits:
+          requests_per_minute: 200
+          concurrent_operations: 20
+      
+      # GitHub Copilot Workspace
+      - name: "github-copilot"
+        enabled: true
+        description: "GitHub Copilot Workspace"
+        capabilities:
+          - file_read
+          - file_write
+          - suggestions
+        rate_limits:
+          requests_per_minute: 100
+          concurrent_operations: 10
+      
+      # Generic agent support
+      - name: "generic"
+        enabled: true
+        description: "Generic AI agent via HTTP API"
+        capabilities:
+          - file_read
+          - file_write
+          - command_execution
+        rate_limits:
+          requests_per_minute: 50
+          concurrent_operations: 5
+    
+    # API endpoints
+    endpoints:
+      # File operations
+      file_read: "/api/v2/workspaces/{workspace_id}/agent/file/read"
+      file_write: "/api/v2/workspaces/{workspace_id}/agent/file/write"
+      file_list: "/api/v2/workspaces/{workspace_id}/agent/file/list"
+      
+      # Command execution
+      exec: "/api/v2/workspaces/{workspace_id}/agent/exec"
+      terminal: "/api/v2/workspaces/{workspace_id}/agent/terminal"
+      
+      # Git operations
+      git_clone: "/api/v2/workspaces/{workspace_id}/agent/git/clone"
+      git_status: "/api/v2/workspaces/{workspace_id}/agent/git/status"
+      git_commit: "/api/v2/workspaces/{workspace_id}/agent/git/commit"
+      git_push: "/api/v2/workspaces/{workspace_id}/agent/git/push"
+      
+      # Workspace info
+      info: "/api/v2/workspaces/{workspace_id}/agent/info"
+      health: "/api/v2/workspaces/{workspace_id}/agent/health"
+    
+    # Security settings
+    security:
+      # Allowed operations
+      allow_file_write: true
+      allow_command_execution: true
+      allow_terminal_access: true
+      
+      # Path restrictions
+      restricted_paths:
+        - "/etc"
+        - "/sys"
+        - "/proc"
+        - "/dev"
+        - "/var/run"
+      
+      # Command restrictions
+      blocked_commands:
+        - "rm -rf /"
+        - "dd if="
+        - "mkfs"
+        - "fdisk"
+      
+      # File size limits
+      max_file_size: "100MB"
+      max_files_per_operation: 1000
+    
+    # Logging and monitoring
+    logging:
+      enabled: true
+      level: "info"
+      audit_log: true
+      log_path: "/var/log/coder/agentapi"
+    
+    monitoring:
+      prometheus_enabled: true
+      metrics_port: 2112
+      health_check_interval: "30s"
+
+  README.md: |
+    # Coder AgentAPI - AI Agent Integration Guide
+    
+    ## Overview
+    
+    The Coder AgentAPI enables AI coding assistants to connect directly to your development workspaces,
+    allowing them to read files, write code, execute commands, and interact with your development environment.
+    
+    ## Supported AI Agents
+    
+    - **Claude Code** (Anthropic) - Advanced AI pair programming
+    - **Goose** (Block) - Autonomous AI developer agent
+    - **Aider** (Paul Gauthier) - AI pair programming in terminal
+    - **Cursor AI** - AI-first code editor
+    - **GitHub Copilot Workspace** - GitHub's AI development environment
+    
+    ## Authentication
+    
+    All API requests must include a Bearer token in the Authorization header:
+    
+    ```bash
+    curl -H "Authorization: Bearer YOUR_TOKEN" \
+         https://coder.{{ .Values.ingress.hosts[0].host }}/api/v2/workspaces/my-workspace/agent/info
+    ```
+    
+    ## Getting an API Token
+    
+    1. Log into Coder: https://coder.{{ .Values.ingress.hosts[0].host }}
+    2. Go to Account Settings → Tokens
+    3. Create a new token with workspace access
+    4. Copy the token and configure your AI agent
+    
+    ## Configuration Examples
+    
+    ### Claude Code
+    
+    ```json
+    {
+      "coder": {
+        "url": "https://coder.{{ .Values.ingress.hosts[0].host }}",
+        "workspace": "my-workspace",
+        "token": "YOUR_TOKEN"
+      }
+    }
+    ```
+    
+    ### Aider
+    
+    ```bash
+    export CODER_URL="https://coder.{{ .Values.ingress.hosts[0].host }}"
+    export CODER_WORKSPACE="my-workspace"
+    export CODER_TOKEN="YOUR_TOKEN"
+    
+    aider --coder
+    ```
+    
+    ### Goose
+    
+    ```yaml
+    providers:
+      coder:
+        url: https://coder.{{ .Values.ingress.hosts[0].host }}
+        workspace: my-workspace
+        token: YOUR_TOKEN
+    ```
+    
+    ## API Endpoints
+    
+    ### File Operations
+    
+    - `GET /api/v2/workspaces/{workspace}/agent/file/read?path=/path/to/file`
+    - `POST /api/v2/workspaces/{workspace}/agent/file/write`
+    - `GET /api/v2/workspaces/{workspace}/agent/file/list?path=/path`
+    
+    ### Command Execution
+    
+    - `POST /api/v2/workspaces/{workspace}/agent/exec`
+    - `WS /api/v2/workspaces/{workspace}/agent/terminal`
+    
+    ### Git Operations
+    
+    - `POST /api/v2/workspaces/{workspace}/agent/git/clone`
+    - `GET /api/v2/workspaces/{workspace}/agent/git/status`
+    - `POST /api/v2/workspaces/{workspace}/agent/git/commit`
+    
+    ## Rate Limits
+    
+    - Standard agents: 100 requests/minute
+    - Premium agents: 200 requests/minute
+    - Burst allowance: 20 requests
+    
+    ## Security
+    
+    - All operations are scoped to the workspace
+    - File access is restricted to workspace home directory
+    - Dangerous commands are blocked
+    - All operations are audit logged
+    
+    ## Troubleshooting
+    
+    Check agent logs:
+    ```bash
+    kubectl logs -n {{ .Release.Namespace }} -l app.kubernetes.io/name=coder -c coder --tail=100
+    ```
+    
+    Test API connectivity:
+    ```bash
+    curl -H "Authorization: Bearer YOUR_TOKEN" \
+         https://coder.{{ .Values.ingress.hosts[0].host }}/api/v2/buildinfo
+    ```
+{{- end }}

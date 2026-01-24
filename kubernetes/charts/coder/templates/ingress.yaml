@@ -1,0 +1,83 @@
+{{- if .Values.ingress.enabled }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "coder.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "coder.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.ingress.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer | default "letsencrypt" | quote }}
+    {{- end }}
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        {{- range .Values.ingress.hosts }}
+        - {{ .host }}
+        {{- end }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  rules:
+    {{- range .Values.ingress.hosts }}
+    - host: {{ .host }}
+      http:
+        paths:
+          {{- range .paths }}
+          - path: {{ .path }}
+            pathType: {{ .pathType }}
+            backend:
+              service:
+                name: {{ include "coder.fullname" $ }}
+                port:
+                  number: {{ $.Values.coder.service.port }}
+          {{- end }}
+    {{- end }}
+
+---
+# Wildcard Ingress for workspaces
+{{- if .Values.ingress.wildcardHost }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "coder.fullname" . }}-wildcard
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "coder.labels" . | nindent 4 }}
+    app.kubernetes.io/component: wildcard
+  annotations:
+    {{- if .Values.ingress.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer | default "letsencrypt" | quote }}
+    {{- end }}
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.wildcardHost }}
+      secretName: {{ .Values.ingress.tls.wildcardSecretName }}
+  {{- end }}
+  rules:
+    - host: {{ .Values.ingress.wildcardHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "coder.fullname" . }}
+                port:
+                  number: {{ .Values.coder.service.port }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,181 @@
+{{- if .Values.serviceMonitor.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "coder.fullname" . }}-dashboard
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "coder.labels" . | nindent 4 }}
+    grafana_dashboard: "1"
+data:
+  coder-dashboard.json: |
+    {
+      "dashboard": {
+        "title": "Coder Metrics",
+        "tags": ["coder", "development", "workspaces"],
+        "timezone": "browser",
+        "schemaVersion": 16,
+        "version": 1,
+        "refresh": "30s",
+        "panels": [
+          {
+            "id": 1,
+            "title": "Active Workspaces",
+            "type": "stat",
+            "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+            "targets": [
+              {
+                "expr": "coder_workspaces_active_total",
+                "refId": "A"
+              }
+            ],
+            "fieldConfig": {
+              "defaults": {
+                "color": {"mode": "thresholds"},
+                "thresholds": {
+                  "mode": "absolute",
+                  "steps": [
+                    {"value": 0, "color": "green"},
+                    {"value": 5, "color": "yellow"},
+                    {"value": 10, "color": "red"}
+                  ]
+                }
+              }
+            }
+          },
+          {
+            "id": 2,
+            "title": "Total Users",
+            "type": "stat",
+            "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+            "targets": [
+              {
+                "expr": "coder_users_total",
+                "refId": "A"
+              }
+            ]
+          },
+          {
+            "id": 3,
+            "title": "API Request Rate",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+            "targets": [
+              {
+                "expr": "rate(coder_api_requests_total[5m])",
+                "legendFormat": "{{`{{ method }} {{ path }}`}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "reqps", "label": "Requests/sec"},
+              {"format": "short"}
+            ]
+          },
+          {
+            "id": 4,
+            "title": "Workspace CPU Usage",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+            "targets": [
+              {
+                "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"{{ .Release.Namespace }}\",pod=~\"coder-.*\"}[5m])) by (pod)",
+                "legendFormat": "{{`{{ pod }}`}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "percentunit", "label": "CPU"},
+              {"format": "short"}
+            ]
+          },
+          {
+            "id": 5,
+            "title": "Workspace Memory Usage",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+            "targets": [
+              {
+                "expr": "sum(container_memory_working_set_bytes{namespace=\"{{ .Release.Namespace }}\",pod=~\"coder-.*\"}) by (pod)",
+                "legendFormat": "{{`{{ pod }}`}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "bytes", "label": "Memory"},
+              {"format": "short"}
+            ]
+          },
+          {
+            "id": 6,
+            "title": "API Latency (p95)",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+            "targets": [
+              {
+                "expr": "histogram_quantile(0.95, rate(coder_api_request_duration_seconds_bucket[5m]))",
+                "legendFormat": "{{`{{ method }} {{ path }}`}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "s", "label": "Latency"},
+              {"format": "short"}
+            ]
+          },
+          {
+            "id": 7,
+            "title": "Workspace Builds",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+            "targets": [
+              {
+                "expr": "rate(coder_workspace_builds_total[5m])",
+                "legendFormat": "{{`{{ status }}`}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "ops", "label": "Builds/sec"},
+              {"format": "short"}
+            ]
+          },
+          {
+            "id": 8,
+            "title": "Database Connection Pool",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+            "targets": [
+              {
+                "expr": "coder_db_connections_active",
+                "legendFormat": "Active",
+                "refId": "A"
+              },
+              {
+                "expr": "coder_db_connections_idle",
+                "legendFormat": "Idle",
+                "refId": "B"
+              }
+            ]
+          },
+          {
+            "id": 9,
+            "title": "AgentAPI Requests",
+            "type": "graph",
+            "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+            "targets": [
+              {
+                "expr": "rate(coder_agentapi_requests_total[5m])",
+                "legendFormat": "{{`{{ agent }} - {{ operation }}`}}",
+                "refId": "A"
+              }
+            ],
+            "yaxes": [
+              {"format": "reqps", "label": "Requests/sec"},
+              {"format": "short"}
+            ]
+          }
+        ]
+      }
+    }
+{{- end }}

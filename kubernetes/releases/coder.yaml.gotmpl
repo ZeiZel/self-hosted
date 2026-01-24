@@ -1,0 +1,183 @@
+namespace: code
+
+# Coder server image
+image:
+  repository: ghcr.io/coder/coder
+  tag: "v2.17.0"
+  pullPolicy: IfNotPresent
+
+coder:
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 7080
+
+  # PostgreSQL connection (use external postgres)
+  postgres:
+    external: true
+    host: "postgres-postgresql.db.svc.cluster.local"
+    port: 5432
+    database: "coder"
+    user: "coder"
+    password: "{{ .Values.secrets.coderPostgresPassword }}"
+    sslMode: "disable"
+
+  # Coder configuration
+  config:
+    accessUrl: "https://coder.{{ .Values.infra.host }}"
+    wildcardAccessUrl: "*.workspace.coder.{{ .Values.infra.host }}"
+    telemetry: false
+    prometheusEnable: true
+    prometheusAddress: "0.0.0.0:2112"
+    provisionerDaemons: 3
+    maxTokenLifetime: "168h"
+    sessionDuration: "24h"
+    browserOnly: false
+
+  # OIDC configuration for Authentik
+  oidc:
+    enabled: true
+    issuerUrl: "https://authentik.{{ .Values.infra.host }}/application/o/coder/"
+    clientId: "{{ .Values.secrets.coderOidcClientId }}"
+    clientSecret: "{{ .Values.secrets.coderOidcClientSecret }}"
+    scopes: "openid profile email groups"
+    allowSignups: true
+    emailDomain: []
+    groupField: "groups"
+    groupMapping:
+      coder-admins: "owner"
+      coder-users: "member"
+
+  # GitLab OAuth integration
+  gitlab:
+    enabled: true
+    url: "https://gitlab.{{ .Values.infra.host }}"
+    clientId: "{{ .Values.secrets.coderGitlabClientId }}"
+    clientSecret: "{{ .Values.secrets.coderGitlabClientSecret }}"
+    allowSignups: false
+    allowedGroups:
+      - "developers"
+
+  # AgentAPI configuration for AI agents
+  agentapi:
+    enabled: true
+    tokenLifetime: "720h"  # 30 days
+
+  # Default workspace resources
+  workspaces:
+    defaultResources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+    storage:
+      size: "50Gi"
+      storageClass: "openebs-hostpath"
+    inactivityTimeout: "4h"
+    ttl: "168h"  # 7 days
+
+# Resources for Coder server
+resources:
+  requests:
+    cpu: 1
+    memory: 2Gi
+  limits:
+    cpu: 2
+    memory: 4Gi
+
+# Persistent storage for Coder server
+persistence:
+  enabled: true
+  storageClass: openebs-hostpath
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: /home/coder
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+  hosts:
+    - host: coder.{{ .Values.infra.host }}
+      paths:
+        - path: /
+          pathType: Prefix
+  wildcardHost: "*.workspace.coder.{{ .Values.infra.host }}"
+  tls:
+    enabled: true
+    secretName: coder-tls
+    wildcardSecretName: coder-workspace-tls
+    clusterIssuer: letsencrypt
+
+# Security contexts
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  runAsNonRoot: true
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+
+# Health checks
+probes:
+  liveness:
+    enabled: true
+    path: /api/v2/buildinfo
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 6
+  readiness:
+    enabled: true
+    path: /api/v2/buildinfo
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Consul integration
+consul:
+  enabled: true
+  tags:
+    - coder
+    - development
+    - remote-ide
+    - agentapi
+
+# Vault integration
+vault:
+  enabled: true
+  role: "coder"
+
+# ServiceMonitor for Prometheus
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+
+# HorizontalPodAutoscaler
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+# Node selector, tolerations, affinity
+nodeSelector: {}
+tolerations: []
+affinity: {}

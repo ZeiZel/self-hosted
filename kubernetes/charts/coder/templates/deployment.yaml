@@ -1,0 +1,161 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "coder.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "coder.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.coder.replicaCount }}
+  selector:
+    matchLabels:
+      {{- include "coder.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "coder.selectorLabels" . | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+        checksum/secret: {{ include (print $.Template.BasePath "/secret.yaml") . | sha256sum }}
+        {{- if .Values.consul.enabled }}
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "coder"
+        consul.hashicorp.com/connect-service-port: "{{ .Values.coder.service.port }}"
+        consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        # Vault Agent Injector
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "{{ .Values.vault.role }}"
+        vault.hashicorp.com/agent-inject-secret-secrets: "secret/data/coder/secrets"
+        vault.hashicorp.com/agent-inject-template-secrets: |
+          {{`{{- with secret "secret/data/coder/secrets" -}}`}}
+          {{`{{- range $key, $value := .Data.data -}}`}}
+          {{`export {{ $key }}="{{ $value }}"`}}
+          {{`{{- end -}}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "2112"
+        prometheus.io/path: "/metrics"
+    spec:
+      serviceAccountName: {{ include "coder.fullname" . }}
+      securityContext:
+        {{- include "coder.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: coder
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - /opt/coder
+            - server
+          ports:
+            - name: http
+              containerPort: {{ .Values.coder.service.port }}
+              protocol: TCP
+            - name: metrics
+              containerPort: 2112
+              protocol: TCP
+          envFrom:
+            - configMapRef:
+                name: {{ include "coder.fullname" . }}-config
+          env:
+            # PostgreSQL connection
+            - name: CODER_PG_CONNECTION_URL
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "coder.fullname" . }}-secrets
+                  key: postgres-url
+            
+            {{- if .Values.coder.oidc.enabled }}
+            # OIDC credentials
+            - name: CODER_OIDC_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "coder.fullname" . }}-secrets
+                  key: oidc-client-id
+            - name: CODER_OIDC_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "coder.fullname" . }}-secrets
+                  key: oidc-client-secret
+            {{- end }}
+
+            {{- if .Values.coder.gitlab.enabled }}
+            # GitLab OAuth credentials
+            - name: CODER_GITAUTH_0_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "coder.fullname" . }}-secrets
+                  key: gitlab-client-id
+            - name: CODER_GITAUTH_0_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "coder.fullname" . }}-secrets
+                  key: gitlab-client-secret
+            {{- end }}
+
+            # Kubernetes provisioner configuration
+            - name: CODER_PROVISIONER_DAEMON_PSK
+              valueFrom:
+                secretKeyRef:
+                  name: {{ include "coder.fullname" . }}-secrets
+                  key: provisioner-psk
+                  optional: true
+
+          {{- if .Values.probes.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: {{ .Values.probes.liveness.path }}
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.liveness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.liveness.failureThreshold }}
+          {{- end }}
+          
+          {{- if .Values.probes.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: {{ .Values.probes.readiness.path }}
+              port: http
+              scheme: HTTP
+            initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
+            timeoutSeconds: {{ .Values.probes.readiness.timeoutSeconds }}
+            failureThreshold: {{ .Values.probes.readiness.failureThreshold }}
+          {{- end }}
+
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          
+          securityContext:
+            {{- include "coder.containerSecurityContext" . | nindent 12 }}
+
+          {{- if .Values.persistence.enabled }}
+          volumeMounts:
+            - name: data
+              mountPath: {{ .Values.persistence.mountPath }}
+          {{- end }}
+
+      {{- if .Values.persistence.enabled }}
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "coder.fullname" . }}-pvc
+      {{- end }}
+
+      {{- with .Values.nodeSelector }}
+      nodeSelector:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}

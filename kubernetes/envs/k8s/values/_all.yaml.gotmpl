@@ -37,7 +37,14 @@ nextcloud:
 valkey:
 minio:
 gitlab:
+coder:
 secrets:
+  # Coder secrets
+  coderPostgresPassword: "coder"
+  coderOidcClientId: "coder-client"
+  coderOidcClientSecret: "changeme-oidc-secret"
+  coderGitlabClientId: "changeme-gitlab-client-id"
+  coderGitlabClientSecret: "changeme-gitlab-client-secret"
 monitoring:
 glance:
 devtron:

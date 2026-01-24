@@ -1,0 +1,45 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "coder.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "coder.labels" . | nindent 4 }}
+data:
+  # Coder server configuration
+  CODER_ACCESS_URL: {{ include "coder.accessUrl" . | quote }}
+  {{- if .Values.coder.config.wildcardAccessUrl }}
+  CODER_WILDCARD_ACCESS_URL: {{ .Values.coder.config.wildcardAccessUrl | quote }}
+  {{- end }}
+  CODER_TELEMETRY: {{ .Values.coder.config.telemetry | quote }}
+  CODER_PROMETHEUS_ENABLE: {{ .Values.coder.config.prometheusEnable | quote }}
+  CODER_PROMETHEUS_ADDRESS: {{ .Values.coder.config.prometheusAddress | quote }}
+  CODER_PROVISIONER_DAEMONS: {{ .Values.coder.config.provisionerDaemons | quote }}
+  CODER_MAX_TOKEN_LIFETIME: {{ .Values.coder.config.maxTokenLifetime | quote }}
+  CODER_SESSION_DURATION: {{ .Values.coder.config.sessionDuration | quote }}
+  CODER_BROWSER_ONLY: {{ .Values.coder.config.browserOnly | quote }}
+  
+  # Workspace defaults
+  CODER_WORKSPACE_INACTIVITY_TIMEOUT: {{ .Values.coder.workspaces.inactivityTimeout | quote }}
+  CODER_WORKSPACE_TTL: {{ .Values.coder.workspaces.ttl | quote }}
+  
+  {{- if .Values.coder.oidc.enabled }}
+  # OIDC configuration
+  CODER_OIDC_ISSUER_URL: {{ .Values.coder.oidc.issuerUrl | quote }}
+  CODER_OIDC_SCOPES: {{ .Values.coder.oidc.scopes | quote }}
+  CODER_OIDC_ALLOW_SIGNUPS: {{ .Values.coder.oidc.allowSignups | quote }}
+  CODER_OIDC_GROUP_FIELD: {{ .Values.coder.oidc.groupField | quote }}
+  {{- if .Values.coder.oidc.emailDomain }}
+  CODER_OIDC_EMAIL_DOMAIN: {{ join "," .Values.coder.oidc.emailDomain | quote }}
+  {{- end }}
+  {{- end }}
+
+  {{- if .Values.coder.gitlab.enabled }}
+  # GitLab OAuth configuration
+  CODER_GITAUTH_0_ID: "gitlab"
+  CODER_GITAUTH_0_TYPE: "gitlab"
+  CODER_GITAUTH_0_AUTH_URL: {{ printf "%s/oauth/authorize" .Values.coder.gitlab.url | quote }}
+  CODER_GITAUTH_0_TOKEN_URL: {{ printf "%s/oauth/token" .Values.coder.gitlab.url | quote }}
+  CODER_GITAUTH_0_VALIDATE_URL: {{ printf "%s/api/v4/user" .Values.coder.gitlab.url | quote }}
+  CODER_GITAUTH_0_SCOPES: "api read_user write_repository"
+  {{- end }}

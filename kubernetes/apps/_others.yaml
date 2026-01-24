@@ -172,9 +172,9 @@ apps:
       - db/valkey
       - service/vault
 
-  pangolin-client:
+  pangolin:
     repo: charts
-    chart: pangolin-client
+    chart: pangolin
     namespace: infrastructure
     version: v1.0.0
     needs:
@@ -273,6 +273,20 @@ apps:
       - db/postgres
       - db/valkey
       - service/vault
+
+  coder:
+    repo: charts
+    chart: coder
+    namespace: code
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - service/cert-manager
+      - service/authentik
+      - db/postgres
+      - service/vault
+      - code/gitlab
 
   # SOCIAL
   stoat:

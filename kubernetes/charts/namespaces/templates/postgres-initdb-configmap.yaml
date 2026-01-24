@@ -1,0 +1,136 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: scripts-initdb
+  namespace: db
+  labels:
+    app.kubernetes.io/name: postgresql
+    app.kubernetes.io/component: initdb
+data:
+  # Bytebase database initialization
+  01-bytebase.sql: |
+    -- Create database and user for Bytebase
+    SELECT 'CREATE DATABASE bytebase'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'bytebase')\gexec
+    
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT FROM pg_user WHERE usename = 'bytebase') THEN
+        CREATE USER bytebase WITH ENCRYPTED PASSWORD 'bytebase';
+      END IF;
+    END
+    $$;
+    
+    GRANT ALL PRIVILEGES ON DATABASE bytebase TO bytebase;
+    
+  # Coder database initialization
+  02-coder.sql: |
+    -- Create database and user for Coder
+    SELECT 'CREATE DATABASE coder'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'coder')\gexec
+    
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT FROM pg_user WHERE usename = 'coder') THEN
+        CREATE USER coder WITH ENCRYPTED PASSWORD 'coder';
+      END IF;
+    END
+    $$;
+    
+    GRANT ALL PRIVILEGES ON DATABASE coder TO coder;
+    
+    -- Connect to coder database and set up schema
+    \c coder
+    
+    -- Grant privileges on schema
+    GRANT ALL ON SCHEMA public TO coder;
+    GRANT ALL PRIVILEGES ON ALL TABLES IN SCHEMA public TO coder;
+    GRANT ALL PRIVILEGES ON ALL SEQUENCES IN SCHEMA public TO coder;
+    
+    -- Set default privileges for future objects
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON TABLES TO coder;
+    ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT ALL ON SEQUENCES TO coder;
+    
+  # Authentik database initialization
+  03-authentik.sql: |
+    -- Create database and user for Authentik
+    SELECT 'CREATE DATABASE authentik'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'authentik')\gexec
+    
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT FROM pg_user WHERE usename = 'authentik') THEN
+        CREATE USER authentik WITH ENCRYPTED PASSWORD 'authentik';
+      END IF;
+    END
+    $$;
+    
+    GRANT ALL PRIVILEGES ON DATABASE authentik TO authentik;
+    
+  # GitLab database initialization (if needed)
+  04-gitlab.sql: |
+    -- Create database and user for GitLab
+    SELECT 'CREATE DATABASE gitlabhq_production'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'gitlabhq_production')\gexec
+    
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT FROM pg_user WHERE usename = 'gitlab') THEN
+        CREATE USER gitlab WITH ENCRYPTED PASSWORD 'gitlab';
+      END IF;
+    END
+    $$;
+    
+    GRANT ALL PRIVILEGES ON DATABASE gitlabhq_production TO gitlab;
+    
+    -- Enable extensions for GitLab
+    \c gitlabhq_production
+    CREATE EXTENSION IF NOT EXISTS pg_trgm;
+    CREATE EXTENSION IF NOT EXISTS btree_gist;
+    CREATE EXTENSION IF NOT EXISTS plpgsql;
+    
+  # Supabase databases initialization
+  05-supabase.sql: |
+    -- Create databases for Supabase
+    SELECT 'CREATE DATABASE supabase'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'supabase')\gexec
+    
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT FROM pg_user WHERE usename = 'supabase') THEN
+        CREATE USER supabase WITH ENCRYPTED PASSWORD 'supabase';
+      END IF;
+    END
+    $$;
+    
+    GRANT ALL PRIVILEGES ON DATABASE supabase TO supabase;
+    
+    -- Connect to supabase database and enable extensions
+    \c supabase
+    CREATE EXTENSION IF NOT EXISTS pg_stat_statements;
+    CREATE EXTENSION IF NOT EXISTS pgcrypto;
+    CREATE EXTENSION IF NOT EXISTS uuid-ossp;
+    
+  # Harbor database initialization
+  06-harbor.sql: |
+    -- Create databases for Harbor
+    SELECT 'CREATE DATABASE registry'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'registry')\gexec
+    
+    SELECT 'CREATE DATABASE notary_signer'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'notary_signer')\gexec
+    
+    SELECT 'CREATE DATABASE notary_server'
+    WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'notary_server')\gexec
+    
+    DO $$
+    BEGIN
+      IF NOT EXISTS (SELECT FROM pg_user WHERE usename = 'harbor') THEN
+        CREATE USER harbor WITH ENCRYPTED PASSWORD 'harbor';
+      END IF;
+    END
+    $$;
+    
+    GRANT ALL PRIVILEGES ON DATABASE registry TO harbor;
+    GRANT ALL PRIVILEGES ON DATABASE notary_signer TO harbor;
+    GRANT ALL PRIVILEGES ON DATABASE notary_server TO harbor;

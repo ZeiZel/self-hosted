@@ -1,0 +1,190 @@
+namespace: code
+
+create:
+  namespace: true
+
+image:
+  repository: ghcr.io/coder/coder
+  tag: "v2.17.0"
+  pullPolicy: IfNotPresent
+
+coder:
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 7080
+    httpsPort: 7443
+
+  # PostgreSQL connection (use external postgres)
+  postgres:
+    external: true
+    host: "postgres-postgresql.db.svc.cluster.local"
+    port: 5432
+    database: "coder"
+    user: "coder"
+    password: "" # Set in secrets
+    sslMode: "disable"
+
+  # Coder configuration
+  config:
+    # Access URL for users
+    accessUrl: "https://coder.localhost"
+    # Wildcard access URL for workspaces
+    wildcardAccessUrl: "*.workspace.coder.localhost"
+    # Enable telemetry (set to false for privacy)
+    telemetry: false
+    # Enable metrics endpoint
+    prometheusEnable: true
+    prometheusAddress: "0.0.0.0:2112"
+    # Provisioner daemons (for managing workspaces)
+    provisionerDaemons: 3
+    # Max token lifetime
+    maxTokenLifetime: "168h"
+    # Session duration
+    sessionDuration: "24h"
+    # Enable browser-only connections (for security)
+    browserOnly: false
+
+  # OIDC configuration for Authentik
+  oidc:
+    enabled: false
+    issuerUrl: ""
+    clientId: ""
+    clientSecret: ""
+    scopes: "openid profile email groups"
+    allowSignups: true
+    emailDomain: []
+    groupField: "groups"
+    groupMapping: {}
+
+  # GitLab OAuth integration
+  gitlab:
+    enabled: false
+    url: ""
+    clientId: ""
+    clientSecret: ""
+    allowSignups: false
+    allowedGroups: []
+
+  # AgentAPI configuration
+  agentapi:
+    enabled: true
+    # Allow AI agents to connect via API
+    tokenLifetime: "720h"  # 30 days
+
+  # Default workspace resources
+  workspaces:
+    defaultResources:
+      requests:
+        cpu: "500m"
+        memory: "1Gi"
+      limits:
+        cpu: "2"
+        memory: "4Gi"
+    storage:
+      size: "50Gi"
+      storageClass: "openebs-hostpath"
+    # Workspace inactivity timeout (stop after)
+    inactivityTimeout: "4h"
+    # Workspace TTL (delete after)
+    ttl: "168h"  # 7 days
+
+resources:
+  limits:
+    cpu: 2
+    memory: 4Gi
+  requests:
+    cpu: 1
+    memory: 2Gi
+
+persistence:
+  enabled: true
+  storageClass: openebs-hostpath
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: /home/coder
+
+ingress:
+  enabled: true
+  className: traefik
+  annotations: {}
+  hosts:
+    - host: coder.localhost
+      paths:
+        - path: /
+          pathType: Prefix
+  wildcardHost: "*.workspace.coder.localhost"
+  tls:
+    enabled: true
+    secretName: coder-tls
+    wildcardSecretName: coder-workspace-tls
+
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  runAsNonRoot: true
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+
+probes:
+  liveness:
+    enabled: true
+    path: /api/v2/buildinfo
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 5
+    failureThreshold: 6
+  readiness:
+    enabled: true
+    path: /api/v2/buildinfo
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 3
+    failureThreshold: 3
+
+# Consul integration
+consul:
+  enabled: true
+  tags:
+    - coder
+    - development
+    - remote-ide
+
+# Vault integration (requires Vault policies and secrets to be configured)
+vault:
+  enabled: false
+  role: "coder"
+  # Note: Before enabling, configure Vault:
+  # 1. Create policy for coder service
+  # 2. Create secret at secret/data/coder/secrets
+  # 3. Enable Kubernetes auth method in Vault
+  # 4. Create role binding ServiceAccount to Vault policy
+
+# ServiceMonitor for Prometheus
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+
+# HorizontalPodAutoscaler
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

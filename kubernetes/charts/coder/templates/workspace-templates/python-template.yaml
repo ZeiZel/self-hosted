@@ -1,0 +1,171 @@
+{{- if .Values.coder.workspaces }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "coder.fullname" . }}-template-python
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "coder.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workspace-template
+    coder.template/type: python
+data:
+  template.tf: |
+    terraform {
+      required_providers {
+        coder = {
+          source = "coder/coder"
+        }
+        kubernetes = {
+          source = "hashicorp/kubernetes"
+        }
+      }
+    }
+
+    provider "coder" {}
+    provider "kubernetes" {
+      config_path = null
+    }
+
+    data "coder_workspace" "me" {}
+
+    resource "coder_agent" "main" {
+      arch = "amd64"
+      os   = "linux"
+      
+      startup_script = <<-EOT
+        #!/bin/bash
+        set -e
+        
+        # Install common tools
+        sudo apt-get update
+        sudo apt-get install -y git curl wget vim nano htop build-essential
+        
+        # Configure git
+        if [ ! -z "$GIT_AUTHOR_NAME" ]; then
+          git config --global user.name "$GIT_AUTHOR_NAME"
+          git config --global user.email "$GIT_AUTHOR_EMAIL"
+        fi
+        
+        # Clone repository if specified
+        if [ ! -z "$GIT_CLONE_URL" ]; then
+          cd ~/workspace
+          git clone "$GIT_CLONE_URL" project || true
+          cd project
+        fi
+        
+        # Setup Python virtual environment
+        if [ -f requirements.txt ]; then
+          python3 -m venv venv
+          source venv/bin/activate
+          pip install -r requirements.txt
+        elif [ -f pyproject.toml ]; then
+          poetry install || pip install poetry && poetry install
+        fi
+      EOT
+
+      metadata {
+        display_name = "Python Version"
+        key          = "python_version"
+        script       = "python3 --version"
+        interval     = 0
+        timeout      = 1
+      }
+
+      metadata {
+        display_name = "Poetry Version"
+        key          = "poetry_version"
+        script       = "poetry --version 2>/dev/null || echo 'Not installed'"
+        interval     = 0
+        timeout      = 1
+      }
+    }
+
+    resource "kubernetes_pod" "main" {
+      count = data.coder_workspace.me.start_count
+      
+      metadata {
+        name      = "coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}"
+        namespace = "{{ .Release.Namespace }}"
+        labels = {
+          "app.kubernetes.io/name"     = "coder-workspace"
+          "app.kubernetes.io/instance" = data.coder_workspace.me.name
+          "app.kubernetes.io/owner"    = data.coder_workspace.me.owner
+          "coder.workspace"            = "true"
+          "coder.template"             = "python"
+        }
+      }
+
+      spec {
+        security_context {
+          run_as_user = 1000
+          fs_group    = 1000
+        }
+
+        container {
+          name  = "dev"
+          image = "codercom/enterprise-python:ubuntu"
+          
+          command = ["/bin/bash", "-c", coder_agent.main.init_script]
+          
+          security_context {
+            run_as_user = 1000
+          }
+
+          env {
+            name  = "CODER_AGENT_TOKEN"
+            value = coder_agent.main.token
+          }
+
+          resources {
+            requests = {
+              cpu    = "{{ .Values.coder.workspaces.defaultResources.requests.cpu }}"
+              memory = "{{ .Values.coder.workspaces.defaultResources.requests.memory }}"
+            }
+            limits = {
+              cpu    = "{{ .Values.coder.workspaces.defaultResources.limits.cpu }}"
+              memory = "{{ .Values.coder.workspaces.defaultResources.limits.memory }}"
+            }
+          }
+
+          volume_mount {
+            mount_path = "/home/coder"
+            name       = "home"
+          }
+        }
+
+        volume {
+          name = "home"
+          persistent_volume_claim {
+            claim_name = kubernetes_persistent_volume_claim.home.metadata[0].name
+          }
+        }
+      }
+    }
+
+    resource "kubernetes_persistent_volume_claim" "home" {
+      metadata {
+        name      = "coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-home"
+        namespace = "{{ .Release.Namespace }}"
+      }
+      wait_until_bound = false
+      spec {
+        access_modes = ["ReadWriteOnce"]
+        storage_class_name = "{{ .Values.coder.workspaces.storage.storageClass }}"
+        resources {
+          requests = {
+            storage = "{{ .Values.coder.workspaces.storage.size }}"
+          }
+        }
+      }
+    }
+
+    resource "coder_app" "code-server" {
+      agent_id     = coder_agent.main.id
+      slug         = "code-server"
+      display_name = "VS Code"
+      url          = "http://localhost:13337/?folder=/home/coder"
+      icon         = "/icon/code.svg"
+      subdomain    = false
+      share        = "owner"
+    }
+{{- end }}

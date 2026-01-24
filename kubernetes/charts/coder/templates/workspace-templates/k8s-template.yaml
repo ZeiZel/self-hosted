@@ -1,0 +1,240 @@
+{{- if .Values.coder.workspaces }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "coder.fullname" . }}-template-k8s
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "coder.labels" . | nindent 4 }}
+    app.kubernetes.io/component: workspace-template
+    coder.template/type: kubernetes
+data:
+  template.tf: |
+    terraform {
+      required_providers {
+        coder = {
+          source = "coder/coder"
+        }
+        kubernetes = {
+          source = "hashicorp/kubernetes"
+        }
+      }
+    }
+
+    provider "coder" {}
+    provider "kubernetes" {
+      config_path = null
+    }
+
+    data "coder_workspace" "me" {}
+
+    resource "coder_agent" "main" {
+      arch = "amd64"
+      os   = "linux"
+      
+      startup_script = <<-EOT
+        #!/bin/bash
+        set -e
+        
+        # Install common tools
+        sudo apt-get update
+        sudo apt-get install -y git curl wget vim nano htop build-essential
+        
+        # Install kubectl
+        curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
+        sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+        rm kubectl
+        
+        # Install Helm
+        curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
+        
+        # Configure kubectl to use in-cluster config
+        export KUBECONFIG=/var/run/secrets/kubernetes.io/serviceaccount
+        
+        # Configure git
+        if [ ! -z "$GIT_AUTHOR_NAME" ]; then
+          git config --global user.name "$GIT_AUTHOR_NAME"
+          git config --global user.email "$GIT_AUTHOR_EMAIL"
+        fi
+        
+        # Clone repository if specified
+        if [ ! -z "$GIT_CLONE_URL" ]; then
+          cd ~/workspace
+          git clone "$GIT_CLONE_URL" project || true
+          cd project
+        fi
+        
+        echo "Kubernetes native workspace ready!"
+        kubectl version --client
+      EOT
+
+      metadata {
+        display_name = "Kubectl Version"
+        key          = "kubectl_version"
+        script       = "kubectl version --client --short 2>/dev/null || echo 'Not installed'"
+        interval     = 0
+        timeout      = 1
+      }
+
+      metadata {
+        display_name = "Helm Version"
+        key          = "helm_version"
+        script       = "helm version --short 2>/dev/null || echo 'Not installed'"
+        interval     = 0
+        timeout      = 1
+      }
+
+      metadata {
+        display_name = "Cluster Info"
+        key          = "cluster_info"
+        script       = "kubectl cluster-info 2>/dev/null | head -1 || echo 'Not connected'"
+        interval     = 60
+        timeout      = 2
+      }
+    }
+
+    # ServiceAccount for workspace with k8s API access
+    resource "kubernetes_service_account" "workspace" {
+      metadata {
+        name      = "coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-sa"
+        namespace = "{{ .Release.Namespace }}"
+      }
+    }
+
+    # Role for workspace operations
+    resource "kubernetes_role" "workspace" {
+      metadata {
+        name      = "coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-role"
+        namespace = "{{ .Release.Namespace }}"
+      }
+
+      rule {
+        api_groups = [""]
+        resources  = ["pods", "services", "configmaps", "secrets"]
+        verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
+      }
+
+      rule {
+        api_groups = ["apps"]
+        resources  = ["deployments", "statefulsets", "daemonsets"]
+        verbs      = ["get", "list", "watch", "create", "update", "patch", "delete"]
+      }
+
+      rule {
+        api_groups = [""]
+        resources  = ["pods/log", "pods/exec"]
+        verbs      = ["get", "create"]
+      }
+    }
+
+    # RoleBinding for workspace
+    resource "kubernetes_role_binding" "workspace" {
+      metadata {
+        name      = "coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-rb"
+        namespace = "{{ .Release.Namespace }}"
+      }
+
+      role_ref {
+        api_group = "rbac.authorization.k8s.io"
+        kind      = "Role"
+        name      = kubernetes_role.workspace.metadata[0].name
+      }
+
+      subject {
+        kind      = "ServiceAccount"
+        name      = kubernetes_service_account.workspace.metadata[0].name
+        namespace = "{{ .Release.Namespace }}"
+      }
+    }
+
+    resource "kubernetes_pod" "main" {
+      count = data.coder_workspace.me.start_count
+      
+      metadata {
+        name      = "coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}"
+        namespace = "{{ .Release.Namespace }}"
+        labels = {
+          "app.kubernetes.io/name"     = "coder-workspace"
+          "app.kubernetes.io/instance" = data.coder_workspace.me.name
+          "app.kubernetes.io/owner"    = data.coder_workspace.me.owner
+          "coder.workspace"            = "true"
+          "coder.template"             = "kubernetes"
+        }
+      }
+
+      spec {
+        service_account_name = kubernetes_service_account.workspace.metadata[0].name
+
+        security_context {
+          run_as_user = 1000
+          fs_group    = 1000
+        }
+
+        container {
+          name  = "dev"
+          image = "codercom/enterprise-base:ubuntu"
+          
+          command = ["/bin/bash", "-c", coder_agent.main.init_script]
+          
+          security_context {
+            run_as_user = 1000
+          }
+
+          env {
+            name  = "CODER_AGENT_TOKEN"
+            value = coder_agent.main.token
+          }
+
+          resources {
+            requests = {
+              cpu    = "{{ .Values.coder.workspaces.defaultResources.requests.cpu }}"
+              memory = "{{ .Values.coder.workspaces.defaultResources.requests.memory }}"
+            }
+            limits = {
+              cpu    = "{{ .Values.coder.workspaces.defaultResources.limits.cpu }}"
+              memory = "{{ .Values.coder.workspaces.defaultResources.limits.memory }}"
+            }
+          }
+
+          volume_mount {
+            mount_path = "/home/coder"
+            name       = "home"
+          }
+        }
+
+        volume {
+          name = "home"
+          persistent_volume_claim {
+            claim_name = kubernetes_persistent_volume_claim.home.metadata[0].name
+          }
+        }
+      }
+    }
+
+    resource "kubernetes_persistent_volume_claim" "home" {
+      metadata {
+        name      = "coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-home"
+        namespace = "{{ .Release.Namespace }}"
+      }
+      wait_until_bound = false
+      spec {
+        access_modes = ["ReadWriteOnce"]
+        storage_class_name = "{{ .Values.coder.workspaces.storage.storageClass }}"
+        resources {
+          requests = {
+            storage = "{{ .Values.coder.workspaces.storage.size }}"
+          }
+        }
+      }
+    }
+
+    resource "coder_app" "code-server" {
+      agent_id     = coder_agent.main.id
+      slug         = "code-server"
+      display_name = "VS Code"
+      url          = "http://localhost:13337/?folder=/home/coder"
+      icon         = "/icon/code.svg"
+      subdomain    = false
+      share        = "owner"
+    }
+{{- end }}
