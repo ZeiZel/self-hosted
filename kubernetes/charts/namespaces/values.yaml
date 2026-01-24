@@ -35,6 +35,14 @@ namespaces:
     enabled: true
     description: "Data storage: Vaultwarden, Syncthing, Nextcloud"
 
+  content:
+    enabled: true
+    description: "Content publishing: Ghost CMS"
+
+  infrastructure:
+    enabled: true
+    description: "Infrastructure tools: Glance, Bytebase, Harbor, Pangolin"
+
   auth:
     enabled: true
     description: "Authentication: Authentik"

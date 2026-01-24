@@ -1,0 +1,22 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "ghost.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "ghost.labels" . | nindent 4 }}
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "ghost"
+    consul.hashicorp.com/service-port: {{ .Values.service.port | quote }}
+    consul.hashicorp.com/service-tags: {{ .Values.consul.tags | join "," | quote }}
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: http
+      protocol: TCP
+      name: http
+  selector:
+    {{- include "ghost.selectorLabels" . | nindent 4 }}

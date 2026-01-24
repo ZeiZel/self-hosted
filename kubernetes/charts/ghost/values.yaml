@@ -1,0 +1,140 @@
+namespace: content
+
+create:
+  namespace: true
+
+image:
+  repository: ghost
+  tag: "5.108.0-alpine"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 2368
+
+# MySQL connection (external MySQL in db namespace)
+mysql:
+  external: true
+  host: "mysql.db.svc.cluster.local"
+  port: 3306
+  database: "ghost"
+  user: "ghost"
+  password: "" # Set in secrets
+
+# Ghost configuration
+ghost:
+  # URL configuration
+  url: "https://ghost.localhost"
+
+  # Mail configuration (optional)
+  mail:
+    enabled: false
+    transport: "SMTP"
+    from: "ghost@example.com"
+    host: ""
+    port: 587
+    user: ""
+    password: ""
+    secure: false
+
+  # Environment
+  nodeEnv: "production"
+
+# Resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+# Persistence for Ghost content (themes, images, etc.)
+persistence:
+  enabled: true
+  storageClass: openebs-hostpath
+  accessMode: ReadWriteOnce
+  size: 10Gi
+  mountPath: /var/lib/ghost/content
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: traefik
+  annotations: {}
+  hosts:
+    - host: ghost.localhost
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    enabled: true
+    secretName: ghost-tls
+    clusterIssuer: letsencrypt
+
+# Security contexts
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  runAsNonRoot: true
+
+podSecurityContext:
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  capabilities:
+    drop:
+      - ALL
+  readOnlyRootFilesystem: false
+
+# Health probes
+probes:
+  liveness:
+    enabled: true
+    path: /
+    initialDelaySeconds: 120
+    periodSeconds: 30
+    timeoutSeconds: 10
+    failureThreshold: 6
+  readiness:
+    enabled: true
+    path: /
+    initialDelaySeconds: 60
+    periodSeconds: 10
+    timeoutSeconds: 5
+    failureThreshold: 3
+
+# Consul integration
+consul:
+  enabled: true
+  tags:
+    - ghost
+    - blog
+    - cms
+    - content
+
+# Vault integration
+vault:
+  enabled: false
+  role: "ghost"
+
+# ServiceMonitor for Prometheus (Ghost doesn't expose metrics natively)
+serviceMonitor:
+  enabled: false
+
+# HorizontalPodAutoscaler
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

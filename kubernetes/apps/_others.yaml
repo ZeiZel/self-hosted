@@ -89,6 +89,15 @@ apps:
       - ingress/traefik
       - service/vault
 
+  mysql:
+    repo: bitnami
+    chart: mysql
+    namespace: db
+    version: ">=0.0.0"
+    needs:
+      - ingress/traefik
+      - service/vault
+
   supabase:
     repo: charts
     chart: supabase
@@ -360,4 +369,18 @@ apps:
       - service/consul
       - db/postgres
       - db/clickhouse
+      - service/vault
+
+  # CONTENT
+  ghost:
+    repo: charts
+    chart: ghost
+    namespace: content
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+      - service/cert-manager
+      - service/authentik
+      - db/mysql
       - service/vault
