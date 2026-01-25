@@ -1,0 +1,17 @@
+apiVersion: v2
+name: vert
+description: A Helm chart for VERT - File converter service
+type: application
+version: 1.0.0
+appVersion: "latest"
+keywords:
+  - vert
+  - converter
+  - files
+  - utilities
+home: https://vert.sh
+sources:
+  - https://github.com/VERT-sh/VERT
+maintainers:
+  - name: ZeiZel
+    email: valera2003lvov@yandex.ru

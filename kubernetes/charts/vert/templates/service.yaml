@@ -1,0 +1,21 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "vert.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "vert.labels" . | nindent 4 }}
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: {{ include "vert.fullname" . }}
+    consul.hashicorp.com/service-port: {{ .Values.service.port | quote }}
+    consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
+  {{- end }}
+spec:
+  type: {{ .Values.service.type }}
+  ports:
+    - port: {{ .Values.service.port }}
+      targetPort: {{ .Values.service.targetPort }}
+      name: http
+  selector:
+    {{- include "vert.selectorLabels" . | nindent 4 }}

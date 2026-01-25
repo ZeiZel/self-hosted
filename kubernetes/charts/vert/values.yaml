@@ -1,0 +1,81 @@
+# Namespace
+namespace: utilities
+
+create:
+  namespace: true
+
+# VERT Image
+image:
+  repository: ghcr.io/vert-sh/vert
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+nameOverride: ""
+fullnameOverride: ""
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 3000
+  targetPort: 80
+
+# Resources
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: traefik
+  host: vert.localhost
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+  tls:
+    enabled: true
+    secretName: vert-tls
+    clusterIssuer: letsencrypt
+
+# ServiceMonitor for Prometheus
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+
+# Consul integration
+consul:
+  enabled: true
+  tags:
+    - utilities
+    - vert
+    - converter
+
+# Security context
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+# Health checks
+probes:
+  liveness:
+    enabled: true
+    path: "/"
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  readiness:
+    enabled: true
+    path: "/"
+    initialDelaySeconds: 5
+    periodSeconds: 5
+
+nodeSelector: {}
+tolerations: []
+affinity: {}

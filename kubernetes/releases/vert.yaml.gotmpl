@@ -1,0 +1,62 @@
+namespace: utilities
+
+image:
+  repository: ghcr.io/vert-sh/vert
+  tag: latest
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 3000
+  targetPort: 80
+
+ingress:
+  enabled: true
+  className: traefik
+  host: vert.{{ .Values.infra.host }}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+  tls:
+    enabled: true
+    secretName: vert-tls
+    clusterIssuer: letsencrypt
+
+serviceMonitor:
+  enabled: true
+  interval: 30s
+  scrapeTimeout: 10s
+
+consul:
+  enabled: true
+  tags:
+    - utilities
+    - vert
+    - converter
+
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+probes:
+  liveness:
+    enabled: true
+    path: "/"
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  readiness:
+    enabled: true
+    path: "/"
+    initialDelaySeconds: 5
+    periodSeconds: 5
