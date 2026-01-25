@@ -405,6 +405,21 @@ apps:
       - ingress/traefik
       - service/consul
 
+  # AUTOMATION
+  kestra:
+    repo: kestra
+    chart: kestra
+    namespace: automation
+    version: ">=0.0.0"
+    needs:
+      - ingress/traefik
+      - service/consul
+      - service/cert-manager
+      - service/authentik
+      - db/postgres
+      - db/minio
+      - service/vault
+
   # CONTENT
   ghost:
     repo: charts

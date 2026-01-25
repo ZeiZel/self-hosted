@@ -1,5 +1,7 @@
 ---
 repositories:
+  - name: charts
+    url: file://charts
   - name: traefik
     url: https://traefik.github.io/charts
   - name: jetstack
@@ -24,3 +26,9 @@ repositories:
   - name: hashicorp
     url: https://helm.releases.hashicorp.com
     docs: https://github.com/hashicorp/consul-k8s
+  - name: kestra
+    url: https://helm.kestra.io/
+    docs: https://kestra.io/docs/installation/kubernetes
+  - name: n8n
+    url: oci://8gears.container-registry.com/library/n8n
+    docs: https://artifacthub.io/packages/helm/open-8gears/n8n
