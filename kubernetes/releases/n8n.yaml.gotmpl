@@ -1,0 +1,157 @@
+namespace: automation
+
+# Image settings
+image:
+  repository: n8nio/n8n
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Ingress configuration
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: letsencrypt
+  hosts:
+    - host: n8n.{{ .Values.infra.host }}
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts:
+        - n8n.{{ .Values.infra.host }}
+      secretName: n8n-tls
+
+# Main n8n application configuration
+main:
+  # n8n configuration (converted to environment variables)
+  config:
+    db:
+      type: postgresdb
+      postgresdb:
+        host: postgres-postgresql.db.svc.cluster.local
+        port: 5432
+        database: n8n
+        user: n8n
+
+    executions:
+      mode: queue
+
+    queue:
+      bull:
+        redis:
+          host: valkey-master.db.svc.cluster.local
+          port: 6379
+          db: 2
+
+    generic:
+      timezone: "Europe/Moscow"
+
+    n8n:
+      metrics: true
+
+  # Secrets (passwords, keys)
+  secret:
+    db:
+      postgresdb:
+        password: "{{ .Values.secrets.n8nPostgresPassword }}"
+    n8n:
+      encryption_key: "{{ .Values.secrets.n8nEncryptionKey }}"
+
+  # Persistence for main instance
+  persistence:
+    enabled: true
+    type: dynamic
+    storageClass: openebs-hostpath
+    size: 10Gi
+    accessModes:
+      - ReadWriteOnce
+
+  # Replica count (1 for OSS, more for enterprise)
+  replicaCount: 1
+
+  # Deployment strategy
+  deploymentStrategy:
+    type: Recreate
+
+  # Pod security context
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  # Resources
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: 1000m
+      memory: 2Gi
+
+  # Service annotations for Consul
+  service:
+    type: ClusterIP
+    port: 80
+    annotations:
+      consul.hashicorp.com/service-name: "n8n"
+      consul.hashicorp.com/service-port: "5678"
+      consul.hashicorp.com/service-tags: "automation,n8n,workflow"
+
+# Worker configuration (for queue mode)
+worker:
+  enabled: true
+  replicaCount: 1
+  concurrency: 10
+
+  persistence:
+    enabled: true
+    type: dynamic
+    storageClass: openebs-hostpath
+    size: 5Gi
+    accessModes:
+      - ReadWriteOnce
+
+  podSecurityContext:
+    runAsNonRoot: true
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 500m
+      memory: 1Gi
+
+# Webhook handler (disabled - using main instance)
+webhook:
+  enabled: false
+
+# Valkey/Redis (disabled - using external)
+valkey:
+  enabled: false
+
+# Raw resources for additional manifests (e.g., ServiceMonitor)
+rawResources:
+  servicemonitor:
+    apiVersion: monitoring.coreos.com/v1
+    kind: ServiceMonitor
+    metadata:
+      name: n8n
+      labels:
+        prometheus: kube-prometheus
+    spec:
+      selector:
+        matchLabels:
+          app.kubernetes.io/name: n8n
+      endpoints:
+        - port: http
+          path: /metrics
+          interval: 30s
+          scrapeTimeout: 10s

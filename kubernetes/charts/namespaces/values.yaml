@@ -49,7 +49,7 @@ namespaces:
 
   automation:
     enabled: true
-    description: "Automation and orchestration: Kestra"
+    description: "Automation and orchestration: Kestra, n8n"
 
   auth:
     enabled: true
