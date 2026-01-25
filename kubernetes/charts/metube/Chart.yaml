@@ -1,0 +1,17 @@
+apiVersion: v2
+name: metube
+description: A Helm chart for MeTube - YouTube downloader web UI
+type: application
+version: 1.0.0
+appVersion: "latest"
+keywords:
+  - metube
+  - youtube
+  - downloader
+  - utilities
+home: https://github.com/alexta69/metube
+sources:
+  - https://github.com/alexta69/metube
+maintainers:
+  - name: ZeiZel
+    email: valera2003lvov@yandex.ru
