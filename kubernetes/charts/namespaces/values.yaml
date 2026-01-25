@@ -43,6 +43,10 @@ namespaces:
     enabled: true
     description: "Infrastructure tools: Glance, Bytebase, Harbor, Pangolin"
 
+  utilities:
+    enabled: true
+    description: "Utility services: VERT, MeTube"
+
   auth:
     enabled: true
     description: "Authentication: Authentik"

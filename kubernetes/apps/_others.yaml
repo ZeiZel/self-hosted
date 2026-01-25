@@ -386,6 +386,25 @@ apps:
       - db/valkey
       - service/vault
 
+  # UTILITIES
+  vert:
+    repo: charts
+    chart: vert
+    namespace: utilities
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+
+  metube:
+    repo: charts
+    chart: metube
+    namespace: utilities
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/consul
+
   # CONTENT
   ghost:
     repo: charts
