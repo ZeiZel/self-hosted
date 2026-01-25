@@ -47,6 +47,10 @@ namespaces:
     enabled: true
     description: "Utility services: VERT, MeTube"
 
+  automation:
+    enabled: true
+    description: "Automation and orchestration: Kestra"
+
   auth:
     enabled: true
     description: "Authentication: Authentik"

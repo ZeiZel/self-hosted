@@ -1,0 +1,124 @@
+namespace: automation
+
+# Image settings
+image:
+  repository: kestra/kestra
+  tag: latest
+  pullPolicy: IfNotPresent
+
+# Common deployment settings
+common:
+  replicas: 1
+
+  # Resources
+  resources:
+    requests:
+      cpu: 500m
+      memory: 1Gi
+    limits:
+      cpu: 2000m
+      memory: 4Gi
+
+  # Security context
+  securityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    runAsNonRoot: true
+
+  podSecurityContext:
+    fsGroup: 1000
+
+# Kestra application configuration
+configurations:
+  application:
+    kestra:
+      # Repository - use PostgreSQL JDBC
+      repository:
+        type: postgres
+
+      # Queue - use PostgreSQL JDBC
+      queue:
+        type: postgres
+
+      # Storage - use MinIO S3
+      storage:
+        type: minio
+        minio:
+          endpoint: "http://minio.db.svc.cluster.local:9000"
+          accessKey: "{{ .Values.secrets.minioAccessKey }}"
+          secretKey: "{{ .Values.secrets.minioSecretKey }}"
+          bucket: "kestra"
+          region: "us-east-1"
+
+      # Server URL
+      url: "https://kestra.{{ .Values.infra.host }}"
+
+    # JDBC Datasource
+    datasources:
+      postgres:
+        url: jdbc:postgresql://postgres-postgresql.db.svc.cluster.local:5432/kestra
+        username: kestra
+        password: "{{ .Values.secrets.kestraPostgresPassword }}"
+        driverClassName: org.postgresql.Driver
+
+    # Metrics endpoint
+    endpoints:
+      all:
+        port: 8081
+        enabled: true
+      prometheus:
+        enabled: true
+
+# Deployments - use standalone mode
+deployments:
+  standalone:
+    enabled: true
+    workerThreads: 0
+    dind:
+      enabled: true
+
+# Service configuration
+service:
+  type: ClusterIP
+  annotations:
+    consul.hashicorp.com/service-name: "kestra"
+    consul.hashicorp.com/service-port: "8080"
+    consul.hashicorp.com/service-tags: "automation,kestra,workflow"
+
+# Ingress
+ingress:
+  enabled: true
+  className: traefik
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+    cert-manager.io/cluster-issuer: letsencrypt
+  hosts:
+    - host: kestra.{{ .Values.infra.host }}
+      paths:
+        - path: /
+          pathType: Prefix
+  tls:
+    - hosts:
+        - kestra.{{ .Values.infra.host }}
+      secretName: kestra-tls
+
+# Docker-in-Docker sidecar
+dind:
+  enabled: true
+  mode: rootless
+
+# Authentik OIDC (Enterprise Edition only)
+# Uncomment and configure if using Kestra Enterprise Edition
+# configurations:
+#   application:
+#     micronaut:
+#       security:
+#         oauth2:
+#           enabled: true
+#           clients:
+#             authentik:
+#               clientId: "{{ .Values.secrets.kestraOidcClientId }}"
+#               clientSecret: "{{ .Values.secrets.kestraOidcClientSecret }}"
+#               openid:
+#                 issuer: "https://authentik.{{ .Values.infra.host }}/application/o/kestra/"
