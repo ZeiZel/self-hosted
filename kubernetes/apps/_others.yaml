@@ -420,6 +420,20 @@ apps:
       - db/minio
       - service/vault
 
+  n8n:
+    repo: n8n
+    chart: n8n
+    namespace: automation
+    version: ">=0.0.0"
+    needs:
+      - ingress/traefik
+      - service/consul
+      - service/cert-manager
+      - service/authentik
+      - db/postgres
+      - db/valkey
+      - service/vault
+
   # CONTENT
   ghost:
     repo: charts
