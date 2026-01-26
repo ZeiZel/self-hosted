@@ -139,6 +139,18 @@ apps:
       - service/consul
       - service/vault
 
+  logging:
+    repo: charts
+    chart: logging
+    version: v1.0.0
+    namespace: service
+    needs:
+      - ingress/traefik
+      - service/consul
+      - service/vault
+      - service/authentik
+      - service/monitoring
+
   glance:
     repo: charts
     chart: glance

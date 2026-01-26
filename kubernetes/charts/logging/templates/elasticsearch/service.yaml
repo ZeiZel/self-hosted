@@ -1,0 +1,48 @@
+{{- if .Values.elasticsearch.enabled }}
+# Headless service for StatefulSet discovery
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch-headless
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: elasticsearch
+spec:
+  clusterIP: None
+  publishNotReadyAddresses: true
+  ports:
+    - port: 9200
+      targetPort: 9200
+      name: http
+    - port: 9300
+      targetPort: 9300
+      name: transport
+  selector:
+    app: elasticsearch
+---
+# Client access service
+apiVersion: v1
+kind: Service
+metadata:
+  name: elasticsearch
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: elasticsearch
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "elasticsearch"
+    consul.hashicorp.com/service-port: {{ .Values.elasticsearch.service.httpPort | quote }}
+    consul.hashicorp.com/service-tags: "elasticsearch,logging,search"
+  {{- end }}
+spec:
+  type: {{ .Values.elasticsearch.service.type }}
+  ports:
+    - port: {{ .Values.elasticsearch.service.httpPort }}
+      targetPort: 9200
+      name: http
+    - port: {{ .Values.elasticsearch.service.transportPort }}
+      targetPort: 9300
+      name: transport
+  selector:
+    app: elasticsearch
+{{- end }}

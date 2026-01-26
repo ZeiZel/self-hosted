@@ -1,0 +1,16 @@
+{{- if .Values.logstash.enabled }}
+{{- if .Values.logstash.persistence.enabled }}
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: logstash-data
+  namespace: {{ .Release.Namespace }}
+spec:
+  accessModes:
+    - ReadWriteOnce
+  storageClassName: {{ .Values.logstash.persistence.storageClass }}
+  resources:
+    requests:
+      storage: {{ .Values.logstash.persistence.size }}
+{{- end }}
+{{- end }}

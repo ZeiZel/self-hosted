@@ -1,0 +1,115 @@
+{{- if .Values.kibana.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kibana
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: kibana
+spec:
+  replicas: {{ .Values.kibana.replicaCount }}
+  selector:
+    matchLabels:
+      app: kibana
+  template:
+    metadata:
+      labels:
+        app: kibana
+      annotations:
+        checksum/secret: {{ include (print $.Template.BasePath "/kibana/secret.yaml") . | sha256sum }}
+        {{- if .Values.consul.enabled }}
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "kibana"
+        consul.hashicorp.com/connect-service-port: "5601"
+        consul.hashicorp.com/service-tags: "kibana,logging,visualization"
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: {{ .Values.vault.role | quote }}
+        vault.hashicorp.com/agent-inject-secret-kibana-secrets: "secret/data/logging/kibana"
+        vault.hashicorp.com/agent-inject-template-kibana-secrets: |
+          {{`{{- with secret "secret/data/logging/kibana" -}}`}}
+          ELASTICSEARCH_PASSWORD={{`{{ .Data.data.elasticPassword }}`}}
+          KIBANA_ENCRYPTION_KEY={{`{{ .Data.data.encryptionKey }}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5601"
+        prometheus.io/path: "/api/status"
+    spec:
+      serviceAccountName: kibana
+
+      initContainers:
+        - name: wait-for-elasticsearch
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Elasticsearch..."
+              until nc -z elasticsearch {{ .Values.elasticsearch.service.httpPort }}; do
+                sleep 5
+              done
+              echo "Elasticsearch is ready!"
+
+      containers:
+        - name: kibana
+          image: {{ .Values.kibana.image }}
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 5601
+              name: http
+
+          env:
+            - name: ELASTICSEARCH_HOSTS
+              value: '["http://elasticsearch:{{ .Values.elasticsearch.service.httpPort }}"]'
+            - name: SERVER_HOST
+              value: "0.0.0.0"
+            - name: SERVER_NAME
+              value: "kibana"
+            {{- if .Values.elasticsearch.security.enabled }}
+            - name: ELASTICSEARCH_USERNAME
+              value: "kibana_system"
+            - name: ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secrets
+                  key: elastic-password
+            {{- end }}
+            - name: XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY
+              valueFrom:
+                secretKeyRef:
+                  name: kibana-secrets
+                  key: saved-objects-encryption-key
+            - name: XPACK_REPORTING_ENCRYPTIONKEY
+              valueFrom:
+                secretKeyRef:
+                  name: kibana-secrets
+                  key: reporting-encryption-key
+            - name: XPACK_SECURITY_ENCRYPTIONKEY
+              valueFrom:
+                secretKeyRef:
+                  name: kibana-secrets
+                  key: encryption-key
+
+          resources:
+            {{- toYaml .Values.kibana.resources | nindent 12 }}
+
+          livenessProbe:
+            httpGet:
+              path: /api/status
+              port: 5601
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+
+          readinessProbe:
+            httpGet:
+              path: /api/status
+              port: 5601
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+{{- end }}

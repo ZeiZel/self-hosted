@@ -1,0 +1,155 @@
+{{- if .Values.elasticsearch.enabled }}
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: elasticsearch
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: elasticsearch
+spec:
+  serviceName: elasticsearch-headless
+  replicas: {{ .Values.elasticsearch.replicaCount }}
+  selector:
+    matchLabels:
+      app: elasticsearch
+  template:
+    metadata:
+      labels:
+        app: elasticsearch
+      annotations:
+        {{- if .Values.consul.enabled }}
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "elasticsearch"
+        consul.hashicorp.com/connect-service-port: "9200"
+        consul.hashicorp.com/service-tags: "elasticsearch,logging,search"
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: {{ .Values.vault.role | quote }}
+        vault.hashicorp.com/agent-inject-secret-elastic-password: "secret/data/logging/elasticsearch"
+        vault.hashicorp.com/agent-inject-template-elastic-password: |
+          {{`{{- with secret "secret/data/logging/elasticsearch" -}}`}}
+          {{`{{ .Data.data.password }}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9200"
+        prometheus.io/path: "/_prometheus/metrics"
+    spec:
+      serviceAccountName: elasticsearch
+      {{- if .Values.elasticsearch.antiAffinity.enabled }}
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - elasticsearch
+                topologyKey: kubernetes.io/hostname
+      {{- end }}
+
+      {{- if .Values.elasticsearch.sysctlInit.enabled }}
+      initContainers:
+        - name: sysctl
+          image: busybox:1.36
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+        - name: fix-permissions
+          image: busybox:1.36
+          securityContext:
+            runAsUser: 0
+          command: ['sh', '-c', 'chown -R 1000:1000 /usr/share/elasticsearch/data']
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+      {{- end }}
+
+      containers:
+        - name: elasticsearch
+          image: {{ .Values.elasticsearch.image }}
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 9200
+              name: http
+            - containerPort: 9300
+              name: transport
+
+          env:
+            - name: cluster.name
+              value: {{ .Values.elasticsearch.clusterName | quote }}
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - name: discovery.seed_hosts
+              value: "elasticsearch-headless"
+            - name: cluster.initial_master_nodes
+              value: {{ include "elasticsearch.initialMasterNodes" . | quote }}
+            - name: ES_JAVA_OPTS
+              value: {{ .Values.elasticsearch.javaOpts | quote }}
+            - name: xpack.security.enabled
+              value: {{ .Values.elasticsearch.security.enabled | quote }}
+            {{- if .Values.elasticsearch.security.enabled }}
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secrets
+                  key: elastic-password
+            - name: xpack.security.transport.ssl.enabled
+              value: {{ .Values.elasticsearch.security.transportSsl | quote }}
+            {{- if .Values.elasticsearch.security.transportSsl }}
+            - name: xpack.security.transport.ssl.verification_mode
+              value: "certificate"
+            - name: xpack.security.transport.ssl.keystore.path
+              value: "certs/transport.p12"
+            - name: xpack.security.transport.ssl.truststore.path
+              value: "certs/transport.p12"
+            {{- end }}
+            {{- end }}
+            - name: xpack.security.http.ssl.enabled
+              value: {{ .Values.elasticsearch.security.httpSsl | quote }}
+            - name: bootstrap.memory_lock
+              value: "false"
+
+          resources:
+            {{- toYaml .Values.elasticsearch.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: data
+              mountPath: /usr/share/elasticsearch/data
+
+          livenessProbe:
+            httpGet:
+              path: /_cluster/health?local=true
+              port: 9200
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+
+          readinessProbe:
+            httpGet:
+              path: /_cluster/health?wait_for_status=yellow&timeout=5s
+              port: 9200
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        storageClassName: {{ .Values.elasticsearch.persistence.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.elasticsearch.persistence.size }}
+{{- end }}

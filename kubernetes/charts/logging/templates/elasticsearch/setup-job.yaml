@@ -1,0 +1,48 @@
+{{- if .Values.elasticsearch.enabled }}
+{{- if .Values.elasticsearch.ilm.enabled }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: elasticsearch-ilm-setup
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: elasticsearch
+  annotations:
+    "helm.sh/hook": post-install,post-upgrade
+    "helm.sh/hook-weight": "5"
+    "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+spec:
+  backoffLimit: 5
+  template:
+    spec:
+      restartPolicy: OnFailure
+      {{- if .Values.elasticsearch.security.enabled }}
+      containers:
+        - name: setup
+          image: curlimages/curl:latest
+          command: ["/bin/sh", "/config/setup-ilm.sh"]
+          env:
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secrets
+                  key: elastic-password
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      {{- else }}
+      containers:
+        - name: setup
+          image: curlimages/curl:latest
+          command: ["/bin/sh", "/config/setup-ilm.sh"]
+          volumeMounts:
+            - name: config
+              mountPath: /config
+      {{- end }}
+      volumes:
+        - name: config
+          configMap:
+            name: elasticsearch-ilm-config
+            defaultMode: 0755
+{{- end }}
+{{- end }}

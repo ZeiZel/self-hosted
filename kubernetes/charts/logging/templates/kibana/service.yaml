@@ -1,0 +1,23 @@
+{{- if .Values.kibana.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: kibana
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: kibana
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "kibana"
+    consul.hashicorp.com/service-port: {{ .Values.kibana.service.port | quote }}
+    consul.hashicorp.com/service-tags: "kibana,logging,visualization"
+  {{- end }}
+spec:
+  type: {{ .Values.kibana.service.type }}
+  ports:
+    - port: {{ .Values.kibana.service.port }}
+      targetPort: 5601
+      name: http
+  selector:
+    app: kibana
+{{- end }}

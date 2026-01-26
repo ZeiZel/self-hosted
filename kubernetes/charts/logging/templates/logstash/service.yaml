@@ -1,0 +1,26 @@
+{{- if .Values.logstash.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: logstash
+  {{- if .Values.consul.enabled }}
+  annotations:
+    consul.hashicorp.com/service-name: "logstash"
+    consul.hashicorp.com/service-port: {{ .Values.logstash.service.beatsPort | quote }}
+    consul.hashicorp.com/service-tags: "logstash,logging,pipeline"
+  {{- end }}
+spec:
+  type: {{ .Values.logstash.service.type }}
+  ports:
+    - port: {{ .Values.logstash.service.beatsPort }}
+      targetPort: 5044
+      name: beats
+    - port: {{ .Values.logstash.service.httpPort }}
+      targetPort: 9600
+      name: http
+  selector:
+    app: logstash
+{{- end }}

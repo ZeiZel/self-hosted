@@ -1,0 +1,64 @@
+namespace: service
+
+elasticsearch:
+  enabled: true
+  replicaCount: 3
+  persistence:
+    storageClass: openebs-hostpath
+    size: 10Gi
+  javaOpts: "-Xms1g -Xmx1g"
+  clusterName: "elk-logging"
+  security:
+    enabled: true
+    password: "{{ .Values.secrets.elasticPassword }}"
+  ilm:
+    enabled: true
+    hotMaxAge: 7d
+    hotMaxSize: 10gb
+    warmMaxAge: 30d
+    deleteMinAge: 90d
+  antiAffinity:
+    enabled: true
+  sysctlInit:
+    enabled: true
+  pdb:
+    enabled: true
+    minAvailable: 2
+
+logstash:
+  enabled: true
+  persistence:
+    storageClass: openebs-hostpath
+    size: 2Gi
+  lokiForwarding:
+    enabled: true
+    url: "http://loki.service.svc.cluster.local:3100"
+
+kibana:
+  enabled: true
+  encryptionKey: "{{ .Values.secrets.kibanaEncryptionKey }}"
+  savedObjectsEncryptionKey: "{{ .Values.secrets.kibanaSavedObjectsKey }}"
+  reportingEncryptionKey: "{{ .Values.secrets.kibanaReportingKey }}"
+
+filebeat:
+  enabled: true
+  output: logstash
+
+ingress:
+  enabled: true
+  hosts:
+    kibana:
+      host: kibana.{{ .Values.infra.host }}
+
+consul:
+  enabled: true
+  host: "consul.consul.svc.cluster.local"
+
+authentik:
+  enabled: true
+  host: "https://authentik.{{ .Values.infra.host }}"
+  outpostPath: "/outpost.goauthentik.io/auth/traefik"
+
+vault:
+  enabled: true
+  role: "logging"
