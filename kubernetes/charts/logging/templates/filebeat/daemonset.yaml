@@ -1,0 +1,85 @@
+{{- if .Values.filebeat.enabled }}
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: filebeat
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: filebeat
+spec:
+  selector:
+    matchLabels:
+      app: filebeat
+  template:
+    metadata:
+      labels:
+        app: filebeat
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/filebeat/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: filebeat
+      hostNetwork: true
+      dnsPolicy: ClusterFirst
+
+      containers:
+        - name: filebeat
+          image: {{ .Values.filebeat.image }}
+          imagePullPolicy: IfNotPresent
+
+          args:
+            - "-c"
+            - "/etc/filebeat/filebeat.yml"
+            - "-e"
+
+          env:
+            - name: NODE_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: spec.nodeName
+            {{- if and (eq .Values.filebeat.output "elasticsearch") .Values.elasticsearch.security.enabled }}
+            - name: ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secrets
+                  key: elastic-password
+            {{- end }}
+
+          securityContext:
+            runAsUser: 0
+
+          volumeMounts:
+            - name: config
+              mountPath: /etc/filebeat
+            - name: data
+              mountPath: /usr/share/filebeat/data
+            - name: varlibdockercontainers
+              mountPath: /var/lib/docker/containers
+              readOnly: true
+            - name: varlog
+              mountPath: /var/log
+              readOnly: true
+
+          resources:
+            {{- toYaml .Values.filebeat.resources | nindent 12 }}
+
+      volumes:
+        - name: config
+          configMap:
+            name: filebeat-config
+        - name: data
+          hostPath:
+            path: /var/lib/filebeat-data
+            type: DirectoryOrCreate
+        - name: varlibdockercontainers
+          hostPath:
+            path: /var/lib/docker/containers
+        - name: varlog
+          hostPath:
+            path: /var/log
+
+      tolerations:
+        - effect: NoSchedule
+          operator: Exists
+        - effect: NoExecute
+          operator: Exists
+{{- end }}

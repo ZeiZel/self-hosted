@@ -1,0 +1,14 @@
+apiVersion: v2
+name: logging
+description: A Helm chart for ELK Stack (Elasticsearch, Logstash, Kibana, Filebeat)
+type: application
+version: 1.0.0
+appVersion: "8.15.0"
+home: https://www.elastic.co
+sources:
+  - https://github.com/elastic/elasticsearch
+  - https://github.com/elastic/logstash
+  - https://github.com/elastic/kibana
+  - https://github.com/elastic/beats
+maintainers:
+  - name: DevOps Team

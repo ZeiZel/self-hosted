@@ -1,0 +1,118 @@
+{{- if .Values.logstash.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app: logstash
+spec:
+  replicas: {{ .Values.logstash.replicaCount }}
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/logstash/configmap.yaml") . | sha256sum }}
+        {{- if .Values.consul.enabled }}
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "logstash"
+        consul.hashicorp.com/connect-service-port: "5044"
+        consul.hashicorp.com/service-tags: "logstash,logging,pipeline"
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: {{ .Values.vault.role | quote }}
+        vault.hashicorp.com/agent-inject-secret-es-password: "secret/data/logging/elasticsearch"
+        vault.hashicorp.com/agent-inject-template-es-password: |
+          {{`{{- with secret "secret/data/logging/elasticsearch" -}}`}}
+          ELASTICSEARCH_PASSWORD={{`{{ .Data.data.password }}`}}
+          {{`{{- end }}`}}
+        {{- end }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9600"
+        prometheus.io/path: "/_node/stats"
+    spec:
+      serviceAccountName: logstash
+
+      initContainers:
+        - name: wait-for-elasticsearch
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Elasticsearch..."
+              until nc -z elasticsearch {{ .Values.elasticsearch.service.httpPort }}; do
+                sleep 5
+              done
+              echo "Elasticsearch is ready!"
+
+      containers:
+        - name: logstash
+          image: {{ .Values.logstash.image }}
+          imagePullPolicy: IfNotPresent
+
+          ports:
+            - containerPort: 5044
+              name: beats
+            - containerPort: 9600
+              name: http
+
+          env:
+            - name: LS_JAVA_OPTS
+              value: {{ .Values.logstash.javaOpts | quote }}
+            {{- if .Values.elasticsearch.security.enabled }}
+            - name: ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: elasticsearch-secrets
+                  key: elastic-password
+            {{- end }}
+
+          resources:
+            {{- toYaml .Values.logstash.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: config
+              mountPath: /usr/share/logstash/config/logstash.yml
+              subPath: logstash.yml
+            - name: pipeline
+              mountPath: /usr/share/logstash/pipeline
+            - name: data
+              mountPath: /usr/share/logstash/data
+
+          livenessProbe:
+            httpGet:
+              path: /
+              port: 9600
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+
+          readinessProbe:
+            httpGet:
+              path: /
+              port: 9600
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+
+      volumes:
+        - name: config
+          configMap:
+            name: logstash-config
+        - name: pipeline
+          configMap:
+            name: logstash-pipeline
+        - name: data
+          {{- if .Values.logstash.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: logstash-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}
+{{- end }}

@@ -1,0 +1,81 @@
+{{- if .Values.elasticsearch.enabled }}
+{{- if .Values.elasticsearch.ilm.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: elasticsearch-ilm-config
+  namespace: {{ .Release.Namespace }}
+data:
+  ilm-policy.json: |
+    {
+      "policy": {
+        "phases": {
+          "hot": {
+            "min_age": "0ms",
+            "actions": {
+              "rollover": {
+                "max_age": {{ .Values.elasticsearch.ilm.hotMaxAge | quote }},
+                "max_primary_shard_size": {{ .Values.elasticsearch.ilm.hotMaxSize | quote }}
+              },
+              "set_priority": { "priority": 100 }
+            }
+          },
+          "warm": {
+            "min_age": {{ .Values.elasticsearch.ilm.warmMaxAge | quote }},
+            "actions": {
+              "forcemerge": { "max_num_segments": 1 },
+              "shrink": { "number_of_shards": 1 },
+              "set_priority": { "priority": 50 }
+            }
+          },
+          "delete": {
+            "min_age": {{ .Values.elasticsearch.ilm.deleteMinAge | quote }},
+            "actions": {
+              "delete": {}
+            }
+          }
+        }
+      }
+    }
+  setup-ilm.sh: |
+    #!/bin/sh
+    set -e
+    ES_URL="http://elasticsearch:{{ .Values.elasticsearch.service.httpPort }}"
+    {{- if .Values.elasticsearch.security.enabled }}
+    AUTH="-u elastic:${ELASTIC_PASSWORD}"
+    {{- else }}
+    AUTH=""
+    {{- end }}
+
+    echo "Waiting for Elasticsearch to be ready..."
+    until curl -s $AUTH "$ES_URL/_cluster/health" | grep -q '"status":"green\|yellow"'; do
+      echo "Elasticsearch not ready yet, retrying in 5s..."
+      sleep 5
+    done
+    echo "Elasticsearch is ready."
+
+    # Create ILM policy
+    echo "Creating ILM policy..."
+    curl -s -X PUT $AUTH "$ES_URL/_ilm/policy/logging-policy" \
+      -H "Content-Type: application/json" \
+      -d @/config/ilm-policy.json
+    echo ""
+
+    # Create index template with ILM
+    echo "Creating index template..."
+    curl -s -X PUT $AUTH "$ES_URL/_index_template/logging-template" \
+      -H "Content-Type: application/json" \
+      -d '{
+        "index_patterns": ["filebeat-*", "logstash-*"],
+        "template": {
+          "settings": {
+            "index.lifecycle.name": "logging-policy",
+            "number_of_shards": 1,
+            "number_of_replicas": 1
+          }
+        }
+      }'
+    echo ""
+    echo "ILM setup complete."
+{{- end }}
+{{- end }}

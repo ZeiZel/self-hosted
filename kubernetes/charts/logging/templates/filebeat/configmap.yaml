@@ -1,0 +1,59 @@
+{{- if .Values.filebeat.enabled }}
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: filebeat-config
+  namespace: {{ .Release.Namespace }}
+data:
+  filebeat.yml: |
+    filebeat.inputs:
+      - type: container
+        paths:
+          - /var/lib/docker/containers/*/*.log
+        processors:
+          - add_kubernetes_metadata:
+              host: ${NODE_NAME}
+              matchers:
+                - logs_path:
+                    logs_path: "/var/lib/docker/containers/"
+
+    filebeat.autodiscover:
+      providers:
+        - type: kubernetes
+          node: ${NODE_NAME}
+          hints.enabled: true
+          hints.default_config:
+            type: container
+            paths:
+              - /var/lib/docker/containers/${data.kubernetes.container.id}/*.log
+
+    processors:
+      - add_cloud_metadata: ~
+      - add_host_metadata: ~
+      - add_kubernetes_metadata:
+          host: ${NODE_NAME}
+
+    {{- if eq .Values.filebeat.output "logstash" }}
+    output.logstash:
+      hosts: ["logstash:{{ .Values.logstash.service.beatsPort }}"]
+    {{- else }}
+    output.elasticsearch:
+      hosts: ["http://elasticsearch:{{ .Values.elasticsearch.service.httpPort }}"]
+      {{- if .Values.elasticsearch.security.enabled }}
+      username: "elastic"
+      password: "${ELASTICSEARCH_PASSWORD}"
+      {{- end }}
+      index: "filebeat-%{[agent.version]}-%{+yyyy.MM.dd}"
+    {{- end }}
+
+    setup.kibana:
+      host: "http://kibana:{{ .Values.kibana.service.port }}"
+
+    setup.ilm.enabled: true
+    setup.ilm.policy_name: "logging-policy"
+    setup.template.name: "filebeat"
+    setup.template.pattern: "filebeat-*"
+
+    logging.level: info
+    logging.to_files: false
+{{- end }}
