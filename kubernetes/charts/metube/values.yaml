@@ -25,10 +25,10 @@ service:
 resources:
   limits:
     cpu: 500m
-    memory: 512Mi
+    memory: 256Mi
   requests:
     cpu: 100m
-    memory: 128Mi
+    memory: 64Mi
 
 # Persistent storage for downloads
 persistence:
@@ -96,3 +96,11 @@ metube:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+# Authentik integration (ForwardAuth via Traefik)
+authentik:
+  enabled: false
+  middleware: "service-authentik-forward-auth@kubernetescrd"
+  host: "https://authentik.local"
+  outpostPath: "/outpost.goauthentik.io/auth/traefik"
+

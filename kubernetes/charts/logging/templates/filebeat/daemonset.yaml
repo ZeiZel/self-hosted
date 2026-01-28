@@ -16,6 +16,9 @@ spec:
         app: filebeat
       annotations:
         checksum/config: {{ include (print $.Template.BasePath "/filebeat/configmap.yaml") . | sha256sum }}
+        # ELK Filebeat logging
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
     spec:
       serviceAccountName: filebeat
       hostNetwork: true

@@ -21,6 +21,9 @@ spec:
         consul.hashicorp.com/connect-service: "prometheus"
         consul.hashicorp.com/connect-service-port: "9090"
         {{- end }}
+        # ELK Filebeat logging
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
         # Prometheus self-monitoring
         prometheus.io/scrape: "true"
         prometheus.io/port: "9090"

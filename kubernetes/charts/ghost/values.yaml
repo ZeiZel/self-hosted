@@ -118,6 +118,15 @@ consul:
     - cms
     - content
 
+# Authentik integration (ForwardAuth via Traefik)
+authentik:
+  enabled: false
+  # Traefik middleware reference
+  middleware: "service-authentik-forward-auth@kubernetescrd"
+  # Authentik host for OIDC
+  host: "https://authentik.local"
+  outpostPath: "/outpost.goauthentik.io/auth/traefik"
+
 # Vault integration
 vault:
   enabled: false

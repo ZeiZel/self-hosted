@@ -7,9 +7,9 @@ metadata:
     {{- include "pangolin-client.labels" . | nindent 4 }}
   {{- if .Values.consul.enabled }}
   annotations:
-    consul.hashicorp.com/service-name: "pangolin-client"
-    consul.hashicorp.com/service-port: {{ .Values.pangolin.port | quote }}
-    consul.hashicorp.com/service-tags: "pangolin,dynamic-routing,traefik-provider"
+    consul.hashicorp.com/service-name: {{ include "pangolin-client.fullname" . }}
+    consul.hashicorp.com/service-port: "{{ .Values.pangolin.port }}"
+    consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
   {{- end }}
 spec:
   type: ClusterIP

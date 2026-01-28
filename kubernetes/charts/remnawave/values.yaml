@@ -122,9 +122,12 @@ remnawave:
 # Consul integration
 consul:
   enabled: true
+  host: "consul-server.service.svc.cluster.local:8500"
   serviceName: remnawave
   servicePort: 3000
   datacenter: dc1
+  tags:
+    - remnawave
 
 # Authentik integration (OIDC)
 authentik:

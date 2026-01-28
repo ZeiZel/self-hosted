@@ -141,8 +141,22 @@ consul:
   port: 8500
   datacenter: dc1
 
+# Pod Anti-affinity for multi-node deployment
+affinity:
+  podAntiAffinity:
+    enabled: false
+    type: preferredDuringSchedulingIgnoredDuringExecution
+
 # Security
 securityContext:
   runAsUser: 65534
   runAsGroup: 65534
   fsGroup: 65534
+
+# Authentik integration (ForwardAuth via Traefik)
+authentik:
+  enabled: false
+  middleware: "service-authentik-forward-auth@kubernetescrd"
+  host: "https://authentik.local"
+  outpostPath: "/outpost.goauthentik.io/auth/traefik"
+

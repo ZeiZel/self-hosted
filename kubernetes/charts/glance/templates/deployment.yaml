@@ -17,12 +17,14 @@ spec:
       annotations:
         {{- if .Values.consul.enabled }}
         consul.hashicorp.com/connect-inject: "true"
-        consul.hashicorp.com/connect-service: "glance"
-        consul.hashicorp.com/connect-service-port: "80"
-        {{- if .Values.consul.tags }}
+        consul.hashicorp.com/connect-service: {{ include "glance.fullname" . }}
+        consul.hashicorp.com/connect-service-port: "{{ .Values.glance.service.port }}"
         consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
         {{- end }}
-        {{- end }}
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        co.elastic.logs.json.add_error_key: "true"
+        co.elastic.logs.json.message_key: "message"
         {{- if .Values.vault.enabled }}
         # Vault Agent Injector
         vault.hashicorp.com/agent-inject: "true"

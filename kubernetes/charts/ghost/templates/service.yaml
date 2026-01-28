@@ -7,9 +7,9 @@ metadata:
     {{- include "ghost.labels" . | nindent 4 }}
   {{- if .Values.consul.enabled }}
   annotations:
-    consul.hashicorp.com/service-name: "ghost"
-    consul.hashicorp.com/service-port: {{ .Values.service.port | quote }}
-    consul.hashicorp.com/service-tags: {{ .Values.consul.tags | join "," | quote }}
+    consul.hashicorp.com/service-name: {{ include "ghost.fullname" . }}
+    consul.hashicorp.com/service-port: "{{ .Values.service.port }}"
+    consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
   {{- end }}
 spec:
   type: {{ .Values.service.type }}

@@ -9,8 +9,8 @@ metadata:
   {{- if .Values.consul.enabled }}
   annotations:
     consul.hashicorp.com/service-name: "syncthing"
-    consul.hashicorp.com/service-port: {{ .Values.syncthing.service.gui.port | quote }}
-    consul.hashicorp.com/service-tags: "syncthing,gui,file-sync"
+    consul.hashicorp.com/service-port: "{{ .Values.syncthing.service.gui.port }}"
+    consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
   {{- end }}
 spec:
   type: {{ .Values.syncthing.service.gui.type }}

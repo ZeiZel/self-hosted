@@ -32,6 +32,9 @@ spec:
           {{`{{ .Data.data.password }}`}}
           {{`{{- end }}`}}
         {{- end }}
+        # ELK Filebeat logging
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
         prometheus.io/scrape: "true"
         prometheus.io/port: "9200"
         prometheus.io/path: "/_prometheus/metrics"

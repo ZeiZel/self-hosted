@@ -31,10 +31,12 @@ persistence:
 ingress:
   enabled: false
   className: traefik
+  annotations: {}
   host: pangolin-client.local
   tls:
     enabled: true
     secretName: pangolin-client-tls
+    clusterIssuer: letsencrypt
 
 consul:
   enabled: true
@@ -61,4 +63,12 @@ probes:
 
 
 
+
+
+# Authentik integration (ForwardAuth via Traefik)
+authentik:
+  enabled: false
+  middleware: "service-authentik-forward-auth@kubernetescrd"
+  host: "https://authentik.local"
+  outpostPath: "/outpost.goauthentik.io/auth/traefik"
 

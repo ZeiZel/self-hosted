@@ -149,7 +149,10 @@ client:
   # PostgreSQL configuration
   #https://github.com/bitnami/charts/blob/main/bitnami/postgresql/values.yaml
 postgresql:
-  enabled: true
+  enabled: false  # Use cluster PostgreSQL (postgres-postgresql.db.svc.cluster.local)
+  external:
+    host: "postgres-postgresql.db.svc.cluster.local"
+    port: 5432
 
   passwordUpdateJob:
     enabled: false
@@ -204,13 +207,20 @@ postgresql:
   # ClickHouse configuration
   #https://github.com/bitnami/charts/blob/main/bitnami/clickhouse/values.yaml
 clickhouse:
-  enabled: true
+  enabled: false  # Use cluster ClickHouse (clickhouse.db.svc.cluster.local)
+  external:
+    host: "clickhouse.db.svc.cluster.local"
+    httpPort: 8123
+    tcpPort: 9000
   replicaCount: 1
   shards: 1
   usePasswordFiles: false
   # Even if clickhouse disabled, these auth values will be used to set CLICKHOUSE_* envs
-  # auth:
-  # password: "Test"
+  auth:
+    username: default
+    password: ""
+    existingSecret: ""
+    existingSecretKey: "clickhouse-password"
   image:
     registry: docker.io
     repository: bitnami/clickhouse
