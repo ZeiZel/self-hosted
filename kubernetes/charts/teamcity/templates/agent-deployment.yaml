@@ -15,6 +15,12 @@ spec:
     metadata:
       labels:
         app: teamcity-agent
+      annotations:
+        # ELK Filebeat logging (Java multiline)
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs/multiline.pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}"
+        co.elastic.logs/multiline.negate: "true"
+        co.elastic.logs/multiline.match: "after"
     spec:
       securityContext:
         {{- toYaml .Values.securityContext | nindent 8 }}

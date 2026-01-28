@@ -133,6 +133,13 @@ probes:
     periodSeconds: 5
 
 # Vault integration (requires Vault policies and secrets to be configured)
+# Authentik integration (ForwardAuth via Traefik)
+authentik:
+  enabled: false
+  middleware: "service-authentik-forward-auth@kubernetescrd"
+  host: "https://authentik.local"
+  outpostPath: "/outpost.goauthentik.io/auth/traefik"
+
 vault:
   enabled: false
   # Note: Before enabling, configure Vault:

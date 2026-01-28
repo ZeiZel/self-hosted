@@ -6,9 +6,9 @@ metadata:
     {{- include "remnawave.labels" . | nindent 4 }}
   {{- if .Values.consul.enabled }}
   annotations:
-    consul.hashicorp.com/service-name: {{ .Values.consul.serviceName | quote }}
-    consul.hashicorp.com/service-port: {{ .Values.consul.servicePort | quote }}
-    consul.hashicorp.com/service-tags: "vpn,proxy,remnawave,xray"
+    consul.hashicorp.com/service-name: {{ include "remnawave.fullname" . }}
+    consul.hashicorp.com/service-port: "{{ .Values.service.port }}"
+    consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
   {{- end }}
 spec:
   type: {{ .Values.service.type }}

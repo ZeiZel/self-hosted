@@ -21,6 +21,9 @@ spec:
         consul.hashicorp.com/connect-service: "loki"
         consul.hashicorp.com/connect-service-port: "3100"
         {{- end }}
+        # ELK Filebeat logging
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
         # Prometheus metrics
         prometheus.io/scrape: "true"
         prometheus.io/port: "3100"

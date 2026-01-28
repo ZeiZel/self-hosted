@@ -33,6 +33,9 @@ spec:
           KIBANA_ENCRYPTION_KEY={{`{{ .Data.data.encryptionKey }}`}}
           {{`{{- end }}`}}
         {{- end }}
+        # ELK Filebeat logging
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
         prometheus.io/scrape: "true"
         prometheus.io/port: "5601"
         prometheus.io/path: "/api/status"

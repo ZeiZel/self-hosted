@@ -179,12 +179,12 @@ data:
     
     ```bash
     curl -H "Authorization: Bearer YOUR_TOKEN" \
-         https://coder.{{ .Values.ingress.hosts[0].host }}/api/v2/workspaces/my-workspace/agent/info
+         https://coder.{{ (index .Values.ingress.hosts 0).host }}/api/v2/workspaces/my-workspace/agent/info
     ```
     
     ## Getting an API Token
     
-    1. Log into Coder: https://coder.{{ .Values.ingress.hosts[0].host }}
+    1. Log into Coder: https://coder.{{ (index .Values.ingress.hosts 0).host }}
     2. Go to Account Settings → Tokens
     3. Create a new token with workspace access
     4. Copy the token and configure your AI agent
@@ -196,7 +196,7 @@ data:
     ```json
     {
       "coder": {
-        "url": "https://coder.{{ .Values.ingress.hosts[0].host }}",
+        "url": "https://coder.{{ (index .Values.ingress.hosts 0).host }}",
         "workspace": "my-workspace",
         "token": "YOUR_TOKEN"
       }
@@ -206,7 +206,7 @@ data:
     ### Aider
     
     ```bash
-    export CODER_URL="https://coder.{{ .Values.ingress.hosts[0].host }}"
+    export CODER_URL="https://coder.{{ (index .Values.ingress.hosts 0).host }}"
     export CODER_WORKSPACE="my-workspace"
     export CODER_TOKEN="YOUR_TOKEN"
     
@@ -218,7 +218,7 @@ data:
     ```yaml
     providers:
       coder:
-        url: https://coder.{{ .Values.ingress.hosts[0].host }}
+        url: https://coder.{{ (index .Values.ingress.hosts 0).host }}
         workspace: my-workspace
         token: YOUR_TOKEN
     ```
@@ -265,6 +265,6 @@ data:
     Test API connectivity:
     ```bash
     curl -H "Authorization: Bearer YOUR_TOKEN" \
-         https://coder.{{ .Values.ingress.hosts[0].host }}/api/v2/buildinfo
+         https://coder.{{ (index .Values.ingress.hosts 0).host }}/api/v2/buildinfo
     ```
 {{- end }}

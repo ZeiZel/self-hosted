@@ -1,32 +1,29 @@
 {{- if .Values.create }}
-  {{- $release := .Release.Name }}
-  {{- $namespace := .Release.Namespace }}
-  {{- $chart := include "namespaces.chart" . }}
-  {{- $labels := include "namespaces.labels" . }}
-  {{- $globalLabels := include "namespaces.namespace.labels" . }}
-  {{- range $name, $config := .Values.namespaces }}
-    {{- if $config.enabled }}
-      ---
-      apiVersion: v1
-      kind: Namespace
-      metadata:
-        name: {{ $name }}
-        labels:
-          # Helm metadata
-          app.kubernetes.io/name: {{ $name }}
-          app.kubernetes.io/instance: {{ $release }}
-          app.kubernetes.io/managed-by: Helm
-          helm.sh/chart: {{ $chart }}
-          {{ $globalLabels | nindent 4 }}
-          namespace.type: {{ $name }}
-        annotations:
-          meta.helm.sh/release-name: {{ $release }}
-          meta.helm.sh/release-namespace: {{ $namespace }}
-          description: {{ $config.description | quote }}
-          managed-by: "helm-release: {{ $release }}"
-          created-at: {{ now | date "2026-01-01T15:04:05Z07:00" }}
-      spec:
-    {{- end }}
-  {{- end }}
-  {{- else }}
+{{- $release := .Release.Name }}
+{{- $namespace := .Release.Namespace }}
+{{- $chart := include "namespaces.chart" . }}
+{{- $labels := include "namespaces.labels" . }}
+{{- $globalLabels := include "namespaces.namespace.labels" . }}
+{{- range $name, $config := .Values.namespaces }}
+{{- if $config.enabled }}
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{ $name }}
+  labels:
+    # Helm metadata
+    app.kubernetes.io/name: {{ $name }}
+    app.kubernetes.io/instance: {{ $release }}
+    app.kubernetes.io/managed-by: Helm
+    helm.sh/chart: {{ $chart }}
+    {{- $globalLabels | nindent 4 }}
+    namespace.type: {{ $name }}
+  annotations:
+    meta.helm.sh/release-name: {{ $release }}
+    meta.helm.sh/release-namespace: {{ $namespace }}
+    description: {{ $config.description | quote }}
+    managed-by: "helm-release: {{ $release }}"
+{{- end }}
+{{- end }}
 {{- end }}

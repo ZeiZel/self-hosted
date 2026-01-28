@@ -6,10 +6,17 @@ metadata:
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "pangolin-client.labels" . | nindent 4 }}
-  {{- if .Values.ingress.annotations }}
   annotations:
-    {{- toYaml .Values.ingress.annotations | nindent 4 }}
-  {{- end }}
+    {{- if .Values.ingress.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer | default "letsencrypt" | quote }}
+    {{- end }}
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    {{- if .Values.authentik.enabled }}
+    traefik.ingress.kubernetes.io/router.middlewares: {{ .Values.authentik.middleware | default "service-authentik-forward-auth@kubernetescrd" }}
+    {{- end }}
+    {{- with .Values.ingress.annotations }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
 spec:
   {{- if .Values.ingress.tls.enabled }}
   tls:

@@ -4,8 +4,17 @@
 # Declare variables to be passed into your templates.
 
 
+# Consul integration
+consul:
+  enabled: true
+  tags:
+    - stoat
+    - revolt
+    - chat
+    - social
+
 global:
-  namespace: 'revolt'
+  namespace: 'social'
   # Domain name used for access, ex revolt.example.com
   domain: ''
 

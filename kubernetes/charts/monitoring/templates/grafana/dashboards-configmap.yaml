@@ -19,7 +19,7 @@ data:
             "targets": [
               {
                 "expr": "pg_stat_database_numbackends{datname!='template0',datname!='template1'}",
-                "legendFormat": "{{datname}}"
+                "legendFormat": "{{ "{{datname}}" }}"
               }
             ],
             "type": "graph"
@@ -29,11 +29,11 @@ data:
             "targets": [
               {
                 "expr": "rate(pg_stat_database_xact_commit{datname!='template0',datname!='template1'}[5m])",
-                "legendFormat": "{{datname}} commits"
+                "legendFormat": "{{ "{{datname}} commits" }}"
               },
               {
                 "expr": "rate(pg_stat_database_xact_rollback{datname!='template0',datname!='template1'}[5m])",
-                "legendFormat": "{{datname}} rollbacks"
+                "legendFormat": "{{ "{{datname}} rollbacks" }}"
               }
             ],
             "type": "graph"
@@ -43,7 +43,7 @@ data:
             "targets": [
               {
                 "expr": "pg_database_size_bytes{datname!='template0',datname!='template1'}",
-                "legendFormat": "{{datname}}"
+                "legendFormat": "{{ "{{datname}}" }}"
               }
             ],
             "type": "graph"
@@ -53,7 +53,7 @@ data:
             "targets": [
               {
                 "expr": "pg_replication_lag",
-                "legendFormat": "{{instance}}"
+                "legendFormat": "{{ "{{instance}}" }}"
               }
             ],
             "type": "graph"
@@ -75,7 +75,7 @@ data:
             "targets": [
               {
                 "expr": "rate(mongodb_op_counters_total[5m])",
-                "legendFormat": "{{type}}"
+                "legendFormat": "{{ "{{type}}" }}"
               }
             ],
             "type": "graph"
@@ -85,7 +85,7 @@ data:
             "targets": [
               {
                 "expr": "mongodb_connections",
-                "legendFormat": "{{state}}"
+                "legendFormat": "{{ "{{state}}" }}"
               }
             ],
             "type": "graph"
@@ -109,7 +109,7 @@ data:
             "targets": [
               {
                 "expr": "mongodb_replset_member_replication_lag",
-                "legendFormat": "{{name}}"
+                "legendFormat": "{{ "{{name}}" }}"
               }
             ],
             "type": "graph"
@@ -131,7 +131,7 @@ data:
             "targets": [
               {
                 "expr": "rate(minio_s3_requests_total[5m])",
-                "legendFormat": "{{api}}"
+                "legendFormat": "{{ "{{api}}" }}"
               }
             ],
             "type": "graph"
@@ -141,7 +141,7 @@ data:
             "targets": [
               {
                 "expr": "minio_bucket_usage_total_bytes",
-                "legendFormat": "{{bucket}}"
+                "legendFormat": "{{ "{{bucket}}" }}"
               }
             ],
             "type": "graph"
@@ -165,7 +165,7 @@ data:
             "targets": [
               {
                 "expr": "rate(minio_s3_requests_errors_total[5m])",
-                "legendFormat": "{{api}}"
+                "legendFormat": "{{ "{{api}}" }}"
               }
             ],
             "type": "graph"
@@ -187,7 +187,7 @@ data:
             "targets": [
               {
                 "expr": "rate(redis_commands_processed_total[5m])",
-                "legendFormat": "{{instance}}"
+                "legendFormat": "{{ "{{instance}}" }}"
               }
             ],
             "type": "graph"
@@ -197,11 +197,11 @@ data:
             "targets": [
               {
                 "expr": "redis_memory_used_bytes",
-                "legendFormat": "Used - {{instance}}"
+                "legendFormat": "{{ "Used - {{instance}}" }}"
               },
               {
                 "expr": "redis_memory_max_bytes",
-                "legendFormat": "Max - {{instance}}"
+                "legendFormat": "{{ "Max - {{instance}}" }}"
               }
             ],
             "type": "graph"
@@ -211,7 +211,7 @@ data:
             "targets": [
               {
                 "expr": "rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]))",
-                "legendFormat": "{{instance}}"
+                "legendFormat": "{{ "{{instance}}" }}"
               }
             ],
             "type": "graph"
@@ -221,7 +221,7 @@ data:
             "targets": [
               {
                 "expr": "redis_connected_clients",
-                "legendFormat": "{{instance}}"
+                "legendFormat": "{{ "{{instance}}" }}"
               }
             ],
             "type": "graph"
@@ -231,7 +231,7 @@ data:
             "targets": [
               {
                 "expr": "redis_master_repl_offset - on(instance) group_right redis_slave_repl_offset",
-                "legendFormat": "{{instance}}"
+                "legendFormat": "{{ "{{instance}}" }}"
               }
             ],
             "type": "graph"
@@ -253,7 +253,7 @@ data:
             "targets": [
               {
                 "expr": "rate(http_requests_total{job='bytebase'}[5m])",
-                "legendFormat": "{{method}} {{path}}"
+                "legendFormat": "{{ "{{method}} {{path}}" }}"
               }
             ],
             "type": "graph"
@@ -277,7 +277,7 @@ data:
             "targets": [
               {
                 "expr": "bytebase_database_connections_active",
-                "legendFormat": "{{database}}"
+                "legendFormat": "{{ "{{database}}" }}"
               }
             ],
             "type": "graph"
@@ -287,7 +287,7 @@ data:
             "targets": [
               {
                 "expr": "bytebase_migrations_total",
-                "legendFormat": "{{status}}"
+                "legendFormat": "{{ "{{status}}" }}"
               }
             ],
             "type": "graph"

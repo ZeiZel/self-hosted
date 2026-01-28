@@ -113,9 +113,12 @@ affine:
 # Consul integration
 consul:
   enabled: true
+  host: "consul-server.service.svc.cluster.local:8500"
   serviceName: affine
   servicePort: 3010
   datacenter: dc1
+  tags:
+    - affine
 
 nodeSelector: {}
 
@@ -140,3 +143,11 @@ readinessProbe:
   periodSeconds: 5
   timeoutSeconds: 3
   failureThreshold: 3
+
+# Authentik integration (ForwardAuth via Traefik)
+authentik:
+  enabled: false
+  middleware: "service-authentik-forward-auth@kubernetescrd"
+  host: "https://authentik.local"
+  outpostPath: "/outpost.goauthentik.io/auth/traefik"
+
