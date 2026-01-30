@@ -1,0 +1,46 @@
+---
+services:
+  postgres:
+    image: postgres:17-alpine
+    container_name: coder-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-coder}
+      POSTGRES_USER: ${POSTGRES_USER:-coder}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-coder}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - coder-net
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-coder} -d ${POSTGRES_DB:-coder}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+
+  coder:
+    image: ghcr.io/coder/coder:${CODER_VERSION:-latest}
+    container_name: coder
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - ${CODER_PORT:-7080}:7080
+    environment:
+      CODER_PG_CONNECTION_URL: "postgresql://${POSTGRES_USER:-coder}:${POSTGRES_PASSWORD:-coder}@postgres/${POSTGRES_DB:-coder}?sslmode=disable"
+      CODER_HTTP_ADDRESS: "0.0.0.0:7080"
+      CODER_ACCESS_URL: ${CODER_ACCESS_URL:-http://localhost:7080}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - coder-home:/home/coder
+    networks:
+      - coder-net
+
+volumes:
+  postgres-data:
+  coder-home:
+
+networks:
+  coder-net:
