@@ -1,13 +1,25 @@
 galaxy_info:
-  role_name: setup
-  description: setup server
+  role_name: pangolin
+  description: Pangolin WireGuard VPN deployment for gateway and cluster nodes
   author: Lvov Valery
   license: MIT
   min_ansible_version: 2.20.1
+
   platforms:
     - name: Ubuntu
       versions:
-        - all
-    - name: Darwin
+        - jammy
+        - focal
+    - name: Debian
       versions:
-        - all
+        - bullseye
+        - bookworm
+
+  galaxy_tags:
+    - networking
+    - vpn
+    - wireguard
+    - security
+    - tunnel
+
+dependencies: []

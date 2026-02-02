@@ -1,0 +1,86 @@
+---
+- name: Verify reset confirmation flag
+  fail:
+    msg: "Cluster reset requires kubespray_reset_confirmation=true. This is a destructive operation!"
+  when: not kubespray_reset_confirmation | default(false)
+  tags: [kubespray, reset]
+
+- name: Display reset warning
+  debug:
+    msg:
+      - "WARNING: You are about to reset the Kubernetes cluster!"
+      - "This will remove all Kubernetes components and data."
+      - "This operation cannot be undone."
+      - "Cluster: {{ cluster_name }}"
+  tags: [kubespray, reset]
+
+- name: Pause for confirmation
+  pause:
+    prompt: "Press Enter to continue with cluster reset, or Ctrl+C to abort"
+  tags: [kubespray, reset]
+
+- name: Run kubespray cluster reset
+  command: >
+    {{ kubespray_install_dir }}/venv/bin/ansible-playbook
+    -i {{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml
+    {{ kubespray_install_dir }}/kubespray/reset.yml
+    -b
+    -v
+  environment:
+    ANSIBLE_HOST_KEY_CHECKING: "False"
+  register: kubespray_reset
+  async: 1800
+  poll: 30
+  tags: [kubespray, reset]
+
+- name: Wait for kubespray reset to complete
+  async_status:
+    jid: "{{ kubespray_reset.ansible_job_id }}"
+  register: reset_result
+  until: reset_result.finished
+  retries: 60
+  delay: 30
+  tags: [kubespray, reset]
+
+- name: Check reset result
+  fail:
+    msg: "Kubespray reset failed"
+  when: reset_result.failed
+  tags: [kubespray, reset]
+
+- name: Remove local kubeconfig
+  file:
+    path: "{{ kubespray_local_kubeconfig_path }}"
+    state: absent
+  delegate_to: localhost
+  tags: [kubespray, reset]
+
+- name: Verify cluster is removed
+  command: >
+    {{ kubespray_install_dir }}/venv/bin/ansible
+    -i {{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml
+    kube_control_plane[0]
+    -m stat
+    -a "path=/etc/kubernetes/admin.conf"
+  register: cluster_check
+  failed_when: false
+  changed_when: false
+  tags: [kubespray, reset]
+
+- name: Display reset status
+  debug:
+    msg: "Kubernetes cluster reset completed successfully!"
+  when: not cluster_check.stdout | default('') | regex_search('exists.*true')
+  tags: [kubespray, reset]
+
+- name: Cleanup kubespray inventory directory
+  file:
+    path: "{{ kubespray_install_dir }}/inventory/{{ cluster_name }}"
+    state: absent
+  when: kubespray_reset_confirmation | default(false)
+  tags: [kubespray, reset, cleanup]
+
+- name: Reset complete
+  debug:
+    msg: "Cluster {{ cluster_name }} has been reset. You can now run a fresh deployment."
+  tags: [kubespray, reset]

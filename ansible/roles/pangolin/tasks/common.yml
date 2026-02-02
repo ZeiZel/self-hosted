@@ -1,0 +1,101 @@
+---
+# Common tasks for both Pangolin gateway and nodes
+# Extracted from original main.yml
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  when: ansible_os_family == "Debian"
+  tags: [pangolin, packages]
+
+- name: Install required system packages
+  apt:
+    name:
+      - apt-transport-https
+      - ca-certificates
+      - curl
+      - gnupg
+      - lsb-release
+      - python3-pip
+      - ufw
+      - wireguard
+      - wireguard-tools
+      - iptables
+      - iptables-persistent
+    state: present
+    update_cache: yes
+  when: ansible_os_family == "Debian"
+  tags: [pangolin, packages]
+
+- name: Configure sysctl for WireGuard and IP forwarding
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/99-pangolin.conf
+  loop: "{{ sysctl_config | dict2items }}"
+  notify: reload sysctl
+  tags: [pangolin, sysctl]
+
+- name: Enable and start UFW
+  ufw:
+    state: enabled
+    policy: deny
+  tags: [pangolin, firewall]
+
+- name: Allow SSH through firewall
+  ufw:
+    rule: allow
+    port: "{{ ssh.port | default('22') }}"
+    proto: tcp
+  notify: reload ufw
+  tags: [pangolin, firewall]
+
+- name: Allow TCP ports through firewall
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: tcp
+  loop: "{{ firewall_allowed_tcp_ports }}"
+  when: pangolin_mode == 'gateway'
+  notify: reload ufw
+  tags: [pangolin, firewall]
+
+- name: Allow UDP ports through firewall (WireGuard)
+  ufw:
+    rule: allow
+    port: "{{ item }}"
+    proto: udp
+  loop: "{{ firewall_allowed_udp_ports }}"
+  notify: reload ufw
+  tags: [pangolin, firewall]
+
+- name: Create Pangolin installation directory
+  file:
+    path: "{{ pangolin_install_dir }}"
+    state: directory
+    mode: '0755'
+  tags: [pangolin, directories]
+
+- name: Create Pangolin configuration directory
+  file:
+    path: "{{ pangolin_config_dir }}"
+    state: directory
+    mode: '0755'
+  tags: [pangolin, directories]
+
+- name: Check if WireGuard kernel module is loaded
+  command: lsmod | grep wireguard
+  register: wireguard_module
+  changed_when: false
+  failed_when: false
+  tags: [pangolin, verify]
+
+- name: Load WireGuard kernel module
+  modprobe:
+    name: wireguard
+    state: present
+  when: wireguard_module.rc != 0
+  tags: [pangolin, verify]

@@ -6,7 +6,7 @@ kubespray_kubeconfig_path: "/root/.kube/config"
 kubespray_local_kubeconfig_path: "~/.kube/config"
 kubespray_copy_kubeconfig: true
 kubespray_force_clone: false
-kubespray_custom_config: false
+kubespray_custom_config: true
 
 
 

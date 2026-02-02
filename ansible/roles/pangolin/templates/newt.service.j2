@@ -1,0 +1,59 @@
+[Unit]
+Description=Newt WireGuard VPN Client
+Documentation=https://github.com/lvlcn-t/newt
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+
+# Working directory
+WorkingDirectory={{ pangolin_install_dir }}
+
+# Environment
+Environment="NEWT_CONFIG={{ pangolin_config_dir }}/newt.yaml"
+Environment="NEWT_LOG_LEVEL=info"
+
+# Create log directory
+ExecStartPre=/bin/mkdir -p /var/log/newt
+
+# Executable
+ExecStart={{ pangolin_install_dir }}/newt connect \
+    --config {{ pangolin_config_dir }}/newt.yaml \
+    --log-level info \
+    --daemon
+
+# Cleanup on stop
+ExecStop={{ pangolin_install_dir }}/newt disconnect \
+    --config {{ pangolin_config_dir }}/newt.yaml
+
+# Restart policy
+Restart=always
+RestartSec=15s
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ pangolin_config_dir }} /var/log/newt
+ProtectKernelTunables=true
+ProtectKernelModules=false
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictNamespaces=false
+LockPersonality=true
+MemoryDenyWriteExecute=false
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_RAW
+
+# Limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

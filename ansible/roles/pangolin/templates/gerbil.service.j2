@@ -1,0 +1,53 @@
+[Unit]
+Description=Gerbil WireGuard Interface Manager
+Documentation=https://github.com/lvlcn-t/gerbil
+After=network-online.target pangolin.service
+Wants=network-online.target
+Requires=pangolin.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+
+# Working directory
+WorkingDirectory={{ pangolin_install_dir }}
+
+# Environment
+Environment="GERBIL_INTERFACE={{ wireguard_interface }}"
+Environment="GERBIL_CONFIG={{ pangolin_config_dir }}/config.yaml"
+
+# Executable
+ExecStart={{ pangolin_install_dir }}/gerbil \
+    --interface {{ wireguard_interface }} \
+    --config {{ pangolin_config_dir }}/config.yaml \
+    --log-level info
+
+# Restart policy
+Restart=always
+RestartSec=10s
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ pangolin_config_dir }}
+ProtectKernelTunables=true
+ProtectKernelModules=false
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictNamespaces=false
+LockPersonality=true
+MemoryDenyWriteExecute=false
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+AmbientCapabilities=CAP_NET_ADMIN
+
+# Limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

@@ -1,62 +1,38 @@
 ---
-- name: Update apt cache
-  apt:
-    update_cache: yes
-    cache_valid_time: 3600
-  when: ansible_os_family == "Debian"
+# Pangolin VPN role main task router
+# Routes to gateway or node tasks based on pangolin_mode variable
 
-- name: Install required system packages
-  apt:
-    name:
-      - apt-transport-https
-      - ca-certificates
-      - curl
-      - gnupg
-      - lsb-release
-      - python3-pip
-      - ufw
-      - wireguard
-      - wireguard-tools
-    state: present
-    update_cache: yes
+- name: Validate pangolin_mode variable
+  assert:
+    that:
+      - pangolin_mode is defined
+      - pangolin_mode in ['gateway', 'node']
+    fail_msg: "pangolin_mode must be set to 'gateway' or 'node'"
+  tags: [pangolin, always]
 
-- name: Install Python Docker modules
-  pip:
-    name:
-      - docker
-      - docker-compose
-    state: present
+- name: Display Pangolin deployment mode
+  debug:
+    msg: "Deploying Pangolin VPN in {{ pangolin_mode }} mode"
+  tags: [pangolin, always]
 
-- name: Configure sysctl for WireGuard
-  sysctl:
-    name: "{{ item.key }}"
-    value: "{{ item.value }}"
-    state: present
-    reload: yes
-  loop: "{{ sysctl_config | dict2items }}"
+# Common tasks for both gateway and nodes
+- name: Include common setup tasks
+  include_tasks: common.yml
+  tags: [pangolin, common]
 
-- name: Enable and start UFW
-  ufw:
-    state: enabled
-    policy: deny
+# Gateway-specific tasks (VPS server)
+- name: Include gateway tasks
+  include_tasks: gateway.yml
+  when: pangolin_mode == 'gateway'
+  tags: [pangolin, gateway]
 
-- name: Allow SSH through firewall
-  ufw:
-    rule: allow
-    port: '22'
-    proto: tcp
+# Node-specific tasks (cluster clients)
+- name: Include node tasks
+  include_tasks: node.yml
+  when: pangolin_mode == 'node'
+  tags: [pangolin, node]
 
-- name: Allow TCP ports through firewall
-  ufw:
-    rule: allow
-    port: "{{ item }}"
-    proto: tcp
-  loop: "{{ firewall.allowed_tcp_ports }}"
-  when: pangolin_role == 'server'
-
-- name: Allow UDP ports through firewall
-  ufw:
-    rule: allow
-    port: "{{ item }}"
-    proto: udp
-  loop: "{{ firewall.allowed_udp_ports }}"
+- name: Pangolin VPN deployment complete
+  debug:
+    msg: "Pangolin VPN {{ pangolin_mode }} mode deployed successfully"
+  tags: [pangolin, always]
