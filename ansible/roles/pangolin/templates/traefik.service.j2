@@ -1,0 +1,52 @@
+[Unit]
+Description=Traefik Edge Router (Gateway)
+Documentation=https://doc.traefik.io/traefik/
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+
+# Working directory
+WorkingDirectory={{ traefik_config_dir }}
+
+# Create required directories
+ExecStartPre=/bin/mkdir -p {{ traefik_config_dir }}/dynamic
+ExecStartPre=/bin/mkdir -p /var/log/traefik
+ExecStartPre=/bin/touch {{ traefik_config_dir }}/acme.json
+ExecStartPre=/bin/chmod 600 {{ traefik_config_dir }}/acme.json
+
+# Executable
+ExecStart={{ pangolin_install_dir }}/traefik \
+    --configFile={{ traefik_config_dir }}/traefik.yml
+
+# Restart policy
+Restart=always
+RestartSec=10s
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ traefik_config_dir }} /var/log/traefik
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictNamespaces=true
+LockPersonality=true
+MemoryDenyWriteExecute=false
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+AmbientCapabilities=CAP_NET_BIND_SERVICE
+
+# Limits
+LimitNOFILE=1048576
+LimitNPROC=512
+
+[Install]
+WantedBy=multi-user.target

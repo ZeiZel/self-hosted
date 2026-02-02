@@ -1,0 +1,52 @@
+[Unit]
+Description=Pangolin WireGuard VPN Server
+Documentation=https://github.com/lvlcn-t/pangolin
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=root
+Group=root
+
+# Working directory
+WorkingDirectory={{ pangolin_install_dir }}
+
+# Environment
+Environment="PANGOLIN_CONFIG={{ pangolin_config_dir }}/config.yaml"
+Environment="PANGOLIN_LOG_LEVEL=info"
+
+# Executable
+ExecStart={{ pangolin_install_dir }}/pangolin server \
+    --config {{ pangolin_config_dir }}/config.yaml \
+    --log-level info \
+    --log-format json
+
+# Restart policy
+Restart=always
+RestartSec=10s
+
+# Security hardening
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths={{ pangolin_config_dir }} /var/log/pangolin
+ProtectKernelTunables=true
+ProtectKernelModules=false
+ProtectControlGroups=true
+RestrictRealtime=true
+RestrictNamespaces=false
+LockPersonality=true
+MemoryDenyWriteExecute=false
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6 AF_NETLINK
+SystemCallFilter=@system-service
+SystemCallErrorNumber=EPERM
+AmbientCapabilities=CAP_NET_ADMIN CAP_NET_BIND_SERVICE CAP_NET_RAW
+
+# Limits
+LimitNOFILE=65536
+LimitNPROC=4096
+
+[Install]
+WantedBy=multi-user.target

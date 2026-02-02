@@ -5,6 +5,9 @@
 - name: Include deployment tasks
   include_tasks: deploy.yml
 
+- name: Include verification tasks
+  include_tasks: verify.yml
+
 
 
 

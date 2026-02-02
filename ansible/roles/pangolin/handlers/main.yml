@@ -1,0 +1,39 @@
+---
+# Pangolin VPN handlers
+
+- name: restart pangolin
+  systemd:
+    name: pangolin
+    state: restarted
+    daemon_reload: yes
+  listen: restart pangolin
+
+- name: restart gerbil
+  systemd:
+    name: gerbil
+    state: restarted
+    daemon_reload: yes
+  listen: restart gerbil
+
+- name: restart traefik
+  systemd:
+    name: traefik
+    state: restarted
+    daemon_reload: yes
+  listen: restart traefik
+
+- name: restart newt
+  systemd:
+    name: newt
+    state: restarted
+    daemon_reload: yes
+  listen: restart newt
+
+- name: reload ufw
+  ufw:
+    state: reloaded
+  listen: reload ufw
+
+- name: reload sysctl
+  command: sysctl --system
+  listen: reload sysctl

@@ -12,11 +12,26 @@
   debug:
     msg: "{{ connectivity_check.stdout }}"
 
+- name: Check if Kubernetes cluster already exists
+  stat:
+    path: /etc/kubernetes/admin.conf
+  register: cluster_exists
+  delegate_to: "{{ groups['k8s_masters'][0] }}"
+  run_once: true
+
+- name: Determine deployment playbook (cluster.yml or scale.yml)
+  set_fact:
+    kubespray_playbook: "{{ 'scale.yml' if cluster_exists.stat.exists else 'cluster.yml' }}"
+
+- name: Display deployment mode
+  debug:
+    msg: "Deploying using {{ kubespray_playbook }} (cluster exists: {{ cluster_exists.stat.exists }})"
+
 - name: Run kubespray cluster deployment
   command: >
     {{ kubespray_install_dir }}/venv/bin/ansible-playbook
     -i {{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml
-    {{ kubespray_install_dir }}/kubespray/cluster.yml
+    {{ kubespray_install_dir }}/kubespray/{{ kubespray_playbook }}
     -b
     -v
   environment:

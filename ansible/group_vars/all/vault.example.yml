@@ -46,7 +46,20 @@ oauth:
 vpn:
   pangolin:
     server_private_key: ''
-    client_preshared_key: ''
+    server_public_key: ''
+    preshared_key: ''
+    client_keys:
+      # Master nodes
+      local-server:
+        private_key: ''
+        public_key: ''
+      # Worker nodes (add entries when VMs are provisioned)
+      # worker-1:
+      #   private_key: ''
+      #   public_key: ''
+      # worker-2:
+      #   private_key: ''
+      #   public_key: ''
 
 tls:
   letsencrypt:

@@ -1,0 +1,101 @@
+---
+# Pangolin node (cluster client) tasks
+# Deploys Newt WireGuard client and connects to gateway
+
+- name: Download Newt client binary
+  get_url:
+    url: "{{ newt_url }}"
+    dest: "/tmp/newt.tar.gz"
+    mode: '0644'
+  tags: [pangolin, node, download]
+
+- name: Extract Newt client binary
+  unarchive:
+    src: "/tmp/newt.tar.gz"
+    dest: "{{ pangolin_install_dir }}"
+    remote_src: yes
+    creates: "{{ pangolin_install_dir }}/newt"
+  tags: [pangolin, node, install]
+
+- name: Create Newt binary symlink
+  file:
+    src: "{{ pangolin_install_dir }}/newt"
+    dest: "/usr/local/bin/newt"
+    state: link
+  tags: [pangolin, node, install]
+
+- name: Generate node IP from inventory position
+  set_fact:
+    node_wireguard_ip: "{{ pangolin_node_ip_prefix }}.{{ 10 + groups['k8s_masters'].index(inventory_hostname) if inventory_hostname in groups['k8s_masters'] else 20 + groups['k8s_workers'].index(inventory_hostname) }}"
+  tags: [pangolin, node, config]
+
+- name: Load WireGuard client private key from Vault
+  set_fact:
+    wireguard_client_private_key: "{{ vault.vpn.pangolin.client_keys[inventory_hostname].private_key }}"
+  no_log: true
+  tags: [pangolin, node, config]
+
+- name: Load WireGuard preshared key from Vault
+  set_fact:
+    wireguard_preshared_key: "{{ vault.vpn.pangolin.preshared_key }}"
+  no_log: true
+  tags: [pangolin, node, config]
+
+- name: Load gateway public key from Vault
+  set_fact:
+    wireguard_gateway_public_key: "{{ vault.vpn.pangolin.server_public_key }}"
+  no_log: true
+  tags: [pangolin, node, config]
+
+- name: Deploy Newt client configuration
+  template:
+    src: newt-config.yaml.j2
+    dest: "{{ pangolin_config_dir }}/newt.yaml"
+    mode: '0600'
+  notify: restart newt
+  tags: [pangolin, node, config]
+
+- name: Deploy Newt systemd unit
+  template:
+    src: newt.service.j2
+    dest: /etc/systemd/system/newt.service
+    mode: '0644'
+  notify: restart newt
+  tags: [pangolin, node, systemd]
+
+- name: Enable and start Newt service
+  systemd:
+    name: newt
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  tags: [pangolin, node, service]
+
+- name: Wait for WireGuard interface to be up
+  wait_for:
+    path: "/sys/class/net/{{ wireguard_interface }}"
+    timeout: 30
+  tags: [pangolin, node, verify]
+
+- name: Verify Newt client is running
+  command: systemctl is-active newt
+  register: newt_status
+  changed_when: false
+  failed_when: newt_status.stdout != "active"
+  tags: [pangolin, node, verify]
+
+- name: Test tunnel connectivity to gateway
+  command: ping -c 3 -W 5 {{ wireguard_server_ip }}
+  register: ping_result
+  changed_when: false
+  failed_when: ping_result.rc != 0
+  tags: [pangolin, node, verify]
+
+- name: Display node deployment status
+  debug:
+    msg:
+      - "Pangolin VPN node deployed successfully"
+      - "Node WireGuard IP: {{ node_wireguard_ip }}"
+      - "Gateway endpoint: {{ pangolin_gateway_endpoint }}"
+      - "Tunnel connectivity: OK"
+  tags: [pangolin, node, verify]
