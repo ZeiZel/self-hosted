@@ -1,14 +1,48 @@
 ---
+- name: Pre-flight validation
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: [always]
+  tasks:
+    - name: Check required tools are installed
+      command: "which {{ item }}"
+      register: tool_check
+      failed_when: tool_check.rc != 0
+      changed_when: false
+      loop:
+        - kubectl
+        - helm
+        - helmfile
+        - ansible
+        - sops
+        - gpg
+      tags: [always]
+
+    - name: Check Ansible version
+      command: ansible --version
+      register: ansible_version
+      changed_when: false
+      failed_when: ansible_version.rc != 0
+      tags: [always]
+
+    - name: Display validation success
+      debug:
+        msg: "Pre-flight validation passed - all required tools are available"
+      tags: [always]
+
 - name: Host
   hosts: local
   become: true
   gather_facts: true
+  tags: [prepare]
   roles:
     - role: setup_host
 
 - name: Master
-  hosts: master
+  hosts: k8s_masters
   gather_facts: true
+  tags: [prepare, kubespray, helmfile, pangolin]
   roles:
     - role: setup_server
     - role: docker
@@ -16,14 +50,15 @@
     - role: kubespray
       tags: master
       type: node
-    - role: apps
+    - role: infrastructure
       tags: master
     - role: pangolin
       tags: node
 
 - name: Worker
-  hosts: workers
+  hosts: k8s_workers
   gather_facts: true
+  tags: [prepare, kubespray, helmfile, pangolin]
   roles:
     - role: setup_server
     - role: docker
@@ -31,7 +66,7 @@
     - role: kubespray
       tags: worker
       type: node
-    - role: apps
+    - role: infrastructure
       tags: worker
     - role: pangolin
       tags: node
@@ -39,6 +74,7 @@
 - name: Gateway
   hosts: gateway
   gather_facts: true
+  tags: [prepare, kubespray, helmfile, pangolin]
   roles:
     - role: setup_server
     - role: docker
@@ -46,7 +82,7 @@
     - role: kubespray
       tags: worker
       type: gateway
-    - role: apps
+    - role: infrastructure
       tags: gateway
     - role: pangolin
       tags: gateway
