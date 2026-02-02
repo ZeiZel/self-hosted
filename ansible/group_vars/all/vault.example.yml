@@ -10,3 +10,61 @@ root:
 
 ssh:
   port: 22
+
+domain:
+  primary: 'example.local'
+  public: 'example.com'
+
+databases:
+  postgresql:
+    admin_password: ''
+    replication_password: ''
+  mongodb:
+    admin_password: ''
+    replica_key: ''
+  valkey:
+    password: ''
+  minio:
+    root_user: 'admin'
+    root_password: ''
+
+smtp:
+  host: 'smtp.gmail.com'
+  port: 587
+  username: ''
+  password: ''
+  from_email: 'noreply@example.com'
+
+oauth:
+  authentik:
+    bootstrap_password: ''
+    secret_key: ''
+  gitlab:
+    root_password: ''
+    runner_registration_token: ''
+
+vpn:
+  pangolin:
+    server_private_key: ''
+    client_preshared_key: ''
+
+tls:
+  letsencrypt:
+    email: 'admin@example.com'
+    staging: false
+
+vault:
+  unseal_keys: []
+  root_token: ''
+
+monitoring:
+  grafana:
+    admin_user: 'admin'
+    admin_password: ''
+  prometheus:
+    basic_auth_password: ''
+
+registry:
+  harbour:
+    admin_password: ''
+    database_password: ''
