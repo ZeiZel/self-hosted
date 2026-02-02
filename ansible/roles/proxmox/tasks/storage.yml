@@ -1,0 +1,39 @@
+---
+- name: Check if local-lvm storage exists
+  command: pvesm status -storage {{ proxmox_storage_pool }}
+  register: storage_check
+  failed_when: false
+  changed_when: false
+  tags: [proxmox, storage]
+
+- name: Display storage status
+  debug:
+    msg: "Storage {{ proxmox_storage_pool }} status: {{ storage_check.stdout_lines }}"
+  when: storage_check.rc == 0
+  tags: [proxmox, storage]
+
+- name: Ensure local storage is enabled for backups
+  command: pvesm set {{ proxmox_backup_storage }} --content backup,iso,vztmpl
+  when: storage_check.rc == 0
+  changed_when: false
+  tags: [proxmox, storage]
+
+- name: Create backup directory if not exists
+  file:
+    path: /var/lib/vz/dump
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  tags: [proxmox, storage]
+
+- name: Verify storage configuration
+  command: pvesm status
+  register: all_storage
+  changed_when: false
+  tags: [proxmox, storage]
+
+- name: Display all storage pools
+  debug:
+    msg: "{{ all_storage.stdout_lines }}"
+  tags: [proxmox, storage]

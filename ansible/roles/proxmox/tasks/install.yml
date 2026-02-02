@@ -1,0 +1,107 @@
+---
+- name: Update apt cache
+  apt:
+    update_cache: yes
+    cache_valid_time: 3600
+  tags: [proxmox, install]
+
+- name: Install required packages for Proxmox
+  apt:
+    name:
+      - gnupg
+      - wget
+      - curl
+      - ca-certificates
+    state: present
+  tags: [proxmox, install]
+
+- name: Add Proxmox VE repository GPG key
+  apt_key:
+    url: "{{ proxmox_repo_key_url }}"
+    state: present
+  tags: [proxmox, install]
+
+- name: Add Proxmox VE repository
+  apt_repository:
+    repo: "deb {{ proxmox_repo_url }} {{ ansible_distribution_release }} pve-no-subscription"
+    state: present
+    filename: pve-install-repo
+  tags: [proxmox, install]
+
+- name: Update apt cache after adding Proxmox repo
+  apt:
+    update_cache: yes
+  tags: [proxmox, install]
+
+- name: Check if Proxmox VE is already installed
+  command: dpkg-query -W -f='${Status}' proxmox-ve
+  register: proxmox_check
+  failed_when: false
+  changed_when: false
+  tags: [proxmox, install]
+
+- name: Install Proxmox VE and related packages
+  apt:
+    name:
+      - proxmox-ve
+      - postfix
+      - open-iscsi
+    state: present
+  when: proxmox_check.rc != 0 or 'install ok installed' not in proxmox_check.stdout
+  register: proxmox_install
+  tags: [proxmox, install]
+
+- name: Remove os-prober package (conflicts with Proxmox)
+  apt:
+    name: os-prober
+    state: absent
+  tags: [proxmox, install]
+
+- name: Configure GRUB for Proxmox kernel
+  lineinfile:
+    path: /etc/default/grub
+    regexp: '^GRUB_DEFAULT='
+    line: 'GRUB_DEFAULT=0'
+  register: grub_config
+  tags: [proxmox, install]
+
+- name: Update GRUB configuration
+  command: update-grub
+  when: grub_config.changed
+  tags: [proxmox, install]
+
+- name: Check if reboot is required
+  stat:
+    path: /var/run/reboot-required
+  register: reboot_required_file
+  tags: [proxmox, install]
+
+- name: Reboot server to boot into Proxmox kernel
+  reboot:
+    msg: "Rebooting to Proxmox VE kernel"
+    connect_timeout: 5
+    reboot_timeout: 300
+    pre_reboot_delay: 0
+    post_reboot_delay: 30
+    test_command: uptime
+  when: proxmox_install.changed or reboot_required_file.stat.exists
+  tags: [proxmox, install]
+
+- name: Wait for Proxmox services to start
+  wait_for:
+    port: 8006
+    delay: 10
+    timeout: 300
+  when: proxmox_install.changed
+  tags: [proxmox, install]
+
+- name: Verify Proxmox VE installation
+  command: pveversion
+  register: pve_version
+  changed_when: false
+  tags: [proxmox, install]
+
+- name: Display Proxmox VE version
+  debug:
+    msg: "Proxmox VE installed: {{ pve_version.stdout }}"
+  tags: [proxmox, install]

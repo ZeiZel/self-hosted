@@ -1,0 +1,17 @@
+---
+galaxy_info:
+  author: Self-Hosted Infrastructure
+  description: Install Proxmox VE on bare-metal server and provision VMs for K8s cluster
+  license: MIT
+  min_ansible_version: "2.12"
+  platforms:
+    - name: Debian
+      versions:
+        - bookworm
+        - bullseye
+    - name: Ubuntu
+      versions:
+        - jammy
+        - focal
+
+dependencies: []

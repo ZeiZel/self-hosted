@@ -1,0 +1,20 @@
+---
+- name: Include Proxmox VE installation tasks
+  include_tasks: install.yml
+  tags: [proxmox, install]
+
+- name: Include Proxmox networking configuration
+  include_tasks: network.yml
+  tags: [proxmox, network]
+
+- name: Include Proxmox storage configuration
+  include_tasks: storage.yml
+  tags: [proxmox, storage]
+
+- name: Include VM template creation
+  include_tasks: template.yml
+  tags: [proxmox, template]
+
+- name: Include VM provisioning
+  include_tasks: provision.yml
+  tags: [proxmox, provision]
