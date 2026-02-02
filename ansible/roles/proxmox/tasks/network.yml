@@ -1,0 +1,64 @@
+---
+- name: Backup original network interfaces configuration
+  copy:
+    src: /etc/network/interfaces
+    dest: /etc/network/interfaces.backup
+    remote_src: yes
+    force: no
+  tags: [proxmox, network]
+
+- name: Deploy Proxmox network interfaces configuration
+  template:
+    src: interfaces.j2
+    dest: /etc/network/interfaces
+    owner: root
+    group: root
+    mode: '0644'
+    backup: yes
+  register: network_config
+  tags: [proxmox, network]
+
+- name: Reload networking configuration
+  systemd:
+    name: networking
+    state: restarted
+  when: network_config.changed
+  tags: [proxmox, network]
+
+- name: Wait for network to be stable
+  wait_for:
+    timeout: 10
+  when: network_config.changed
+  tags: [proxmox, network]
+
+- name: Verify management bridge exists
+  command: ip link show {{ proxmox_network_bridge_mgmt }}
+  register: bridge_mgmt_check
+  changed_when: false
+  failed_when: bridge_mgmt_check.rc != 0
+  tags: [proxmox, network]
+
+- name: Verify K8s internal bridge exists
+  command: ip link show {{ proxmox_network_bridge_k8s }}
+  register: bridge_k8s_check
+  changed_when: false
+  failed_when: bridge_k8s_check.rc != 0
+  tags: [proxmox, network]
+
+- name: Enable IP forwarding for VM traffic
+  sysctl:
+    name: "{{ item }}"
+    value: '1'
+    state: present
+    reload: yes
+  loop:
+    - net.ipv4.ip_forward
+    - net.ipv6.conf.all.forwarding
+  tags: [proxmox, network]
+
+- name: Display bridge configuration
+  debug:
+    msg:
+      - "Management bridge {{ proxmox_network_bridge_mgmt }}: {{ bridge_mgmt_check.stdout_lines }}"
+      - "K8s internal bridge {{ proxmox_network_bridge_k8s }}: {{ bridge_k8s_check.stdout_lines }}"
+  tags: [proxmox, network]

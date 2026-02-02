@@ -1,0 +1,52 @@
+---
+# Proxmox repository configuration
+proxmox_repo_url: "http://download.proxmox.com/debian/pve"
+proxmox_repo_key_url: "https://enterprise.proxmox.com/debian/proxmox-release-bookworm.gpg"
+
+# Storage configuration
+proxmox_storage_pool: "local-lvm"
+proxmox_backup_storage: "local"
+
+# Network configuration
+proxmox_network_bridge_mgmt: "vmbr0"
+proxmox_network_bridge_k8s: "vmbr1"
+proxmox_network_interface: "{{ ansible_default_ipv4.interface }}"
+
+# VM template configuration
+proxmox_template_vmid: 9000
+proxmox_template_name: "ubuntu-cloud-template"
+proxmox_ubuntu_version: "22.04"
+proxmox_ubuntu_iso_url: "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64.img"
+
+# VM provisioning configuration
+proxmox_vms:
+  - name: "k8s-master-1"
+    vmid: 100
+    cores: 4
+    memory: 8192
+    disk: 50G
+    ip: "192.168.100.10"
+    role: "master"
+  - name: "k8s-worker-1"
+    vmid: 101
+    cores: 4
+    memory: 16384
+    disk: 100G
+    ip: "192.168.100.11"
+    role: "worker"
+  - name: "k8s-worker-2"
+    vmid: 102
+    cores: 4
+    memory: 16384
+    disk: 100G
+    ip: "192.168.100.12"
+    role: "worker"
+
+# Network configuration for VMs
+proxmox_vm_network_cidr: "192.168.100.0/24"
+proxmox_vm_network_gateway: "192.168.100.1"
+proxmox_vm_network_dns: "8.8.8.8,8.8.4.4"
+
+# Cloud-init configuration
+proxmox_cloud_init_user: "{{ user.name | default('admin') }}"
+proxmox_cloud_init_ssh_keys: "{{ user.ssh_keys | default([]) }}"
