@@ -1,0 +1,57 @@
+---
+# Monitoring role defaults
+# Prometheus/Grafana stack verification and configuration
+
+# Monitoring namespace
+monitoring_namespace: "service"
+
+# Prometheus configuration
+prometheus_service_name: "prometheus-kube-prometheus-prometheus"
+prometheus_port: 9090
+prometheus_retention: "15d"
+prometheus_storage_size: "50Gi"
+
+# Grafana configuration
+grafana_service_name: "prometheus-grafana"
+grafana_port: 80
+grafana_admin_user: "admin"
+
+# Alertmanager configuration
+alertmanager_service_name: "prometheus-kube-prometheus-alertmanager"
+alertmanager_port: 9093
+
+# ServiceMonitor label
+servicemonitor_label: "prometheus: kube-prometheus"
+
+# Dashboards to import
+grafana_dashboards:
+  - name: "Kubernetes Cluster"
+    id: 7249
+  - name: "Node Exporter Full"
+    id: 1860
+  - name: "Traefik"
+    id: 11462
+  - name: "PostgreSQL"
+    id: 9628
+
+# Alerting rules
+alerting_rules_enabled: true
+alerting_rules_namespace: "{{ monitoring_namespace }}"
+
+# Alert routes
+alert_routes:
+  - name: "critical"
+    matchers:
+      - "severity = critical"
+    receiver: "slack"
+  - name: "warning"
+    matchers:
+      - "severity = warning"
+    receiver: "slack"
+
+# Scrape configuration
+scrape_interval: "30s"
+scrape_timeout: "10s"
+
+# Verification timeout
+verify_timeout: 300

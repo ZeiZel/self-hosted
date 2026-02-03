@@ -1,0 +1,54 @@
+---
+# Storage role defaults
+# OpenEBS storage provisioner configuration
+
+# Storage type
+storage_type: "openebs"
+storage_namespace: "openebs"
+
+# OpenEBS configuration
+openebs_version: "4.2.0"
+openebs_chart_version: "4.2.0"
+openebs_helm_repo: "https://openebs.github.io/openebs"
+
+# Storage classes
+storage_class_name: "openebs-hostpath"
+storage_class_default: true
+storage_class_reclaim_policy: "Delete"
+storage_class_volume_binding_mode: "WaitForFirstConsumer"
+
+# OpenEBS engines to enable
+openebs_localpv_enabled: true
+openebs_jiva_enabled: false
+openebs_cstor_enabled: false
+openebs_mayastor_enabled: false
+
+# LocalPV Hostpath configuration
+openebs_hostpath_basepath: "/var/openebs/local"
+openebs_hostpath_storageclass: "openebs-hostpath"
+
+# Resource limits for OpenEBS components
+openebs_ndm_resources:
+  requests:
+    cpu: "100m"
+    memory: "128Mi"
+  limits:
+    cpu: "200m"
+    memory: "256Mi"
+
+openebs_localpv_resources:
+  requests:
+    cpu: "50m"
+    memory: "64Mi"
+  limits:
+    cpu: "100m"
+    memory: "128Mi"
+
+# Test PVC configuration
+test_pvc_enabled: true
+test_pvc_name: "storage-test-pvc"
+test_pvc_size: "1Gi"
+test_pvc_namespace: "default"
+
+# Verification timeout
+verify_timeout: 300

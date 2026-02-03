@@ -1,0 +1,16 @@
+---
+apiVersion: storage.k8s.io/v1
+kind: StorageClass
+metadata:
+  name: {{ storage_class_name }}
+  annotations:
+    storageclass.kubernetes.io/is-default-class: "{{ storage_class_default | string | lower }}"
+    cas.openebs.io/config: |
+      - name: StorageType
+        value: "hostpath"
+      - name: BasePath
+        value: {{ openebs_hostpath_basepath }}
+provisioner: openebs.io/local
+reclaimPolicy: {{ storage_class_reclaim_policy }}
+volumeBindingMode: {{ storage_class_volume_binding_mode }}
+allowVolumeExpansion: true

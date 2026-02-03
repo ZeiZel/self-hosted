@@ -1,0 +1,55 @@
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: mongodb-backup
+  namespace: {{ database_backups_namespace }}
+spec:
+  schedule: "{{ mongodb_backup_schedule }}"
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: mongodb-backup
+              image: mongo:8.0
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
+                  BACKUP_DIR="/backups/mongodb_${BACKUP_DATE}"
+
+                  echo "Starting MongoDB backup..."
+                  mongodump --host=mongodb.db.svc.cluster.local --username=${MONGO_INITDB_ROOT_USERNAME} --password=${MONGO_INITDB_ROOT_PASSWORD} --authenticationDatabase=admin --out=${BACKUP_DIR}
+
+                  echo "Compressing backup..."
+                  cd /backups && tar -czf mongodb_${BACKUP_DATE}.tar.gz mongodb_${BACKUP_DATE}/
+                  rm -rf mongodb_${BACKUP_DATE}/
+
+                  echo "Backup completed: mongodb_${BACKUP_DATE}.tar.gz"
+                  ls -lh /backups/
+
+                  # Cleanup old backups (keep last {{ mongodb_backup_retention_days }} days)
+                  find /backups -name "mongodb_*.tar.gz" -type f -mtime +{{ mongodb_backup_retention_days }} -delete
+                  echo "Old backups cleaned up"
+              env:
+                - name: MONGO_INITDB_ROOT_USERNAME
+                  value: "root"
+                - name: MONGO_INITDB_ROOT_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: mongodb
+                      key: mongodb-root-password
+              volumeMounts:
+                - name: backup-storage
+                  mountPath: /backups
+          volumes:
+            - name: backup-storage
+              persistentVolumeClaim:
+                claimName: mongodb-backup-pvc

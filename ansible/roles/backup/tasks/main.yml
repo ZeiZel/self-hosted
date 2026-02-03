@@ -1,0 +1,249 @@
+---
+# Backup role main tasks
+# Deploys Velero for K8s backups and configures database backup automation
+
+- name: Create Velero namespace
+  command: kubectl create namespace {{ velero_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+  register: ns_create
+  changed_when: "'created' in ns_create.stdout"
+  tags: [backup, namespace]
+
+- name: Add Velero Helm repository
+  command: helm repo add vmware-tanzu {{ velero_helm_repo }}
+  register: helm_repo_add
+  changed_when: "'already exists' not in helm_repo_add.stderr"
+  failed_when: helm_repo_add.rc != 0 and 'already exists' not in helm_repo_add.stderr
+  tags: [backup, helm]
+
+- name: Update Helm repositories
+  command: helm repo update
+  changed_when: false
+  tags: [backup, helm]
+
+- name: Create backup storage credentials secret
+  command: >
+    kubectl create secret generic velero-credentials
+    --namespace {{ velero_namespace }}
+    --from-literal=cloud="[default]
+    aws_access_key_id={{ vault.databases.minio.root_user }}
+    aws_secret_access_key={{ vault.databases.minio.root_password }}"
+    --dry-run=client -o yaml | kubectl apply -f -
+  register: creds_create
+  changed_when: "'created' in creds_create.stdout"
+  no_log: true
+  tags: [backup, credentials]
+
+- name: Deploy Velero via Helm
+  command: >
+    helm upgrade --install velero vmware-tanzu/velero
+    --namespace {{ velero_namespace }}
+    --version {{ velero_version }}
+    --set configuration.backupStorageLocation[0].name={{ velero_backup_location }}
+    --set configuration.backupStorageLocation[0].provider={{ backup_storage_provider }}
+    --set configuration.backupStorageLocation[0].bucket={{ backup_bucket_name }}
+    --set configuration.backupStorageLocation[0].config.region={{ backup_region }}
+    --set configuration.backupStorageLocation[0].config.s3ForcePathStyle=true
+    --set configuration.backupStorageLocation[0].config.s3Url=http://{{ minio_endpoint }}
+    --set initContainers[0].name=velero-plugin-for-aws
+    --set initContainers[0].image=velero/velero-plugin-for-aws:v1.11.0
+    --set initContainers[0].volumeMounts[0].mountPath=/target
+    --set initContainers[0].volumeMounts[0].name=plugins
+    --set credentials.useSecret=true
+    --set credentials.existingSecret=velero-credentials
+    --set deployNodeAgent=true
+    --set nodeAgent.resources.requests.cpu={{ restic_resources.requests.cpu }}
+    --set nodeAgent.resources.requests.memory={{ restic_resources.requests.memory }}
+    --set nodeAgent.resources.limits.cpu={{ restic_resources.limits.cpu }}
+    --set nodeAgent.resources.limits.memory={{ restic_resources.limits.memory }}
+    --set resources.requests.cpu={{ velero_resources.requests.cpu }}
+    --set resources.requests.memory={{ velero_resources.requests.memory }}
+    --set resources.limits.cpu={{ velero_resources.limits.cpu }}
+    --set resources.limits.memory={{ velero_resources.limits.memory }}
+    --wait
+    --timeout {{ verify_timeout }}s
+  register: velero_deploy
+  changed_when: "'has been upgraded' in velero_deploy.stdout or 'installed' in velero_deploy.stdout"
+  tags: [backup, deploy]
+
+- name: Wait for Velero pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n {{ velero_namespace }} -l app.kubernetes.io/name=velero
+    --timeout={{ verify_timeout }}s
+  register: velero_ready
+  changed_when: false
+  tags: [backup, verify]
+
+- name: Get Velero pods status
+  command: kubectl get pods -n {{ velero_namespace }}
+  register: velero_pods
+  changed_when: false
+  tags: [backup, verify]
+
+- name: Display Velero pods status
+  debug:
+    msg: "{{ velero_pods.stdout_lines }}"
+  tags: [backup, verify]
+
+- name: Create backup schedules
+  block:
+    - name: Create backup schedule manifests
+      template:
+        src: backup-schedule.yaml.j2
+        dest: "/tmp/backup-schedule-{{ item.name }}.yaml"
+        mode: '0644'
+      loop: "{{ backup_schedules }}"
+
+    - name: Apply backup schedules
+      command: kubectl apply -f /tmp/backup-schedule-{{ item.name }}.yaml
+      loop: "{{ backup_schedules }}"
+      register: schedule_apply
+      changed_when: "'created' in schedule_apply.stdout or 'configured' in schedule_apply.stdout"
+
+    - name: Remove temporary schedule files
+      file:
+        path: "/tmp/backup-schedule-{{ item.name }}.yaml"
+        state: absent
+      loop: "{{ backup_schedules }}"
+  tags: [backup, schedules]
+
+- name: Get backup schedules
+  command: kubectl get schedules -n {{ velero_namespace }}
+  register: backup_schedules_list
+  changed_when: false
+  tags: [backup, verify]
+
+- name: Display backup schedules
+  debug:
+    msg: "{{ backup_schedules_list.stdout_lines }}"
+  tags: [backup, verify]
+
+- name: Configure PostgreSQL backups
+  block:
+    - name: Create PostgreSQL backup CronJob
+      template:
+        src: postgres-backup-cronjob.yaml.j2
+        dest: /tmp/postgres-backup-cronjob.yaml
+        mode: '0644'
+
+    - name: Apply PostgreSQL backup CronJob
+      command: kubectl apply -f /tmp/postgres-backup-cronjob.yaml
+      register: pg_backup_apply
+      changed_when: "'created' in pg_backup_apply.stdout or 'configured' in pg_backup_apply.stdout"
+
+    - name: Remove temporary PostgreSQL backup file
+      file:
+        path: /tmp/postgres-backup-cronjob.yaml
+        state: absent
+  when: database_backups_enabled and postgres_backup_enabled
+  tags: [backup, database, postgres]
+
+- name: Configure MongoDB backups
+  block:
+    - name: Create MongoDB backup CronJob
+      template:
+        src: mongodb-backup-cronjob.yaml.j2
+        dest: /tmp/mongodb-backup-cronjob.yaml
+        mode: '0644'
+
+    - name: Apply MongoDB backup CronJob
+      command: kubectl apply -f /tmp/mongodb-backup-cronjob.yaml
+      register: mongo_backup_apply
+      changed_when: "'created' in mongo_backup_apply.stdout or 'configured' in mongo_backup_apply.stdout"
+
+    - name: Remove temporary MongoDB backup file
+      file:
+        path: /tmp/mongodb-backup-cronjob.yaml
+        state: absent
+  when: database_backups_enabled and mongodb_backup_enabled
+  tags: [backup, database, mongodb]
+
+- name: Get database backup CronJobs
+  command: kubectl get cronjobs -n {{ database_backups_namespace }}
+  register: db_cronjobs
+  changed_when: false
+  failed_when: false
+  tags: [backup, verify, database]
+
+- name: Display database backup CronJobs
+  debug:
+    msg: "{{ db_cronjobs.stdout_lines }}"
+  when: db_cronjobs.rc == 0
+  tags: [backup, verify, database]
+
+- name: Verify backup storage location
+  command: kubectl get backupstoragelocation -n {{ velero_namespace }}
+  register: bsl_status
+  changed_when: false
+  tags: [backup, verify]
+
+- name: Display backup storage location
+  debug:
+    msg: "{{ bsl_status.stdout_lines }}"
+  tags: [backup, verify]
+
+- name: Check for existing backups
+  command: kubectl get backups -n {{ velero_namespace }}
+  register: existing_backups
+  changed_when: false
+  failed_when: false
+  tags: [backup, verify]
+
+- name: Display existing backups
+  debug:
+    msg: "{{ existing_backups.stdout_lines }}"
+  when: existing_backups.rc == 0
+  tags: [backup, verify]
+
+- name: Create test backup
+  block:
+    - name: Trigger on-demand backup
+      command: >
+        kubectl create -f - <<EOF
+        apiVersion: velero.io/v1
+        kind: Backup
+        metadata:
+          name: test-backup-{{ ansible_date_time.epoch }}
+          namespace: {{ velero_namespace }}
+        spec:
+          includedNamespaces:
+            - default
+          ttl: 24h0m0s
+        EOF
+      register: test_backup
+      changed_when: "'created' in test_backup.stdout"
+
+    - name: Wait for test backup to complete
+      pause:
+        seconds: 30
+
+    - name: Check test backup status
+      command: >
+        kubectl get backup test-backup-{{ ansible_date_time.epoch }}
+        -n {{ velero_namespace }}
+        -o jsonpath='{.status.phase}'
+      register: test_backup_status
+      changed_when: false
+
+    - name: Display test backup status
+      debug:
+        msg: "Test backup status: {{ test_backup_status.stdout }}"
+  when: backup_verify_enabled
+  tags: [backup, verify, test]
+
+- name: Backup configuration summary
+  debug:
+    msg:
+      - "========================================="
+      - "Backup Configuration Complete"
+      - "========================================="
+      - "✓ Velero version: {{ velero_version }}"
+      - "✓ Namespace: {{ velero_namespace }}"
+      - "✓ Storage location: {{ velero_backup_location }}"
+      - "✓ Backup bucket: {{ backup_bucket_name }}"
+      - "✓ Backup schedules: {{ backup_schedules | length }}"
+      - "✓ PostgreSQL backups: {{ postgres_backup_enabled | ternary('Enabled', 'Disabled') }}"
+      - "✓ MongoDB backups: {{ mongodb_backup_enabled | ternary('Enabled', 'Disabled') }}"
+      - "✓ Test backup: {{ backup_verify_enabled | ternary('Created', 'Skipped') }}"
+      - "========================================="
+  tags: [backup]
