@@ -1,0 +1,88 @@
+# Pre-commit hooks for self-hosted platform
+# Install: pre-commit install
+# Run manually: pre-commit run --all-files
+
+repos:
+  # General file checks
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v5.0.0
+    hooks:
+      - id: trailing-whitespace
+      - id: end-of-file-fixer
+      - id: check-yaml
+        args: ['--allow-multiple-documents']
+      - id: check-added-large-files
+        args: ['--maxkb=1024']
+      - id: check-merge-conflict
+      - id: detect-private-key
+      - id: mixed-line-ending
+
+  # YAML linting
+  - repo: https://github.com/adrienverge/yamllint
+    rev: v1.35.1
+    hooks:
+      - id: yamllint
+        args: ['-d', '{extends: default, rules: {line-length: {max: 200}, document-start: disable}}']
+        files: \.(yaml|yml)$
+
+  # Ansible linting
+  - repo: https://github.com/ansible/ansible-lint
+    rev: v24.12.2
+    hooks:
+      - id: ansible-lint
+        files: \.(yaml|yml)$
+        exclude: ^kubernetes/
+
+  # Shell script linting
+  - repo: https://github.com/shellcheck-py/shellcheck-py
+    rev: v0.10.0.1
+    hooks:
+      - id: shellcheck
+        args: ['-x']
+
+  # Secret scanning
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.22.1
+    hooks:
+      - id: gitleaks
+
+  # Helm chart linting
+  - repo: local
+    hooks:
+      - id: helm-lint
+        name: Helm lint
+        entry: bash -c 'for chart in kubernetes/charts/*/; do helm lint "$chart" || exit 1; done'
+        language: system
+        pass_filenames: false
+        files: ^kubernetes/charts/.+/(Chart\.yaml|values\.yaml|templates/.+\.yaml)$
+
+      # Kubeval validation
+      - id: kubeval
+        name: Kubeval
+        entry: bash -c 'for chart in kubernetes/charts/*/; do helm template "$chart" 2>/dev/null | kubeval --strict --ignore-missing-schemas || exit 1; done'
+        language: system
+        pass_filenames: false
+        files: ^kubernetes/charts/.+/templates/.+\.yaml$
+
+      # Check for exposed secrets
+      - id: check-secrets
+        name: Check for secrets in code
+        entry: bash -c 'if git diff --cached | grep -iE "(password|secret|token|api[_-]?key).*=.*[\"\']"; then echo "Possible secret exposed!"; exit 1; fi'
+        language: system
+        pass_filenames: false
+
+      # Ansible syntax check
+      - id: ansible-syntax
+        name: Ansible syntax check
+        entry: bash -c 'cd ansible && ansible-playbook --syntax-check -i inventory/hosts.ini all.yml'
+        language: system
+        pass_filenames: false
+        files: ^ansible/.+\.yml$
+
+      # SOPS validation
+      - id: sops-check
+        name: SOPS encryption check
+        entry: bash -c 'if [ -f kubernetes/envs/k8s/secrets/_all.yaml ]; then sops -d kubernetes/envs/k8s/secrets/_all.yaml > /dev/null || exit 1; fi'
+        language: system
+        pass_filenames: false
+        files: ^kubernetes/envs/.+/secrets/.+\.yaml$
