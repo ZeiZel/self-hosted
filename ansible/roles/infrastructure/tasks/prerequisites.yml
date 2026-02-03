@@ -1,0 +1,207 @@
+---
+# Infrastructure prerequisites
+# Installs helmfile, helm, helm-diff plugin, SOPS, and configures GPG keys
+
+- name: Check if kubectl is installed
+  command: which kubectl
+  register: kubectl_check
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, prerequisites, kubectl]
+
+- name: Verify kubectl is available
+  assert:
+    that:
+      - kubectl_check.rc == 0
+    fail_msg: "kubectl is not installed. Install kubectl before running this role."
+  tags: [infrastructure, prerequisites, kubectl]
+
+- name: Check kubeconfig exists
+  stat:
+    path: "{{ kubeconfig_path }}"
+  register: kubeconfig_stat
+  tags: [infrastructure, prerequisites, kubeconfig]
+
+- name: Verify kubeconfig is available
+  assert:
+    that:
+      - kubeconfig_stat.stat.exists
+    fail_msg: "Kubeconfig not found at {{ kubeconfig_path }}. Run kubespray deployment first."
+  tags: [infrastructure, prerequisites, kubeconfig]
+
+- name: Test kubectl cluster access
+  command: kubectl cluster-info
+  register: cluster_info
+  changed_when: false
+  failed_when: cluster_info.rc != 0
+  tags: [infrastructure, prerequisites, kubectl]
+
+- name: Display cluster info
+  debug:
+    msg: "{{ cluster_info.stdout_lines }}"
+  tags: [infrastructure, prerequisites, kubectl]
+
+- name: Check if helm is installed
+  command: which helm
+  register: helm_check
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, prerequisites, helm]
+
+- name: Install Helm
+  block:
+    - name: Download Helm installer script
+      get_url:
+        url: https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3
+        dest: /tmp/get-helm-3.sh
+        mode: '0700'
+
+    - name: Run Helm installer
+      command: /tmp/get-helm-3.sh
+      environment:
+        DESIRED_VERSION: "{{ helm_version }}"
+
+    - name: Remove Helm installer script
+      file:
+        path: /tmp/get-helm-3.sh
+        state: absent
+  when: helm_check.rc != 0
+  tags: [infrastructure, prerequisites, helm]
+
+- name: Verify Helm version
+  command: helm version --short
+  register: helm_version_check
+  changed_when: false
+  notify: verify helm
+  tags: [infrastructure, prerequisites, helm]
+
+- name: Display Helm version
+  debug:
+    msg: "{{ helm_version_check.stdout }}"
+  tags: [infrastructure, prerequisites, helm]
+
+- name: Check if helm-diff plugin is installed
+  command: helm plugin list
+  register: helm_plugins
+  changed_when: false
+  tags: [infrastructure, prerequisites, helm-diff]
+
+- name: Install helm-diff plugin
+  command: helm plugin install https://github.com/databus23/helm-diff --version {{ helm_diff_version }}
+  when: "'diff' not in helm_plugins.stdout"
+  tags: [infrastructure, prerequisites, helm-diff]
+
+- name: Check if helmfile is installed
+  command: which helmfile
+  register: helmfile_check
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, prerequisites, helmfile]
+
+- name: Install Helmfile
+  block:
+    - name: Download Helmfile binary
+      get_url:
+        url: "https://github.com/helmfile/helmfile/releases/download/v{{ helmfile_version }}/helmfile_{{ helmfile_version }}_linux_amd64.tar.gz"
+        dest: /tmp/helmfile.tar.gz
+        mode: '0644'
+
+    - name: Extract Helmfile binary
+      unarchive:
+        src: /tmp/helmfile.tar.gz
+        dest: /usr/local/bin
+        remote_src: yes
+        creates: /usr/local/bin/helmfile
+
+    - name: Set Helmfile binary permissions
+      file:
+        path: /usr/local/bin/helmfile
+        mode: '0755'
+
+    - name: Remove Helmfile archive
+      file:
+        path: /tmp/helmfile.tar.gz
+        state: absent
+  when: helmfile_check.rc != 0
+  tags: [infrastructure, prerequisites, helmfile]
+
+- name: Verify Helmfile version
+  command: helmfile version
+  register: helmfile_version_check
+  changed_when: false
+  notify: verify helmfile
+  tags: [infrastructure, prerequisites, helmfile]
+
+- name: Display Helmfile version
+  debug:
+    msg: "{{ helmfile_version_check.stdout }}"
+  tags: [infrastructure, prerequisites, helmfile]
+
+- name: Check if SOPS is installed
+  command: which sops
+  register: sops_check
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, prerequisites, sops]
+
+- name: Install SOPS
+  block:
+    - name: Download SOPS binary
+      get_url:
+        url: "https://github.com/getsops/sops/releases/download/v{{ sops_version }}/sops-v{{ sops_version }}.linux.amd64"
+        dest: /usr/local/bin/sops
+        mode: '0755'
+
+    - name: Verify SOPS installation
+      command: sops --version
+      register: sops_version_check
+      changed_when: false
+  when: sops_check.rc != 0
+  tags: [infrastructure, prerequisites, sops]
+
+- name: Check if GPG is installed
+  command: which gpg
+  register: gpg_check
+  changed_when: false
+  failed_when: gpg_check.rc != 0
+  tags: [infrastructure, prerequisites, gpg]
+
+- name: Check if SOPS GPG key exists
+  stat:
+    path: "{{ sops_key_path }}/sops-key.asc"
+  register: sops_key_stat
+  tags: [infrastructure, prerequisites, sops]
+
+- name: Import SOPS GPG key
+  block:
+    - name: Check if key is already imported
+      command: gpg --list-secret-keys
+      register: gpg_keys
+      changed_when: false
+
+    - name: Import SOPS key from file
+      command: gpg --import {{ sops_key_path }}/sops-key.asc
+      when: "'sops' not in gpg_keys.stdout"
+  when: sops_key_stat.stat.exists
+  tags: [infrastructure, prerequisites, sops]
+
+- name: Initialize Helmfile
+  command: helmfile init --force
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: helmfile_init
+  changed_when: "'Initialized' in helmfile_init.stdout"
+  tags: [infrastructure, prerequisites, helmfile]
+
+- name: Prerequisites validation complete
+  debug:
+    msg:
+      - "All prerequisites validated successfully"
+      - "kubectl: OK"
+      - "helm: {{ helm_version_check.stdout }}"
+      - "helmfile: OK"
+      - "sops: OK"
+      - "kubeconfig: {{ kubeconfig_path }}"
+  tags: [infrastructure, prerequisites]

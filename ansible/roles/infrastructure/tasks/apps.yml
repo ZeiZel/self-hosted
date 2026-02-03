@@ -1,0 +1,194 @@
+---
+# Application services deployment
+# Depends on base infrastructure (traefik, consul, vault, cert-manager, authentik)
+
+- name: Display application deployment plan
+  debug:
+    msg:
+      - "Deploying application services"
+      - "Services: {{ app_services | map(attribute='name') | list | join(', ') }}"
+  tags: [infrastructure, apps]
+
+- name: Verify base infrastructure is ready
+  command: >
+    kubectl get pods -n service
+    -l 'app.kubernetes.io/name in (traefik,consul,vault,cert-manager,authentik)'
+    -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.phase}{"\n"}{end}'
+  register: base_pods_status
+  changed_when: false
+  tags: [infrastructure, apps]
+
+- name: Display base infrastructure status
+  debug:
+    msg: "{{ base_pods_status.stdout_lines }}"
+  tags: [infrastructure, apps]
+
+# Deploy each application service with its tag
+- name: Deploy Stoat (Revolt chat)
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=stoat
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: stoat_deploy
+  changed_when: "'has been upgraded' in stoat_deploy.stdout or 'installed' in stoat_deploy.stdout"
+  tags: [infrastructure, apps, stoat]
+
+- name: Wait for Stoat pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n social -l app.kubernetes.io/name=stoat
+    --timeout=180s
+  register: stoat_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, stoat]
+
+- name: Deploy Stalwart (mail server)
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=stalwart
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: stalwart_deploy
+  changed_when: "'has been upgraded' in stalwart_deploy.stdout or 'installed' in stalwart_deploy.stdout"
+  tags: [infrastructure, apps, stalwart]
+
+- name: Wait for Stalwart pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n social -l app.kubernetes.io/name=stalwart
+    --timeout=180s
+  register: stalwart_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, stalwart]
+
+- name: Deploy YouTrack (issue tracker)
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=youtrack
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: youtrack_deploy
+  changed_when: "'has been upgraded' in youtrack_deploy.stdout or 'installed' in youtrack_deploy.stdout"
+  tags: [infrastructure, apps, youtrack]
+
+- name: Wait for YouTrack pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n code -l app.kubernetes.io/name=youtrack
+    --timeout=300s
+  register: youtrack_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, youtrack]
+
+- name: Deploy Hub (JetBrains SSO)
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=hub
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: hub_deploy
+  changed_when: "'has been upgraded' in hub_deploy.stdout or 'installed' in hub_deploy.stdout"
+  tags: [infrastructure, apps, hub]
+
+- name: Wait for Hub pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n code -l app.kubernetes.io/name=hub
+    --timeout=300s
+  register: hub_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, hub]
+
+- name: Deploy TeamCity (CI/CD)
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=teamcity
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: teamcity_deploy
+  changed_when: "'has been upgraded' in teamcity_deploy.stdout or 'installed' in teamcity_deploy.stdout"
+  tags: [infrastructure, apps, teamcity]
+
+- name: Wait for TeamCity pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n code -l app.kubernetes.io/name=teamcity
+    --timeout=300s
+  register: teamcity_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, teamcity]
+
+- name: Deploy Vaultwarden (password manager)
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=vaultwarden
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: vaultwarden_deploy
+  changed_when: "'has been upgraded' in vaultwarden_deploy.stdout or 'installed' in vaultwarden_deploy.stdout"
+  tags: [infrastructure, apps, vaultwarden]
+
+- name: Wait for Vaultwarden pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n data -l app.kubernetes.io/name=vaultwarden
+    --timeout=180s
+  register: vaultwarden_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, vaultwarden]
+
+- name: Get all application pods status
+  command: >
+    kubectl get pods -A
+    -l 'app.kubernetes.io/name in (stoat,stalwart,youtrack,hub,teamcity,vaultwarden)'
+  register: app_pods_status
+  changed_when: false
+  tags: [infrastructure, apps]
+
+- name: Display application pods status
+  debug:
+    msg: "{{ app_pods_status.stdout_lines }}"
+  tags: [infrastructure, apps]
+
+- name: Application deployment summary
+  debug:
+    msg:
+      - "Application services deployment complete"
+      - "✓ Stoat (Revolt): {{ stoat_ready.rc == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Stalwart (Mail): {{ stalwart_ready.rc == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ YouTrack: {{ youtrack_ready.rc == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Hub: {{ hub_ready.rc == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ TeamCity: {{ teamcity_ready.rc == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Vaultwarden: {{ vaultwarden_ready.rc == 0 | ternary('Ready', 'Pending') }}"
+  tags: [infrastructure, apps]

@@ -1,13 +1,29 @@
 galaxy_info:
-  role_name: setup
-  description: setup server
+  role_name: infrastructure
+  description: Helmfile-based Kubernetes infrastructure deployment with nested tags
   author: Lvov Valery
   license: MIT
   min_ansible_version: 2.20.1
+
   platforms:
     - name: Ubuntu
       versions:
-        - all
-    - name: Darwin
+        - jammy
+        - focal
+    - name: Debian
       versions:
-        - all
+        - bullseye
+        - bookworm
+
+  galaxy_tags:
+    - kubernetes
+    - helm
+    - helmfile
+    - infrastructure
+    - deployment
+    - automation
+    - vault
+    - traefik
+    - consul
+
+dependencies: []

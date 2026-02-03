@@ -1,0 +1,22 @@
+---
+# Infrastructure role handlers
+
+- name: reload kubeconfig
+  command: kubectl config view
+  changed_when: false
+  listen: reload kubeconfig
+
+- name: verify helm
+  command: helm version --short
+  changed_when: false
+  listen: verify helm
+
+- name: verify helmfile
+  command: helmfile version
+  changed_when: false
+  listen: verify helmfile
+
+- name: verify kubectl
+  command: kubectl version --client --short
+  changed_when: false
+  listen: verify kubectl
