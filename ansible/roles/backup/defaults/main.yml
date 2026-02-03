@@ -1,0 +1,74 @@
+---
+# Backup role defaults
+# Velero for K8s state backups, database backup automation
+
+# Velero configuration
+velero_namespace: "velero"
+velero_version: "1.16.0"
+velero_helm_repo: "https://vmware-tanzu.github.io/helm-charts"
+velero_backup_location: "default"
+
+# Backup storage
+backup_storage_provider: "aws"  # aws, gcp, azure, or minio
+backup_bucket_name: "k8s-backups"
+backup_region: "us-east-1"
+
+# MinIO configuration (for local S3-compatible storage)
+minio_endpoint: "minio.db.svc.cluster.local:9000"
+minio_use_ssl: false
+
+# Backup schedules
+backup_schedules:
+  - name: "daily-full"
+    schedule: "0 2 * * *"  # 2 AM daily
+    ttl: "168h"  # 7 days
+    include_namespaces: "*"
+    exclude_namespaces: "kube-system,kube-public,kube-node-lease"
+  - name: "weekly-full"
+    schedule: "0 3 * * 0"  # 3 AM Sunday
+    ttl: "720h"  # 30 days
+    include_namespaces: "*"
+  - name: "monthly-full"
+    schedule: "0 4 1 * *"  # 4 AM 1st of month
+    ttl: "8760h"  # 365 days
+    include_namespaces: "*"
+
+# Database backup configuration
+database_backups_enabled: true
+database_backups_namespace: "db"
+
+# PostgreSQL backup
+postgres_backup_enabled: true
+postgres_backup_schedule: "0 1 * * *"  # 1 AM daily
+postgres_backup_retention_days: 7
+postgres_backup_weekly_retention: 4
+postgres_backup_monthly_retention: 12
+
+# MongoDB backup
+mongodb_backup_enabled: true
+mongodb_backup_schedule: "30 1 * * *"  # 1:30 AM daily
+mongodb_backup_retention_days: 7
+
+# Backup verification
+backup_verify_enabled: true
+backup_test_restore: false  # Set to true to test restore (destructive!)
+
+# Resource limits
+velero_resources:
+  requests:
+    cpu: "500m"
+    memory: "512Mi"
+  limits:
+    cpu: "1000m"
+    memory: "1Gi"
+
+restic_resources:
+  requests:
+    cpu: "200m"
+    memory: "256Mi"
+  limits:
+    cpu: "500m"
+    memory: "512Mi"
+
+# Verification timeout
+verify_timeout: 300

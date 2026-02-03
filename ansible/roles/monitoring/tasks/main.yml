@@ -1,0 +1,267 @@
+---
+# Monitoring role main tasks
+# Verifies Prometheus/Grafana stack and imports dashboards
+
+- name: Verify monitoring namespace exists
+  command: kubectl get namespace {{ monitoring_namespace }}
+  register: ns_check
+  changed_when: false
+  failed_when: ns_check.rc != 0
+  tags: [monitoring, verify]
+
+- name: Get Prometheus pods
+  command: kubectl get pods -n {{ monitoring_namespace }} -l app.kubernetes.io/name=prometheus
+  register: prometheus_pods
+  changed_when: false
+  tags: [monitoring, verify, prometheus]
+
+- name: Display Prometheus pods status
+  debug:
+    msg: "{{ prometheus_pods.stdout_lines }}"
+  tags: [monitoring, verify, prometheus]
+
+- name: Wait for Prometheus pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n {{ monitoring_namespace }} -l app.kubernetes.io/name=prometheus
+    --timeout={{ verify_timeout }}s
+  register: prometheus_ready
+  changed_when: false
+  failed_when: false
+  tags: [monitoring, verify, prometheus]
+
+- name: Check Prometheus service
+  command: kubectl get svc -n {{ monitoring_namespace }} {{ prometheus_service_name }}
+  register: prometheus_svc
+  changed_when: false
+  failed_when: false
+  tags: [monitoring, verify, prometheus]
+
+- name: Display Prometheus service
+  debug:
+    msg: "{{ prometheus_svc.stdout_lines }}"
+  when: prometheus_svc.rc == 0
+  tags: [monitoring, verify, prometheus]
+
+- name: Get Grafana pods
+  command: kubectl get pods -n {{ monitoring_namespace }} -l app.kubernetes.io/name=grafana
+  register: grafana_pods
+  changed_when: false
+  tags: [monitoring, verify, grafana]
+
+- name: Display Grafana pods status
+  debug:
+    msg: "{{ grafana_pods.stdout_lines }}"
+  tags: [monitoring, verify, grafana]
+
+- name: Wait for Grafana pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n {{ monitoring_namespace }} -l app.kubernetes.io/name=grafana
+    --timeout={{ verify_timeout }}s
+  register: grafana_ready
+  changed_when: false
+  failed_when: false
+  tags: [monitoring, verify, grafana]
+
+- name: Check Grafana service
+  command: kubectl get svc -n {{ monitoring_namespace }} {{ grafana_service_name }}
+  register: grafana_svc
+  changed_when: false
+  failed_when: false
+  tags: [monitoring, verify, grafana]
+
+- name: Display Grafana service
+  debug:
+    msg: "{{ grafana_svc.stdout_lines }}"
+  when: grafana_svc.rc == 0
+  tags: [monitoring, verify, grafana]
+
+- name: Get Alertmanager pods
+  command: kubectl get pods -n {{ monitoring_namespace }} -l app.kubernetes.io/name=alertmanager
+  register: alertmanager_pods
+  changed_when: false
+  failed_when: false
+  tags: [monitoring, verify, alertmanager]
+
+- name: Display Alertmanager pods status
+  debug:
+    msg: "{{ alertmanager_pods.stdout_lines }}"
+  when: alertmanager_pods.rc == 0
+  tags: [monitoring, verify, alertmanager]
+
+- name: Get all ServiceMonitors
+  command: kubectl get servicemonitor -A
+  register: servicemonitors
+  changed_when: false
+  tags: [monitoring, verify, servicemonitor]
+
+- name: Display ServiceMonitors
+  debug:
+    msg: "{{ servicemonitors.stdout_lines }}"
+  tags: [monitoring, verify, servicemonitor]
+
+- name: Count ServiceMonitors
+  set_fact:
+    servicemonitor_count: "{{ servicemonitors.stdout_lines | length - 1 }}"
+  tags: [monitoring, verify, servicemonitor]
+
+- name: Get PrometheusRules
+  command: kubectl get prometheusrule -A
+  register: prometheus_rules
+  changed_when: false
+  failed_when: false
+  tags: [monitoring, verify, rules]
+
+- name: Display PrometheusRules
+  debug:
+    msg: "{{ prometheus_rules.stdout_lines }}"
+  when: prometheus_rules.rc == 0
+  tags: [monitoring, verify, rules]
+
+- name: Check Prometheus targets
+  command: >
+    kubectl exec -n {{ monitoring_namespace }}
+    prometheus-prometheus-kube-prometheus-prometheus-0
+    -- wget -qO- http://localhost:9090/api/v1/targets
+  register: prometheus_targets
+  changed_when: false
+  failed_when: false
+  tags: [monitoring, verify, targets]
+
+- name: Parse Prometheus targets
+  set_fact:
+    targets_data: "{{ prometheus_targets.stdout | from_json }}"
+  when: prometheus_targets.rc == 0
+  tags: [monitoring, verify, targets]
+
+- name: Count active targets
+  set_fact:
+    active_targets: "{{ targets_data.data.activeTargets | length }}"
+  when: targets_data is defined
+  tags: [monitoring, verify, targets]
+
+- name: Display active targets count
+  debug:
+    msg: "Prometheus active targets: {{ active_targets | default('N/A') }}"
+  tags: [monitoring, verify, targets]
+
+- name: Import Grafana dashboards
+  block:
+    - name: Get Grafana admin password
+      command: >
+        kubectl get secret -n {{ monitoring_namespace }}
+        {{ grafana_service_name }}
+        -o jsonpath='{.data.admin-password}'
+      register: grafana_password_b64
+      changed_when: false
+      no_log: true
+
+    - name: Decode Grafana password
+      set_fact:
+        grafana_password: "{{ grafana_password_b64.stdout | b64decode }}"
+      no_log: true
+
+    - name: Create Grafana dashboard import job
+      template:
+        src: dashboard-import-job.yaml.j2
+        dest: /tmp/dashboard-import-job.yaml
+        mode: '0644'
+
+    - name: Apply dashboard import job
+      command: kubectl apply -f /tmp/dashboard-import-job.yaml
+      register: job_apply
+      changed_when: "'created' in job_apply.stdout"
+
+    - name: Wait for dashboard import job to complete
+      command: >
+        kubectl wait --for=condition=complete
+        job/grafana-dashboard-import
+        -n {{ monitoring_namespace }}
+        --timeout=180s
+      register: job_complete
+      changed_when: false
+      failed_when: false
+
+    - name: Remove dashboard import job
+      command: kubectl delete job grafana-dashboard-import -n {{ monitoring_namespace }} --ignore-not-found
+      changed_when: false
+
+    - name: Remove temporary job file
+      file:
+        path: /tmp/dashboard-import-job.yaml
+        state: absent
+  tags: [monitoring, dashboards]
+
+- name: Create custom alerting rules
+  block:
+    - name: Create PrometheusRule for infrastructure alerts
+      copy:
+        content: |
+          apiVersion: monitoring.coreos.com/v1
+          kind: PrometheusRule
+          metadata:
+            name: infrastructure-alerts
+            namespace: {{ monitoring_namespace }}
+            labels:
+              prometheus: kube-prometheus
+          spec:
+            groups:
+              - name: infrastructure
+                interval: 30s
+                rules:
+                  - alert: NodeDown
+                    expr: up{job="node-exporter"} == 0
+                    for: 5m
+                    labels:
+                      severity: critical
+                    annotations:
+                      summary: "Node {{ $labels.instance }} is down"
+                      description: "Node exporter on {{ $labels.instance }} has been down for more than 5 minutes"
+
+                  - alert: PodCrashLooping
+                    expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+                    for: 5m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "Pod {{ $labels.namespace }}/{{ $labels.pod }} is crash looping"
+                      description: "Pod {{ $labels.namespace }}/{{ $labels.pod }} has restarted {{ $value }} times in the last 15 minutes"
+
+                  - alert: PersistentVolumeFillingUp
+                    expr: kubelet_volume_stats_available_bytes / kubelet_volume_stats_capacity_bytes < 0.1
+                    for: 10m
+                    labels:
+                      severity: warning
+                    annotations:
+                      summary: "PV {{ $labels.persistentvolumeclaim }} filling up"
+                      description: "PV {{ $labels.persistentvolumeclaim }} in {{ $labels.namespace }} has less than 10% space available"
+        dest: /tmp/infrastructure-alerts.yaml
+        mode: '0644'
+
+    - name: Apply infrastructure alerts
+      command: kubectl apply -f /tmp/infrastructure-alerts.yaml
+      register: alerts_apply
+      changed_when: "'created' in alerts_apply.stdout or 'configured' in alerts_apply.stdout"
+
+    - name: Remove temporary alerts file
+      file:
+        path: /tmp/infrastructure-alerts.yaml
+        state: absent
+  when: alerting_rules_enabled
+  tags: [monitoring, alerts]
+
+- name: Monitoring configuration summary
+  debug:
+    msg:
+      - "========================================="
+      - "Monitoring Stack Verification Complete"
+      - "========================================="
+      - "✓ Prometheus: {{ prometheus_ready.rc == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Grafana: {{ grafana_ready.rc == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Alertmanager: {{ alertmanager_pods.rc == 0 | ternary('Running', 'Pending') }}"
+      - "✓ ServiceMonitors: {{ servicemonitor_count }}"
+      - "✓ Active targets: {{ active_targets | default('N/A') }}"
+      - "✓ Alerting rules: {{ alerting_rules_enabled | ternary('Configured', 'Disabled') }}"
+      - "========================================="
+  tags: [monitoring]

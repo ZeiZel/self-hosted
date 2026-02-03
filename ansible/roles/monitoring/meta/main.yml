@@ -1,0 +1,22 @@
+galaxy_info:
+  role_name: monitoring
+  description: Prometheus/Grafana monitoring stack verification and configuration
+  author: Lvov Valery
+  license: MIT
+  min_ansible_version: 2.20.1
+
+  platforms:
+    - name: Ubuntu
+      versions:
+        - jammy
+        - focal
+
+  galaxy_tags:
+    - kubernetes
+    - monitoring
+    - prometheus
+    - grafana
+    - alerting
+    - observability
+
+dependencies: []

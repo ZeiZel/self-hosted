@@ -1,0 +1,238 @@
+---
+# Storage role main tasks
+# Deploys and configures OpenEBS storage provisioner
+
+- name: Create OpenEBS namespace
+  command: kubectl create namespace {{ storage_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+  register: ns_create
+  changed_when: "'created' in ns_create.stdout"
+  tags: [storage, namespace]
+
+- name: Add OpenEBS Helm repository
+  command: helm repo add openebs {{ openebs_helm_repo }}
+  register: helm_repo_add
+  changed_when: "'already exists' not in helm_repo_add.stderr"
+  failed_when: helm_repo_add.rc != 0 and 'already exists' not in helm_repo_add.stderr
+  tags: [storage, helm]
+
+- name: Update Helm repositories
+  command: helm repo update
+  changed_when: false
+  tags: [storage, helm]
+
+- name: Check if OpenEBS is already installed
+  command: helm list -n {{ storage_namespace }} -o json
+  register: helm_list
+  changed_when: false
+  tags: [storage, helm]
+
+- name: Parse Helm releases
+  set_fact:
+    openebs_installed: "{{ (helm_list.stdout | from_json) | selectattr('name', 'equalto', 'openebs') | list | length > 0 }}"
+  tags: [storage, helm]
+
+- name: Deploy OpenEBS via Helm
+  command: >
+    helm upgrade --install openebs openebs/openebs
+    --namespace {{ storage_namespace }}
+    --version {{ openebs_chart_version }}
+    --set analytics.enabled=false
+    --set localprovisioner.enabled={{ openebs_localpv_enabled }}
+    --set localprovisioner.basePath={{ openebs_hostpath_basepath }}
+    --set ndm.enabled=true
+    --set ndm.resources.requests.cpu={{ openebs_ndm_resources.requests.cpu }}
+    --set ndm.resources.requests.memory={{ openebs_ndm_resources.requests.memory }}
+    --set ndm.resources.limits.cpu={{ openebs_ndm_resources.limits.cpu }}
+    --set ndm.resources.limits.memory={{ openebs_ndm_resources.limits.memory }}
+    --set jiva.enabled={{ openebs_jiva_enabled }}
+    --set cstor.enabled={{ openebs_cstor_enabled }}
+    --set mayastor.enabled={{ openebs_mayastor_enabled }}
+    --wait
+    --timeout {{ verify_timeout }}s
+  register: openebs_deploy
+  changed_when: "'has been upgraded' in openebs_deploy.stdout or 'installed' in openebs_deploy.stdout"
+  tags: [storage, deploy]
+
+- name: Wait for OpenEBS pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n {{ storage_namespace }} --all
+    --timeout={{ verify_timeout }}s
+  register: openebs_ready
+  changed_when: false
+  tags: [storage, verify]
+
+- name: Get OpenEBS pods status
+  command: kubectl get pods -n {{ storage_namespace }}
+  register: openebs_pods
+  changed_when: false
+  tags: [storage, verify]
+
+- name: Display OpenEBS pods status
+  debug:
+    msg: "{{ openebs_pods.stdout_lines }}"
+  tags: [storage, verify]
+
+- name: Get available storage classes
+  command: kubectl get storageclass
+  register: storage_classes
+  changed_when: false
+  tags: [storage, storageclass]
+
+- name: Display storage classes
+  debug:
+    msg: "{{ storage_classes.stdout_lines }}"
+  tags: [storage, storageclass]
+
+- name: Check if storage class exists
+  command: kubectl get storageclass {{ storage_class_name }}
+  register: sc_check
+  changed_when: false
+  failed_when: false
+  tags: [storage, storageclass]
+
+- name: Create storage class if not exists
+  template:
+    src: storageclass.yaml.j2
+    dest: /tmp/storageclass.yaml
+    mode: '0644'
+  when: sc_check.rc != 0
+  tags: [storage, storageclass]
+
+- name: Apply storage class
+  command: kubectl apply -f /tmp/storageclass.yaml
+  when: sc_check.rc != 0
+  register: sc_apply
+  changed_when: "'created' in sc_apply.stdout or 'configured' in sc_apply.stdout"
+  tags: [storage, storageclass]
+
+- name: Remove temporary storage class file
+  file:
+    path: /tmp/storageclass.yaml
+    state: absent
+  when: sc_check.rc != 0
+  tags: [storage, storageclass]
+
+- name: Set default storage class
+  command: >
+    kubectl patch storageclass {{ storage_class_name }}
+    -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+  when: storage_class_default
+  register: sc_default
+  changed_when: "'patched' in sc_default.stdout"
+  tags: [storage, storageclass]
+
+- name: Create test PVC
+  block:
+    - name: Create test PVC manifest
+      copy:
+        content: |
+          apiVersion: v1
+          kind: PersistentVolumeClaim
+          metadata:
+            name: {{ test_pvc_name }}
+            namespace: {{ test_pvc_namespace }}
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            storageClassName: {{ storage_class_name }}
+            resources:
+              requests:
+                storage: {{ test_pvc_size }}
+        dest: /tmp/test-pvc.yaml
+        mode: '0644'
+
+    - name: Apply test PVC
+      command: kubectl apply -f /tmp/test-pvc.yaml
+      register: test_pvc_create
+      changed_when: "'created' in test_pvc_create.stdout"
+
+    - name: Create test pod using PVC
+      command: >
+        kubectl run storage-test-pod
+        --image=busybox:1.28
+        --restart=Never
+        --overrides='{"spec":{"volumes":[{"name":"test-volume","persistentVolumeClaim":{"claimName":"{{ test_pvc_name }}"}}],"containers":[{"name":"storage-test-pod","image":"busybox:1.28","command":["sh","-c","echo 'Storage test' > /mnt/test.txt && sleep 30"],"volumeMounts":[{"name":"test-volume","mountPath":"/mnt"}]}]}}'
+      register: test_pod_create
+      changed_when: "'created' in test_pod_create.stdout"
+      failed_when: false
+
+    - name: Wait for test pod to complete
+      command: >
+        kubectl wait --for=condition=Ready
+        pod/storage-test-pod
+        --timeout=120s
+      register: test_pod_ready
+      changed_when: false
+      failed_when: false
+
+    - name: Check PVC status
+      command: kubectl get pvc {{ test_pvc_name }} -n {{ test_pvc_namespace }}
+      register: pvc_status
+      changed_when: false
+
+    - name: Display PVC status
+      debug:
+        msg: "{{ pvc_status.stdout_lines }}"
+
+    - name: Verify PVC is bound
+      assert:
+        that:
+          - "'Bound' in pvc_status.stdout"
+        fail_msg: "Test PVC failed to bind"
+        success_msg: "Test PVC successfully bound"
+
+    - name: Cleanup test pod
+      command: kubectl delete pod storage-test-pod --ignore-not-found
+      changed_when: false
+
+    - name: Cleanup test PVC
+      command: kubectl delete pvc {{ test_pvc_name }} -n {{ test_pvc_namespace }} --ignore-not-found
+      changed_when: false
+
+    - name: Remove test PVC file
+      file:
+        path: /tmp/test-pvc.yaml
+        state: absent
+  when: test_pvc_enabled
+  tags: [storage, verify, test]
+
+- name: Get persistent volumes
+  command: kubectl get pv
+  register: pv_list
+  changed_when: false
+  failed_when: false
+  tags: [storage, verify]
+
+- name: Display persistent volumes
+  debug:
+    msg: "{{ pv_list.stdout_lines }}"
+  when: pv_list.rc == 0
+  tags: [storage, verify]
+
+- name: Get all PVCs across namespaces
+  command: kubectl get pvc -A
+  register: pvc_list
+  changed_when: false
+  tags: [storage, verify]
+
+- name: Display all PVCs
+  debug:
+    msg: "{{ pvc_list.stdout_lines }}"
+  tags: [storage, verify]
+
+- name: Storage configuration summary
+  debug:
+    msg:
+      - "========================================="
+      - "OpenEBS Storage Configuration Complete"
+      - "========================================="
+      - "✓ OpenEBS version: {{ openebs_version }}"
+      - "✓ Namespace: {{ storage_namespace }}"
+      - "✓ Storage class: {{ storage_class_name }}"
+      - "✓ Default class: {{ storage_class_default }}"
+      - "✓ Base path: {{ openebs_hostpath_basepath }}"
+      - "✓ Reclaim policy: {{ storage_class_reclaim_policy }}"
+      - "✓ Test PVC: {{ test_pvc_enabled | ternary('PASSED', 'SKIPPED') }}"
+      - "========================================="
+  tags: [storage]

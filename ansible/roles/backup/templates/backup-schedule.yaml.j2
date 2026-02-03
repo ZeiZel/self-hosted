@@ -1,0 +1,31 @@
+---
+apiVersion: velero.io/v1
+kind: Schedule
+metadata:
+  name: {{ item.name }}
+  namespace: {{ velero_namespace }}
+spec:
+  schedule: "{{ item.schedule }}"
+  template:
+    includedNamespaces:
+{% if item.include_namespaces == "*" %}
+      - "*"
+{% else %}
+{{ item.include_namespaces | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
+{% if item.exclude_namespaces is defined %}
+    excludedNamespaces:
+{{ item.exclude_namespaces.split(',') | to_nice_yaml | indent(6, first=True) }}
+{% endif %}
+    ttl: {{ item.ttl }}
+    storageLocation: {{ velero_backup_location }}
+    volumeSnapshotLocations:
+      - {{ velero_backup_location }}
+    defaultVolumesToRestic: true
+    includeClusterResources: true
+    labelSelector:
+      matchExpressions:
+        - key: velero.io/exclude-from-backup
+          operator: NotIn
+          values:
+            - "true"

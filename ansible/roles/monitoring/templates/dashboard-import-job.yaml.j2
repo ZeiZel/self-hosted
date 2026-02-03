@@ -1,0 +1,37 @@
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: grafana-dashboard-import
+  namespace: {{ monitoring_namespace }}
+spec:
+  template:
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: dashboard-importer
+          image: curlimages/curl:8.11.1
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -e
+              GRAFANA_URL="http://{{ grafana_service_name }}.{{ monitoring_namespace }}.svc.cluster.local:{{ grafana_port }}"
+
+              echo "Importing Grafana dashboards..."
+              {% for dashboard in grafana_dashboards %}
+              echo "Importing {{ dashboard.name }} (ID: {{ dashboard.id }})"
+              curl -X POST "${GRAFANA_URL}/api/dashboards/import" \
+                -H "Content-Type: application/json" \
+                -u "{{ grafana_admin_user }}:${GRAFANA_PASSWORD}" \
+                -d "{\"dashboard\":{\"id\":{{ dashboard.id }}},\"overwrite\":true,\"inputs\":[]}" \
+                || echo "Failed to import {{ dashboard.name }}"
+              {% endfor %}
+
+              echo "Dashboard import complete"
+          env:
+            - name: GRAFANA_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ grafana_service_name }}
+                  key: admin-password
