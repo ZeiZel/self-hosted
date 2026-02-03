@@ -104,3 +104,14 @@ vault:
   # 4. Create role binding ServiceAccount to Vault policy
   # See: kubernetes/docs/VAULT_MIGRATION.md
 
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  egressRules:
+    allowDatabases: true
+    allowConsul: true
+    allowVault: true
+    allowAuthentik: false
+  ingress: []
+  egress: []

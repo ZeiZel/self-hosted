@@ -150,3 +150,14 @@ vault:
   # 2. Create secret at secret/data/vaultwarden/database with connection_string
   # 3. Enable Kubernetes auth method in Vault
   # 4. Create role binding ServiceAccount to Vault policy
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  egressRules:
+    allowDatabases: true
+    allowConsul: true
+    allowVault: true
+    allowAuthentik: false
+  ingress: []
+  egress: []

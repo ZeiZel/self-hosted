@@ -89,3 +89,14 @@ certManager:
 # Network Policies for namespace isolation
 networkPolicies:
   enabled: true
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  egressRules:
+    allowDatabases: false
+    allowConsul: true
+    allowVault: true
+    allowAuthentik: false
+  ingress: []
+  egress: []

@@ -160,3 +160,14 @@ authentik:
   host: "https://authentik.local"
   outpostPath: "/outpost.goauthentik.io/auth/traefik"
 
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  egressRules:
+    allowDatabases: false
+    allowConsul: true
+    allowVault: true
+    allowAuthentik: false
+  ingress: []
+  egress: []
