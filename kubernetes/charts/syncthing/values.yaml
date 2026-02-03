@@ -169,3 +169,24 @@ devices:
   #   deviceID: "XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
   #   address: "dynamic"
   #   compression: "metadata"
+
+# Service Account
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
+  annotations: {}
+  name: ""
+
+# Metrics
+metrics:
+  enabled: true
+  port: "metrics"
+  path: "/metrics"
+  interval: "30s"
+  scrapeTimeout: "10s"
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1

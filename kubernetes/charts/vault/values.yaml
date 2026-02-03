@@ -134,3 +134,18 @@ networkPolicy:
     allowAuthentik: false
   ingress: []
   egress: []
+
+# Service Account
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
+  annotations: {}
+  name: ""
+
+# Metrics
+metrics:
+  enabled: true
+  port: "metrics"
+  path: "/metrics"
+  interval: "30s"
+  scrapeTimeout: "10s"

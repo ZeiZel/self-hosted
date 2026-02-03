@@ -1,0 +1,42 @@
+{{- if .Values.rbac.create -}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "namespaces.fullname" . }}
+  labels:
+    {{- include "namespaces.labels" . | nindent 4 }}
+rules:
+  # Minimal pod read permissions
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list"]
+  # ConfigMap permissions
+  - apiGroups: [""]
+    resources: ["configmaps"]
+    verbs: ["get", "list"]
+  # Secret read permissions (only if needed)
+  {{- if .Values.rbac.allowSecrets }}
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get"]
+  {{- end }}
+  {{- with .Values.rbac.rules }}
+  {{- toYaml . | nindent 2 }}
+  {{- end }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "namespaces.fullname" . }}
+  labels:
+    {{- include "namespaces.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "namespaces.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "namespaces.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}

@@ -260,3 +260,23 @@ networkPolicy:
     allowAuthentik: true
   ingress: []
   egress: []
+
+# RBAC
+rbac:
+  create: true
+  allowSecrets: false
+  rules: []
+
+# Metrics
+metrics:
+  enabled: true
+  port: "metrics"
+  path: "/metrics"
+  interval: "30s"
+  scrapeTimeout: "10s"
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
