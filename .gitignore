@@ -1,5 +1,3 @@
-.claude
-
 # Misc
 .env
 *.env
@@ -33,3 +31,5 @@
 
 # bv (beads viewer) local config and caches
 .bv/
+
+local_sample.md

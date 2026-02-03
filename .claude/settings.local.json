@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(bd list:*)",
+      "Bash(bd --help:*)",
+      "Bash(bd create:*)",
+      "Bash(bd epic:*)",
+      "Bash(bd label:*)",
+      "Bash(bd dep:*)",
+      "Bash(bd sync:*)",
+      "Bash(bd count:*)",
+      "Bash(bd status:*)",
+      "Bash(bd update:*)",
+      "Bash(bd close:*)",
+      "WebSearch",
+      "Bash(ansible-playbook:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push)",
+      "Bash(bd ready:*)",
+      "Bash(bd issues list:*)",
+      "Bash(done)",
+      "Bash(chmod:*)",
+      "Bash(bash scripts/add-networkpolicy.sh:*)",
+      "Bash(bash:*)",
+      "Bash(bd show:*)"
+    ]
+  }
+}
