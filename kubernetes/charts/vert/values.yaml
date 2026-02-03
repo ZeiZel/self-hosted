@@ -98,3 +98,22 @@ networkPolicy:
     allowAuthentik: false
   ingress: []
   egress: []
+
+# Service Account
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
+  annotations: {}
+  name: ""
+
+# RBAC
+rbac:
+  create: true
+  allowSecrets: false
+  rules: []
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1

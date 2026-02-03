@@ -206,3 +206,16 @@ networkPolicy:
     allowAuthentik: true
   ingress: []
   egress: []
+
+# Service Account
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
+  annotations: {}
+  name: ""
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1
