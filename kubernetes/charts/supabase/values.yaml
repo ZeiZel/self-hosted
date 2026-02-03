@@ -433,3 +433,14 @@ nodeSelector: {}
 
 # Tolerations
 tolerations: []
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  egressRules:
+    allowDatabases: true
+    allowConsul: true
+    allowVault: true
+    allowAuthentik: false
+  ingress: []
+  egress: []

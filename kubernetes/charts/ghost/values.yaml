@@ -147,3 +147,14 @@ autoscaling:
 nodeSelector: {}
 tolerations: []
 affinity: {}
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  egressRules:
+    allowDatabases: true
+    allowConsul: true
+    allowVault: true
+    allowAuthentik: true
+  ingress: []
+  egress: []
