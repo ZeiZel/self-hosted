@@ -1,3 +1,47 @@
 ---
-- name: Init helmfile
-  command: "helmfile init --force"
+# Infrastructure role main task router
+# Orchestrates Helmfile-based Kubernetes deployments with nested tags
+
+- name: Validate required variables
+  assert:
+    that:
+      - kubernetes_path is defined
+      - helmfile_path is defined
+      - kubeconfig_path is defined
+    fail_msg: "Required paths not configured. Check defaults/main.yml"
+  tags: [infrastructure, always]
+
+- name: Display deployment mode
+  debug:
+    msg:
+      - "Infrastructure deployment starting"
+      - "Environment: {{ helmfile_environment }}"
+      - "Kubernetes path: {{ kubernetes_path }}"
+      - "Kubeconfig: {{ kubeconfig_path }}"
+  tags: [infrastructure, always]
+
+# Prerequisites: helmfile, helm, helm-diff, SOPS, GPG keys
+- name: Include prerequisites tasks
+  include_tasks: prerequisites.yml
+  tags: [infrastructure, prerequisites]
+
+# Base infrastructure: namespace → traefik → consul → vault → cert-manager → authentik
+- name: Include base infrastructure tasks
+  include_tasks: base.yml
+  tags: [infrastructure, base]
+
+# Application services: stoat, stalwart, youtrack, hub, teamcity, vaultwarden
+- name: Include application services tasks
+  include_tasks: apps.yml
+  tags: [infrastructure, apps]
+
+# Verification: all pods Running, helm tests pass
+- name: Include verification tasks
+  include_tasks: verify.yml
+  when: verify_deployment | default(true)
+  tags: [infrastructure, verify]
+
+- name: Infrastructure deployment complete
+  debug:
+    msg: "All infrastructure components deployed successfully"
+  tags: [infrastructure, always]

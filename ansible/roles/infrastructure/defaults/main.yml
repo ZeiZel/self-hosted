@@ -1,0 +1,83 @@
+---
+# Infrastructure role defaults
+# Helmfile-based Kubernetes deployment orchestration
+
+# Paths
+kubernetes_path: "{{ lookup('env', 'HOME') }}/projects/self-hosted/kubernetes"
+helmfile_path: "{{ kubernetes_path }}/helmfile.yaml"
+kubeconfig_path: "{{ lookup('env', 'HOME') }}/.kube/config"
+sops_key_path: "{{ lookup('env', 'HOME') }}/.gnupg"
+
+# Helmfile configuration
+helmfile_environment: "k8s"
+helmfile_timeout: 600
+helmfile_concurrency: 4
+
+# Helm configuration
+helm_version: "v3.17.0"
+helm_diff_version: "3.10.0"
+helmfile_version: "0.169.1"
+
+# SOPS configuration
+sops_version: "3.9.3"
+sops_age_key_file: "{{ lookup('env', 'HOME') }}/.config/sops/age/keys.txt"
+
+# Base infrastructure services (deployment order is critical!)
+base_services:
+  - name: namespaces
+    namespace: default
+    wait_timeout: 60
+  - name: traefik
+    namespace: ingress
+    wait_timeout: 300
+    health_check: "kubectl get pods -n ingress -l app.kubernetes.io/name=traefik"
+  - name: consul
+    namespace: service
+    wait_timeout: 300
+    health_check: "kubectl get pods -n service -l app.kubernetes.io/name=consul"
+  - name: vault
+    namespace: service
+    wait_timeout: 300
+    health_check: "kubectl get pods -n service -l app.kubernetes.io/name=vault"
+    requires_unseal: true
+  - name: cert-manager
+    namespace: service
+    wait_timeout: 180
+    health_check: "kubectl get pods -n service -l app.kubernetes.io/name=cert-manager"
+  - name: authentik
+    namespace: service
+    wait_timeout: 300
+    health_check: "kubectl get pods -n service -l app.kubernetes.io/name=authentik"
+
+# Application services (depend on base)
+app_services:
+  - name: stoat
+    namespace: social
+  - name: stalwart
+    namespace: social
+  - name: youtrack
+    namespace: code
+  - name: hub
+    namespace: code
+  - name: teamcity
+    namespace: code
+  - name: authentik
+    namespace: service
+  - name: vaultwarden
+    namespace: data
+
+# Vault configuration
+vault_address: "http://vault.service.svc.cluster.local:8200"
+vault_unseal_threshold: 3
+vault_init_secret_shares: 5
+vault_init_secret_threshold: 3
+vault_auto_unseal: false
+
+# Deployment verification
+verify_pod_ready_timeout: 300
+verify_service_ready_timeout: 180
+verify_helm_test_timeout: 120
+
+# Rollback on failure
+rollback_on_failure: true
+skip_on_error: false

@@ -1,0 +1,208 @@
+---
+# Base infrastructure deployment
+# Critical deployment order: namespace → traefik → consul → vault → cert-manager → authentik
+
+- name: Display base infrastructure deployment plan
+  debug:
+    msg:
+      - "Deploying base infrastructure services in strict order"
+      - "Services: {{ base_services | map(attribute='name') | list | join(', ') }}"
+  tags: [infrastructure, base]
+
+# 1. Namespaces (must be first)
+- name: Deploy namespaces
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=namespaces
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: namespaces_deploy
+  changed_when: "'has been upgraded' in namespaces_deploy.stdout or 'installed' in namespaces_deploy.stdout"
+  tags: [infrastructure, base, namespace]
+
+- name: Wait for namespace creation
+  pause:
+    seconds: 10
+  tags: [infrastructure, base, namespace]
+
+# 2. Traefik (ingress controller)
+- name: Deploy Traefik ingress controller
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=traefik
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: traefik_deploy
+  changed_when: "'has been upgraded' in traefik_deploy.stdout or 'installed' in traefik_deploy.stdout"
+  tags: [infrastructure, base, traefik]
+
+- name: Wait for Traefik pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n ingress -l app.kubernetes.io/name=traefik
+    --timeout=300s
+  register: traefik_ready
+  changed_when: false
+  tags: [infrastructure, base, traefik]
+
+- name: Verify Traefik service
+  command: kubectl get svc -n ingress traefik
+  register: traefik_svc
+  changed_when: false
+  tags: [infrastructure, base, traefik]
+
+- name: Display Traefik status
+  debug:
+    msg: "{{ traefik_svc.stdout_lines }}"
+  tags: [infrastructure, base, traefik]
+
+# 3. Consul (service mesh & KV store)
+- name: Deploy Consul
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=consul
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: consul_deploy
+  changed_when: "'has been upgraded' in consul_deploy.stdout or 'installed' in consul_deploy.stdout"
+  tags: [infrastructure, base, consul]
+
+- name: Wait for Consul pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n service -l app.kubernetes.io/name=consul
+    --timeout=300s
+  register: consul_ready
+  changed_when: false
+  tags: [infrastructure, base, consul]
+
+- name: Verify Consul cluster health
+  command: kubectl exec -n service consul-server-0 -- consul members
+  register: consul_members
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, base, consul]
+
+- name: Display Consul cluster members
+  debug:
+    msg: "{{ consul_members.stdout_lines }}"
+  when: consul_members.rc == 0
+  tags: [infrastructure, base, consul]
+
+# 4. Vault (secrets management)
+- name: Deploy Vault
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=vault
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: vault_deploy
+  changed_when: "'has been upgraded' in vault_deploy.stdout or 'installed' in vault_deploy.stdout"
+  tags: [infrastructure, base, vault]
+
+- name: Wait for Vault pods to be created
+  command: kubectl get pods -n service -l app.kubernetes.io/name=vault
+  register: vault_pods
+  until: vault_pods.stdout != ""
+  retries: 30
+  delay: 10
+  changed_when: false
+  tags: [infrastructure, base, vault]
+
+- name: Display Vault pod status
+  debug:
+    msg: "{{ vault_pods.stdout_lines }}"
+  tags: [infrastructure, base, vault]
+
+# 5. Vault unsealing (critical step)
+- name: Include Vault unseal tasks
+  include_tasks: vault_unseal.yml
+  tags: [infrastructure, base, vault, unseal]
+
+# 6. cert-manager (TLS certificate management)
+- name: Deploy cert-manager
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=cert-manager
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: certmanager_deploy
+  changed_when: "'has been upgraded' in certmanager_deploy.stdout or 'installed' in certmanager_deploy.stdout"
+  tags: [infrastructure, base, cert-manager]
+
+- name: Wait for cert-manager pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n service -l app.kubernetes.io/name=cert-manager
+    --timeout=180s
+  register: certmanager_ready
+  changed_when: false
+  tags: [infrastructure, base, cert-manager]
+
+- name: Verify cert-manager webhook
+  command: kubectl get validatingwebhookconfigurations cert-manager-webhook
+  register: certmanager_webhook
+  changed_when: false
+  tags: [infrastructure, base, cert-manager]
+
+# 7. Authentik (SSO & identity provider)
+- name: Deploy Authentik
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=authentik
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: authentik_deploy
+  changed_when: "'has been upgraded' in authentik_deploy.stdout or 'installed' in authentik_deploy.stdout"
+  tags: [infrastructure, base, authentik]
+
+- name: Wait for Authentik pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n service -l app.kubernetes.io/name=authentik
+    --timeout=300s
+  register: authentik_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, base, authentik]
+
+- name: Display Authentik deployment status
+  debug:
+    msg: "Authentik deployed (may still be initializing database)"
+  tags: [infrastructure, base, authentik]
+
+- name: Base infrastructure deployment complete
+  debug:
+    msg:
+      - "All base infrastructure services deployed"
+      - "✓ Namespaces"
+      - "✓ Traefik (ingress)"
+      - "✓ Consul (service mesh)"
+      - "✓ Vault (secrets)"
+      - "✓ cert-manager (TLS)"
+      - "✓ Authentik (SSO)"
+  tags: [infrastructure, base]
