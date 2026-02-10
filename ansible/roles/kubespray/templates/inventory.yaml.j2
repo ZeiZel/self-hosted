@@ -1,4 +1,8 @@
 all:
+  vars:
+    ansible_user: {{ kubespray_ansible_user | default(ansible_user) }}
+    ansible_become: true
+    ansible_ssh_common_args: '-o StrictHostKeyChecking=no'
   hosts:
 {% for host in groups['k8s_masters'] + groups['k8s_workers'] %}
     {{ hostvars[host]['inventory_hostname'] }}:
@@ -14,7 +18,7 @@ all:
 {% endfor %}
     kube_node:
       hosts:
-{% for host in groups['k8s_workers'] %}
+{% for host in groups['k8s_masters'] + groups['k8s_workers'] %}
         {{ hostvars[host]['inventory_hostname'] }}:
 {% endfor %}
     etcd:

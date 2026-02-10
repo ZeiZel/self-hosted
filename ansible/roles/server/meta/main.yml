@@ -1,0 +1,32 @@
+---
+# Meta information for server role
+
+galaxy_info:
+  author: zeizel
+  description: |
+    Unified server configuration role for base setup, security hardening, and VPS optimization.
+    Combines: setup_server, vps_setup, security
+
+    Tags:
+      - server: Run all server tasks
+      - base: Basic server setup (packages, timezone)
+      - security: Security hardening (users, SSH, firewall, fail2ban)
+      - vps: VPS-specific optimizations (swap, sysctl tuning)
+
+    Variables:
+      - server_type: 'node' (default) or 'vps' - determines if VPS tasks run
+  company: self-hosted
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+
+dependencies: []

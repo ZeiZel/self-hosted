@@ -1,0 +1,33 @@
+version: '3.8'
+
+services:
+  metube:
+    image: ghcr.io/alexta69/metube:latest
+    container_name: metube
+    restart: unless-stopped
+    ports:
+      - "8081:8081"
+    environment:
+      - UID=${UID:-1000}
+      - GID=${GID:-1000}
+      - UMASK=${UMASK:-022}
+      - OUTPUT_TEMPLATE=%(title)s.%(ext)s
+      - YTDL_OPTIONS={"cookiefile":"/cookies/cookies.txt"}
+    volumes:
+      - metube_downloads:/downloads
+      - metube_cookies:/cookies
+    networks:
+      - metube-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  metube_downloads:
+  metube_cookies:
+
+networks:
+  metube-network:
+    driver: bridge

@@ -27,18 +27,41 @@
   debug:
     msg: "Deploying using {{ kubespray_playbook }} (cluster exists: {{ cluster_exists.stat.exists }})"
 
+- name: Setup SSH key for kubespray
+  openssh_keypair:
+    path: /root/.ssh/id_rsa
+    type: rsa
+    size: 4096
+    state: present
+  register: ssh_key
+
+- name: Add SSH key to authorized_keys on localhost
+  authorized_key:
+    user: "{{ ansible_user }}"
+    key: "{{ ssh_key.public_key }}"
+    state: present
+
+- name: Test SSH connectivity to self
+  command: ssh -o StrictHostKeyChecking=no {{ ansible_user }}@{{ ansible_host }} "echo ok"
+  changed_when: false
+  retries: 3
+  delay: 5
+
 - name: Run kubespray cluster deployment
-  command: >
+  shell: >
+    cd {{ kubespray_install_dir }}/kubespray &&
     {{ kubespray_install_dir }}/venv/bin/ansible-playbook
     -i {{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml
-    {{ kubespray_install_dir }}/kubespray/{{ kubespray_playbook }}
+    {{ kubespray_playbook }}
     -b
     -v
+    --private-key /root/.ssh/id_rsa
   environment:
     ANSIBLE_HOST_KEY_CHECKING: "False"
+    ANSIBLE_ROLES_PATH: "{{ kubespray_install_dir }}/kubespray/roles"
   register: kubespray_deploy
-  async: 3600
-  poll: 30
+  async: 7200
+  poll: 60
 
 - name: Wait for kubespray deployment to complete
   async_status:

@@ -157,17 +157,11 @@ export default async (): Promise<Config> => {
 		},
 		i18n: {
 			defaultLocale: 'en',
-			locales: ['en', 'ru'],
+			locales: ['en'],
 			localeConfigs: {
 				en: {
 					label: 'English',
 					htmlLang: 'en-US',
-					direction: 'ltr',
-					calendar: 'gregory',
-				},
-				ru: {
-					label: 'Русский',
-					htmlLang: 'ru-RU',
 					direction: 'ltr',
 					calendar: 'gregory',
 				},

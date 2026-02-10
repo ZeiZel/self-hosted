@@ -1,0 +1,39 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "openclaw.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "openclaw.labels" . | nindent 4 }}
+  annotations:
+    {{- if .Values.ingress.tls.enabled }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer | default "letsencrypt" | quote }}
+    {{- end }}
+    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    {{- if .Values.authentik.enabled }}
+    traefik.ingress.kubernetes.io/router.middlewares: {{ .Values.authentik.middleware | default "service-authentik-forward-auth@kubernetescrd" }}
+    {{- end }}
+    {{- if .Values.ingress.annotations }}
+    {{- toYaml .Values.ingress.annotations | nindent 4 }}
+    {{- end }}
+spec:
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ include "openclaw.fullname" . }}
+                port:
+                  number: {{ .Values.openclaw.service.port }}
+{{- end }}

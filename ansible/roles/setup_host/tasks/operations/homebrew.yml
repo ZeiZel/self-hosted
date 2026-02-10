@@ -23,6 +23,7 @@
     NONINTERACTIVE: "1"
 
 - name: Add Homebrew to PATH for Linux (current session)
+  become: true
   set_fact:
     ansible_env: "{{ ansible_env | combine({'PATH': homebrew_install_path + '/bin:' + ansible_env.PATH}) }}"
   when:
@@ -30,6 +31,7 @@
     - not homebrew_check.stat.exists
 
 - name: Add Homebrew to shell profile (macOS)
+  become: true
   lineinfile:
     path: "{{ ansible_env.HOME }}/.zprofile"
     line: 'eval "$({{ homebrew_install_path }}/bin/brew shellenv)"'
@@ -38,6 +40,7 @@
   when: ansible_facts['os_family'] == "Darwin"
 
 - name: Add Homebrew to shell profile (Linux bash)
+  become: true
   blockinfile:
     path: "{{ ansible_env.HOME }}/.bashrc"
     block: |

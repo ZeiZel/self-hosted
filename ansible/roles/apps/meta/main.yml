@@ -1,0 +1,41 @@
+---
+# Meta information for apps role
+
+galaxy_info:
+  author: zeizel
+  description: |
+    Post-installation configuration for all applications.
+
+    This role handles:
+    - Vault initialization and unsealing
+    - Authentik OIDC provider setup
+    - GitLab initial configuration
+    - JetBrains stack (Hub, YouTrack, TeamCity) wizard tokens
+    - Coder workspace setup
+    - Database management tools (Bytebase)
+    - Productivity apps (Affine, Nextcloud)
+    - Automation platforms (N8n, Kestra)
+    - Communication (Stoat, Stalwart)
+    - Data services (Vaultwarden, Rybbit)
+
+    Tags:
+      Core: vault, authentik, gitlab
+      JetBrains: jetbrains, hub, youtrack, teamcity
+      Infrastructure: coder, bytebase, harbor
+      Productivity: affine, nextcloud
+      Automation: n8n, kestra
+      Social: stoat, stalwart
+      Data: vaultwarden, rybbit
+
+  company: self-hosted
+  license: MIT
+  min_ansible_version: "2.9"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+
+dependencies:
+  - role: infrastructure

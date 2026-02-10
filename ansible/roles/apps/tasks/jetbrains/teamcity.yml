@@ -1,0 +1,127 @@
+---
+# JetBrains TeamCity post-installation configuration
+# - Wait for TeamCity to be ready
+# - Get super user token
+# - Configure database and agents
+
+- name: Wait for TeamCity server pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n code -l app.kubernetes.io/name=teamcity,app.kubernetes.io/component=server
+    --timeout={{ teamcity_wait_timeout }}s
+  changed_when: false
+
+- name: Check TeamCity startup status
+  command: >
+    kubectl logs -n code -l app.kubernetes.io/name=teamcity,app.kubernetes.io/component=server --tail=100
+  register: teamcity_logs
+  changed_when: false
+
+- name: Check if TeamCity requires initial setup
+  set_fact:
+    teamcity_needs_setup: "{{ 'super user' in teamcity_logs.stdout.lower() or 'authentication token' in teamcity_logs.stdout.lower() }}"
+
+- name: Get TeamCity super user token from logs
+  command: >
+    kubectl logs -n code -l app.kubernetes.io/name=teamcity,app.kubernetes.io/component=server |
+    grep -oP '(?<=Super user authentication token: )[0-9]+' | tail -1
+  register: teamcity_superuser_token
+  changed_when: false
+  failed_when: false
+  when: teamcity_needs_setup
+
+- name: Get TeamCity super user token from file
+  command: >
+    kubectl exec -n code deployment/teamcity-server --
+    cat /data/teamcity_server/datadir/system/superuser.token
+  register: teamcity_superuser_file
+  changed_when: false
+  failed_when: false
+  when:
+    - teamcity_needs_setup
+    - teamcity_superuser_token.stdout | length == 0
+
+- name: Set TeamCity super user token
+  set_fact:
+    teamcity_token: >-
+      {{
+        teamcity_superuser_token.stdout
+        if teamcity_superuser_token.stdout | default('') | length > 0
+        else teamcity_superuser_file.stdout | default('')
+      }}
+  when: teamcity_needs_setup
+
+- name: Wait for TeamCity agent pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n code -l app.kubernetes.io/name=teamcity,app.kubernetes.io/component=agent
+    --timeout={{ teamcity_wait_timeout }}s
+  changed_when: false
+  failed_when: false
+
+- name: Get number of connected agents
+  command: >
+    kubectl get pods -n code -l app.kubernetes.io/name=teamcity,app.kubernetes.io/component=agent
+    --no-headers | wc -l
+  register: teamcity_agents_count
+  changed_when: false
+
+- name: Save TeamCity setup information
+  copy:
+    content: |
+      JetBrains TeamCity Setup Information
+      =====================================
+      URL: {{ teamcity_url }}
+
+      {% if teamcity_token is defined and teamcity_token | trim | length > 0 %}
+      Super User Token: {{ teamcity_token | trim }}
+      Admin Login URL: {{ teamcity_url }}/login.html?super=1
+      {% else %}
+      Super User Token: Check server logs:
+        kubectl logs -n code -l app.kubernetes.io/name=teamcity,app.kubernetes.io/component=server | grep -i "authentication token"
+      {% endif %}
+
+      Build Agents: {{ teamcity_agents_count.stdout | trim }}
+
+      Manual steps required:
+      1. Open admin login URL with super user token
+      2. Configure database connection (PostgreSQL)
+      3. Apply license (JetBrains account or license key)
+      4. Create admin user account
+      5. Connect to Hub ({{ hub_url }}) for SSO
+      6. Authorize build agents
+      7. Configure VCS roots (GitLab integration)
+      8. Set up build configurations
+    dest: "{{ teamcity_credentials_file }}"
+    mode: '0600'
+  delegate_to: localhost
+
+- name: Check TeamCity health endpoint
+  uri:
+    url: "{{ teamcity_url }}/app/rest/server"
+    method: GET
+    status_code: [200, 401, 503]
+    validate_certs: "{{ teamcity_validate_certs }}"
+  register: teamcity_health
+  retries: 5
+  delay: 15
+  until: teamcity_health.status in [200, 401]
+  failed_when: false
+
+- name: Display TeamCity configuration status
+  debug:
+    msg: |
+      JetBrains TeamCity Configuration
+      =================================
+      URL: {{ teamcity_url }}
+      Status: {{ 'Running' if teamcity_health.status in [200, 401] else 'Starting up' }}
+      Needs Setup: {{ teamcity_needs_setup | default(false) }}
+      Build Agents: {{ teamcity_agents_count.stdout | trim }}
+
+      {% if teamcity_token is defined and teamcity_token | trim | length > 0 %}
+      SUPER USER TOKEN: {{ teamcity_token | trim }}
+      {% else %}
+      TOKEN NOT FOUND - Check logs manually
+      {% endif %}
+
+      Credentials saved to: {{ teamcity_credentials_file }}

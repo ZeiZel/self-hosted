@@ -1,0 +1,62 @@
+namespace: automation
+
+image:
+  repository: alpine/openclaw
+  tag: "1.0.0"
+
+openclaw:
+  replicaCount: 1
+
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+persistence:
+  config:
+    enabled: true
+    storageClass: standard
+    size: 10Gi
+
+  workspace:
+    enabled: true
+    storageClass: standard
+    size: 50Gi
+
+ingress:
+  enabled: true
+  className: traefik
+  host: openclaw.{{ .Values.infra.host }}
+  tls:
+    enabled: true
+    secretName: openclaw-tls
+
+consul:
+  enabled: true
+  tags:
+    - openclaw
+    - ai-assistant
+
+authentik:
+  enabled: true
+  middleware: "service-authentik-forward-auth@kubernetescrd"
+
+vault:
+  enabled: true
+  role: "openclaw"
+  secretPath: "secret/data/openclaw/secrets"
+
+networkPolicy:
+  enabled: true
+  egressRules:
+    allowDatabases: false
+    allowConsul: true
+    allowVault: true
+    allowAuthentik: true
+    allowExternalHTTPS: true
+
+metrics:
+  enabled: true

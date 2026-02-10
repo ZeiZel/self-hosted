@@ -1,0 +1,57 @@
+---
+# Security hardening tasks
+# Tag: security
+
+- name: Display security setup information
+  debug:
+    msg: |
+      Security Hardening Starting...
+      SSH Port: {{ ssh.port | default(2678) }}
+      User: {{ user.name | default('admin') }}
+  tags:
+    - security
+
+- name: Include user management tasks
+  include_tasks: users.yml
+  tags:
+    - security
+    - users
+
+- name: Include SSH key deployment tasks
+  include_tasks: ssh_keys.yml
+  tags:
+    - security
+    - ssh
+    - ssh-keys
+
+- name: Include SSH hardening tasks
+  include_tasks: ssh_hardening.yml
+  tags:
+    - security
+    - ssh
+
+- name: Include firewall configuration
+  include_tasks: firewall.yml
+  tags:
+    - security
+    - firewall
+
+- name: Include system hardening tasks
+  include_tasks: system_hardening.yml
+  tags:
+    - security
+    - hardening
+
+- name: Include fail2ban tasks
+  include_tasks: fail2ban.yml
+  tags:
+    - security
+    - fail2ban
+
+- name: Display security setup completion
+  debug:
+    msg: |
+      Security hardening completed!
+      SSH connection: ssh -p {{ ssh.port | default(2678) }} {{ user.name | default('admin') }}@{{ ansible_host }}
+  tags:
+    - security

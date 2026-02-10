@@ -1,0 +1,49 @@
+---
+# Main entry point for server role
+# This role handles base server setup, security hardening, and VPS-specific configuration
+#
+# Tags:
+#   - server: Run all server tasks
+#   - base: Basic server setup (packages, timezone, reboot check)
+#   - security: Security hardening (users, SSH, firewall, fail2ban)
+#   - vps: VPS-specific optimizations (swap, sysctl, services)
+
+- name: Display server role information
+  debug:
+    msg: |
+      Server Role Starting...
+      Available operations (use tags to select):
+        - base: Basic server setup (packages, timezone)
+        - security: Security hardening (users, SSH, firewall, fail2ban)
+        - vps: VPS-specific optimizations (swap, sysctl tuning)
+  tags:
+    - always
+
+# =============================================================================
+# BASE SETUP - Basic server configuration
+# =============================================================================
+- name: Include base setup tasks
+  include_tasks: base/main.yml
+  tags:
+    - server
+    - base
+    - setup
+
+# =============================================================================
+# SECURITY - Hardening and access control
+# =============================================================================
+- name: Include security tasks
+  include_tasks: security/main.yml
+  tags:
+    - server
+    - security
+
+# =============================================================================
+# VPS - VPS-specific optimizations (only for gateway/VPS hosts)
+# =============================================================================
+- name: Include VPS-specific tasks
+  include_tasks: vps/main.yml
+  when: server_type | default('node') == 'vps'
+  tags:
+    - server
+    - vps

@@ -1,0 +1,87 @@
+---
+# Default variables for server role
+# This role combines: setup_server, vps_setup, security
+
+# =============================================================================
+# SERVER TYPE - Determines which tasks to run
+# =============================================================================
+# Options: 'node' (default - k8s nodes), 'vps' (gateway VPS)
+server_type: node
+
+# =============================================================================
+# BASE SETUP (Tag: base)
+# =============================================================================
+# Timezone configuration
+server_timezone: Europe/Moscow
+
+# System packages to install (common for all server types)
+server_packages:
+  - apt-transport-https
+  - ca-certificates
+  - curl
+  - gnupg
+  - lsb-release
+  - python3-pip
+  - ufw
+  - wireguard
+  - wireguard-tools
+
+# Reboot configuration
+server_reboot_if_required: true
+server_reboot_timeout: 60
+
+# =============================================================================
+# SECURITY (Tag: security)
+# =============================================================================
+# SSH key deployment
+security_ssh_root_key_enabled: false
+
+# Fail2ban settings
+fail2ban:
+  ssh:
+    maxretry: 5
+    bantime: 3600
+    findtime: 600
+    ddos_maxretry: 10
+
+# Unnecessary services to disable
+unnecessary_services:
+  - bluetooth
+  - cups
+  - cups-browsed
+
+# =============================================================================
+# VPS SPECIFIC (Tag: vps) - Only when server_type == 'vps'
+# =============================================================================
+# Package management
+vps_upgrade_packages: true
+
+# Essential packages to install on VPS
+vps_essential_packages:
+  - ufw
+  - fail2ban
+  - htop
+  - vim
+  - curl
+  - wget
+  - git
+  - python3-pip
+  - apt-transport-https
+  - ca-certificates
+  - gnupg
+  - lsb-release
+  - build-essential
+  - software-properties-common
+  - unattended-upgrades
+
+# Swap configuration
+vps_swap_size: "2G"
+vps_swap_path: "/swapfile"
+vps_swappiness: 10
+
+# Timezone (VPS specific, can override server_timezone)
+vps_timezone: "UTC"
+
+# Services to disable on VPS
+vps_disabled_services:
+  - snapd

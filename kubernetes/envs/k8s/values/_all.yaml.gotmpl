@@ -1,11 +1,11 @@
 ---
 infra:
   name: self-hosted
-  host: zeizel.localhost
+  host: zeizel.ru
 
 ingressRoute:
   dashboard:
-    matchRule: Host(`traefik.k8s.localhost`)
+    matchRule: Host(`traefik.zeizel.ru`)
 
 postgresql:
   global:

@@ -1,0 +1,56 @@
+---
+# Affine post-installation configuration
+# - Wait for Affine to be ready
+# - Configure storage and database
+
+- name: Wait for Affine pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n productivity -l app.kubernetes.io/name=affine
+    --timeout={{ affine_wait_timeout }}s
+  changed_when: false
+  failed_when: false
+
+- name: Check Affine health
+  uri:
+    url: "{{ affine_url }}/api/healthz"
+    method: GET
+    status_code: [200, 404]
+    validate_certs: "{{ affine_validate_certs }}"
+  register: affine_health
+  retries: 5
+  delay: 10
+  until: affine_health.status in [200, 404]
+  failed_when: false
+
+- name: Save Affine setup information
+  copy:
+    content: |
+      Affine Setup Information
+      =========================
+      URL: {{ affine_url }}
+      Health: {{ 'OK' if affine_health.status == 200 else 'Check required' }}
+
+      Dependencies:
+        PostgreSQL: postgresql.db.svc.cluster.local:5432
+        Redis: valkey-master.db.svc.cluster.local:6379
+        MinIO: minio.db.svc.cluster.local:9000
+
+      Manual steps required:
+      1. Create admin account on first visit
+      2. Configure OIDC with Authentik (optional)
+      3. Set up workspace collaboration settings
+      4. Configure backup schedule
+    dest: "{{ affine_credentials_file }}"
+    mode: '0600'
+  delegate_to: localhost
+
+- name: Display Affine configuration status
+  debug:
+    msg: |
+      Affine Configuration
+      =====================
+      URL: {{ affine_url }}
+      Health: {{ 'OK' if affine_health.status == 200 else 'Starting up' }}
+
+      Complete setup through web UI on first visit

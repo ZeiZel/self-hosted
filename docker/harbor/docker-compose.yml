@@ -1,0 +1,78 @@
+version: '3.8'
+
+# Harbor requires its official installer for full deployment
+# This is a simplified reference for understanding components
+# For production, use: https://goharbor.io/docs/latest/install-config/
+
+services:
+  harbor-core:
+    image: goharbor/harbor-core:v2.11.0
+    container_name: harbor-core
+    restart: unless-stopped
+    environment:
+      - CORE_SECRET=${HARBOR_SECRET}
+      - _REDIS_URL_CORE=redis://redis:6379/0
+      - HARBOR_ADMIN_PASSWORD=${HARBOR_ADMIN_PASSWORD}
+    volumes:
+      - harbor_data:/data
+    depends_on:
+      - postgres
+      - redis
+    networks:
+      - harbor-network
+
+  harbor-portal:
+    image: goharbor/harbor-portal:v2.11.0
+    container_name: harbor-portal
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    networks:
+      - harbor-network
+
+  registry:
+    image: goharbor/registry-photon:v2.11.0
+    container_name: harbor-registry
+    restart: unless-stopped
+    volumes:
+      - registry_data:/storage
+    networks:
+      - harbor-network
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: harbor-postgres
+    restart: unless-stopped
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - POSTGRES_DB=harbor
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - harbor-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: harbor-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+    networks:
+      - harbor-network
+
+volumes:
+  harbor_data:
+  registry_data:
+  postgres_data:
+  redis_data:
+
+networks:
+  harbor-network:
+    driver: bridge
+
+# NOTE: This is a simplified configuration.
+# For production deployment, download and use the official Harbor installer:
+# wget https://github.com/goharbor/harbor/releases/download/v2.11.0/harbor-offline-installer-v2.11.0.tgz
+# tar xvf harbor-offline-installer-v2.11.0.tgz
+# cd harbor && ./install.sh

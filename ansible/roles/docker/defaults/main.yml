@@ -1,0 +1,20 @@
+---
+# Docker role defaults
+
+# Docker packages to install
+docker_packages:
+  - docker-ce
+  - docker-ce-cli
+  - containerd.io
+  - docker-buildx-plugin
+  - docker-compose-plugin
+
+# Docker service state
+docker_service_enabled: true
+docker_service_state: started
+
+# Add user to docker group (uses ansible_user by default)
+docker_add_user_to_group: true
+
+# Reboot if required after installation
+docker_auto_reboot: true

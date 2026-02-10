@@ -1,31 +1,27 @@
-# Ansible
+# Ansible automation
 
-На один из серверов нужно установить proxmox, чтобы поднять на виртуалках k8s кластер
+- setup_host
+- server
+- docker
+- pangolin
+- kubespray
+- apps
+  - infrastructure
+  - services
+- backup
 
-Roles:
-- [x] setup_host
-- [x] setup_server
-  - gateway
-  - master
-  - node
-- [x] docker
-- [x] security
-- [ ] proxmox
-- [ ] kubespray
-- [ ] infrastructure
-  - base
-    - namespace
-    - traefik
-    - vault
-    - consul
-  - apps
-    - stoat
-    - swalwart
-    - youtrack
-    - hub
-    - teamcity
-    - authentik
-    - vaultwarden
-- [ ] pangolin
-  - gateway
-  - node
+## Последовательность действий
+
+- [ ] Установить Proxmox на удалённый/локальный сервер
+- [ ] Загрузить туда руками образ с Ubuntu
+- [ ] поднять руками Ubuntu (установка)
+- [ ] Настроить подключение к ethernet или wifi (netplan пропуск сети через gateway в виде proxmox)
+- [ ] Проверить подключение к ним с хоста (если gateway на `192.168.100.`, то берём id хоста и устанавливаем: `192.168.100.102` для id 102)
+- [ ] поставить kubespray на машины
+- [ ] связать их в один кластер
+- [ ] установить на отдельной машине OpenEBS
+- [ ] установить backup сервис Velero
+- [ ] поднять базовые сервисы (namespace + traefik + pangolin)
+- [ ] перейти к VPS и настроить его
+- [ ] поднять pangolin на удалённом сервере
+- [ ] проверить туннель от сервера до VPS

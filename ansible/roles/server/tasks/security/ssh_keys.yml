@@ -1,0 +1,57 @@
+---
+# SSH key deployment tasks
+
+- name: Check for local SSH public keys
+  local_action:
+    module: stat
+    path: "{{ item }}"
+  register: local_ssh_keys
+  loop:
+    - "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519.pub"
+    - "{{ lookup('env', 'HOME') }}/.ssh/id_rsa.pub"
+  changed_when: false
+  become: false
+
+- name: Read local SSH public keys
+  local_action:
+    module: slurp
+    src: "{{ item.item }}"
+  register: ssh_key_contents
+  loop: "{{ local_ssh_keys.results }}"
+  when: item.stat.exists
+  become: false
+  no_log: false
+
+- name: Deploy SSH public keys to admin user
+  authorized_key:
+    user: "{{ user.name | default('admin') }}"
+    state: present
+    key: "{{ item['content'] | b64decode }}"
+    comment: "Deployed from {{ lookup('env', 'HOSTNAME') | default('local-machine') }}"
+  loop: "{{ ssh_key_contents.results | default([]) }}"
+  when:
+    - item.skipped is not defined
+    - item['content'] is defined
+    - user.name is defined
+    - user.name | length > 0
+
+- name: Deploy SSH public keys to root user (if enabled)
+  authorized_key:
+    user: root
+    state: present
+    key: "{{ item['content'] | b64decode }}"
+    comment: "Deployed from {{ lookup('env', 'HOSTNAME') | default('local-machine') }}"
+  loop: "{{ ssh_key_contents.results | default([]) }}"
+  when:
+    - item.skipped is not defined
+    - item['content'] is defined
+    - security_ssh_root_key_enabled | default(false)
+
+- name: Display deployed SSH keys info
+  debug:
+    msg:
+      - "SSH keys deployed successfully!"
+      - "Keys deployed: {{ ssh_key_contents.results | selectattr('content', 'defined') | list | length }}"
+      - "Target user: {{ user.name | default('admin') }}"
+      - "Root key enabled: {{ security_ssh_root_key_enabled | default(false) }}"
+  when: ssh_key_contents.results is defined

@@ -1,0 +1,83 @@
+---
+# Bytebase post-installation configuration
+# - Wait for Bytebase to be ready
+# - Configure database instances
+
+- name: Wait for Bytebase pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n infrastructure -l app.kubernetes.io/name=bytebase
+    --timeout={{ bytebase_wait_timeout }}s
+  changed_when: false
+
+- name: Check Bytebase health
+  uri:
+    url: "{{ bytebase_url }}/healthz"
+    method: GET
+    status_code: [200]
+    validate_certs: "{{ bytebase_validate_certs }}"
+  register: bytebase_health
+  retries: 10
+  delay: 10
+  until: bytebase_health.status == 200
+  failed_when: false
+
+- name: Save Bytebase setup information
+  copy:
+    content: |
+      Bytebase Setup Information
+      ===========================
+      URL: {{ bytebase_url }}
+      Health: {{ 'OK' if bytebase_health.status == 200 else 'Starting' }}
+
+      Initial Setup (Manual):
+      1. Open {{ bytebase_url }}
+      2. Create admin account on first visit
+      3. Create workspace
+
+      Database Instances to Add:
+      -------------------------
+      PostgreSQL:
+        Host: postgresql.db.svc.cluster.local
+        Port: 5432
+        User: See Vault secret
+
+      MongoDB:
+        Host: mongodb.db.svc.cluster.local
+        Port: 27017
+        User: See Vault secret
+
+      MySQL:
+        Host: mysql.db.svc.cluster.local
+        Port: 3306
+        User: See Vault secret
+
+      ClickHouse:
+        Host: clickhouse.db.svc.cluster.local
+        Port: 8123
+        User: See Vault secret
+
+      Manual steps required:
+      1. Create admin account
+      2. Add database instances
+      3. Create projects
+      4. Configure SQL review rules
+      5. Set up GitOps integration (optional)
+      6. Configure SSO with Authentik (optional)
+
+      Documentation: https://www.bytebase.com/docs
+    dest: "{{ bytebase_credentials_file }}"
+    mode: '0600'
+  delegate_to: localhost
+
+- name: Display Bytebase configuration status
+  debug:
+    msg: |
+      Bytebase Configuration
+      =======================
+      URL: {{ bytebase_url }}
+      Health: {{ 'OK' if bytebase_health.status == 200 else 'Starting up' }}
+
+      Credentials saved to: {{ bytebase_credentials_file }}
+
+      IMPORTANT: Complete setup through web UI on first visit
