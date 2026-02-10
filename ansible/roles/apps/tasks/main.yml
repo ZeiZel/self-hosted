@@ -1,0 +1,193 @@
+---
+# Main entry point for apps role
+# This role handles post-installation configuration for all applications
+#
+# Structure:
+#   - jetbrains/: YouTrack, Hub, TeamCity
+#   - databases/: PostgreSQL users/databases, Vault unseal
+#   - infrastructure/: Authentik, GitLab, Coder, Bytebase
+#   - productivity/: Affine, Nextcloud
+#   - automation/: N8n, Kestra
+#   - social/: Stoat, Stalwart
+#   - data/: Vaultwarden, Syncthing, Rybbit
+#
+# Usage:
+#   All apps:           --tags apps
+#   JetBrains stack:    --tags apps,jetbrains
+#   Specific app:       --tags apps,youtrack
+#   Infrastructure:     --tags apps,authentik,gitlab,coder
+
+- name: Display apps configuration role information
+  debug:
+    msg: |
+      Apps Post-Installation Configuration
+      =====================================
+      Available tags:
+        Core:         vault, authentik, gitlab
+        JetBrains:    jetbrains, hub, youtrack, teamcity
+        Infrastructure: coder, bytebase, harbor
+        Productivity: affine, nextcloud, penpot
+        Automation:   n8n, kestra
+        Social:       stoat, stalwart
+        Data:         vaultwarden, syncthing, rybbit
+  tags:
+    - always
+
+# =============================================================================
+# CORE INFRASTRUCTURE - Must be configured first
+# =============================================================================
+
+- name: Configure Vault (unseal and initialize)
+  include_tasks: databases/vault.yml
+  tags:
+    - apps
+    - vault
+    - core
+
+- name: Configure Authentik (SSO provider)
+  include_tasks: infrastructure/authentik.yml
+  tags:
+    - apps
+    - authentik
+    - core
+    - sso
+
+- name: Configure GitLab
+  include_tasks: infrastructure/gitlab.yml
+  tags:
+    - apps
+    - gitlab
+    - core
+    - code
+
+# =============================================================================
+# JETBRAINS STACK - Hub -> YouTrack -> TeamCity
+# =============================================================================
+
+- name: Configure JetBrains Hub
+  include_tasks: jetbrains/hub.yml
+  tags:
+    - apps
+    - jetbrains
+    - hub
+
+- name: Configure JetBrains YouTrack
+  include_tasks: jetbrains/youtrack.yml
+  tags:
+    - apps
+    - jetbrains
+    - youtrack
+
+- name: Configure JetBrains TeamCity
+  include_tasks: jetbrains/teamcity.yml
+  tags:
+    - apps
+    - jetbrains
+    - teamcity
+
+# =============================================================================
+# INFRASTRUCTURE SERVICES
+# =============================================================================
+
+- name: Configure Coder
+  include_tasks: infrastructure/coder.yml
+  tags:
+    - apps
+    - coder
+    - code
+
+- name: Configure Bytebase
+  include_tasks: infrastructure/bytebase.yml
+  tags:
+    - apps
+    - bytebase
+    - databases
+
+- name: Configure Harbor
+  include_tasks: infrastructure/harbor.yml
+  tags:
+    - apps
+    - harbor
+    - registry
+
+# =============================================================================
+# PRODUCTIVITY APPS
+# =============================================================================
+
+- name: Configure Affine
+  include_tasks: productivity/affine.yml
+  tags:
+    - apps
+    - affine
+    - productivity
+
+- name: Configure Nextcloud
+  include_tasks: productivity/nextcloud.yml
+  tags:
+    - apps
+    - nextcloud
+    - productivity
+
+# =============================================================================
+# AUTOMATION APPS
+# =============================================================================
+
+- name: Configure N8n
+  include_tasks: automation/n8n.yml
+  tags:
+    - apps
+    - n8n
+    - automation
+
+- name: Configure Kestra
+  include_tasks: automation/kestra.yml
+  tags:
+    - apps
+    - kestra
+    - automation
+
+# =============================================================================
+# SOCIAL & COMMUNICATION
+# =============================================================================
+
+- name: Configure Stoat (Revolt)
+  include_tasks: social/stoat.yml
+  tags:
+    - apps
+    - stoat
+    - social
+
+- name: Configure Stalwart (Mail)
+  include_tasks: social/stalwart.yml
+  tags:
+    - apps
+    - stalwart
+    - mail
+    - social
+
+# =============================================================================
+# DATA & STORAGE
+# =============================================================================
+
+- name: Configure Vaultwarden
+  include_tasks: data/vaultwarden.yml
+  tags:
+    - apps
+    - vaultwarden
+    - data
+
+- name: Configure Rybbit
+  include_tasks: data/rybbit.yml
+  tags:
+    - apps
+    - rybbit
+    - data
+
+- name: Display apps configuration completion
+  debug:
+    msg: |
+      Apps Post-Installation Configuration Complete
+      ==============================================
+      Check individual app logs for any manual steps required.
+  tags:
+    - apps

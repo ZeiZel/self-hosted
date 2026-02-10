@@ -1,7 +1,0 @@
----
-fail2ban:
-  ssh:
-    maxretry: 5
-    bantime: 3600
-    findtime: 600
-    ddos_maxretry: 10

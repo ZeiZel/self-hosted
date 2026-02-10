@@ -1,0 +1,63 @@
+---
+# Stoat (Revolt) post-installation configuration
+# - Wait for Stoat to be ready
+# - Configure admin account
+
+- name: Wait for Stoat API pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n social -l app.kubernetes.io/name=stoat,app.kubernetes.io/component=api
+    --timeout={{ stoat_wait_timeout }}s
+  changed_when: false
+  failed_when: false
+
+- name: Check Stoat health
+  uri:
+    url: "{{ stoat_url }}"
+    method: GET
+    status_code: [200, 301, 302]
+    validate_certs: "{{ stoat_validate_certs }}"
+  register: stoat_health
+  retries: 10
+  delay: 10
+  until: stoat_health.status in [200, 301, 302]
+  failed_when: false
+
+- name: Save Stoat setup information
+  copy:
+    content: |
+      Stoat (Revolt) Setup Information
+      =================================
+      URL: {{ stoat_url }}
+      Health: {{ 'OK' if stoat_health.status in [200, 301, 302] else 'Check required' }}
+
+      Dependencies:
+        MongoDB: mongodb.db.svc.cluster.local:27017
+        Redis: valkey-master.db.svc.cluster.local:6379
+        MinIO: minio.db.svc.cluster.local:9000
+        RabbitMQ: rabbitmq.db.svc.cluster.local:5672
+        Mail (Stalwart): stalwart.social.svc.cluster.local:25
+
+      Manual steps required:
+      1. Create first admin account through web UI
+      2. Configure SMTP relay (Stalwart)
+      3. Set up push notifications (VAPID keys)
+      4. Configure server settings:
+         - Server name and description
+         - Invite settings
+         - Rate limits
+      5. Create invite links for users
+      6. Set up moderation rules
+    dest: "{{ stoat_credentials_file }}"
+    mode: '0600'
+  delegate_to: localhost
+
+- name: Display Stoat configuration status
+  debug:
+    msg: |
+      Stoat (Revolt) Configuration
+      =============================
+      URL: {{ stoat_url }}
+      Health: {{ 'OK' if stoat_health.status in [200, 301, 302] else 'Starting up' }}
+
+      Complete admin setup through web UI on first visit

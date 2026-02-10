@@ -1,0 +1,175 @@
+---
+# Authentik post-installation configuration
+# - Wait for Authentik to be ready
+# - Get bootstrap token
+# - Create OIDC providers for applications
+# - Create groups and assign permissions
+
+- name: Check if Authentik pod is running
+  command: >
+    kubectl get pods -n service -l app.kubernetes.io/name=authentik
+    -o jsonpath='{.items[0].status.phase}'
+  register: authentik_pod_status
+  changed_when: false
+  failed_when: false
+
+- name: Wait for Authentik server to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n service -l app.kubernetes.io/name=authentik,app.kubernetes.io/component=server
+    --timeout={{ authentik_wait_timeout }}s
+  changed_when: false
+
+- name: Wait for Authentik worker to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n service -l app.kubernetes.io/name=authentik,app.kubernetes.io/component=worker
+    --timeout={{ authentik_wait_timeout }}s
+  changed_when: false
+
+- name: Get Authentik bootstrap password from secret
+  command: >
+    kubectl get secret -n service authentik
+    -o jsonpath='{.data.AUTHENTIK_BOOTSTRAP_PASSWORD}'
+  register: authentik_bootstrap_password_b64
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+- name: Decode bootstrap password
+  set_fact:
+    authentik_bootstrap_password: "{{ authentik_bootstrap_password_b64.stdout | b64decode }}"
+  when: authentik_bootstrap_password_b64.stdout | length > 0
+  no_log: true
+
+- name: Get Authentik API token
+  uri:
+    url: "{{ authentik_url }}/api/v3/core/tokens/"
+    method: POST
+    body_format: json
+    body:
+      identifier: "ansible-setup-token"
+      intent: "api"
+      expiring: false
+    headers:
+      Authorization: "Basic {{ ('akadmin:' + authentik_bootstrap_password) | b64encode }}"
+    status_code: [200, 201, 400]
+    validate_certs: "{{ authentik_validate_certs }}"
+  register: authentik_token_response
+  when: authentik_bootstrap_password is defined
+  no_log: true
+
+- name: Set API token
+  set_fact:
+    authentik_api_token: "{{ authentik_token_response.json.key }}"
+  when:
+    - authentik_token_response is defined
+    - authentik_token_response.json is defined
+    - authentik_token_response.json.key is defined
+  no_log: true
+
+- name: Create OIDC providers for applications
+  when: authentik_api_token is defined
+  block:
+    - name: Create OAuth2 provider for GitLab
+      uri:
+        url: "{{ authentik_url }}/api/v3/providers/oauth2/"
+        method: POST
+        body_format: json
+        body:
+          name: "gitlab-provider"
+          authorization_flow: "{{ authentik_default_flow }}"
+          client_type: "confidential"
+          client_id: "gitlab"
+          redirect_uris: "{{ gitlab_url }}/users/auth/openid_connect/callback"
+        headers:
+          Authorization: "Bearer {{ authentik_api_token }}"
+        status_code: [200, 201, 400]
+        validate_certs: "{{ authentik_validate_certs }}"
+      register: gitlab_provider
+      failed_when: false
+
+    - name: Create OAuth2 provider for Coder
+      uri:
+        url: "{{ authentik_url }}/api/v3/providers/oauth2/"
+        method: POST
+        body_format: json
+        body:
+          name: "coder-provider"
+          authorization_flow: "{{ authentik_default_flow }}"
+          client_type: "confidential"
+          client_id: "coder"
+          redirect_uris: "{{ coder_url }}/api/v2/users/oidc/callback"
+        headers:
+          Authorization: "Bearer {{ authentik_api_token }}"
+        status_code: [200, 201, 400]
+        validate_certs: "{{ authentik_validate_certs }}"
+      register: coder_provider
+      failed_when: false
+
+    - name: Create OAuth2 provider for Nextcloud
+      uri:
+        url: "{{ authentik_url }}/api/v3/providers/oauth2/"
+        method: POST
+        body_format: json
+        body:
+          name: "nextcloud-provider"
+          authorization_flow: "{{ authentik_default_flow }}"
+          client_type: "confidential"
+          client_id: "nextcloud"
+          redirect_uris: "{{ nextcloud_url }}/apps/oidc_login/oidc"
+        headers:
+          Authorization: "Bearer {{ authentik_api_token }}"
+        status_code: [200, 201, 400]
+        validate_certs: "{{ authentik_validate_certs }}"
+      register: nextcloud_provider
+      failed_when: false
+
+- name: Create admin group
+  uri:
+    url: "{{ authentik_url }}/api/v3/core/groups/"
+    method: POST
+    body_format: json
+    body:
+      name: "admins"
+      is_superuser: true
+    headers:
+      Authorization: "Bearer {{ authentik_api_token }}"
+    status_code: [200, 201, 400]
+    validate_certs: "{{ authentik_validate_certs }}"
+  when: authentik_api_token is defined
+  failed_when: false
+
+- name: Create users group
+  uri:
+    url: "{{ authentik_url }}/api/v3/core/groups/"
+    method: POST
+    body_format: json
+    body:
+      name: "users"
+      is_superuser: false
+    headers:
+      Authorization: "Bearer {{ authentik_api_token }}"
+    status_code: [200, 201, 400]
+    validate_certs: "{{ authentik_validate_certs }}"
+  when: authentik_api_token is defined
+  failed_when: false
+
+- name: Display Authentik configuration status
+  debug:
+    msg: |
+      Authentik Configuration Complete
+      =================================
+      URL: {{ authentik_url }}
+      Admin user: akadmin
+
+      OIDC Providers created:
+        - GitLab: {{ 'Success' if gitlab_provider.status in [200, 201] else 'Already exists or failed' }}
+        - Coder: {{ 'Success' if coder_provider.status in [200, 201] else 'Already exists or failed' }}
+        - Nextcloud: {{ 'Success' if nextcloud_provider.status in [200, 201] else 'Already exists or failed' }}
+
+      Manual steps required:
+      1. Login to {{ authentik_url }}
+      2. Create applications and link providers
+      3. Configure outpost for proxy authentication
+      4. Set up email provider for password reset

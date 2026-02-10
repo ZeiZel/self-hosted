@@ -1,0 +1,128 @@
+---
+# Coder post-installation configuration
+# - Wait for Coder to be ready
+# - Configure OIDC with Authentik
+# - Set up templates
+
+- name: Wait for Coder pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n code -l app.kubernetes.io/name=coder
+    --timeout={{ coder_wait_timeout }}s
+  changed_when: false
+
+- name: Check Coder health
+  uri:
+    url: "{{ coder_url }}/api/v2/buildinfo"
+    method: GET
+    status_code: [200]
+    validate_certs: "{{ coder_validate_certs }}"
+  register: coder_health
+  retries: 10
+  delay: 15
+  until: coder_health.status == 200
+  failed_when: false
+
+- name: Get Coder version info
+  set_fact:
+    coder_version: "{{ coder_health.json.version | default('unknown') }}"
+  when: coder_health.status == 200
+
+- name: Check if first user needs to be created
+  uri:
+    url: "{{ coder_url }}/api/v2/users/first"
+    method: GET
+    status_code: [200, 404]
+    validate_certs: "{{ coder_validate_certs }}"
+  register: coder_first_user
+  failed_when: false
+
+- name: Create first admin user (if needed)
+  uri:
+    url: "{{ coder_url }}/api/v2/users/first"
+    method: POST
+    body_format: json
+    body:
+      email: "{{ coder_admin_email }}"
+      username: "{{ coder_admin_username }}"
+      password: "{{ coder_admin_password }}"
+    status_code: [200, 201, 409]
+    validate_certs: "{{ coder_validate_certs }}"
+  register: coder_admin_created
+  when:
+    - coder_first_user.status == 200
+    - coder_admin_email is defined
+    - coder_admin_password is defined
+  no_log: true
+
+- name: Login to get session token
+  uri:
+    url: "{{ coder_url }}/api/v2/users/login"
+    method: POST
+    body_format: json
+    body:
+      email: "{{ coder_admin_email }}"
+      password: "{{ coder_admin_password }}"
+    status_code: [200, 201]
+    validate_certs: "{{ coder_validate_certs }}"
+  register: coder_login
+  when:
+    - coder_admin_email is defined
+    - coder_admin_password is defined
+  no_log: true
+  failed_when: false
+
+- name: Set session token
+  set_fact:
+    coder_session_token: "{{ coder_login.json.session_token }}"
+  when:
+    - coder_login is defined
+    - coder_login.json is defined
+    - coder_login.json.session_token is defined
+  no_log: true
+
+- name: Save Coder setup information
+  copy:
+    content: |
+      Coder Setup Information
+      ========================
+      URL: {{ coder_url }}
+      Version: {{ coder_version | default('unknown') }}
+
+      Admin User: {{ coder_admin_username | default('admin') }}
+      Admin Email: {{ coder_admin_email | default('See Authentik') }}
+
+      Manual steps required:
+      1. Configure OIDC with Authentik:
+         - Go to {{ coder_url }}/deployment/general
+         - Set OIDC Issuer URL: {{ authentik_url }}/application/o/coder/
+         - Set Client ID and Secret from Authentik
+
+      2. Create workspace templates:
+         - Go to {{ coder_url }}/templates
+         - Create templates for development environments
+
+      3. Configure Vault integration (optional):
+         - Create Vault policy for Coder
+         - Configure Kubernetes auth role
+
+      4. Set up GitLab integration:
+         - Create OAuth application in GitLab
+         - Configure Git authentication in Coder
+
+      Documentation: https://coder.com/docs
+    dest: "{{ coder_credentials_file }}"
+    mode: '0600'
+  delegate_to: localhost
+
+- name: Display Coder configuration status
+  debug:
+    msg: |
+      Coder Configuration
+      ====================
+      URL: {{ coder_url }}
+      Version: {{ coder_version | default('unknown') }}
+      Health: {{ 'OK' if coder_health.status == 200 else 'Check required' }}
+      First User: {{ 'Created' if coder_admin_created.status in [200, 201] else 'Already exists or manual setup needed' }}
+
+      Credentials saved to: {{ coder_credentials_file }}

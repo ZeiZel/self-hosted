@@ -1,6 +1,6 @@
 ---
-# Kubernetes version
-kube_version: "v1.28.5"
+# Kubernetes version (kubespray v2.30.0 supports 1.32.x - 1.34.x)
+kube_version: "v1.32.11"
 
 # Network configuration
 pod_cidr: "10.233.64.0/18"
@@ -14,7 +14,7 @@ cni_plugin: "calico"
 
 # Kubespray configuration
 kubespray_install_dir: "/opt/kubespray"
-kubespray_version: "release-2.23"
+kubespray_version: "v2.30.0"
 cluster_name: "local-cluster"
 
 # Kubeconfig paths

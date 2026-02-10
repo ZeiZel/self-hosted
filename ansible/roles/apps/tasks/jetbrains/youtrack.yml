@@ -1,0 +1,126 @@
+---
+# JetBrains YouTrack post-installation configuration
+# - Wait for YouTrack to be ready
+# - Get wizard token from container logs
+# - Configure Hub integration
+
+- name: Wait for YouTrack pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n code -l app.kubernetes.io/name=youtrack
+    --timeout={{ youtrack_wait_timeout }}s
+  changed_when: false
+
+- name: Check YouTrack startup status
+  command: >
+    kubectl logs -n code -l app.kubernetes.io/name=youtrack --tail=100
+  register: youtrack_logs
+  changed_when: false
+
+- name: Check if YouTrack requires initial setup
+  set_fact:
+    youtrack_needs_setup: "{{ 'wizard' in youtrack_logs.stdout.lower() or 'token' in youtrack_logs.stdout.lower() }}"
+
+- name: Get YouTrack wizard token from logs
+  command: >
+    kubectl logs -n code -l app.kubernetes.io/name=youtrack |
+    grep -oP '(?<=token[=: ])[a-zA-Z0-9]+' | head -1
+  register: youtrack_wizard_token_logs
+  changed_when: false
+  failed_when: false
+  when: youtrack_needs_setup
+
+- name: Get YouTrack wizard token from conf directory
+  command: >
+    kubectl exec -n code deployment/youtrack --
+    sh -c 'cat /opt/youtrack/conf/*.token 2>/dev/null || cat /opt/youtrack/data/conf/*.token 2>/dev/null || echo ""'
+  register: youtrack_wizard_token_file
+  changed_when: false
+  failed_when: false
+  when: youtrack_needs_setup
+
+- name: Get YouTrack wizard token from environment
+  command: >
+    kubectl exec -n code deployment/youtrack --
+    sh -c 'grep -r "token" /opt/youtrack/conf/ 2>/dev/null | head -1 || echo ""'
+  register: youtrack_wizard_token_env
+  changed_when: false
+  failed_when: false
+  when:
+    - youtrack_needs_setup
+    - youtrack_wizard_token_file.stdout | length == 0
+
+- name: Set YouTrack wizard token
+  set_fact:
+    youtrack_wizard_token: >-
+      {{
+        youtrack_wizard_token_logs.stdout
+        if youtrack_wizard_token_logs.stdout | default('') | length > 0
+        else (
+          youtrack_wizard_token_file.stdout
+          if youtrack_wizard_token_file.stdout | default('') | length > 0
+          else youtrack_wizard_token_env.stdout | default('')
+        )
+      }}
+  when: youtrack_needs_setup
+
+- name: Save YouTrack setup information
+  copy:
+    content: |
+      JetBrains YouTrack Setup Information
+      =====================================
+      URL: {{ youtrack_url }}
+
+      {% if youtrack_wizard_token is defined and youtrack_wizard_token | trim | length > 0 %}
+      Wizard Token: {{ youtrack_wizard_token | trim }}
+      Setup URL: {{ youtrack_url }}/bundle/starting?wizard_token={{ youtrack_wizard_token | trim }}
+      {% else %}
+      Wizard Token: NOT FOUND AUTOMATICALLY
+
+      To find the token manually:
+        kubectl logs -n code -l app.kubernetes.io/name=youtrack | grep -i token
+        kubectl exec -n code deployment/youtrack -- find /opt/youtrack -name "*.token" -exec cat {} \;
+      {% endif %}
+
+      Manual steps required:
+      1. Open setup URL with wizard token
+      2. Configure admin account
+      3. Apply license (JetBrains account or license key)
+      4. Connect to Hub ({{ hub_url }})
+      5. Configure email notifications
+      6. Set up projects and workflows
+      7. Configure GitLab integration for issue tracking
+    dest: "{{ youtrack_credentials_file }}"
+    mode: '0600'
+  delegate_to: localhost
+
+- name: Check YouTrack health endpoint
+  uri:
+    url: "{{ youtrack_url }}/api/config"
+    method: GET
+    status_code: [200, 401, 503]
+    validate_certs: "{{ youtrack_validate_certs }}"
+  register: youtrack_health
+  retries: 5
+  delay: 15
+  until: youtrack_health.status in [200, 401]
+  failed_when: false
+
+- name: Display YouTrack configuration status
+  debug:
+    msg: |
+      JetBrains YouTrack Configuration
+      =================================
+      URL: {{ youtrack_url }}
+      Status: {{ 'Running' if youtrack_health.status in [200, 401] else 'Starting up' }}
+      Needs Setup: {{ youtrack_needs_setup | default(false) }}
+
+      {% if youtrack_wizard_token is defined and youtrack_wizard_token | trim | length > 0 %}
+      WIZARD TOKEN: {{ youtrack_wizard_token | trim }}
+      {% else %}
+      TOKEN NOT FOUND - Check logs manually
+      {% endif %}
+
+      Credentials saved to: {{ youtrack_credentials_file }}
+
+      IMPORTANT: Configure Hub connection during setup wizard!

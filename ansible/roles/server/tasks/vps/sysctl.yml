@@ -1,0 +1,27 @@
+---
+# Sysctl configuration for VPS networking and performance
+
+- name: Set timezone
+  timezone:
+    name: "{{ vps_timezone }}"
+
+- name: Configure sysctl for networking and performance
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/99-custom.conf
+  loop:
+    - { key: 'net.ipv4.ip_forward', value: '1' }
+    - { key: 'net.ipv4.conf.all.forwarding', value: '1' }
+    - { key: 'net.ipv6.conf.all.forwarding', value: '1' }
+    - { key: 'net.core.rmem_max', value: '134217728' }
+    - { key: 'net.core.wmem_max', value: '134217728' }
+    - { key: 'net.ipv4.tcp_rmem', value: '4096 87380 67108864' }
+    - { key: 'net.ipv4.tcp_wmem', value: '4096 65536 67108864' }
+    - { key: 'net.ipv4.tcp_congestion_control', value: 'bbr' }
+    - { key: 'net.core.default_qdisc', value: 'fq' }
+    - { key: 'net.ipv4.tcp_mtu_probing', value: '1' }
+    - { key: 'fs.file-max', value: '2097152' }
+    - { key: 'fs.inotify.max_user_watches', value: '524288' }

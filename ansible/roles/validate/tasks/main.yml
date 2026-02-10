@@ -1,0 +1,5 @@
+---
+- name: validate services
+  gather_facts: true
+  block:
+    -

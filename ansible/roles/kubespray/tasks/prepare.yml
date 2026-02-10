@@ -12,12 +12,24 @@
     force: "{{ kubespray_force_clone | default(false) }}"
   when: not kubespray_dir.stat.exists
 
+- name: Ensure pip is installed
+  apt:
+    name:
+      - python3-pip
+      - python3-venv
+    state: present
+    update_cache: true
+
+- name: Create virtualenv
+  command: python3 -m venv {{ kubespray_install_dir }}/venv
+  args:
+    creates: "{{ kubespray_install_dir }}/venv/bin/pip"
+
 - name: Install Python dependencies
   pip:
     requirements: "{{ kubespray_install_dir }}/kubespray/requirements.txt"
     virtualenv: "{{ kubespray_install_dir }}/venv"
-    virtualenv_command: "{{ kubespray_venv_command | default('python3 -m venv') }}"
-  become: false
+    state: present
 
 - name: Create kubespray inventory directory
   file:
@@ -25,14 +37,11 @@
     state: directory
     mode: '0755'
 
-- name: Copy sample inventory
-  command: >
-    cp -rf
-    {{ kubespray_install_dir }}/kubespray/inventory/sample
-    {{ kubespray_install_dir }}/inventory/{{ cluster_name }}
+- name: Copy sample inventory contents
+  shell: >
+    cp -rf {{ kubespray_install_dir }}/kubespray/inventory/sample/* {{ kubespray_install_dir }}/inventory/{{ cluster_name }}/
   args:
-    creates: "{{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml"
-  when: not kubespray_inventory_exists | default(false)
+    creates: "{{ kubespray_install_dir }}/inventory/{{ cluster_name }}/group_vars"
 
 - name: Generate inventory from template
   template:

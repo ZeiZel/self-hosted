@@ -40,32 +40,63 @@ wireguard_network: "10.99.0.0/24"
 wireguard_server_ip: "10.99.0.1"
 wireguard_port: 51820
 
-# Proxmox settings
-proxmox_storage: "local-lvm"
-proxmox_network_bridge: "vmbr1"
-proxmox_template_vmid: 9000
-proxmox_iso_url: "https://cloud-images.ubuntu.com/releases/22.04/release/ubuntu-22.04-server-cloudimg-amd64.img"
+# Proxmox configuration
+proxmox:
+  api_host: "{{ proxmox_api_host | default('192.168.100.2') }}"
+  api_port: 8006
+  node_name: "{{ proxmox_node_name | default('local-server') }}"
+  storage_pool: "local"
+  network_bridge: "vmbr0"
+  template_name: "ubuntu-cloud-init"  # Ubuntu 25.10 or Debian 13 template
+  network:
+    gateway: "192.168.100.1"
+    netmask: "255.255.255.0"
+    dns: "8.8.8.8,8.8.4.4"
 
-# Proxmox VM configuration
-proxmox_vms:
-  - name: "k8s-master-1"
-    vmid: 100
-    cores: 4
-    memory: 8192
-    disk: "50G"
-    ip: "192.168.100.10"
-    role: "master"
-  - name: "k8s-worker-1"
-    vmid: 101
-    cores: 4
-    memory: 16384
-    disk: "100G"
-    ip: "192.168.100.11"
-    role: "worker"
-  - name: "k8s-worker-2"
-    vmid: 102
-    cores: 4
-    memory: 16384
-    disk: "100G"
-    ip: "192.168.100.12"
-    role: "worker"
+# Terraform configuration
+terraform:
+  version: "1.7.0"
+  working_dir: "{{ playbook_dir }}/terraform/proxmox"
+  state_file: "terraform.tfstate"
+
+# VM specifications
+vm_master:
+  count: 1
+  name_prefix: "k8s-master"
+  cpu_cores: 8
+  memory_mb: 8192
+  disk_size_gb: 200
+  ip_start: "192.168.100.10"
+
+vm_worker_db:
+  count: 1
+  name: "k8s-worker-db"
+  cpu_cores: 3
+  memory_mb: 10240
+  disk_size_gb: 400
+  ip: "192.168.100.11"
+  node_labels:
+    - "node-role.kubernetes.io/worker-db="
+    - "workload=database"
+
+vm_worker_services:
+  count: 1
+  name: "k8s-worker-services"
+  cpu_cores: 3
+  memory_mb: 8192
+  disk_size_gb: 200
+  ip: "192.168.100.12"
+  node_labels:
+    - "node-role.kubernetes.io/worker-services="
+    - "workload=critical-services"
+
+vm_worker_apps:
+  count: 1
+  name: "k8s-worker-apps"
+  cpu_cores: 2
+  memory_mb: 6144
+  disk_size_gb: 200
+  ip: "192.168.100.13"
+  node_labels:
+    - "node-role.kubernetes.io/worker-apps="
+    - "workload=applications"

@@ -1,0 +1,57 @@
+---
+# VPS-specific optimization tasks
+# Tag: vps
+# Only runs when server_type == 'vps'
+
+- name: Display VPS setup information
+  debug:
+    msg: |
+      VPS-Specific Setup Starting...
+      Swap size: {{ vps_swap_size }}
+      Timezone: {{ vps_timezone }}
+  tags:
+    - vps
+
+- name: Include VPS package management tasks
+  include_tasks: packages.yml
+  tags:
+    - vps
+    - packages
+
+- name: Include sysctl configuration
+  include_tasks: sysctl.yml
+  tags:
+    - vps
+    - system
+    - sysctl
+
+- name: Include services management
+  include_tasks: services.yml
+  tags:
+    - vps
+    - services
+
+- name: Include unattended upgrades configuration
+  include_tasks: unattended_upgrades.yml
+  tags:
+    - vps
+    - updates
+
+- name: Include swap configuration
+  include_tasks: swap.yml
+  tags:
+    - vps
+    - swap
+
+- name: Display system info
+  debug:
+    msg:
+      - "VPS setup complete!"
+      - "Hostname: {{ ansible_hostname }}"
+      - "OS: {{ ansible_distribution }} {{ ansible_distribution_version }}"
+      - "Kernel: {{ ansible_kernel }}"
+      - "IP: {{ ansible_default_ipv4.address }}"
+      - "Memory: {{ ansible_memtotal_mb }}MB"
+      - "CPUs: {{ ansible_processor_vcpus }}"
+  tags:
+    - vps

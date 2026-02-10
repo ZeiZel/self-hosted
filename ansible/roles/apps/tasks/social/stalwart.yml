@@ -1,0 +1,105 @@
+---
+# Stalwart (Mail Server) post-installation configuration
+# - Wait for Stalwart to be ready
+# - Get admin credentials
+# - Display DNS configuration requirements
+
+- name: Wait for Stalwart pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n social -l app.kubernetes.io/name=stalwart
+    --timeout={{ stalwart_wait_timeout }}s
+  changed_when: false
+  failed_when: false
+
+- name: Get Stalwart admin password from secret
+  command: >
+    kubectl get secret -n social stalwart
+    -o jsonpath='{.data.admin-password}'
+  register: stalwart_admin_password_b64
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+- name: Decode admin password
+  set_fact:
+    stalwart_admin_password: "{{ stalwart_admin_password_b64.stdout | b64decode }}"
+  when: stalwart_admin_password_b64.stdout | length > 0
+  no_log: true
+
+- name: Check Stalwart SMTP health
+  wait_for:
+    host: "{{ stalwart_host }}"
+    port: 25
+    timeout: 30
+  delegate_to: localhost
+  failed_when: false
+  register: stalwart_smtp_check
+
+- name: Check Stalwart IMAP health
+  wait_for:
+    host: "{{ stalwart_host }}"
+    port: 143
+    timeout: 30
+  delegate_to: localhost
+  failed_when: false
+  register: stalwart_imap_check
+
+- name: Save Stalwart setup information
+  copy:
+    content: |
+      Stalwart Mail Server Setup Information
+      =======================================
+      Admin URL: {{ stalwart_url }}
+      Admin User: admin
+      Admin Password: {{ stalwart_admin_password | default('See Kubernetes secret') }}
+
+      Service Status:
+        SMTP (25): {{ 'OK' if stalwart_smtp_check is success else 'Not reachable' }}
+        IMAP (143): {{ 'OK' if stalwart_imap_check is success else 'Not reachable' }}
+
+      CRITICAL: DNS CONFIGURATION REQUIRED
+      ====================================
+      Add these DNS records to your domain ({{ mail_domain }}):
+
+      MX Record:
+        {{ mail_domain }}.  IN  MX  10  mail.{{ mail_domain }}.
+
+      A Record:
+        mail.{{ mail_domain }}.  IN  A  <YOUR_PUBLIC_IP>
+
+      SPF Record:
+        {{ mail_domain }}.  IN  TXT  "v=spf1 mx a ip4:<YOUR_PUBLIC_IP> -all"
+
+      DKIM Record (get from Stalwart admin):
+        default._domainkey.{{ mail_domain }}.  IN  TXT  "v=DKIM1; k=rsa; p=<PUBLIC_KEY>"
+
+      DMARC Record:
+        _dmarc.{{ mail_domain }}.  IN  TXT  "v=DMARC1; p=quarantine; rua=mailto:postmaster@{{ mail_domain }}"
+
+      Manual steps required:
+      1. Configure DNS records (CRITICAL for email delivery!)
+      2. Login to admin panel and configure:
+         - Domain settings
+         - TLS certificates
+         - DKIM signing
+      3. Create user mailboxes
+      4. Configure relay settings (if needed)
+      5. Test email sending/receiving
+    dest: "{{ stalwart_credentials_file }}"
+    mode: '0600'
+  delegate_to: localhost
+  no_log: true
+
+- name: Display Stalwart configuration status
+  debug:
+    msg: |
+      Stalwart Mail Server Configuration
+      ====================================
+      Admin URL: {{ stalwart_url }}
+      SMTP: {{ 'OK' if stalwart_smtp_check is success else 'Check required' }}
+      IMAP: {{ 'OK' if stalwart_imap_check is success else 'Check required' }}
+
+      Credentials saved to: {{ stalwart_credentials_file }}
+
+      CRITICAL: Configure DNS records before using mail server!

@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  vert:
+    image: ghcr.io/hoarder-app/vert:latest
+    container_name: vert
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+    networks:
+      - vert-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+networks:
+  vert-network:
+    driver: bridge

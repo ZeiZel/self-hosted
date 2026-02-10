@@ -1,0 +1,149 @@
+---
+# Default variables for apps role
+# Post-installation configuration for all applications
+
+# =============================================================================
+# GLOBAL SETTINGS
+# =============================================================================
+apps_credentials_dir: "{{ playbook_dir }}/.credentials"
+apps_validate_certs: false
+
+# =============================================================================
+# VAULT
+# =============================================================================
+vault_wait_timeout: 300
+vault_key_shares: 5
+vault_key_threshold: 3
+vault_keys_file: "{{ apps_credentials_dir }}/vault-keys.json"
+
+# =============================================================================
+# AUTHENTIK
+# =============================================================================
+authentik_url: "https://auth.{{ domain }}"
+authentik_wait_timeout: 300
+authentik_validate_certs: "{{ apps_validate_certs }}"
+authentik_default_flow: "default-authorization-flow"
+
+# =============================================================================
+# GITLAB
+# =============================================================================
+gitlab_url: "https://gitlab.{{ domain }}"
+gitlab_wait_timeout: 600
+gitlab_validate_certs: "{{ apps_validate_certs }}"
+gitlab_credentials_file: "{{ apps_credentials_dir }}/gitlab-credentials.txt"
+
+# =============================================================================
+# JETBRAINS HUB
+# =============================================================================
+hub_url: "https://hub.{{ domain }}"
+hub_wait_timeout: 300
+hub_validate_certs: "{{ apps_validate_certs }}"
+hub_credentials_file: "{{ apps_credentials_dir }}/hub-credentials.txt"
+
+# =============================================================================
+# JETBRAINS YOUTRACK
+# =============================================================================
+youtrack_url: "https://youtrack.{{ domain }}"
+youtrack_wait_timeout: 300
+youtrack_validate_certs: "{{ apps_validate_certs }}"
+youtrack_credentials_file: "{{ apps_credentials_dir }}/youtrack-credentials.txt"
+
+# =============================================================================
+# JETBRAINS TEAMCITY
+# =============================================================================
+teamcity_url: "https://teamcity.{{ domain }}"
+teamcity_wait_timeout: 600
+teamcity_validate_certs: "{{ apps_validate_certs }}"
+teamcity_credentials_file: "{{ apps_credentials_dir }}/teamcity-credentials.txt"
+
+# =============================================================================
+# CODER
+# =============================================================================
+coder_url: "https://coder.{{ domain }}"
+coder_wait_timeout: 300
+coder_validate_certs: "{{ apps_validate_certs }}"
+coder_credentials_file: "{{ apps_credentials_dir }}/coder-credentials.txt"
+coder_admin_username: "admin"
+# coder_admin_email: defined in vault
+# coder_admin_password: defined in vault
+
+# =============================================================================
+# BYTEBASE
+# =============================================================================
+bytebase_url: "https://bytebase.{{ domain }}"
+bytebase_wait_timeout: 300
+bytebase_validate_certs: "{{ apps_validate_certs }}"
+bytebase_credentials_file: "{{ apps_credentials_dir }}/bytebase-credentials.txt"
+
+# =============================================================================
+# HARBOR
+# =============================================================================
+harbor_url: "https://harbor.{{ domain }}"
+harbor_wait_timeout: 300
+harbor_validate_certs: "{{ apps_validate_certs }}"
+harbor_credentials_file: "{{ apps_credentials_dir }}/harbor-credentials.txt"
+
+# =============================================================================
+# AFFINE
+# =============================================================================
+affine_url: "https://affine.{{ domain }}"
+affine_wait_timeout: 300
+affine_validate_certs: "{{ apps_validate_certs }}"
+affine_credentials_file: "{{ apps_credentials_dir }}/affine-credentials.txt"
+
+# =============================================================================
+# NEXTCLOUD
+# =============================================================================
+nextcloud_url: "https://nextcloud.{{ domain }}"
+nextcloud_wait_timeout: 300
+nextcloud_validate_certs: "{{ apps_validate_certs }}"
+nextcloud_credentials_file: "{{ apps_credentials_dir }}/nextcloud-credentials.txt"
+
+# =============================================================================
+# N8N
+# =============================================================================
+n8n_url: "https://n8n.{{ domain }}"
+n8n_wait_timeout: 300
+n8n_validate_certs: "{{ apps_validate_certs }}"
+n8n_credentials_file: "{{ apps_credentials_dir }}/n8n-credentials.txt"
+
+# =============================================================================
+# KESTRA
+# =============================================================================
+kestra_url: "https://kestra.{{ domain }}"
+kestra_wait_timeout: 300
+kestra_validate_certs: "{{ apps_validate_certs }}"
+kestra_credentials_file: "{{ apps_credentials_dir }}/kestra-credentials.txt"
+
+# =============================================================================
+# STOAT (REVOLT)
+# =============================================================================
+stoat_url: "https://chat.{{ domain }}"
+stoat_wait_timeout: 300
+stoat_validate_certs: "{{ apps_validate_certs }}"
+stoat_credentials_file: "{{ apps_credentials_dir }}/stoat-credentials.txt"
+
+# =============================================================================
+# STALWART (MAIL)
+# =============================================================================
+stalwart_url: "https://mail.{{ domain }}"
+stalwart_host: "mail.{{ domain }}"
+stalwart_wait_timeout: 300
+stalwart_credentials_file: "{{ apps_credentials_dir }}/stalwart-credentials.txt"
+mail_domain: "{{ domain }}"
+
+# =============================================================================
+# VAULTWARDEN
+# =============================================================================
+vaultwarden_url: "https://vault.{{ domain }}"
+vaultwarden_wait_timeout: 300
+vaultwarden_validate_certs: "{{ apps_validate_certs }}"
+vaultwarden_credentials_file: "{{ apps_credentials_dir }}/vaultwarden-credentials.txt"
+
+# =============================================================================
+# RYBBIT
+# =============================================================================
+rybbit_url: "https://analytics.{{ domain }}"
+rybbit_wait_timeout: 300
+rybbit_validate_certs: "{{ apps_validate_certs }}"
+rybbit_credentials_file: "{{ apps_credentials_dir }}/rybbit-credentials.txt"

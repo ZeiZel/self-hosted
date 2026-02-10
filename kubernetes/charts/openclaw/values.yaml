@@ -1,0 +1,170 @@
+namespace: automation
+
+create:
+  namespace: true
+
+# OpenClaw Image
+image:
+  repository: alpine/openclaw
+  tag: "1.0.0"
+  pullPolicy: IfNotPresent
+
+# OpenClaw Server configuration
+openclaw:
+  replicaCount: 1
+
+  service:
+    type: ClusterIP
+    port: 18789
+    oauthPort: 1455
+
+  # Gateway token (set via Vault)
+  # gatewayToken: ""
+
+  # Extra apt packages to install during build
+  extraAptPackages: ""
+
+  # Extra host bind mounts
+  extraMounts: ""
+
+# Resources
+resources:
+  limits:
+    cpu: 2000m
+    memory: 4Gi
+  requests:
+    cpu: 500m
+    memory: 1Gi
+
+# Persistence
+persistence:
+  config:
+    enabled: true
+    storageClass: standard
+    accessMode: ReadWriteOnce
+    size: 10Gi
+    mountPath: /home/node/.openclaw
+
+  workspace:
+    enabled: true
+    storageClass: standard
+    accessMode: ReadWriteOnce
+    size: 50Gi
+    mountPath: /workspace
+
+# Ingress
+ingress:
+  enabled: true
+  className: traefik
+  host: openclaw.localhost
+  annotations: {}
+  tls:
+    enabled: true
+    secretName: openclaw-tls
+
+# Security Context
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false  # OpenClaw needs writable filesystem
+  capabilities:
+    drop: [ALL]
+
+# Probes
+probes:
+  liveness:
+    enabled: true
+    path: /health
+    port: 18789
+    initialDelaySeconds: 60
+    periodSeconds: 30
+    timeoutSeconds: 10
+  readiness:
+    enabled: true
+    path: /health
+    port: 18789
+    initialDelaySeconds: 30
+    periodSeconds: 10
+    timeoutSeconds: 5
+  startup:
+    enabled: true
+    path: /health
+    port: 18789
+    initialDelaySeconds: 10
+    periodSeconds: 10
+    failureThreshold: 30
+
+# Consul integration
+consul:
+  enabled: true
+  tags:
+    - openclaw
+    - ai-assistant
+    - automation
+
+# Authentik integration (ForwardAuth via Traefik)
+authentik:
+  enabled: false
+  middleware: "service-authentik-forward-auth@kubernetescrd"
+  host: "https://authentik.local"
+  outpostPath: "/outpost.goauthentik.io/auth/traefik"
+
+# Vault integration
+vault:
+  enabled: false
+  role: "openclaw"
+  secretPath: "secret/data/openclaw/secrets"
+  # Secrets to inject:
+  # - ANTHROPIC_API_KEY
+  # - OPENAI_API_KEY
+  # - GATEWAY_TOKEN
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  egressRules:
+    allowDatabases: false
+    allowConsul: true
+    allowVault: true
+    allowAuthentik: false
+    allowExternalHTTPS: true  # Required for LLM API calls
+  ingress: []
+  egress: []
+
+# Service Account
+serviceAccount:
+  create: true
+  automountServiceAccountToken: false
+  annotations: {}
+  name: ""
+
+# RBAC
+rbac:
+  create: true
+  allowSecrets: false
+  rules: []
+
+# Metrics
+metrics:
+  enabled: true
+  port: "metrics"
+  path: "/metrics"
+  interval: "30s"
+  scrapeTimeout: "10s"
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+  # maxUnavailable: 1

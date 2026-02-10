@@ -11,9 +11,3 @@
   loop: "{{ setup_host_tools }}"
   loop_control:
     loop_var: dependency
-
-- name: Install Python packages required for Ansible
-  pip:
-    name: "{{ setup_host_python_packages }}"
-    state: present
-    break_system_packages: true
