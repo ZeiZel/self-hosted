@@ -1,0 +1,24 @@
+---
+# Base server setup tasks
+# Tag: base
+
+- name: Display base setup information
+  debug:
+    msg: |
+      Base Server Setup Starting...
+      Timezone: {{ server_timezone }}
+      Packages: {{ server_packages | length }} packages to install
+  tags:
+    - base
+
+- name: Include package installation tasks
+  include_tasks: packages.yml
+  tags:
+    - base
+    - packages
+
+- name: Display base setup completion
+  debug:
+    msg: "Base server setup completed successfully!"
+  tags:
+    - base

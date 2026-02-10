@@ -1,0 +1,54 @@
+---
+# Verify Proxmox API connectivity
+
+- name: Check if Proxmox API is accessible
+  uri:
+    url: "https://{{ proxmox_api_host }}:{{ proxmox_api_port }}/api2/json/version"
+    method: GET
+    validate_certs: no
+    timeout: 10
+  register: proxmox_version
+  failed_when: false
+  changed_when: false
+
+- name: Display Proxmox version
+  debug:
+    msg: |
+      Proxmox VE version: {{ proxmox_version.json.data.version }}
+      Release: {{ proxmox_version.json.data.release }}
+  when: proxmox_version.status == 200
+
+- name: Fail if API is not accessible
+  fail:
+    msg: |
+      Cannot connect to Proxmox API at https://{{ proxmox_api_host }}:{{ proxmox_api_port }}
+      Status code: {{ proxmox_version.status | default('N/A') }}
+      Please verify:
+        1. Proxmox server is running
+        2. Network connectivity to {{ proxmox_api_host }}
+        3. Firewall rules allow port {{ proxmox_api_port }}
+  when: proxmox_version.status != 200
+
+- name: Test authenticated API access
+  uri:
+    url: "https://{{ proxmox_api_host }}:{{ proxmox_api_port }}/api2/json/nodes/{{ proxmox_node_name }}/status"
+    method: GET
+    headers:
+      Authorization: "PVEAPIToken={{ proxmox.api_token_id }}={{ proxmox.api_token_secret }}"
+    validate_certs: no
+    timeout: 10
+  register: node_status
+  when: proxmox.api_token_id is defined and proxmox.api_token_secret is defined
+  failed_when: false
+  changed_when: false
+
+- name: Display node status
+  debug:
+    msg: |
+      Node: {{ proxmox_node_name }}
+      Status: {{ node_status.json.data.status | default('unknown') }}
+      CPU: {{ node_status.json.data.cpu | default('N/A') }}
+      Memory: {{ (node_status.json.data.memory.used / 1024 / 1024 / 1024) | round(2) }}GB / {{ (node_status.json.data.memory.total / 1024 / 1024 / 1024) | round(2) }}GB
+  when:
+    - node_status.status is defined
+    - node_status.status == 200

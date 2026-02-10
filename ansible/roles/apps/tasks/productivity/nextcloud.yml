@@ -1,0 +1,101 @@
+---
+# Nextcloud post-installation configuration
+# - Wait for Nextcloud to be ready
+# - Get admin credentials
+# - Configure apps and integrations
+
+- name: Wait for Nextcloud pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n data -l app.kubernetes.io/name=nextcloud
+    --timeout={{ nextcloud_wait_timeout }}s
+  changed_when: false
+  failed_when: false
+
+- name: Get Nextcloud admin password from secret
+  command: >
+    kubectl get secret -n data nextcloud
+    -o jsonpath='{.data.nextcloud-password}'
+  register: nextcloud_admin_password_b64
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+- name: Decode admin password
+  set_fact:
+    nextcloud_admin_password: "{{ nextcloud_admin_password_b64.stdout | b64decode }}"
+  when: nextcloud_admin_password_b64.stdout | length > 0
+  no_log: true
+
+- name: Check Nextcloud status
+  uri:
+    url: "{{ nextcloud_url }}/status.php"
+    method: GET
+    status_code: [200]
+    validate_certs: "{{ nextcloud_validate_certs }}"
+  register: nextcloud_health
+  retries: 10
+  delay: 15
+  until: nextcloud_health.status == 200
+  failed_when: false
+
+- name: Run Nextcloud OCC maintenance commands
+  command: >
+    kubectl exec -n data deployment/nextcloud --
+    php occ {{ item }}
+  loop:
+    - "maintenance:repair"
+    - "db:add-missing-indices"
+    - "db:convert-filecache-bigint --no-interaction"
+  register: nextcloud_occ
+  changed_when: false
+  failed_when: false
+
+- name: Enable recommended apps
+  command: >
+    kubectl exec -n data deployment/nextcloud --
+    php occ app:enable {{ item }}
+  loop:
+    - "user_oidc"
+    - "files_external"
+    - "groupfolders"
+  register: nextcloud_apps
+  changed_when: "'enabled' in nextcloud_apps.stdout"
+  failed_when: false
+
+- name: Save Nextcloud credentials
+  copy:
+    content: |
+      Nextcloud Setup Information
+      ============================
+      URL: {{ nextcloud_url }}
+      Admin User: admin
+      Admin Password: {{ nextcloud_admin_password | default('See Kubernetes secret') }}
+
+      Dependencies:
+        PostgreSQL: postgresql.db.svc.cluster.local:5432
+        Redis: valkey-master.db.svc.cluster.local:6379
+
+      Manual steps required:
+      1. Login and change admin password
+      2. Configure OIDC with Authentik:
+         - Install user_oidc app
+         - Configure provider settings
+      3. Set up external storage (MinIO)
+      4. Configure email settings
+      5. Set up background jobs (cron)
+      6. Configure trusted domains
+    dest: "{{ nextcloud_credentials_file }}"
+    mode: '0600'
+  delegate_to: localhost
+  no_log: true
+
+- name: Display Nextcloud configuration status
+  debug:
+    msg: |
+      Nextcloud Configuration
+      ========================
+      URL: {{ nextcloud_url }}
+      Health: {{ 'OK' if nextcloud_health.status == 200 else 'Starting up' }}
+
+      Credentials saved to: {{ nextcloud_credentials_file }}

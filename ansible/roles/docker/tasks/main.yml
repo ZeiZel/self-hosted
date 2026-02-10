@@ -65,7 +65,7 @@
         state: started
         enabled: true
         daemon_reload: true
-      register: post_docker_isntalled
+      register: post_docker_installed
 
 - name: Docker postinstall
   become: true
@@ -92,10 +92,12 @@
       when: reboot_required_file.stat.exists | default(false)
 
 - name: Verify Docker installed
-  assert:
-    that:
-      - post_docker_isntalled.rc == 0
-      - pre_docker_installed.rc == 0
-    fail_msg: "Docker are not installed"
-    success_msg: "Docker installed successfully!"
+  command: docker ps
+  changed_when: false
+  register: docker_verify
+
+- name: Display Docker verification result
+  debug:
+    msg: "Docker installed and running successfully!"
+  when: docker_verify.rc == 0
 

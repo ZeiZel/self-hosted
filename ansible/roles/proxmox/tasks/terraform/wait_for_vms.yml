@@ -1,0 +1,55 @@
+---
+# Wait for VMs to boot and cloud-init to complete
+
+- name: Wait for VMs to boot (initial delay)
+  pause:
+    seconds: "{{ vm_boot_wait_seconds }}"
+    prompt: "Waiting {{ vm_boot_wait_seconds }} seconds for VMs to boot and cloud-init to complete..."
+  when: not ansible_check_mode
+
+- name: Wait for master SSH to be available
+  wait_for:
+    host: "{{ created_vms.master }}"
+    port: 22
+    timeout: "{{ vm_ssh_wait_timeout }}"
+    state: started
+  when:
+    - not ansible_check_mode
+    - created_vms is defined
+
+- name: Wait for worker-db SSH to be available
+  wait_for:
+    host: "{{ created_vms.worker_db }}"
+    port: 22
+    timeout: "{{ vm_ssh_wait_timeout }}"
+    state: started
+  when:
+    - not ansible_check_mode
+    - created_vms is defined
+
+- name: Wait for worker-services SSH to be available
+  wait_for:
+    host: "{{ created_vms.worker_services }}"
+    port: 22
+    timeout: "{{ vm_ssh_wait_timeout }}"
+    state: started
+  when:
+    - not ansible_check_mode
+    - created_vms is defined
+
+- name: Wait for worker-apps SSH to be available
+  wait_for:
+    host: "{{ created_vms.worker_apps }}"
+    port: 22
+    timeout: "{{ vm_ssh_wait_timeout }}"
+    state: started
+  when:
+    - not ansible_check_mode
+    - created_vms is defined
+
+- name: Display SSH readiness
+  debug:
+    msg: "All VMs are booted and SSH is available"
+  when:
+    - not ansible_check_mode
+    - created_vms is defined

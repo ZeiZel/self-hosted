@@ -1,0 +1,13 @@
+---
+# Initialize Terraform
+
+- name: Run terraform init
+  command:
+    cmd: terraform init
+    chdir: "{{ terraform_working_dir }}"
+  register: terraform_init_result
+  changed_when: "'Terraform has been successfully initialized' in terraform_init_result.stdout"
+
+- name: Display terraform init output
+  debug:
+    var: terraform_init_result.stdout_lines

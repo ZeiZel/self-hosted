@@ -1,0 +1,107 @@
+---
+# JetBrains Hub post-installation configuration
+# - Wait for Hub to be ready
+# - Get wizard token from container
+# - Complete initial setup
+
+- name: Wait for Hub pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n code -l app.kubernetes.io/name=hub
+    --timeout={{ hub_wait_timeout }}s
+  changed_when: false
+
+- name: Check Hub startup status
+  command: >
+    kubectl logs -n code -l app.kubernetes.io/name=hub --tail=50
+  register: hub_logs
+  changed_when: false
+
+- name: Check if Hub requires initial setup
+  set_fact:
+    hub_needs_setup: "{{ 'wizard' in hub_logs.stdout.lower() or 'token' in hub_logs.stdout.lower() }}"
+
+- name: Get Hub wizard token from logs
+  command: >
+    kubectl logs -n code -l app.kubernetes.io/name=hub |
+    grep -oP '(?<=token=)[a-zA-Z0-9]+'
+  register: hub_wizard_token
+  changed_when: false
+  failed_when: false
+  when: hub_needs_setup
+
+- name: Get Hub wizard token (alternative method)
+  command: >
+    kubectl exec -n code deployment/hub --
+    cat /opt/hub/conf/hub-config.properties
+  register: hub_config
+  changed_when: false
+  failed_when: false
+  when:
+    - hub_needs_setup
+    - hub_wizard_token.stdout | length == 0
+
+- name: Extract token from config
+  set_fact:
+    hub_setup_token: "{{ hub_config.stdout | regex_search('wizard.token=([a-zA-Z0-9]+)', '\\1') | first }}"
+  when:
+    - hub_config.stdout is defined
+    - "'wizard.token' in hub_config.stdout"
+  failed_when: false
+
+- name: Save Hub setup information
+  copy:
+    content: |
+      JetBrains Hub Setup Information
+      ================================
+      URL: {{ hub_url }}
+
+      {% if hub_wizard_token.stdout is defined and hub_wizard_token.stdout | length > 0 %}
+      Wizard Token: {{ hub_wizard_token.stdout }}
+      {% elif hub_setup_token is defined %}
+      Wizard Token: {{ hub_setup_token }}
+      {% else %}
+      Wizard Token: Check pod logs manually:
+        kubectl logs -n code -l app.kubernetes.io/name=hub | grep -i token
+      {% endif %}
+
+      Setup URL: {{ hub_url }}/hub?wizard_token=<TOKEN>
+
+      Manual steps required:
+      1. Open setup URL with wizard token
+      2. Configure admin account
+      3. Apply license (if available)
+      4. Configure SMTP for notifications
+      5. Set up authentication (LDAP/OIDC)
+    dest: "{{ hub_credentials_file }}"
+    mode: '0600'
+  delegate_to: localhost
+
+- name: Check Hub health endpoint
+  uri:
+    url: "{{ hub_url }}/api/rest/meta"
+    method: GET
+    status_code: [200, 401, 503]
+    validate_certs: "{{ hub_validate_certs }}"
+  register: hub_health
+  retries: 5
+  delay: 10
+  until: hub_health.status in [200, 401]
+  failed_when: false
+
+- name: Display Hub configuration status
+  debug:
+    msg: |
+      JetBrains Hub Configuration
+      ===========================
+      URL: {{ hub_url }}
+      Status: {{ 'Running' if hub_health.status in [200, 401] else 'Starting up' }}
+      Needs Setup: {{ hub_needs_setup | default(false) }}
+
+      {% if hub_wizard_token.stdout is defined and hub_wizard_token.stdout | length > 0 %}
+      WIZARD TOKEN FOUND: {{ hub_wizard_token.stdout }}
+      {% endif %}
+
+      Credentials saved to: {{ hub_credentials_file }}
+
+      IMPORTANT: Hub must be configured before YouTrack and TeamCity!

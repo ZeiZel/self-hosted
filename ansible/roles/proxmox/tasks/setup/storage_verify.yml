@@ -1,0 +1,62 @@
+---
+# Verify storage pool configuration
+
+- name: Get storage pool information
+  uri:
+    url: "https://{{ proxmox_api_host }}:{{ proxmox_api_port }}/api2/json/nodes/{{ proxmox_node_name }}/storage/{{ proxmox_storage_pool }}/status"
+    method: GET
+    headers:
+      Authorization: "PVEAPIToken={{ proxmox.api_token_id }}={{ proxmox.api_token_secret }}"
+    validate_certs: no
+    timeout: 10
+  register: storage_status
+  when: proxmox.api_token_id is defined and proxmox.api_token_secret is defined
+  failed_when: false
+  changed_when: false
+
+- name: Display storage pool status
+  debug:
+    msg: |
+      Storage Pool: {{ proxmox_storage_pool }}
+      Type: {{ storage_status.json.data.type | default('unknown') }}
+      Total: {{ (storage_status.json.data.total / 1024 / 1024 / 1024) | round(2) }}GB
+      Used: {{ (storage_status.json.data.used / 1024 / 1024 / 1024) | round(2) }}GB
+      Available: {{ (storage_status.json.data.avail / 1024 / 1024 / 1024) | round(2) }}GB
+      Active: {{ storage_status.json.data.active | default('unknown') }}
+  when:
+    - storage_status.status is defined
+    - storage_status.status == 200
+
+- name: Check if storage has enough space
+  set_fact:
+    storage_available_gb: "{{ (storage_status.json.data.avail / 1024 / 1024 / 1024) | round(2) }}"
+    storage_required_gb: 1000  # 200 + 400 + 200 + 200 = 1000GB total for all VMs
+  when:
+    - storage_status.status is defined
+    - storage_status.status == 200
+
+- name: Warn if insufficient storage space
+  debug:
+    msg: |
+      WARNING: Storage pool '{{ proxmox_storage_pool }}' may not have enough space!
+      Available: {{ storage_available_gb }}GB
+      Required: {{ storage_required_gb }}GB
+
+      Please verify storage capacity before provisioning VMs.
+  when:
+    - storage_available_gb is defined
+    - storage_available_gb | float < storage_required_gb | float
+
+- name: Fail if storage pool not accessible
+  fail:
+    msg: |
+      Cannot access storage pool '{{ proxmox_storage_pool }}' on node '{{ proxmox_node_name }}'
+      Status code: {{ storage_status.status | default('N/A') }}
+
+      Please verify:
+        1. Storage pool exists on Proxmox node
+        2. Storage pool is enabled
+        3. API token has permissions to access storage
+  when:
+    - storage_status.status is defined
+    - storage_status.status != 200

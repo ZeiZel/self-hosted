@@ -1,0 +1,72 @@
+---
+# Terraform provisioning tasks
+# Tag: terraform
+
+- name: Display Terraform provisioning information
+  debug:
+    msg: |
+      Starting VM provisioning with Terraform...
+      Working directory: {{ terraform_working_dir }}
+      VMs to create:
+        - {{ vm_master.name_prefix }}-1 (Master: {{ vm_master.cpu_cores }} cores, {{ vm_master.memory_mb }}MB RAM, {{ vm_master.disk_size_gb }}GB disk)
+        - {{ vm_worker_db.name }} (Worker-DB: {{ vm_worker_db.cpu_cores }} cores, {{ vm_worker_db.memory_mb }}MB RAM, {{ vm_worker_db.disk_size_gb }}GB disk)
+        - {{ vm_worker_services.name }} (Worker-Services: {{ vm_worker_services.cpu_cores }} cores, {{ vm_worker_services.memory_mb }}MB RAM, {{ vm_worker_services.disk_size_gb }}GB disk)
+        - {{ vm_worker_apps.name }} (Worker-Apps: {{ vm_worker_apps.cpu_cores }} cores, {{ vm_worker_apps.memory_mb }}MB RAM, {{ vm_worker_apps.disk_size_gb }}GB disk)
+  delegate_to: localhost
+  tags:
+    - terraform
+
+- name: Check if Terraform is installed
+  include_tasks: install.yml
+  delegate_to: localhost
+  tags:
+    - terraform
+
+- name: Generate Terraform configuration files
+  include_tasks: generate_configs.yml
+  delegate_to: localhost
+  tags:
+    - terraform
+
+- name: Initialize Terraform
+  include_tasks: init.yml
+  delegate_to: localhost
+  tags:
+    - terraform
+
+- name: Run Terraform plan
+  include_tasks: plan.yml
+  delegate_to: localhost
+  tags:
+    - terraform
+
+- name: Apply Terraform configuration (create VMs)
+  include_tasks: apply.yml
+  delegate_to: localhost
+  tags:
+    - terraform
+    - provision
+
+- name: Wait for VMs to boot
+  include_tasks: wait_for_vms.yml
+  delegate_to: localhost
+  tags:
+    - terraform
+    - provision
+
+- name: Update Ansible inventory with new VMs
+  include_tasks: update_inventory.yml
+  delegate_to: localhost
+  tags:
+    - terraform
+    - inventory
+
+- name: Display provisioning completion
+  debug:
+    msg: |
+      VM provisioning completed successfully!
+      VMs created and added to inventory group 'proxmox_vms'
+      Next step: Configure VMs with setup roles
+  delegate_to: localhost
+  tags:
+    - terraform

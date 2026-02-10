@@ -1,0 +1,45 @@
+---
+# Proxmox setup tasks - verify and configure Proxmox host
+# Tag: proxmox-setup
+
+- name: Display Proxmox setup information
+  debug:
+    msg: |
+      Proxmox Setup Starting...
+      Node: {{ proxmox_node_name }}
+      API Host: {{ proxmox_api_host }}:{{ proxmox_api_port }}
+      Storage Pool: {{ proxmox_storage_pool }}
+      Network Bridge: {{ proxmox_network_bridge }}
+  tags:
+    - proxmox-setup
+
+- name: Verify Proxmox API connectivity
+  include_tasks: api_verify.yml
+  tags:
+    - proxmox-setup
+    - api
+
+- name: Check and verify cloud-init templates
+  include_tasks: templates_check.yml
+  tags:
+    - proxmox-setup
+    - templates
+
+- name: Verify storage pool configuration
+  include_tasks: storage_verify.yml
+  tags:
+    - proxmox-setup
+    - storage
+
+- name: Create API token for Terraform (if using token auth)
+  include_tasks: api_token.yml
+  when: proxmox.api_token_id is defined
+  tags:
+    - proxmox-setup
+    - api
+
+- name: Display Proxmox setup completion
+  debug:
+    msg: "Proxmox setup completed successfully! Ready for VM provisioning."
+  tags:
+    - proxmox-setup

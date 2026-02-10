@@ -14,7 +14,7 @@ all:
 {% endfor %}
     kube_node:
       hosts:
-{% for host in groups['k8s_workers'] %}
+{% for host in groups['k8s_masters'] + groups['k8s_workers'] %}
         {{ hostvars[host]['inventory_hostname'] }}:
 {% endfor %}
     etcd:

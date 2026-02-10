@@ -1,48 +1,26 @@
-# Ansible
+# Terraform files
+terraform/proxmox/.terraform/
+terraform/proxmox/.terraform.lock.hcl
+terraform/proxmox/terraform.tfstate
+terraform/proxmox/terraform.tfstate.backup
+terraform/proxmox/tfplan
+terraform/proxmox/*.tfvars
+terraform/proxmox/.terraform.tfstate.lock.info
+
+# Ansible retry files
 *.retry
-.ansible/
-collections/
-*.log
-
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-venv/
-.venv/
-ENV/
-env/
-
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
-
-# OS
-.DS_Store
-Thumbs.db
-
-# Vagrant
-.vagrant/
 
 # Temporary files
-/tmp/
 *.tmp
-*.bak
+*.swp
+*~
 
-# Ansible facts cache
-/tmp/ansible_facts/
-*.facts
+# Backup files
+*.backup-*
 
-# Secrets (ensure vault files are tracked but decrypted versions are not)
-*_decrypted.yml
-*.vault.yml.dec
+# Python bytecode
+__pycache__/
+*.pyc
 
-inventory/**
-!inventory/hosts.ini.example
-
-**/vault.yml
+# Instruction files (temporary)
+PROXMOX_VAULT_INSTRUCTIONS.md

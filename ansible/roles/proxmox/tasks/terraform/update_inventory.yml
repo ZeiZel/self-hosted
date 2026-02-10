@@ -1,0 +1,113 @@
+---
+# Update Ansible inventory with new VMs
+
+- name: Check if inventory file exists
+  stat:
+    path: "{{ inventory_file }}"
+  register: inventory_stat
+
+- name: Backup current inventory
+  copy:
+    src: "{{ inventory_file }}"
+    dest: "{{ inventory_file }}.backup-{{ ansible_date_time.epoch }}"
+    mode: '0644'
+    remote_src: yes
+  when: inventory_stat.stat.exists
+
+- name: Read current inventory
+  slurp:
+    src: "{{ inventory_file }}"
+  register: current_inventory_raw
+  when: inventory_stat.stat.exists
+
+- name: Parse current inventory
+  set_fact:
+    current_inventory: "{{ current_inventory_raw.content | b64decode }}"
+  when: inventory_stat.stat.exists
+
+- name: Check if proxmox_vms group already exists
+  set_fact:
+    has_proxmox_vms: "{{ '[proxmox_vms]' in current_inventory }}"
+  when: current_inventory is defined
+
+- name: Remove old proxmox_vms section if exists
+  lineinfile:
+    path: "{{ inventory_file }}"
+    regexp: "{{ item }}"
+    state: absent
+  loop:
+    - '^\[proxmox_vms\]'
+    - '^k8s-master-1 ansible_host='
+    - '^k8s-worker-db ansible_host='
+    - '^k8s-worker-services ansible_host='
+    - '^k8s-worker-apps ansible_host='
+    - '^\[proxmox_vms:vars\]'
+  when: has_proxmox_vms | default(false)
+
+- name: Add proxmox_vms group header
+  lineinfile:
+    path: "{{ inventory_file }}"
+    line: "\n[proxmox_vms]"
+    insertafter: EOF
+  when: not ansible_check_mode
+
+- name: Add master to inventory
+  lineinfile:
+    path: "{{ inventory_file }}"
+    line: "{{ vm_master.name_prefix }}-1 ansible_host={{ created_vms.master }} ansible_user={{ user.name }} ansible_port=22"
+    insertafter: '^\[proxmox_vms\]'
+  when:
+    - not ansible_check_mode
+    - created_vms is defined
+
+- name: Add worker-db to inventory
+  lineinfile:
+    path: "{{ inventory_file }}"
+    line: "{{ vm_worker_db.name }} ansible_host={{ created_vms.worker_db }} ansible_user={{ user.name }} ansible_port=22"
+    insertafter: '{{ vm_master.name_prefix }}-1 ansible_host='
+  when:
+    - not ansible_check_mode
+    - created_vms is defined
+
+- name: Add worker-services to inventory
+  lineinfile:
+    path: "{{ inventory_file }}"
+    line: "{{ vm_worker_services.name }} ansible_host={{ created_vms.worker_services }} ansible_user={{ user.name }} ansible_port=22"
+    insertafter: '{{ vm_worker_db.name }} ansible_host='
+  when:
+    - not ansible_check_mode
+    - created_vms is defined
+
+- name: Add worker-apps to inventory
+  lineinfile:
+    path: "{{ inventory_file }}"
+    line: "{{ vm_worker_apps.name }} ansible_host={{ created_vms.worker_apps }} ansible_user={{ user.name }} ansible_port=22"
+    insertafter: '{{ vm_worker_services.name }} ansible_host='
+  when:
+    - not ansible_check_mode
+    - created_vms is defined
+
+- name: Add proxmox_vms group vars
+  blockinfile:
+    path: "{{ inventory_file }}"
+    marker: "# {mark} PROXMOX_VMS VARS"
+    block: |
+
+      [proxmox_vms:vars]
+      ansible_python_interpreter=/usr/bin/python3
+    insertafter: EOF
+  when: not ansible_check_mode
+
+- name: Display inventory update status
+  debug:
+    msg: |
+      Inventory updated successfully!
+      File: {{ inventory_file }}
+      Added {{ vm_master.name_prefix }}-1, {{ vm_worker_db.name }}, {{ vm_worker_services.name }}, {{ vm_worker_apps.name }} to [proxmox_vms] group
+  when:
+    - not ansible_check_mode
+    - created_vms is defined
+
+- name: Refresh inventory
+  meta: refresh_inventory
+  when: not ansible_check_mode

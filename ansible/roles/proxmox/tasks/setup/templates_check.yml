@@ -1,0 +1,70 @@
+---
+# Check and verify cloud-init templates
+
+- name: Get list of VMs/templates from Proxmox
+  uri:
+    url: "https://{{ proxmox_api_host }}:{{ proxmox_api_port }}/api2/json/nodes/{{ proxmox_node_name }}/qemu"
+    method: GET
+    headers:
+      Authorization: "PVEAPIToken={{ proxmox.api_token_id }}={{ proxmox.api_token_secret }}"
+    validate_certs: no
+    timeout: 10
+  register: proxmox_vms
+  when: proxmox.api_token_id is defined and proxmox.api_token_secret is defined
+
+- name: Filter template VMs
+  set_fact:
+    proxmox_templates: "{{ proxmox_vms.json.data | selectattr('template', 'defined') | selectattr('template', 'equalto', 1) | list }}"
+  when: proxmox_vms.json is defined
+
+- name: Display available templates
+  debug:
+    msg: |
+      Available templates:
+      {% for template in proxmox_templates %}
+        - {{ template.name }} (ID: {{ template.vmid }})
+      {% endfor %}
+  when: proxmox_templates is defined and proxmox_templates | length > 0
+
+- name: Check if required cloud-init template exists
+  set_fact:
+    template_found: "{{ proxmox_templates | selectattr('name', 'search', proxmox_template_name) | list | length > 0 }}"
+    template_id: "{{ (proxmox_templates | selectattr('name', 'search', proxmox_template_name) | list | first).vmid if (proxmox_templates | selectattr('name', 'search', proxmox_template_name) | list | length > 0) else '' }}"
+  when: proxmox_templates is defined
+
+- name: Display template status
+  debug:
+    msg: |
+      {% if template_found | default(false) %}
+      Cloud-init template '{{ proxmox_template_name }}' found (ID: {{ template_id }})
+      {% else %}
+      Cloud-init template '{{ proxmox_template_name }}' NOT FOUND!
+      {% endif %}
+  when: template_found is defined
+
+- name: Warn if template not found
+  debug:
+    msg: |
+      WARNING: Cloud-init template '{{ proxmox_template_name }}' not found!
+
+      Please create a cloud-init template manually:
+      1. Login to Proxmox web UI (https://{{ proxmox_api_host }}:{{ proxmox_api_port }})
+      2. Create VM from Ubuntu 25.10 or Debian 13 ISO
+      3. Install cloud-init package: apt-get install cloud-init
+      4. Configure cloud-init: dpkg-reconfigure cloud-init
+      5. Convert to template: Right-click VM -> Convert to template
+
+      Or use CLI on Proxmox server:
+        qm create 9000 --name ubuntu-cloud-init --memory 2048 --net0 virtio,bridge=vmbr0
+        qm importdisk 9000 /path/to/ubuntu-cloud.img local-lvm
+        qm set 9000 --scsihw virtio-scsi-pci --scsi0 local-lvm:vm-9000-disk-0
+        qm set 9000 --ide2 local-lvm:cloudinit
+        qm set 9000 --boot c --bootdisk scsi0
+        qm set 9000 --serial0 socket --vga serial0
+        qm template 9000
+  when: not (template_found | default(false))
+
+- name: Set template ID as fact for Terraform
+  set_fact:
+    proxmox_cloud_init_template_id: "{{ template_id }}"
+  when: template_found | default(false)

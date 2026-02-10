@@ -1,0 +1,59 @@
+---
+# Kestra post-installation configuration
+# - Wait for Kestra to be ready
+# - Configure plugins and integrations
+
+- name: Wait for Kestra pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n automation -l app.kubernetes.io/name=kestra
+    --timeout={{ kestra_wait_timeout }}s
+  changed_when: false
+  failed_when: false
+
+- name: Check Kestra health
+  uri:
+    url: "{{ kestra_url }}/api/v1/health"
+    method: GET
+    status_code: [200]
+    validate_certs: "{{ kestra_validate_certs }}"
+  register: kestra_health
+  retries: 10
+  delay: 10
+  until: kestra_health.status == 200
+  failed_when: false
+
+- name: Save Kestra setup information
+  copy:
+    content: |
+      Kestra Setup Information
+      =========================
+      URL: {{ kestra_url }}
+      Health: {{ 'OK' if kestra_health.status == 200 else 'Check required' }}
+
+      Dependencies:
+        PostgreSQL: postgresql.db.svc.cluster.local:5432
+        MinIO: minio.db.svc.cluster.local:9000
+
+      Manual steps required:
+      1. Configure basic auth or OIDC
+      2. Install required plugins:
+         - kestra.plugin.git
+         - kestra.plugin.kubernetes
+         - kestra.plugin.notifications
+      3. Create namespaces for workflows
+      4. Set up secrets for integrations
+      5. Import flow templates
+    dest: "{{ kestra_credentials_file }}"
+    mode: '0600'
+  delegate_to: localhost
+
+- name: Display Kestra configuration status
+  debug:
+    msg: |
+      Kestra Configuration
+      =====================
+      URL: {{ kestra_url }}
+      Health: {{ 'OK' if kestra_health.status == 200 else 'Starting up' }}
+
+      Complete setup through web UI

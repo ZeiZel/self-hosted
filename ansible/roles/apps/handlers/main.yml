@@ -1,0 +1,14 @@
+---
+# Handlers for apps role
+
+- name: restart vault
+  command: kubectl rollout restart statefulset vault -n service
+  delegate_to: localhost
+
+- name: restart authentik
+  command: kubectl rollout restart deployment authentik-server -n service
+  delegate_to: localhost
+
+- name: restart gitlab
+  command: kubectl rollout restart deployment gitlab-webservice-default -n code
+  delegate_to: localhost

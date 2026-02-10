@@ -1,0 +1,56 @@
+---
+# Apply Terraform configuration
+
+- name: Run terraform apply
+  command:
+    cmd: terraform apply -auto-approve tfplan
+    chdir: "{{ terraform_working_dir }}"
+  register: terraform_apply_result
+  when: not ansible_check_mode
+  async: 900
+  poll: 10
+
+- name: Display terraform apply output
+  debug:
+    var: terraform_apply_result.stdout_lines
+  when:
+    - not ansible_check_mode
+    - terraform_apply_result is defined
+
+- name: Get Terraform outputs (VM IPs)
+  command:
+    cmd: terraform output -json
+    chdir: "{{ terraform_working_dir }}"
+  register: terraform_outputs_raw
+  changed_when: false
+  when: not ansible_check_mode
+
+- name: Parse Terraform outputs
+  set_fact:
+    terraform_outputs: "{{ terraform_outputs_raw.stdout | from_json }}"
+  when:
+    - not ansible_check_mode
+    - terraform_outputs_raw is defined
+
+- name: Extract VM IPs
+  set_fact:
+    created_vms:
+      master: "{{ terraform_outputs.master_ip.value | regex_replace('/24', '') }}"
+      worker_db: "{{ terraform_outputs.worker_db_ip.value | regex_replace('/24', '') }}"
+      worker_services: "{{ terraform_outputs.worker_services_ip.value | regex_replace('/24', '') }}"
+      worker_apps: "{{ terraform_outputs.worker_apps_ip.value | regex_replace('/24', '') }}"
+  when:
+    - not ansible_check_mode
+    - terraform_outputs is defined
+
+- name: Display created VMs
+  debug:
+    msg: |
+      VMs created successfully:
+        - {{ vm_master.name_prefix }}-1: {{ created_vms.master }}
+        - {{ vm_worker_db.name }}: {{ created_vms.worker_db }}
+        - {{ vm_worker_services.name }}: {{ created_vms.worker_services }}
+        - {{ vm_worker_apps.name }}: {{ created_vms.worker_apps }}
+  when:
+    - not ansible_check_mode
+    - created_vms is defined

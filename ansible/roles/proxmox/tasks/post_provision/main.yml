@@ -1,0 +1,31 @@
+---
+# Post-provision tasks - verify provisioned VMs
+# Tag: post-provision
+
+- name: Display post-provision information
+  debug:
+    msg: |
+      Starting post-provision configuration...
+      Hosts: {{ ansible_play_hosts | join(', ') }}
+  tags:
+    - post-provision
+
+- name: Wait for SSH connectivity
+  include_tasks: wait_ssh.yml
+  tags:
+    - post-provision
+    - ssh
+
+- name: Verify VM connectivity and configuration
+  include_tasks: verify_connectivity.yml
+  tags:
+    - post-provision
+    - verify
+
+- name: Display post-provision completion
+  debug:
+    msg: |
+      Post-provision checks completed!
+      VMs are ready for setup roles (server role with base, security tags)
+  tags:
+    - post-provision

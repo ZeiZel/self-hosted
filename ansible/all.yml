@@ -1,4 +1,32 @@
 ---
+# Main Ansible Playbook for Self-Hosted Infrastructure
+#
+# This playbook orchestrates the complete infrastructure setup:
+# 1. Pre-flight validation
+# 2. Proxmox setup and VM provisioning
+# 3. Server configuration (base, security, VPS-specific)
+# 4. Kubernetes deployment
+# 5. Infrastructure services
+# 6. VPN connectivity
+#
+# Usage:
+#   Full deployment:
+#     ansible-playbook -i inventory/hosts.ini all.yml
+#
+#   Specific tags:
+#     ansible-playbook -i inventory/hosts.ini all.yml --tags proxmox-setup
+#     ansible-playbook -i inventory/hosts.ini all.yml --tags terraform
+#     ansible-playbook -i inventory/hosts.ini all.yml --tags base,security
+#     ansible-playbook -i inventory/hosts.ini all.yml --tags kubespray
+#
+# Available tags:
+#   Proxmox:  proxmox, proxmox-setup, terraform, post-provision
+#   Server:   server, base, security, vps
+#   K8s:      prepare, kubespray, helmfile, pangolin, monitoring
+#   Apps:     apps, vault, authentik, gitlab, jetbrains, hub, youtrack, teamcity
+#             coder, bytebase, harbor, affine, nextcloud, n8n, kestra
+#             stoat, stalwart, vaultwarden, rybbit
+
 - name: Pre-flight validation
   hosts: localhost
   connection: local
@@ -31,7 +59,40 @@
         msg: "Pre-flight validation passed - all required tools are available"
       tags: [always]
 
-- name: Host
+# =============================================================================
+# PROXMOX - Setup and VM Provisioning
+# =============================================================================
+- name: Proxmox Setup
+  hosts: proxmox_nodes
+  become: true
+  gather_facts: true
+  tags: [proxmox, proxmox-setup]
+  roles:
+    - role: proxmox
+      tags: [proxmox-setup]
+
+- name: Provision VMs with Terraform
+  hosts: localhost
+  connection: local
+  gather_facts: false
+  tags: [proxmox, terraform, provision]
+  roles:
+    - role: proxmox
+      tags: [terraform]
+
+- name: Configure Provisioned VMs
+  hosts: proxmox_vms
+  become: true
+  gather_facts: true
+  tags: [proxmox, post-provision]
+  roles:
+    - role: proxmox
+      tags: [post-provision]
+
+# =============================================================================
+# HOST SETUP - Local Machine
+# =============================================================================
+- name: Host Setup
   hosts: local
   become: true
   gather_facts: true
@@ -39,50 +100,83 @@
   roles:
     - role: setup_host
 
-- name: Master
+# =============================================================================
+# KUBERNETES MASTER NODES
+# =============================================================================
+- name: Master Nodes
   hosts: k8s_masters
+  become: true
   gather_facts: true
   tags: [prepare, kubespray, helmfile, pangolin]
+  vars:
+    server_type: node
   roles:
-    - role: setup_server
+    - role: server
+      tags: [prepare, base, security]
     - role: docker
-    - role: security
+      tags: [prepare, docker]
     - role: kubespray
-      tags: master
+      tags: [kubespray, master]
       type: node
     - role: infrastructure
-      tags: master
+      tags: [helmfile, infrastructure, master]
     - role: pangolin
-      tags: node
+      tags: [pangolin, node]
 
-- name: Worker
+# =============================================================================
+# KUBERNETES WORKER NODES
+# =============================================================================
+- name: Worker Nodes
   hosts: k8s_workers
+  become: true
   gather_facts: true
   tags: [prepare, kubespray, helmfile, pangolin]
+  vars:
+    server_type: node
   roles:
-    - role: setup_server
+    - role: server
+      tags: [prepare, base, security]
     - role: docker
-    - role: security
+      tags: [prepare, docker]
     - role: kubespray
-      tags: worker
+      tags: [kubespray, worker]
       type: node
     - role: infrastructure
-      tags: worker
+      tags: [helmfile, infrastructure, worker]
     - role: pangolin
-      tags: node
+      tags: [pangolin, node]
 
-- name: Gateway
+# =============================================================================
+# GATEWAY VPS
+# =============================================================================
+- name: Gateway VPS
   hosts: gateway
+  become: true
   gather_facts: true
-  tags: [prepare, kubespray, helmfile, pangolin]
+  tags: [vps, prepare, kubespray, helmfile, pangolin]
+  vars:
+    server_type: vps
   roles:
-    - role: setup_server
+    - role: server
+      tags: [prepare, base, security, vps]
     - role: docker
-    - role: security
+      tags: [prepare, docker]
     - role: kubespray
-      tags: worker
+      tags: [kubespray, gateway, worker]
       type: gateway
     - role: infrastructure
-      tags: gateway
+      tags: [helmfile, infrastructure, gateway]
     - role: pangolin
-      tags: gateway
+      tags: [pangolin, gateway]
+
+# =============================================================================
+# APPLICATIONS - Post-installation configuration
+# =============================================================================
+- name: Applications Post-Configuration
+  hosts: k8s_masters[0]
+  become: false
+  gather_facts: false
+  tags: [apps]
+  roles:
+    - role: apps
+      tags: [apps]

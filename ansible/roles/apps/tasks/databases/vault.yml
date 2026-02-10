@@ -1,0 +1,165 @@
+---
+# Vault post-installation configuration
+# - Initialize Vault (if not initialized)
+# - Unseal Vault
+# - Enable secrets engines
+# - Configure Kubernetes auth
+
+- name: Check if Vault pod is running
+  command: >
+    kubectl get pods -n service -l app.kubernetes.io/name=vault
+    -o jsonpath='{.items[0].status.phase}'
+  register: vault_pod_status
+  changed_when: false
+  failed_when: false
+
+- name: Wait for Vault pod to be running
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n service -l app.kubernetes.io/name=vault
+    --timeout={{ vault_wait_timeout }}s
+  when: vault_pod_status.stdout != 'Running'
+  changed_when: false
+
+- name: Check Vault initialization status
+  command: >
+    kubectl exec -n service vault-0 --
+    vault status -format=json
+  register: vault_status_raw
+  changed_when: false
+  failed_when: false
+
+- name: Parse Vault status
+  set_fact:
+    vault_status: "{{ vault_status_raw.stdout | from_json }}"
+  when: vault_status_raw.rc == 0 or vault_status_raw.rc == 2
+
+- name: Initialize Vault (if not initialized)
+  when:
+    - vault_status is defined
+    - not vault_status.initialized | default(false)
+  block:
+    - name: Initialize Vault with key shares
+      command: >
+        kubectl exec -n service vault-0 --
+        vault operator init
+        -key-shares={{ vault_key_shares }}
+        -key-threshold={{ vault_key_threshold }}
+        -format=json
+      register: vault_init_output
+
+    - name: Save Vault init keys locally
+      copy:
+        content: "{{ vault_init_output.stdout }}"
+        dest: "{{ vault_keys_file }}"
+        mode: '0600'
+      delegate_to: localhost
+
+    - name: Display CRITICAL warning about Vault keys
+      debug:
+        msg: |
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+          CRITICAL: Vault has been initialized!
+
+          Unseal keys and root token saved to: {{ vault_keys_file }}
+
+          BACKUP THIS FILE IMMEDIATELY AND STORE SECURELY!
+          These keys are required to unseal Vault after restarts.
+
+          Root token is needed for initial configuration.
+          !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+
+- name: Load Vault keys from file
+  slurp:
+    src: "{{ vault_keys_file }}"
+  register: vault_keys_raw
+  delegate_to: localhost
+  when: vault_keys_file is defined
+  failed_when: false
+
+- name: Parse Vault keys
+  set_fact:
+    vault_keys: "{{ vault_keys_raw.content | b64decode | from_json }}"
+  when:
+    - vault_keys_raw is defined
+    - vault_keys_raw.content is defined
+
+- name: Unseal Vault (if sealed)
+  when:
+    - vault_status is defined
+    - vault_status.sealed | default(true)
+    - vault_keys is defined
+  block:
+    - name: Unseal Vault with key 1
+      command: >
+        kubectl exec -n service vault-0 --
+        vault operator unseal {{ vault_keys.unseal_keys_b64[0] }}
+      changed_when: true
+      no_log: true
+
+    - name: Unseal Vault with key 2
+      command: >
+        kubectl exec -n service vault-0 --
+        vault operator unseal {{ vault_keys.unseal_keys_b64[1] }}
+      changed_when: true
+      no_log: true
+
+    - name: Unseal Vault with key 3
+      command: >
+        kubectl exec -n service vault-0 --
+        vault operator unseal {{ vault_keys.unseal_keys_b64[2] }}
+      changed_when: true
+      no_log: true
+
+    - name: Verify Vault is unsealed
+      command: >
+        kubectl exec -n service vault-0 --
+        vault status -format=json
+      register: vault_unsealed_status
+      changed_when: false
+      until: (vault_unsealed_status.stdout | from_json).sealed == false
+      retries: 5
+      delay: 5
+
+- name: Configure Vault (if root token available)
+  when:
+    - vault_keys is defined
+    - vault_keys.root_token is defined
+  environment:
+    VAULT_TOKEN: "{{ vault_keys.root_token }}"
+  block:
+    - name: Enable KV secrets engine v2
+      command: >
+        kubectl exec -n service vault-0 --
+        vault secrets enable -path=secret -version=2 kv
+      register: kv_enable
+      changed_when: "'Success' in kv_enable.stdout"
+      failed_when: false
+
+    - name: Enable Kubernetes auth method
+      command: >
+        kubectl exec -n service vault-0 --
+        vault auth enable kubernetes
+      register: k8s_auth_enable
+      changed_when: "'Success' in k8s_auth_enable.stdout"
+      failed_when: false
+
+    - name: Configure Kubernetes auth
+      command: >
+        kubectl exec -n service vault-0 --
+        vault write auth/kubernetes/config
+        kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443"
+      changed_when: true
+
+- name: Display Vault status
+  debug:
+    msg: |
+      Vault Configuration Complete
+      ============================
+      Status: {{ 'Unsealed' if not (vault_status.sealed | default(true)) else 'Sealed' }}
+      Initialized: {{ vault_status.initialized | default(false) }}
+
+      Next steps:
+      1. Store unseal keys securely ({{ vault_keys_file }})
+      2. Create policies for applications
+      3. Configure Kubernetes roles for service accounts

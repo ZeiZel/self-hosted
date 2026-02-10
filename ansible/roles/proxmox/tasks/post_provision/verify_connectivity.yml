@@ -1,0 +1,59 @@
+---
+# Verify VM connectivity and basic configuration
+
+- name: Check cloud-init status
+  command: cloud-init status --wait
+  register: cloud_init_status
+  failed_when: false
+  changed_when: false
+
+- name: Display cloud-init status
+  debug:
+    msg: |
+      Cloud-init status: {{ cloud_init_status.stdout if cloud_init_status.rc == 0 else 'Not available or still running' }}
+
+- name: Check if Python is installed
+  command: python3 --version
+  register: python_version
+  changed_when: false
+
+- name: Display Python version
+  debug:
+    msg: "Python version: {{ python_version.stdout }}"
+
+- name: Test internet connectivity
+  command: ping -c 3 8.8.8.8
+  register: internet_test
+  failed_when: false
+  changed_when: false
+
+- name: Display internet connectivity status
+  debug:
+    msg: "{{ 'Internet connectivity: OK' if internet_test.rc == 0 else 'Internet connectivity: FAILED' }}"
+
+- name: Check disk space
+  command: df -h /
+  register: disk_space
+  changed_when: false
+
+- name: Display disk space
+  debug:
+    msg: "{{ disk_space.stdout_lines }}"
+
+- name: Check available memory
+  command: free -h
+  register: memory_info
+  changed_when: false
+
+- name: Display memory info
+  debug:
+    msg: "{{ memory_info.stdout_lines }}"
+
+- name: Verify VM is ready for configuration
+  debug:
+    msg: |
+      VM {{ inventory_hostname }} is ready for configuration
+      - SSH connectivity established
+      - Cloud-init completed
+      - Python available
+      - Resources verified

@@ -1,0 +1,21 @@
+---
+# Run Terraform plan
+
+- name: Run terraform plan
+  command:
+    cmd: terraform plan -out=tfplan
+    chdir: "{{ terraform_working_dir }}"
+  register: terraform_plan_result
+  changed_when: false
+
+- name: Display terraform plan output
+  debug:
+    var: terraform_plan_result.stdout_lines
+
+- name: Check if plan has changes
+  set_fact:
+    terraform_has_changes: "{{ 'No changes' not in terraform_plan_result.stdout }}"
+
+- name: Display plan summary
+  debug:
+    msg: "{{ 'Changes detected - VMs will be created' if terraform_has_changes else 'No changes - VMs may already exist' }}"

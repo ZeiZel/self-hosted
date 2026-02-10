@@ -24,7 +24,7 @@ Self-hosted enterprise platform running 40+ services on Kubernetes with strict s
 
 ### Key Characteristics
 
-- **Kubernetes**: v1.28.5 (3-node cluster: 1 master, 2 workers)
+- **Kubernetes**: v1.28.5 (single-node bare-metal deployment)
 - **CNI**: Calico v3.28.0 with IPIPCrossSubnet encapsulation
 - **Storage**: OpenEBS hostpath provisioner
 - **Ingress**: Traefik v3.4.0
@@ -41,8 +41,8 @@ Self-hosted enterprise platform running 40+ services on Kubernetes with strict s
 ### Physical Infrastructure
 
 **Home Server** (192.168.100.2):
-- Proxmox VE hypervisor
-- Hosts Kubernetes cluster VMs
+- Bare-metal Ubuntu 25.10 server
+- Single-node Kubernetes control plane + workers
 - Connected via WireGuard VPN to gateway
 
 **Gateway VPS** (80.90.178.207):
@@ -54,40 +54,28 @@ Self-hosted enterprise platform running 40+ services on Kubernetes with strict s
 ### Kubernetes Cluster
 
 ```
-Master Node: k8s-master-1
-- IP: 192.168.100.10
-- CPU: 4 cores
-- RAM: 8 GB
-- Disk: 50 GB
-- Role: Control plane + workloads
-
-Worker Node 1: k8s-worker-1
-- IP: 192.168.100.11
-- CPU: 4 cores
-- RAM: 16 GB
-- Disk: 100 GB
-- Role: Workloads
-
-Worker Node 2: k8s-worker-2
-- IP: 192.168.100.12
-- CPU: 4 cores
-- RAM: 16 GB
-- Disk: 100 GB
-- Role: Workloads
+Single Node: local-server
+- IP: 192.168.100.2
+- VPN IP: 10.99.0.2
+- OS: Ubuntu 25.10
+- Role: Control plane + workloads (bare-metal)
+- Expandable with additional worker nodes when needed
 ```
 
 ### Ansible Roles
 
 | Role | Purpose | Status |
 |------|---------|--------|
-| proxmox | Provision VMs on Proxmox | ✅ Complete |
-| kubespray | Deploy Kubernetes cluster | ✅ Complete |
-| cni | Configure Calico networking | ✅ Complete |
-| storage | Deploy OpenEBS storage | ✅ Complete |
-| pangolin | Setup WireGuard VPN | ✅ Complete |
-| infrastructure | Deploy all services via Helmfile | ✅ Complete |
-| monitoring | Verify Prometheus/Grafana | ✅ Complete |
-| backup | Configure Velero backups | ✅ Complete |
+| setup_server | Prepare server for Kubernetes | ✅ Complete |
+| docker | Install Docker runtime | ✅ Complete |
+| security | UFW firewall and hardening | ✅ Complete |
+| kubespray | Deploy Kubernetes cluster | 🚧 In Progress |
+| cni | Configure Calico networking | ⏳ Pending |
+| storage | Deploy OpenEBS storage | ⏳ Pending |
+| pangolin | Setup WireGuard VPN | ⏳ Pending |
+| infrastructure | Deploy all services via Helmfile | ⏳ Pending |
+| monitoring | Verify Prometheus/Grafana | ⏳ Pending |
+| backup | Configure Velero backups | ⏳ Pending |
 
 ---
 
@@ -322,7 +310,7 @@ Internet → Gateway VPS (TLS termination)
 ### Deployment Pipeline
 
 ```
-1. Ansible: prepare → proxmox → kubespray → cni → storage
+1. Ansible: prepare → kubespray → cni → storage
 2. Infrastructure: prerequisites → base → apps → verify
 3. Post-deployment: monitoring → backup
 ```

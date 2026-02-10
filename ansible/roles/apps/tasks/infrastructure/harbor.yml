@@ -1,0 +1,103 @@
+---
+# Harbor post-installation configuration
+# - Wait for Harbor to be ready
+# - Get admin password
+# - Configure projects
+
+- name: Wait for Harbor core pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n infrastructure -l app=harbor,component=core
+    --timeout={{ harbor_wait_timeout }}s
+  changed_when: false
+  failed_when: false
+
+- name: Get Harbor admin password from secret
+  command: >
+    kubectl get secret -n infrastructure harbor-core
+    -o jsonpath='{.data.HARBOR_ADMIN_PASSWORD}'
+  register: harbor_admin_password_b64
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+- name: Decode admin password
+  set_fact:
+    harbor_admin_password: "{{ harbor_admin_password_b64.stdout | b64decode }}"
+  when: harbor_admin_password_b64.stdout | length > 0
+  no_log: true
+
+- name: Check Harbor health
+  uri:
+    url: "{{ harbor_url }}/api/v2.0/health"
+    method: GET
+    status_code: [200]
+    validate_certs: "{{ harbor_validate_certs }}"
+  register: harbor_health
+  retries: 10
+  delay: 15
+  until: harbor_health.status == 200
+  failed_when: false
+
+- name: Create library project (if not exists)
+  uri:
+    url: "{{ harbor_url }}/api/v2.0/projects"
+    method: POST
+    body_format: json
+    body:
+      project_name: "library"
+      public: true
+    user: admin
+    password: "{{ harbor_admin_password }}"
+    status_code: [201, 409]
+    validate_certs: "{{ harbor_validate_certs }}"
+  when: harbor_admin_password is defined
+  failed_when: false
+
+- name: Create private project
+  uri:
+    url: "{{ harbor_url }}/api/v2.0/projects"
+    method: POST
+    body_format: json
+    body:
+      project_name: "private"
+      public: false
+    user: admin
+    password: "{{ harbor_admin_password }}"
+    status_code: [201, 409]
+    validate_certs: "{{ harbor_validate_certs }}"
+  when: harbor_admin_password is defined
+  failed_when: false
+
+- name: Save Harbor credentials
+  copy:
+    content: |
+      Harbor Container Registry
+      ==========================
+      URL: {{ harbor_url }}
+      Admin User: admin
+      Admin Password: {{ harbor_admin_password | default('See Kubernetes secret') }}
+
+      Docker Login:
+        docker login {{ harbor_url | regex_replace('https?://', '') }}
+
+      Manual steps required:
+      1. Change admin password
+      2. Configure OIDC with Authentik
+      3. Set up replication rules (optional)
+      4. Configure vulnerability scanning
+      5. Create robot accounts for CI/CD
+    dest: "{{ harbor_credentials_file }}"
+    mode: '0600'
+  delegate_to: localhost
+  no_log: true
+
+- name: Display Harbor configuration status
+  debug:
+    msg: |
+      Harbor Configuration
+      =====================
+      URL: {{ harbor_url }}
+      Health: {{ 'OK' if harbor_health.status == 200 else 'Starting up' }}
+
+      Credentials saved to: {{ harbor_credentials_file }}

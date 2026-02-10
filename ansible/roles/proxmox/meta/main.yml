@@ -1,17 +1,29 @@
 ---
+# Meta information for proxmox role
+
 galaxy_info:
-  author: Self-Hosted Infrastructure
-  description: Install Proxmox VE on bare-metal server and provision VMs for K8s cluster
+  author: zeizel
+  description: |
+    Unified Proxmox role for VM provisioning and management.
+    Combines: proxmox_setup, proxmox_terraform, proxmox_post_provision
+
+    Tags:
+      - proxmox: Run all Proxmox tasks
+      - proxmox-setup: Setup and verify Proxmox host (API, templates, storage)
+      - terraform: Provision VMs with Terraform
+      - post-provision: Post-provisioning checks and verification
+  company: self-hosted
   license: MIT
-  min_ansible_version: "2.12"
+  min_ansible_version: "2.9"
   platforms:
-    - name: Debian
-      versions:
-        - bookworm
-        - bullseye
     - name: Ubuntu
       versions:
-        - jammy
         - focal
+        - jammy
+        - noble
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
 
 dependencies: []

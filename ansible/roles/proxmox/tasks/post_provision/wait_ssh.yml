@@ -1,0 +1,30 @@
+---
+# Wait for SSH connectivity to become available
+
+- name: Wait for SSH port to be open
+  wait_for:
+    host: "{{ ansible_host }}"
+    port: 22
+    timeout: "{{ ssh_wait_timeout }}"
+    state: started
+  delegate_to: localhost
+
+- name: Wait for system to be fully booted
+  wait_for_connection:
+    timeout: "{{ ssh_wait_timeout }}"
+    delay: "{{ ssh_retry_delay }}"
+  register: ssh_connection
+  retries: "{{ ssh_max_retries }}"
+  delay: "{{ ssh_retry_delay }}"
+  until: ssh_connection is success
+
+- name: Gather facts after SSH is available
+  setup:
+
+- name: Display SSH connection status
+  debug:
+    msg: |
+      SSH connection established to {{ inventory_hostname }}
+      IP: {{ ansible_host }}
+      Hostname: {{ ansible_hostname }}
+      OS: {{ ansible_distribution }} {{ ansible_distribution_version }}

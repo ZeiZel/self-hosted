@@ -1,20 +1,47 @@
 ---
-- name: Include Proxmox VE installation tasks
-  include_tasks: install.yml
-  tags: [proxmox, install]
+# Main entry point for proxmox role
+# This role handles Proxmox setup, Terraform provisioning, and post-provision checks
+#
+# Tags:
+#   - proxmox: Run all proxmox tasks
+#   - proxmox-setup: Setup and verify Proxmox host (API, templates, storage)
+#   - terraform: Provision VMs with Terraform
+#   - post-provision: Post-provisioning checks and verification
 
-- name: Include Proxmox networking configuration
-  include_tasks: network.yml
-  tags: [proxmox, network]
+- name: Display Proxmox role information
+  debug:
+    msg: |
+      Proxmox Role Starting...
+      Available operations (use tags to select):
+        - proxmox-setup: Verify Proxmox host configuration
+        - terraform: Provision VMs with Terraform
+        - post-provision: Post-provisioning verification
+  tags:
+    - always
 
-- name: Include Proxmox storage configuration
-  include_tasks: storage.yml
-  tags: [proxmox, storage]
+# =============================================================================
+# PROXMOX SETUP - Verify and configure Proxmox host
+# =============================================================================
+- name: Include Proxmox setup tasks
+  include_tasks: setup/main.yml
+  tags:
+    - proxmox
+    - proxmox-setup
 
-- name: Include VM template creation
-  include_tasks: template.yml
-  tags: [proxmox, template]
+# =============================================================================
+# TERRAFORM - Provision VMs
+# =============================================================================
+- name: Include Terraform provisioning tasks
+  include_tasks: terraform/main.yml
+  tags:
+    - proxmox
+    - terraform
 
-- name: Include VM provisioning
-  include_tasks: provision.yml
-  tags: [proxmox, provision]
+# =============================================================================
+# POST-PROVISION - Verify provisioned VMs
+# =============================================================================
+- name: Include post-provision tasks
+  include_tasks: post_provision/main.yml
+  tags:
+    - proxmox
+    - post-provision

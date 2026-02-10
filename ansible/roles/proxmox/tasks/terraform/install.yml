@@ -1,0 +1,56 @@
+---
+# Install Terraform on control machine
+
+- name: Check if Terraform is already installed
+  command: terraform version
+  register: terraform_installed
+  failed_when: false
+  changed_when: false
+
+- name: Display current Terraform version
+  debug:
+    msg: "Terraform is already installed: {{ terraform_installed.stdout_lines[0] }}"
+  when: terraform_installed.rc == 0
+
+- name: Install Terraform
+  when: terraform_installed.rc != 0
+  block:
+    - name: Create temporary directory for Terraform download
+      tempfile:
+        state: directory
+        suffix: _terraform
+      register: terraform_temp_dir
+
+    - name: Download Terraform
+      get_url:
+        url: "{{ terraform_download_url }}"
+        dest: "{{ terraform_temp_dir.path }}/terraform.zip"
+        mode: '0644'
+
+    - name: Unzip Terraform
+      unarchive:
+        src: "{{ terraform_temp_dir.path }}/terraform.zip"
+        dest: "{{ terraform_temp_dir.path }}"
+        remote_src: yes
+
+    - name: Install Terraform binary
+      copy:
+        src: "{{ terraform_temp_dir.path }}/terraform"
+        dest: "{{ terraform_install_dir }}/terraform"
+        mode: '0755'
+        remote_src: yes
+      become: yes
+
+    - name: Verify Terraform installation
+      command: terraform version
+      register: terraform_verify
+      changed_when: false
+
+    - name: Display installed Terraform version
+      debug:
+        msg: "Terraform installed successfully: {{ terraform_verify.stdout_lines[0] }}"
+
+    - name: Clean up temporary directory
+      file:
+        path: "{{ terraform_temp_dir.path }}"
+        state: absent

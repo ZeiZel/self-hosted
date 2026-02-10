@@ -35,20 +35,22 @@ apps:
       - service/vault
 
   # DATABASES
+  # Bitnami database charts - pinned to specific versions for stability
+  # Update versions periodically: helm search repo bitnami/<chart> --versions
   valkey:
     repo: bitnami
     chart: valkey
     namespace: db
-    version: ">=0.0.0"
+    version: "2.3.2"  # Pinned Feb 2026
     needs:
       - ingress/traefik
       - service/vault
 
   postgres:
     repo: bitnami
-    chart: postgres
+    chart: postgresql
     namespace: db
-    version: ">=0.0.0"
+    version: "16.4.7"  # Pinned Feb 2026 (PostgreSQL 16.x)
     needs:
       - ingress/traefik
       - service/vault
@@ -57,7 +59,7 @@ apps:
     repo: bitnami
     chart: minio
     namespace: db
-    version: ">=0.0.0"
+    version: "15.0.4"  # Pinned Feb 2026
     needs:
       - ingress/traefik
       - service/vault
@@ -66,7 +68,7 @@ apps:
     repo: bitnami
     chart: mongodb
     namespace: db
-    version: ">=0.0.0"
+    version: "16.4.4"  # Pinned Feb 2026 (MongoDB 7.x)
     needs:
       - ingress/traefik
       - service/vault
@@ -75,7 +77,7 @@ apps:
     repo: bitnami
     chart: rabbitmq
     namespace: db
-    version: ">=0.0.0"
+    version: "15.2.4"  # Pinned Feb 2026
     needs:
       - ingress/traefik
       - service/vault
@@ -84,7 +86,7 @@ apps:
     repo: bitnami
     chart: clickhouse
     namespace: db
-    version: ">=0.0.0"
+    version: "7.1.2"  # Pinned Feb 2026
     needs:
       - ingress/traefik
       - service/vault
@@ -93,7 +95,7 @@ apps:
     repo: bitnami
     chart: mysql
     namespace: db
-    version: ">=0.0.0"
+    version: "12.2.2"  # Pinned Feb 2026 (MySQL 8.x)
     needs:
       - ingress/traefik
       - service/vault
@@ -102,7 +104,7 @@ apps:
     repo: charts
     chart: supabase
     namespace: db
-    version: ">=0.0.0"
+    version: "v1.0.0"  # Custom chart
     needs:
       - db/postgres
       - db/minio
@@ -115,7 +117,7 @@ apps:
   consul:
     repo: hashicorp
     chart: consul
-    version: ">=1.0.0"
+    version: "1.6.2"  # Pinned Feb 2026
     namespace: service
     needs:
       - ingress/traefik
@@ -206,7 +208,7 @@ apps:
     repo: authentik
     chart: authentik
     namespace: service
-    version: ">=2024.0.0"
+    version: "2024.12.3"  # Pinned Feb 2026
     needs:
       - ingress/traefik
       - service/consul
@@ -287,7 +289,7 @@ apps:
     repo: gitlab
     chart: gitlab
     namespace: code
-    version: ">=8.0.0"
+    version: "8.8.2"  # Pinned Feb 2026 (GitLab 17.x)
     needs:
       - ingress/traefik
       - service/consul
@@ -422,7 +424,7 @@ apps:
     repo: kestra
     chart: kestra
     namespace: automation
-    version: ">=0.0.0"
+    version: "0.22.0"  # Pinned Feb 2026
     needs:
       - ingress/traefik
       - service/consul
@@ -436,7 +438,7 @@ apps:
     repo: n8n
     chart: n8n
     namespace: automation
-    version: ">=0.0.0"
+    version: "1.0.0"  # Pinned Feb 2026
     needs:
       - ingress/traefik
       - service/consul

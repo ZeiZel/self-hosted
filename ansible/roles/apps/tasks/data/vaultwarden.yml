@@ -1,0 +1,78 @@
+---
+# Vaultwarden post-installation configuration
+# - Wait for Vaultwarden to be ready
+# - Get admin token
+
+- name: Wait for Vaultwarden pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n data -l app.kubernetes.io/name=vaultwarden
+    --timeout={{ vaultwarden_wait_timeout }}s
+  changed_when: false
+  failed_when: false
+
+- name: Get Vaultwarden admin token from secret
+  command: >
+    kubectl get secret -n data vaultwarden
+    -o jsonpath='{.data.admin-token}'
+  register: vaultwarden_admin_token_b64
+  changed_when: false
+  failed_when: false
+  no_log: true
+
+- name: Decode admin token
+  set_fact:
+    vaultwarden_admin_token: "{{ vaultwarden_admin_token_b64.stdout | b64decode }}"
+  when: vaultwarden_admin_token_b64.stdout | length > 0
+  no_log: true
+
+- name: Check Vaultwarden health
+  uri:
+    url: "{{ vaultwarden_url }}/alive"
+    method: GET
+    status_code: [200]
+    validate_certs: "{{ vaultwarden_validate_certs }}"
+  register: vaultwarden_health
+  retries: 5
+  delay: 10
+  until: vaultwarden_health.status == 200
+  failed_when: false
+
+- name: Save Vaultwarden setup information
+  copy:
+    content: |
+      Vaultwarden Setup Information
+      ==============================
+      URL: {{ vaultwarden_url }}
+      Admin Panel: {{ vaultwarden_url }}/admin
+      Admin Token: {{ vaultwarden_admin_token | default('See Kubernetes secret') }}
+
+      Dependencies:
+        PostgreSQL: postgresql.db.svc.cluster.local:5432
+
+      Manual steps required:
+      1. Access admin panel with admin token
+      2. Configure SMTP for email notifications
+      3. Configure organization settings
+      4. Set up 2FA enforcement (recommended)
+      5. Configure user signup settings
+      6. Set up backup schedule
+
+      Client Setup:
+        Use any Bitwarden-compatible client
+        Server URL: {{ vaultwarden_url }}
+    dest: "{{ vaultwarden_credentials_file }}"
+    mode: '0600'
+  delegate_to: localhost
+  no_log: true
+
+- name: Display Vaultwarden configuration status
+  debug:
+    msg: |
+      Vaultwarden Configuration
+      ==========================
+      URL: {{ vaultwarden_url }}
+      Admin Panel: {{ vaultwarden_url }}/admin
+      Health: {{ 'OK' if vaultwarden_health.status == 200 else 'Starting up' }}
+
+      Credentials saved to: {{ vaultwarden_credentials_file }}

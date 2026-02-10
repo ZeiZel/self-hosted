@@ -1,0 +1,58 @@
+---
+# N8n post-installation configuration
+# - Wait for N8n to be ready
+# - Configure integrations
+
+- name: Wait for N8n pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n automation -l app.kubernetes.io/name=n8n
+    --timeout={{ n8n_wait_timeout }}s
+  changed_when: false
+  failed_when: false
+
+- name: Check N8n health
+  uri:
+    url: "{{ n8n_url }}/healthz"
+    method: GET
+    status_code: [200]
+    validate_certs: "{{ n8n_validate_certs }}"
+  register: n8n_health
+  retries: 10
+  delay: 10
+  until: n8n_health.status == 200
+  failed_when: false
+
+- name: Save N8n setup information
+  copy:
+    content: |
+      N8n Setup Information
+      ======================
+      URL: {{ n8n_url }}
+      Health: {{ 'OK' if n8n_health.status == 200 else 'Check required' }}
+
+      Dependencies:
+        PostgreSQL: postgresql.db.svc.cluster.local:5432
+
+      Manual steps required:
+      1. Create owner account on first visit
+      2. Configure OIDC with Authentik (Settings -> SSO)
+      3. Set up credentials for integrations:
+         - GitLab API token
+         - SMTP settings
+         - Slack/Discord webhooks
+      4. Import workflow templates
+      5. Configure execution settings
+    dest: "{{ n8n_credentials_file }}"
+    mode: '0600'
+  delegate_to: localhost
+
+- name: Display N8n configuration status
+  debug:
+    msg: |
+      N8n Configuration
+      ==================
+      URL: {{ n8n_url }}
+      Health: {{ 'OK' if n8n_health.status == 200 else 'Starting up' }}
+
+      Complete setup through web UI on first visit

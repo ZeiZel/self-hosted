@@ -1,0 +1,31 @@
+---
+# Create API token for Terraform
+
+- name: Display API token information
+  debug:
+    msg: |
+      NOTE: API token creation via API requires root@pam credentials.
+      If you already have a token configured in vault.yml, this step will be skipped.
+
+      To create a token manually via Proxmox web UI:
+      1. Login to https://{{ proxmox_api_host }}:{{ proxmox_api_port }}
+      2. Navigate to: Datacenter -> Permissions -> API Tokens
+      3. Click "Add" to create a new token
+      4. Token ID: {{ proxmox_terraform_token_id }}
+      5. Comment: {{ proxmox_terraform_token_comment }}
+      6. Uncheck "Privilege Separation" for full permissions
+      7. Copy the generated secret to group_vars/all/vault.yml
+
+      Or use CLI on Proxmox server:
+        pveum user token add {{ proxmox_terraform_token_id }} --privsep 0
+
+- name: Check if API token already configured
+  debug:
+    msg: "API token already configured: {{ proxmox.api_token_id }}"
+  when:
+    - proxmox.api_token_id is defined
+    - proxmox.api_token_secret is defined
+
+# Note: Programmatic token creation requires root@pam password authentication
+# which is not recommended for security. Users should create tokens manually
+# via the web UI or CLI and store them in vault.yml

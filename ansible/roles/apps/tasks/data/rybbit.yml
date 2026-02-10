@@ -1,0 +1,55 @@
+---
+# Rybbit post-installation configuration
+# - Wait for Rybbit to be ready
+# - Configure database connections
+
+- name: Wait for Rybbit pod to be ready
+  command: >
+    kubectl wait --for=condition=Ready pod
+    -n data -l app.kubernetes.io/name=rybbit
+    --timeout={{ rybbit_wait_timeout }}s
+  changed_when: false
+  failed_when: false
+
+- name: Check Rybbit health
+  uri:
+    url: "{{ rybbit_url }}"
+    method: GET
+    status_code: [200, 301, 302]
+    validate_certs: "{{ rybbit_validate_certs }}"
+  register: rybbit_health
+  retries: 5
+  delay: 10
+  until: rybbit_health.status in [200, 301, 302]
+  failed_when: false
+
+- name: Save Rybbit setup information
+  copy:
+    content: |
+      Rybbit Setup Information
+      =========================
+      URL: {{ rybbit_url }}
+      Health: {{ 'OK' if rybbit_health.status in [200, 301, 302] else 'Check required' }}
+
+      Dependencies:
+        PostgreSQL: postgresql.db.svc.cluster.local:5432
+        ClickHouse: clickhouse.db.svc.cluster.local:8123
+
+      Manual steps required:
+      1. Create admin account on first visit
+      2. Configure analytics settings
+      3. Set up site tracking
+      4. Configure data retention policies
+    dest: "{{ rybbit_credentials_file }}"
+    mode: '0600'
+  delegate_to: localhost
+
+- name: Display Rybbit configuration status
+  debug:
+    msg: |
+      Rybbit Configuration
+      =====================
+      URL: {{ rybbit_url }}
+      Health: {{ 'OK' if rybbit_health.status in [200, 301, 302] else 'Starting up' }}
+
+      Complete setup through web UI on first visit

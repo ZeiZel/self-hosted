@@ -1,53 +1,105 @@
+# =============================================================================
+# ANSIBLE VAULT EXAMPLE
+# =============================================================================
+# Copy this file to vault.yml and fill in your values.
+# Encrypt with: ansible-vault encrypt vault.yml --vault-password-file ~/.ansible_vault_password
+# Edit with: ansible-vault edit vault.yml --vault-password-file ~/.ansible_vault_password
+# =============================================================================
+
+# =============================================================================
+# USER CREDENTIALS
+# =============================================================================
 user:
-  name: ''
-  password: ''
-  ssh_keys: []
-  email: 'example@gmail.com'
+  name: ''                    # Your username for server access
+  password: ''                # Hashed password (use: mkpasswd --method=sha-512)
+  ssh_keys: []                # List of SSH public keys
+  email: 'example@gmail.com'  # Email for notifications and Let's Encrypt
 
 root:
-  name: ''
-  password: ''
+  name: ''                    # Root username (usually 'root')
+  password: ''                # Hashed root password
 
+# =============================================================================
+# SSH CONFIGURATION
+# =============================================================================
 ssh:
-  port: 22
+  port: 22                    # SSH port (change for security)
 
+# =============================================================================
+# DOMAIN CONFIGURATION
+# =============================================================================
 domain:
-  primary: 'example.local'
-  public: 'example.com'
+  primary: 'example.local'    # Internal domain for local network
+  public: 'example.com'       # Public domain for internet-facing services
 
+# =============================================================================
+# PROXMOX API CREDENTIALS
+# =============================================================================
+# Used by Terraform for VM provisioning
+proxmox:
+  api_user: 'root@pam'        # Proxmox API user
+  api_password: ''            # Proxmox API password (or use token below)
+  api_token_id: ''            # API token ID (alternative to password)
+  api_token_secret: ''        # API token secret
+  # VM template settings
+  template_name: 'ubuntu-cloud-template'
+  default_storage: 'local-lvm'
+  default_network_bridge: 'vmbr0'
+
+# =============================================================================
+# DATABASE CREDENTIALS
+# =============================================================================
 databases:
   postgresql:
-    admin_password: ''
-    replication_password: ''
+    admin_password: ''        # PostgreSQL superuser password
+    replication_password: ''  # Password for replication user (HA setups)
   mongodb:
-    admin_password: ''
-    replica_key: ''
+    admin_password: ''        # MongoDB root password
+    replica_key: ''           # Key for replica set authentication
   valkey:
-    password: ''
+    password: ''              # Valkey (Redis) password
   minio:
-    root_user: 'admin'
-    root_password: ''
+    root_user: 'admin'        # MinIO root username
+    root_password: ''         # MinIO root password
+  clickhouse:
+    admin_password: ''        # ClickHouse default user password
+  mysql:
+    root_password: ''         # MySQL root password
+  rabbitmq:
+    admin_user: 'admin'       # RabbitMQ admin username
+    admin_password: ''        # RabbitMQ admin password
 
+# =============================================================================
+# SMTP CONFIGURATION
+# =============================================================================
 smtp:
-  host: 'smtp.gmail.com'
-  port: 587
-  username: ''
-  password: ''
-  from_email: 'noreply@example.com'
+  host: 'smtp.gmail.com'      # SMTP server host
+  port: 587                   # SMTP port (587 for TLS, 465 for SSL)
+  username: ''                # SMTP username (email address)
+  password: ''                # SMTP password (app-specific password for Gmail)
+  from_email: 'noreply@example.com'  # Default sender address
 
+# =============================================================================
+# OAUTH / SSO CREDENTIALS
+# =============================================================================
 oauth:
   authentik:
-    bootstrap_password: ''
-    secret_key: ''
+    bootstrap_password: ''    # Initial admin password for Authentik
+    secret_key: ''            # Django secret key (generate with: openssl rand -hex 50)
   gitlab:
-    root_password: ''
-    runner_registration_token: ''
+    root_password: ''         # GitLab root user password
+    runner_registration_token: ''  # Token for registering GitLab runners
 
+# =============================================================================
+# VPN CONFIGURATION (Pangolin/WireGuard)
+# =============================================================================
 vpn:
   pangolin:
-    server_private_key: ''
-    server_public_key: ''
-    preshared_key: ''
+    # Server keys (generate with: wg genkey | tee private.key | wg pubkey > public.key)
+    server_private_key: ''    # WireGuard server private key
+    server_public_key: ''     # WireGuard server public key
+    preshared_key: ''         # Preshared key for all clients (generate with: wg genpsk)
+    # Client keys (generate for each node)
     client_keys:
       # Master nodes
       local-server:
@@ -61,23 +113,131 @@ vpn:
       #   private_key: ''
       #   public_key: ''
 
+# =============================================================================
+# TLS CONFIGURATION
+# =============================================================================
 tls:
   letsencrypt:
-    email: 'admin@example.com'
-    staging: false
+    email: 'admin@example.com'  # Email for Let's Encrypt notifications
+    staging: false              # Use staging server for testing (rate limits)
 
+# =============================================================================
+# HASHICORP VAULT
+# =============================================================================
 vault:
-  unseal_keys: []
-  root_token: ''
+  unseal_keys: []             # Vault unseal keys (generated on first init)
+  root_token: ''              # Vault root token (generated on first init)
 
+# =============================================================================
+# MONITORING CREDENTIALS
+# =============================================================================
 monitoring:
   grafana:
-    admin_user: 'admin'
-    admin_password: ''
+    admin_user: 'admin'       # Grafana admin username
+    admin_password: ''        # Grafana admin password
   prometheus:
-    basic_auth_password: ''
+    basic_auth_password: ''   # Prometheus basic auth password
+  alertmanager:
+    slack_webhook_url: ''     # Slack webhook for alerts
+    pagerduty_service_key: '' # PagerDuty service key (optional)
 
+# =============================================================================
+# CONTAINER REGISTRY
+# =============================================================================
 registry:
   harbour:
+    admin_password: ''        # Harbor admin password
+    database_password: ''     # Harbor database password
+    secret_key: ''            # Harbor secret key
+
+# =============================================================================
+# BACKUP ENCRYPTION
+# =============================================================================
+backup:
+  # Velero encryption
+  encryption_passphrase: ''   # Passphrase for backup encryption
+  # Restic repository password (for database backups)
+  restic_password: ''
+  # S3/MinIO credentials for offsite backups
+  offsite:
+    enabled: false
+    endpoint: ''              # S3-compatible endpoint
+    access_key: ''
+    secret_key: ''
+    bucket: 'backups'
+
+# =============================================================================
+# APPLICATION-SPECIFIC CREDENTIALS
+# =============================================================================
+apps:
+  # JetBrains products
+  hub:
+    admin_password: ''        # JetBrains Hub admin password
+  youtrack:
+    admin_password: ''        # YouTrack admin password (uses Hub SSO)
+  teamcity:
+    admin_password: ''        # TeamCity admin password
+
+  # Productivity
+  affine:
+    admin_email: ''           # Affine admin email
+    admin_password: ''        # Affine admin password
+  nextcloud:
+    admin_user: 'admin'
     admin_password: ''
-    database_password: ''
+  notesnook:
+    admin_password: ''
+
+  # Social
+  stoat:                      # Revolt chat
+    admin_email: ''
+    admin_password: ''
+  stalwart:                   # Mail server
+    admin_password: ''
+
+  # Data
+  vaultwarden:
+    admin_token: ''           # Admin panel token (generate with: openssl rand -hex 32)
+  syncthing:
+    api_key: ''
+
+  # Infrastructure
+  bytebase:
+    admin_email: ''
+    admin_password: ''
+  coder:
+    admin_email: ''
+    admin_password: ''
+  harbor:
+    admin_password: ''
+
+  # Automation
+  kestra:
+    admin_email: ''
+    admin_password: ''
+  n8n:
+    encryption_key: ''        # N8N encryption key
+
+  # Content
+  ghost:
+    admin_email: ''
+    admin_password: ''
+
+  # Analytics
+  rybbit:
+    admin_email: ''
+    admin_password: ''
+
+# =============================================================================
+# SECURITY
+# =============================================================================
+# WARNING: This file contains sensitive credentials.
+# - NEVER commit this file to version control
+# - Keep backups in a secure location
+# - Rotate credentials regularly
+# - Use strong, unique passwords (at least 32 characters)
+#
+# Generate secure passwords with:
+#   openssl rand -base64 32
+#   pwgen -s 32 1
+# =============================================================================

@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  excalidraw:
+    image: excalidraw/excalidraw:latest
+    container_name: excalidraw
+    restart: unless-stopped
+    ports:
+      - "3030:80"
+    networks:
+      - excalidraw-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  excalidraw-room:
+    image: excalidraw/excalidraw-room:latest
+    container_name: excalidraw-room
+    restart: unless-stopped
+    ports:
+      - "3031:80"
+    networks:
+      - excalidraw-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  excalidraw-storage:
+    image: excalidraw/excalidraw-storage-backend:latest
+    container_name: excalidraw-storage
+    restart: unless-stopped
+    ports:
+      - "3032:8080"
+    environment:
+      - STORAGE_URI=file:///data
+    volumes:
+      - excalidraw_data:/data
+    networks:
+      - excalidraw-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+volumes:
+  excalidraw_data:
+
+networks:
+  excalidraw-network:
+    driver: bridge

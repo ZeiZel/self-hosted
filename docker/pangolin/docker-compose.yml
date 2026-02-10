@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  pangolin:
+    image: fosrl/pangolin:latest
+    container_name: pangolin
+    restart: unless-stopped
+    ports:
+      - "51820:51820/udp"  # WireGuard
+      - "8080:8080"        # Web UI
+    environment:
+      - PANGOLIN_SECRET=${PANGOLIN_SECRET}
+      - PANGOLIN_DOMAIN=${PANGOLIN_DOMAIN}
+    volumes:
+      - pangolin_data:/config
+    cap_add:
+      - NET_ADMIN
+      - SYS_MODULE
+    sysctls:
+      - net.ipv4.ip_forward=1
+      - net.ipv6.conf.all.forwarding=1
+    networks:
+      - pangolin-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  gerbil:
+    image: fosrl/gerbil:latest
+    container_name: gerbil
+    restart: unless-stopped
+    environment:
+      - PANGOLIN_URL=http://pangolin:8080
+      - PANGOLIN_SECRET=${PANGOLIN_SECRET}
+    depends_on:
+      - pangolin
+    networks:
+      - pangolin-network
+
+volumes:
+  pangolin_data:
+
+networks:
+  pangolin-network:
+    driver: bridge
