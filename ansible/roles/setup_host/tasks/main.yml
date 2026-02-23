@@ -1,10 +1,13 @@
 ---
+- name: Set user home directory
+  set_fact:
+    user_home: "{{ lookup('env', 'HOME') }}"
+
 - name: Setup Host Role
-  become: false
   block:
     - name: Display setup_host role start message
       debug:
-        msg: "Starting host machine setup for {{ ansible_os_family }} on {{ ansible_hostname }}"
+        msg: "Starting host machine setup for {{ ansible_facts['os_family'] }} on {{ ansible_facts['hostname'] }}"
 
     - name: Include Homebrew installation tasks
       include_tasks: ./operations/homebrew.yml

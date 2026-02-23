@@ -1,8 +1,9 @@
 ---
 - name: Host
   hosts: local
-  become: true
+  become: false
   gather_facts: true
+  tags: [setup_host]
   roles:
     - role: setup_host
       tags: [setup_host, homebrew, dependencies, ssh, verify]
@@ -10,6 +11,7 @@
 - name: Master
   hosts: master
   gather_facts: true
+  tags: [master, deploy]
   roles:
     - role: server
     - role: docker
@@ -24,6 +26,7 @@
 - name: Worker
   hosts: workers
   gather_facts: true
+  tags: [worker, deploy]
   roles:
     - role: server
     - role: docker
@@ -38,6 +41,7 @@
 - name: Gateway
   hosts: gateway
   gather_facts: true
+  tags: [gateway, deploy]
   roles:
     - role: server
     - role: docker

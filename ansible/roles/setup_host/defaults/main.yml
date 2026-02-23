@@ -1,6 +1,6 @@
 ---
 # Homebrew installation path
-homebrew_install_path: "{{ '/opt/homebrew' if ansible_os_family == 'Darwin' and ansible_architecture == 'arm64' else '/usr/local' if ansible_os_family == 'Darwin' else '/home/linuxbrew/.linuxbrew' }}"
+homebrew_install_path: "{{ '/opt/homebrew' if ansible_facts['os_family'] == 'Darwin' and ansible_facts['architecture'] == 'arm64' else '/usr/local' if ansible_facts['os_family'] == 'Darwin' else '/home/linuxbrew/.linuxbrew' }}"
 
 # Tools to install via Homebrew
 setup_host_tools:
