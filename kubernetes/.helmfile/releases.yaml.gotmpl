@@ -5,7 +5,11 @@ releases:
 - name: {{ $release }}
   labels:
     app: {{ $release }}
+  {{- if eq $v.repo "charts" }}
+  chart: ./charts/{{ $v.chart }}
+  {{- else }}
   chart: {{ $v.repo }}/{{ $v.chart }}
+  {{- end }}
   {{- if $v | getOrNil "version" }}
   version: {{ $v.version }}
   {{- end }}
@@ -22,10 +26,10 @@ releases:
     - releases/{{ $release }}.yaml.gotmpl
     {{- end }}
     - releases/_override.yaml.gotmpl
-  {{- if ($v | getOrNil "installed") }}
-  installed: true
+  {{- if hasKey $v "installed" }}
+  installed: {{ $v.installed }}
   {{- else }}
-  installed: false
+  installed: true
   {{- end }}
   {{- if ($v | getOrNil "needs") }}
   needs:

@@ -64,7 +64,7 @@ spec:
               {{- if .Values.postgresql.enabled }}
               until pg_isready -h {{ .Release.Name }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local -p {{ .Values.postgresql.primary.service.ports.postgresql }}; do
               {{- else }}
-              POSTGRES_HOST="${POSTGRES_HOST:-postgres-postgresql.db.svc.cluster.local}"
+              POSTGRES_HOST="${POSTGRES_HOST:-postgresql.db.svc.cluster.local}"
               POSTGRES_PORT="${POSTGRES_PORT:-5432}"
               until pg_isready -h ${POSTGRES_HOST} -p ${POSTGRES_PORT}; do
               {{- end }}
@@ -75,7 +75,7 @@ spec:
           {{- if not .Values.postgresql.enabled }}
           env:
             - name: POSTGRES_HOST
-              value: {{ .Values.backend.env.POSTGRES_HOST | default "postgres-postgresql.db.svc.cluster.local" | quote }}
+              value: {{ .Values.backend.env.POSTGRES_HOST | default "postgresql.db.svc.cluster.local" | quote }}
             - name: POSTGRES_PORT
               value: {{ .Values.backend.env.POSTGRES_PORT | default "5432" | quote }}
           {{- end }}
@@ -136,7 +136,7 @@ spec:
               {{- if .Values.postgresql.enabled }}
               value: {{ .Release.Name }}-postgresql.{{ .Release.Namespace }}.svc.cluster.local
               {{- else }}
-              value: postgres-postgresql.db.svc.cluster.local
+              value: postgresql.db.svc.cluster.local
               {{- end }}
             {{- end }}
             {{- if not (hasKey .Values.backend.env "POSTGRES_PORT") }}

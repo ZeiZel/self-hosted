@@ -1,7 +1,8 @@
+{{- if .Values.grafana.enabled }}
 apiVersion: v1
 kind: Pod
 metadata:
-  name: "{{ include "monitoring.fullname" . }}-test-connection"
+  name: "{{ include "monitoring.fullname" . }}-test-grafana"
   labels:
     {{- include "monitoring.labels" . | nindent 4 }}
   annotations:
@@ -13,4 +14,24 @@ spec:
     - name: wget
       image: busybox:1.28
       command: ['wget']
-      args: ['{{ include "monitoring.fullname" . }}:{{ .Values.service.port }}']
+      args: ['--spider', '-q', 'grafana:{{ .Values.grafana.service.port }}/api/health']
+{{- end }}
+---
+{{- if .Values.prometheus.enabled }}
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "monitoring.fullname" . }}-test-prometheus"
+  labels:
+    {{- include "monitoring.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: wget
+      image: busybox:1.28
+      command: ['wget']
+      args: ['--spider', '-q', 'prometheus:{{ .Values.prometheus.service.port }}/-/ready']
+{{- end }}

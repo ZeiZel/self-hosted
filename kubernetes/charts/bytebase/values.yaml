@@ -50,7 +50,7 @@ resources:
 
 persistence:
   enabled: true
-  storageClass: standard
+  storageClass: local-path
   accessMode: ReadWriteOnce
   size: 10Gi
   mountPath: /var/opt/bytebase

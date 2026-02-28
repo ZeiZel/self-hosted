@@ -1,3 +1,4 @@
+{{- if .Values.kibana.enabled }}
 apiVersion: v1
 kind: Pod
 metadata:
@@ -13,4 +14,5 @@ spec:
     - name: wget
       image: busybox:1.28
       command: ['wget']
-      args: ['{{ include "logging.fullname" . }}:{{ .Values.service.port }}']
+      args: ['kibana:{{ .Values.kibana.service.port }}']
+{{- end }}

@@ -1,14 +1,55 @@
 ---
+# =============================================================================
+# KUBESPRAY ROLE - MAIN TASKS
+# =============================================================================
+# This role runs on localhost and deploys Kubernetes to remote nodes
+# Prerequisites: setup_host role must have run first
+
+- name: Set user home directory
+  set_fact:
+    user_home: "{{ lookup('env', 'HOME') }}"
+
+- name: Display kubespray deployment info
+  debug:
+    msg: |
+      Kubespray Deployment
+      ====================
+      Kubespray version: {{ kubespray_version }}
+      Kubernetes version: {{ kube_version }}
+      Cluster name: {{ cluster_name }}
+      Install directory: {{ kubespray_dir }}
+
+      Target nodes:
+        Masters: {{ groups['masters'] | default([]) | join(', ') }}
+        Workers: {{ groups['workers'] | default([]) | join(', ') }}
+
 - name: Include preparation tasks
   include_tasks: prepare.yml
+  tags: [kubespray, prepare]
 
 - name: Include deployment tasks
   include_tasks: deploy.yml
+  tags: [kubespray, deploy]
 
 - name: Include verification tasks
   include_tasks: verify.yml
+  tags: [kubespray, verify]
 
+- name: Include post-install tasks
+  include_tasks: post-install.yml
+  when: kubespray_post_install | default(true)
+  tags: [kubespray, post-install]
 
+- name: Include services deployment tasks
+  include_tasks: services.yml
+  when: kubespray_deploy_services | default(true)
+  tags: [kubespray, services]
 
+- name: Kubespray deployment complete
+  debug:
+    msg: |
+      Kubernetes cluster deployed successfully!
 
+      Kubeconfig: {{ kubespray_local_kubeconfig }}
 
+      Test with: kubectl get nodes

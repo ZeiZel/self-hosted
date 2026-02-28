@@ -1,15 +1,15 @@
 namespace: service
 
 server:
-  replicaCount: 3
+  replicaCount: 1
   ha:
     enabled: true
     replicas: 3
   dataStorage:
-    storageClass: openebs-hostpath
+    storageClass: local-path
     size: 3Gi
   auditStorage:
-    storageClass: openebs-hostpath
+    storageClass: local-path
     size: 1Gi
 
 ui:

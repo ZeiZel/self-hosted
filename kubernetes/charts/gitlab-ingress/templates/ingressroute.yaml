@@ -1,0 +1,47 @@
+# GitLab main IngressRoute
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: gitlab
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gitlab-ingress.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    {{- toYaml .Values.entryPoints | nindent 4 }}
+  routes:
+    - kind: Rule
+      match: Host(`{{ .Values.hosts.gitlab }}`)
+      {{- if .Values.middleware.headers.enabled }}
+      middlewares:
+        - name: gitlab-headers
+          namespace: {{ .Release.Namespace }}
+      {{- end }}
+      services:
+        - name: {{ .Values.webservice.name }}
+          port: {{ .Values.webservice.port }}
+---
+{{- if .Values.registry.enabled }}
+# GitLab Registry IngressRoute
+apiVersion: traefik.io/v1alpha1
+kind: IngressRoute
+metadata:
+  name: gitlab-registry
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gitlab-ingress.labels" . | nindent 4 }}
+spec:
+  entryPoints:
+    {{- toYaml .Values.entryPoints | nindent 4 }}
+  routes:
+    - kind: Rule
+      match: Host(`{{ .Values.hosts.registry }}`)
+      {{- if .Values.middleware.headers.enabled }}
+      middlewares:
+        - name: gitlab-headers
+          namespace: {{ .Release.Namespace }}
+      {{- end }}
+      services:
+        - name: {{ .Values.registry.name }}
+          port: {{ .Values.registry.port }}
+{{- end }}

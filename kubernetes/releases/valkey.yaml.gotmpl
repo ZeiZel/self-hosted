@@ -1,38 +1,47 @@
+## Valkey configuration for shared infrastructure
+## https://github.com/bitnami/charts/tree/main/bitnami/valkey
+
 namespace: db
 
-architecture: replication
+# Architecture: standalone or replication
+architecture: standalone
 
-master:
-  enabled: true
-  persistence:
-    enabled: true
-    storageClass: openebs-hostpath
-    size: 2Gi
-
-replica:
-  enabled: true
-  replicaCount: 2
-  persistence:
-    enabled: true
-    storageClass: openebs-hostpath
-    size: 2Gi
-
+# Authentication
 auth:
   enabled: false
 
-persistence:
-  type: RDB
-  rdb:
+# Primary configuration
+primary:
+  persistence:
     enabled: true
-    interval: 900
-    minChanges: 1
-  aof:
+    storageClass: local-path
+    size: 2Gi
+    accessModes:
+      - ReadWriteOnce
+
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
+
+  service:
+    type: ClusterIP
+    ports:
+      valkey: 6379
+
+# Metrics
+metrics:
+  enabled: false
+  serviceMonitor:
     enabled: false
 
-memory:
-  maxMemory: "512mb"
-  maxMemoryPolicy: "noeviction"
-
-affinity:
+# Volume permissions
+volumePermissions:
   enabled: true
-  podAntiAffinity: preferred
+
+# Service account
+serviceAccount:
+  create: true

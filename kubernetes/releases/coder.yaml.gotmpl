@@ -16,7 +16,7 @@ coder:
   # PostgreSQL connection (use external postgres)
   postgres:
     external: true
-    host: "postgres-postgresql.db.svc.cluster.local"
+    host: "postgresql.db.svc.cluster.local"
     port: 5432
     database: "coder"
     user: "coder"
@@ -38,9 +38,9 @@ coder:
   # OIDC configuration for Authentik
   oidc:
     enabled: true
-    issuerUrl: "https://authentik.{{ .Values.infra.host }}/application/o/coder/"
-    clientId: "{{ .Values.secrets.coderOidcClientId }}"
-    clientSecret: "{{ .Values.secrets.coderOidcClientSecret }}"
+    issuerUrl: "https://auth.{{ .Values.infra.host }}/application/o/coder/"
+    clientId: "coder-537a07ced9057d97"
+    clientSecret: "8fa41aa1b2f82c531d8ae1a12e84cfb038d20fa06276b0bfb9b95312d8db0420"
     scopes: "openid profile email groups"
     allowSignups: true
     emailDomain: []
@@ -75,7 +75,7 @@ coder:
         memory: "4Gi"
     storage:
       size: "50Gi"
-      storageClass: "openebs-hostpath"
+      storageClass: "local-path"
     inactivityTimeout: "4h"
     ttl: "168h"  # 7 days
 
@@ -91,7 +91,7 @@ resources:
 # Persistent storage for Coder server
 persistence:
   enabled: true
-  storageClass: openebs-hostpath
+  storageClass: local-path
   accessMode: ReadWriteOnce
   size: 10Gi
   mountPath: /home/coder

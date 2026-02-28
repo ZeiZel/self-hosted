@@ -78,9 +78,9 @@ data:
       - job_name: 'postgresql'
         static_configs:
           - targets:
-              - 'postgres-postgresql-0.postgres-postgresql-headless.db.svc.cluster.local:9187'
-              - 'postgres-postgresql-1.postgres-postgresql-headless.db.svc.cluster.local:9187'
-              - 'postgres-postgresql-2.postgres-postgresql-headless.db.svc.cluster.local:9187'
+              - 'postgresql-0.postgresql-headless.db.svc.cluster.local:9187'
+              - 'postgresql-1.postgresql-headless.db.svc.cluster.local:9187'
+              - 'postgresql-2.postgresql-headless.db.svc.cluster.local:9187'
         relabel_configs:
           - source_labels: [__address__]
             target_label: instance

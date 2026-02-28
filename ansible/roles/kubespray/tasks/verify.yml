@@ -1,120 +1,156 @@
 ---
-- name: Wait for Kubernetes API server to be ready
-  wait_for:
-    host: 127.0.0.1
-    port: 6443
-    delay: 10
-    timeout: 300
-  delegate_to: "{{ groups['k8s_masters'][0] }}"
-  run_once: true
-  tags: [kubespray, verify]
+# =============================================================================
+# KUBESPRAY VERIFICATION TASKS
+# =============================================================================
+# Verify the Kubernetes cluster is running correctly
 
-- name: Check all nodes are Ready
-  command: kubectl get nodes
+# -----------------------------------------------------------------------------
+# Basic Cluster Verification
+# -----------------------------------------------------------------------------
+- name: Check if kubeconfig exists
+  stat:
+    path: "{{ kubespray_local_kubeconfig }}"
+  register: kubeconfig_stat
+  failed_when: not kubeconfig_stat.stat.exists
+
+- name: Get cluster nodes
+  command: kubectl --kubeconfig={{ kubespray_local_kubeconfig }} get nodes -o wide
   register: nodes_status
   changed_when: false
-  delegate_to: "{{ groups['k8s_masters'][0] }}"
-  run_once: true
-  tags: [kubespray, verify]
+  retries: 5
+  delay: 10
+  until: nodes_status.rc == 0
 
-- name: Display nodes status
+- name: Display cluster nodes
   debug:
     msg: "{{ nodes_status.stdout_lines }}"
-  run_once: true
-  tags: [kubespray, verify]
 
-- name: Verify all nodes are in Ready state
-  command: kubectl get nodes --no-headers
-  register: nodes_ready_check
-  failed_when: "'NotReady' in nodes_ready_check.stdout"
+- name: Verify all nodes are Ready
+  command: kubectl --kubeconfig={{ kubespray_local_kubeconfig }} get nodes --no-headers
+  register: nodes_ready
   changed_when: false
-  delegate_to: "{{ groups['k8s_masters'][0] }}"
-  run_once: true
-  tags: [kubespray, verify]
+  failed_when: "'NotReady' in nodes_ready.stdout"
 
-- name: Check kube-system pods
-  command: kubectl get pods -n kube-system
+# -----------------------------------------------------------------------------
+# System Pods Verification
+# -----------------------------------------------------------------------------
+- name: Get kube-system pods
+  command: kubectl --kubeconfig={{ kubespray_local_kubeconfig }} get pods -n kube-system -o wide
   register: kube_system_pods
   changed_when: false
-  delegate_to: "{{ groups['k8s_masters'][0] }}"
-  run_once: true
-  tags: [kubespray, verify]
 
 - name: Display kube-system pods
   debug:
     msg: "{{ kube_system_pods.stdout_lines }}"
-  run_once: true
-  tags: [kubespray, verify]
 
-- name: Verify all kube-system pods are Running
-  command: kubectl get pods -n kube-system --field-selector=status.phase!=Running --no-headers
+- name: Wait for all kube-system pods to be Running
+  command: >
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
+    get pods -n kube-system
+    --field-selector=status.phase!=Running,status.phase!=Succeeded
+    --no-headers
   register: not_running_pods
-  failed_when: not_running_pods.stdout != ""
   changed_when: false
-  delegate_to: "{{ groups['k8s_masters'][0] }}"
-  run_once: true
-  tags: [kubespray, verify]
+  retries: 30
+  delay: 10
+  until: not_running_pods.stdout == ""
 
-- name: Test CoreDNS resolution
-  command: kubectl run --rm -i --restart=Never --image=busybox:1.28 dns-test --command -- nslookup kubernetes.default
-  register: dns_test
-  changed_when: false
-  failed_when: false
-  delegate_to: "{{ groups['k8s_masters'][0] }}"
-  run_once: true
-  tags: [kubespray, verify]
-
-- name: Display DNS test result
-  debug:
-    msg: "{{ dns_test.stdout_lines }}"
-  when: dns_test.rc == 0
-  run_once: true
-  tags: [kubespray, verify]
-
-- name: Check etcd health (if deployed on host)
-  command: etcdctl --endpoints=https://127.0.0.1:2379 --cacert=/etc/ssl/etcd/ssl/ca.pem --cert=/etc/ssl/etcd/ssl/node-{{ inventory_hostname }}.pem --key=/etc/ssl/etcd/ssl/node-{{ inventory_hostname }}-key.pem endpoint health
-  register: etcd_health
-  changed_when: false
-  failed_when: false
-  when: "'k8s_masters' in group_names"
-  tags: [kubespray, verify]
-
-- name: Display etcd health
-  debug:
-    msg: "{{ etcd_health.stdout_lines }}"
-  when: "'k8s_masters' in group_names and etcd_health.rc == 0"
-  tags: [kubespray, verify]
-
-- name: Verify kubectl access from Ansible controller
-  command: kubectl --kubeconfig={{ kubespray_local_kubeconfig_path }} get nodes
-  register: kubectl_local
-  changed_when: false
-  delegate_to: localhost
-  run_once: true
-  tags: [kubespray, verify]
-
-- name: Display kubectl local access
-  debug:
-    msg: "Kubectl from Ansible controller: {{ kubectl_local.stdout_lines }}"
-  run_once: true
-  tags: [kubespray, verify]
-
-- name: Get Kubernetes cluster info
-  command: kubectl cluster-info
+# -----------------------------------------------------------------------------
+# Component Verification
+# -----------------------------------------------------------------------------
+- name: Get cluster info
+  command: kubectl --kubeconfig={{ kubespray_local_kubeconfig }} cluster-info
   register: cluster_info
   changed_when: false
-  delegate_to: "{{ groups['k8s_masters'][0] }}"
-  run_once: true
-  tags: [kubespray, verify]
 
 - name: Display cluster info
   debug:
     msg: "{{ cluster_info.stdout_lines }}"
-  run_once: true
-  tags: [kubespray, verify]
 
-- name: Verification complete
+- name: Check Kubernetes API server health
+  command: kubectl --kubeconfig={{ kubespray_local_kubeconfig }} get --raw='/healthz'
+  register: api_health
+  changed_when: false
+  failed_when: api_health.stdout != "ok"
+
+- name: Check etcd health
+  command: kubectl --kubeconfig={{ kubespray_local_kubeconfig }} get --raw='/healthz/etcd'
+  register: etcd_health
+  changed_when: false
+  failed_when: etcd_health.stdout != "ok"
+
+# -----------------------------------------------------------------------------
+# DNS Verification
+# -----------------------------------------------------------------------------
+- name: Create DNS test pod
+  command: >
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
+    run dns-test --image=busybox:1.36 --restart=Never
+    --command -- sleep 30
+  register: dns_pod_create
+  changed_when: true
+  failed_when: false
+
+- name: Wait for DNS test pod to be Running
+  command: >
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
+    get pod dns-test -o jsonpath='{.status.phase}'
+  register: dns_pod_status
+  changed_when: false
+  retries: 10
+  delay: 5
+  until: dns_pod_status.stdout == "Running"
+  when: dns_pod_create.rc == 0
+
+- name: Test DNS resolution
+  command: >
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
+    exec dns-test -- nslookup kubernetes.default
+  register: dns_test
+  changed_when: false
+  failed_when: false
+  when: dns_pod_create.rc == 0
+
+- name: Display DNS test result
   debug:
-    msg: "Kubernetes cluster verification passed successfully!"
-  run_once: true
-  tags: [kubespray, verify]
+    msg: "{{ dns_test.stdout_lines | default(['DNS test skipped']) }}"
+  when: dns_pod_create.rc == 0
+
+- name: Clean up DNS test pod
+  command: >
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
+    delete pod dns-test --ignore-not-found=true
+  changed_when: true
+  failed_when: false
+
+# -----------------------------------------------------------------------------
+# Summary
+# -----------------------------------------------------------------------------
+- name: Get Kubernetes version
+  command: kubectl --kubeconfig={{ kubespray_local_kubeconfig }} version --short
+  register: kube_version_output
+  changed_when: false
+  failed_when: false
+
+- name: Verification Summary
+  debug:
+    msg: |
+      =====================================================
+      Kubernetes Cluster Verification Complete!
+      =====================================================
+
+      Cluster Info:
+        API Server: {{ cluster_info.stdout_lines[0] | default('N/A') }}
+        Nodes: {{ nodes_ready.stdout_lines | length }} nodes ready
+
+      Health Status:
+        API Server: {{ 'Healthy' if api_health.stdout == 'ok' else 'Unhealthy' }}
+        ETCD: {{ 'Healthy' if etcd_health.stdout == 'ok' else 'Unhealthy' }}
+        DNS: {{ 'Working' if dns_test.rc | default(1) == 0 else 'Not tested' }}
+
+      Kubeconfig: {{ kubespray_local_kubeconfig }}
+
+      Post-install will deploy:
+        - local-path-provisioner (storage)
+        - Traefik (ingress on NodePort {{ traefik_nodeport_http }}/{{ traefik_nodeport_https }})
+      =====================================================

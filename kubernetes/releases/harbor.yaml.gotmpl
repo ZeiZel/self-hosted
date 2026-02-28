@@ -3,7 +3,7 @@ namespace: infrastructure
 harbor:
   externalDatabase:
     postgresql:
-      host: "postgres-postgresql.db.svc.cluster.local"
+      host: "postgresql.db.svc.cluster.local"
       port: "5432"
       database: "registry"
       username: "harbor"
@@ -30,9 +30,15 @@ harbor:
 
   oidc:
     enabled: true
-    name: "authentik"
-    endpoint: "https://authentik.{{ .Values.infra.host }}/application/o/harbor/"
+    name: "Authentik"
+    endpoint: "https://auth.{{ .Values.infra.host }}/application/o/harbor/"
+    clientId: "harbor-dc00e62facbedd1d"
+    clientSecret: "0d91d37716258f58d3cc8a11c1311c17af80f8c4e534b05f60903f9ce1e73ef4"
+    scope: "openid,profile,email,groups"
+    groupsClaim: "groups"
     verifyCert: true
+    autoOnboard: true
+    adminGroup: "Harbor Admins"
 
 
 

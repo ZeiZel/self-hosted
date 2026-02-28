@@ -7,7 +7,7 @@ create:
 # Hub Image
 image:
   repository: jetbrains/hub
-  tag: "2025.1"
+  tag: "2025.3.124603"
   pullPolicy: IfNotPresent
 
 # Hub Server
@@ -20,11 +20,11 @@ hub:
 
   resources:
     limits:
-      cpu: 2000m
+      cpu: 1000m
       memory: 2Gi
     requests:
-      cpu: 1000m
-      memory: 1Gi
+      cpu: 100m
+      memory: 256Mi
 
   # Конфигурация Hub
   config:
@@ -34,7 +34,7 @@ hub:
 # Persistent Storage
 persistence:
   enabled: true
-  storageClass: standard
+  storageClass: local-path
 
   # Data
   data:

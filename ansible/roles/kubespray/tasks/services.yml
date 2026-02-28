@@ -1,0 +1,648 @@
+---
+# =============================================================================
+# KUBERNETES SERVICES DEPLOYMENT
+# =============================================================================
+# Deploy all applications to Kubernetes cluster via Helm
+#
+# Order:
+#   1. Core infrastructure (cert-manager, consul, vault)
+#   2. Databases (PostgreSQL, Valkey, MongoDB, MinIO)
+#   3. Authentication (Authentik)
+#   4. Applications (all other services)
+
+# -----------------------------------------------------------------------------
+# Prerequisites
+# -----------------------------------------------------------------------------
+- name: Ensure Helm repositories are configured
+  command: helm repo add {{ item.name }} {{ item.url }}
+  loop:
+    - { name: "jetstack", url: "https://charts.jetstack.io" }
+    - { name: "bitnami", url: "https://charts.bitnami.com/bitnami" }
+    - { name: "hashicorp", url: "https://helm.releases.hashicorp.com" }
+    - { name: "authentik", url: "https://charts.goauthentik.io" }
+    - { name: "traefik", url: "https://traefik.github.io/charts" }
+    - { name: "gitlab", url: "https://charts.gitlab.io/" }
+  register: helm_repos
+  changed_when: "'has been added' in helm_repos.stdout"
+  failed_when: false
+  tags: [services, repos]
+
+- name: Update Helm repositories
+  command: helm repo update
+  changed_when: false
+  tags: [services, repos]
+
+# -----------------------------------------------------------------------------
+# cert-manager
+# -----------------------------------------------------------------------------
+- name: Deploy cert-manager
+  command: >
+    helm upgrade --install cert-manager jetstack/cert-manager
+    --namespace cert-manager
+    --create-namespace
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --version v1.17.1
+    --set crds.enabled=true
+    --set crds.keep=true
+    --wait
+    --timeout=5m
+  register: certmanager_deploy
+  changed_when: "'deployed' in certmanager_deploy.stdout or 'upgraded' in certmanager_deploy.stdout"
+  tags: [services, cert-manager]
+
+- name: Create ClusterIssuers
+  shell: |
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }} apply -f - <<EOF
+    apiVersion: cert-manager.io/v1
+    kind: ClusterIssuer
+    metadata:
+      name: letsencrypt-prod
+    spec:
+      acme:
+        server: https://acme-v02.api.letsencrypt.org/directory
+        email: admin@{{ domain.public }}
+        privateKeySecretRef:
+          name: letsencrypt-prod
+        solvers:
+        - http01:
+            ingress:
+              class: traefik
+    ---
+    apiVersion: cert-manager.io/v1
+    kind: ClusterIssuer
+    metadata:
+      name: selfsigned-issuer
+    spec:
+      selfSigned: {}
+    EOF
+  changed_when: false
+  tags: [services, cert-manager]
+
+# -----------------------------------------------------------------------------
+# Databases
+# -----------------------------------------------------------------------------
+- name: Create PostgreSQL init database ConfigMap
+  shell: |
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }} apply -f - <<EOF
+    apiVersion: v1
+    kind: ConfigMap
+    metadata:
+      name: scripts-initdb
+      namespace: db
+    data:
+      init.sql: |
+        CREATE DATABASE IF NOT EXISTS authentik;
+        CREATE DATABASE IF NOT EXISTS vaultwarden;
+        CREATE DATABASE IF NOT EXISTS gitlab;
+        CREATE DATABASE IF NOT EXISTS harbor;
+        CREATE DATABASE IF NOT EXISTS teamcity;
+        CREATE DATABASE IF NOT EXISTS youtrack;
+        CREATE DATABASE IF NOT EXISTS hub;
+        CREATE DATABASE IF NOT EXISTS coder;
+        CREATE DATABASE IF NOT EXISTS affine;
+        CREATE DATABASE IF NOT EXISTS nextcloud;
+        CREATE DATABASE IF NOT EXISTS kestra;
+        CREATE DATABASE IF NOT EXISTS n8n;
+        CREATE DATABASE IF NOT EXISTS ghost;
+        CREATE DATABASE IF NOT EXISTS bytebase;
+    EOF
+  changed_when: false
+  tags: [services, databases, postgres]
+
+- name: Deploy PostgreSQL
+  command: >
+    helm upgrade --install postgresql bitnami/postgresql
+    --namespace db
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set global.storageClass=local-path
+    --set auth.enablePostgresUser=true
+    --set auth.postgresPassword={{ database_password }}
+    --set architecture=standalone
+    --set primary.persistence.enabled=true
+    --set primary.persistence.size=8Gi
+    --set primary.initdb.scriptsConfigMap=scripts-initdb
+    --wait
+    --timeout=5m
+  register: postgres_deploy
+  changed_when: "'deployed' in postgres_deploy.stdout or 'upgraded' in postgres_deploy.stdout"
+  tags: [services, databases, postgres]
+
+- name: Deploy Valkey (Redis)
+  command: >
+    helm upgrade --install valkey bitnami/valkey
+    --namespace db
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set global.storageClass=local-path
+    --set auth.password={{ valkey_password }}
+    --set architecture=standalone
+    --set primary.persistence.enabled=true
+    --set primary.persistence.size=2Gi
+    --wait
+    --timeout=5m
+  register: valkey_deploy
+  changed_when: "'deployed' in valkey_deploy.stdout or 'upgraded' in valkey_deploy.stdout"
+  tags: [services, databases, valkey]
+
+# -----------------------------------------------------------------------------
+# Vault
+# -----------------------------------------------------------------------------
+- name: Deploy HashiCorp Vault
+  command: >
+    helm upgrade --install vault hashicorp/vault
+    --namespace service
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set server.dev.enabled=true
+    --set server.dataStorage.enabled=false
+    --set injector.enabled=true
+    --set ui.enabled=true
+    --wait
+    --timeout=5m
+  register: vault_deploy
+  changed_when: "'deployed' in vault_deploy.stdout or 'upgraded' in vault_deploy.stdout"
+  tags: [services, vault]
+
+- name: Create Vault Ingress
+  shell: |
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }} apply -f - <<EOF
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: vault
+      namespace: service
+    spec:
+      ingressClassName: traefik
+      rules:
+      - host: vault.{{ domain.local }}
+        http:
+          paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: vault
+                port:
+                  number: 8200
+    EOF
+  changed_when: false
+  tags: [services, vault]
+
+# -----------------------------------------------------------------------------
+# Authentik (SSO)
+# -----------------------------------------------------------------------------
+- name: Deploy Authentik
+  command: >
+    helm upgrade --install authentik authentik/authentik
+    --namespace service
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set authentik.secret_key={{ authentik_secret_key }}
+    --set authentik.postgresql.host=postgresql.db.svc.cluster.local
+    --set authentik.postgresql.name=authentik
+    --set authentik.postgresql.user=postgres
+    --set authentik.postgresql.password={{ database_password }}
+    --set authentik.redis.host=valkey-master.db.svc.cluster.local
+    --set authentik.redis.password={{ valkey_password }}
+    --set authentik.bootstrapPassword={{ authentik_admin_password }}
+    --set server.replicas=1
+    --set worker.replicas=1
+    --set postgresql.enabled=false
+    --set redis.enabled=false
+    --wait
+    --timeout=10m
+  register: authentik_deploy
+  changed_when: "'deployed' in authentik_deploy.stdout or 'upgraded' in authentik_deploy.stdout"
+  tags: [services, authentik]
+
+- name: Create Authentik Ingress
+  shell: |
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }} apply -f - <<EOF
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: authentik
+      namespace: service
+    spec:
+      ingressClassName: traefik
+      rules:
+      - host: auth.{{ domain.local }}
+        http:
+          paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: authentik-server
+                port:
+                  number: 80
+    EOF
+  changed_when: false
+  tags: [services, authentik]
+
+# -----------------------------------------------------------------------------
+# Custom Charts (from kubernetes/charts/)
+# -----------------------------------------------------------------------------
+- name: Deploy Glance Dashboard
+  command: >
+    helm upgrade --install glance {{ kubernetes_charts_dir }}/glance
+    --namespace infrastructure
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set ingress.host=dashboard.{{ domain.local }}
+    --set ingress.tls.enabled=false
+    --set consul.enabled=false
+    --set networkPolicy.enabled=false
+    --set serviceMonitor.enabled=false
+    --set persistence.config.storageClass=local-path
+    --wait
+    --timeout=5m
+  register: glance_deploy
+  changed_when: "'deployed' in glance_deploy.stdout or 'upgraded' in glance_deploy.stdout"
+  tags: [services, glance]
+
+- name: Deploy Vaultwarden
+  command: >
+    helm upgrade --install vaultwarden {{ kubernetes_charts_dir }}/vaultwarden
+    --namespace data
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set ingress.host=vw.{{ domain.local }}
+    --set ingress.tls.enabled=false
+    --set consul.enabled=false
+    --set networkPolicy.enabled=false
+    --set serviceMonitor.enabled=false
+    --set persistence.storageClass=local-path
+    --set postgresql.host=postgresql.db.svc.cluster.local
+    --set postgresql.password={{ database_password }}
+    --wait
+    --timeout=5m
+  register: vaultwarden_deploy
+  changed_when: "'deployed' in vaultwarden_deploy.stdout or 'upgraded' in vaultwarden_deploy.stdout"
+  tags: [services, vaultwarden]
+
+- name: Deploy Excalidraw
+  command: >
+    helm upgrade --install excalidraw {{ kubernetes_charts_dir }}/excalidraw
+    --namespace productivity
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set ingress.frontend.host=excalidraw.{{ domain.local }}
+    --set ingress.tls.enabled=false
+    --set consul.enabled=false
+    --set networkPolicy.enabled=false
+    --set serviceMonitor.enabled=false
+    --set persistence.data.storageClass=local-path
+    --wait
+    --timeout=5m
+  register: excalidraw_deploy
+  changed_when: "'deployed' in excalidraw_deploy.stdout or 'upgraded' in excalidraw_deploy.stdout"
+  failed_when: false
+  tags: [services, excalidraw]
+
+- name: Deploy MeTube
+  command: >
+    helm upgrade --install metube {{ kubernetes_charts_dir }}/metube
+    --namespace utilities
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set ingress.host=metube.{{ domain.local }}
+    --set ingress.tls.enabled=false
+    --set consul.enabled=false
+    --set networkPolicy.enabled=false
+    --set serviceMonitor.enabled=false
+    --set persistence.storageClass=local-path
+    --wait
+    --timeout=5m
+  register: metube_deploy
+  changed_when: "'deployed' in metube_deploy.stdout or 'upgraded' in metube_deploy.stdout"
+  failed_when: false
+  tags: [services, metube]
+
+- name: Deploy Bytebase
+  command: >
+    helm upgrade --install bytebase {{ kubernetes_charts_dir }}/bytebase
+    --namespace infrastructure
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set ingress.host=bytebase.{{ domain.local }}
+    --set ingress.tls.enabled=false
+    --set consul.enabled=false
+    --set networkPolicy.enabled=false
+    --set serviceMonitor.enabled=false
+    --set persistence.storageClass=local-path
+    --set bytebase.postgres.host=postgresql.db.svc.cluster.local
+    --set bytebase.postgres.password={{ database_password }}
+    --wait
+    --timeout=5m
+  register: bytebase_deploy
+  changed_when: "'deployed' in bytebase_deploy.stdout or 'upgraded' in bytebase_deploy.stdout"
+  failed_when: false
+  tags: [services, bytebase]
+
+# -----------------------------------------------------------------------------
+# JetBrains Stack
+# -----------------------------------------------------------------------------
+- name: Deploy Hub
+  command: >
+    helm upgrade --install hub {{ kubernetes_charts_dir }}/hub
+    --namespace code
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set ingress.host=hub.{{ domain.local }}
+    --set ingress.tls.enabled=false
+    --set consul.enabled=false
+    --set networkPolicy.enabled=false
+    --set serviceMonitor.enabled=false
+    --set persistence.storageClass=local-path
+    --wait
+    --timeout=5m
+  register: hub_deploy
+  changed_when: "'deployed' in hub_deploy.stdout or 'upgraded' in hub_deploy.stdout"
+  failed_when: false
+  tags: [services, hub, jetbrains]
+
+- name: Deploy YouTrack
+  command: >
+    helm upgrade --install youtrack {{ kubernetes_charts_dir }}/youtrack
+    --namespace code
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set ingress.host=youtrack.{{ domain.local }}
+    --set ingress.tls.enabled=false
+    --set consul.enabled=false
+    --set networkPolicy.enabled=false
+    --set serviceMonitor.enabled=false
+    --set persistence.storageClass=local-path
+    --wait
+    --timeout=5m
+  register: youtrack_deploy
+  changed_when: "'deployed' in youtrack_deploy.stdout or 'upgraded' in youtrack_deploy.stdout"
+  failed_when: false
+  tags: [services, youtrack, jetbrains]
+
+- name: Deploy TeamCity
+  command: >
+    helm upgrade --install teamcity {{ kubernetes_charts_dir }}/teamcity
+    --namespace code
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set ingress.host=teamcity.{{ domain.local }}
+    --set ingress.tls.enabled=false
+    --set consul.enabled=false
+    --set networkPolicy.enabled=false
+    --set serviceMonitor.enabled=false
+    --set persistence.storageClass=local-path
+    --set postgresql.host=postgresql.db.svc.cluster.local
+    --set postgresql.password={{ database_password }}
+    --wait
+    --timeout=5m
+  register: teamcity_deploy
+  changed_when: "'deployed' in teamcity_deploy.stdout or 'upgraded' in teamcity_deploy.stdout"
+  failed_when: false
+  tags: [services, teamcity, jetbrains]
+
+# -----------------------------------------------------------------------------
+# Data Services
+# -----------------------------------------------------------------------------
+- name: Deploy Syncthing
+  command: >
+    helm upgrade --install syncthing {{ kubernetes_charts_dir }}/syncthing
+    --namespace data
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set ingress.host=syncthing.{{ domain.local }}
+    --set ingress.tls.enabled=false
+    --set consul.enabled=false
+    --set networkPolicy.enabled=false
+    --set serviceMonitor.enabled=false
+    --set persistence.storageClass=local-path
+    --wait
+    --timeout=5m
+  register: syncthing_deploy
+  changed_when: "'deployed' in syncthing_deploy.stdout or 'upgraded' in syncthing_deploy.stdout"
+  failed_when: false
+  tags: [services, syncthing]
+
+# -----------------------------------------------------------------------------
+# Utilities
+# -----------------------------------------------------------------------------
+- name: Deploy Vert
+  command: >
+    helm upgrade --install vert {{ kubernetes_charts_dir }}/vert
+    --namespace utilities
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set ingress.host=vert.{{ domain.local }}
+    --set ingress.tls.enabled=false
+    --set consul.enabled=false
+    --set networkPolicy.enabled=false
+    --set serviceMonitor.enabled=false
+    --wait
+    --timeout=5m
+  register: vert_deploy
+  changed_when: "'deployed' in vert_deploy.stdout or 'upgraded' in vert_deploy.stdout"
+  failed_when: false
+  tags: [services, vert]
+
+# -----------------------------------------------------------------------------
+# Code Platforms
+# -----------------------------------------------------------------------------
+- name: Deploy Coder
+  command: >
+    helm upgrade --install coder {{ kubernetes_charts_dir }}/coder
+    --namespace code
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set ingress.hosts[0].host=coder.{{ domain.local }}
+    --set ingress.hosts[0].paths[0].path=/
+    --set ingress.hosts[0].paths[0].pathType=Prefix
+    --set ingress.tls.enabled=false
+    --set coder.config.accessUrl=https://coder.{{ domain.public }}
+    --set coder.postgres.host=postgresql.db.svc.cluster.local
+    --set coder.postgres.password={{ database_password }}
+    --set persistence.storageClass=local-path
+    --set networkPolicy.enabled=false
+    --set serviceMonitor.enabled=false
+    --wait
+    --timeout=5m
+  register: coder_deploy
+  changed_when: "'deployed' in coder_deploy.stdout or 'upgraded' in coder_deploy.stdout"
+  failed_when: false
+  tags: [services, coder]
+
+# -----------------------------------------------------------------------------
+# Productivity
+# -----------------------------------------------------------------------------
+- name: Deploy Affine
+  command: >
+    helm upgrade --install affine {{ kubernetes_charts_dir }}/affine
+    --namespace productivity
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set ingress.hosts[0].host=affine.{{ domain.local }}
+    --set ingress.hosts[0].paths[0].path=/
+    --set ingress.hosts[0].paths[0].pathType=Prefix
+    --set postgresql.external.password={{ database_password }}
+    --set persistence.storageClass=local-path
+    --set networkPolicy.enabled=false
+    --wait
+    --timeout=5m
+  register: affine_deploy
+  changed_when: "'deployed' in affine_deploy.stdout or 'upgraded' in affine_deploy.stdout"
+  failed_when: false
+  tags: [services, affine]
+
+- name: Deploy Penpot
+  shell: >
+    helm repo add penpot https://helm.penpot.app;
+    helm upgrade --install penpot penpot/penpot
+    --namespace productivity
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set config.publicUri=https://penpot.{{ domain.public }}
+    --set config.flags="enable-registration enable-login-with-password disable-email-verification"
+    --set ingress.enabled=true
+    --set ingress.className=traefik
+    --set ingress.hosts[0]=penpot.{{ domain.local }}
+    --set global.postgresqlEnabled=false
+    --set global.valkeyEnabled=false
+    --set config.postgresql.host=postgresql.db.svc.cluster.local
+    --set config.postgresql.password={{ database_password }}
+    --set config.valkey.host=valkey-master.db.svc.cluster.local
+    --wait
+    --timeout=5m
+  register: penpot_deploy
+  changed_when: "'deployed' in penpot_deploy.stdout or 'upgraded' in penpot_deploy.stdout"
+  failed_when: false
+  tags: [services, penpot]
+
+# -----------------------------------------------------------------------------
+# Content
+# -----------------------------------------------------------------------------
+- name: Deploy Ghost
+  command: >
+    helm upgrade --install ghost {{ kubernetes_charts_dir }}/ghost
+    --namespace content
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set ingress.host=ghost.{{ domain.local }}
+    --set ingress.tls.enabled=false
+    --set consul.enabled=false
+    --set networkPolicy.enabled=false
+    --set serviceMonitor.enabled=false
+    --set persistence.storageClass=local-path
+    --set mysql.host=postgresql.db.svc.cluster.local
+    --set mysql.password={{ database_password }}
+    --wait
+    --timeout=5m
+  register: ghost_deploy
+  changed_when: "'deployed' in ghost_deploy.stdout or 'upgraded' in ghost_deploy.stdout"
+  failed_when: false
+  tags: [services, ghost]
+
+# -----------------------------------------------------------------------------
+# Infrastructure (Harbor)
+# -----------------------------------------------------------------------------
+- name: Deploy Harbor
+  shell: >
+    helm repo add harbor https://helm.goharbor.io;
+    helm upgrade --install harbor harbor/harbor
+    --namespace infrastructure
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set expose.type=ingress
+    --set expose.ingress.className=traefik
+    --set expose.ingress.hosts.core=harbor.{{ domain.local }}
+    --set externalURL=https://harbor.{{ domain.public }}
+    --set persistence.enabled=true
+    --set persistence.persistentVolumeClaim.registry.storageClass=local-path
+    --set persistence.persistentVolumeClaim.registry.size=50Gi
+    --set persistence.persistentVolumeClaim.jobservice.storageClass=local-path
+    --set persistence.persistentVolumeClaim.database.storageClass=local-path
+    --set persistence.persistentVolumeClaim.redis.storageClass=local-path
+    --set persistence.persistentVolumeClaim.trivy.storageClass=local-path
+    --set harborAdminPassword=Harbor12345
+    --set database.type=external
+    --set database.external.host=postgresql.db.svc.cluster.local
+    --set database.external.username=harbor
+    --set database.external.password={{ database_password }}
+    --set redis.type=external
+    --set redis.external.addr=valkey-master.db.svc.cluster.local:6379
+    --wait
+    --timeout=10m
+  register: harbor_deploy
+  changed_when: "'deployed' in harbor_deploy.stdout or 'upgraded' in harbor_deploy.stdout"
+  failed_when: false
+  tags: [services, harbor]
+
+# -----------------------------------------------------------------------------
+# Monitoring
+# -----------------------------------------------------------------------------
+- name: Deploy Grafana
+  command: >
+    helm upgrade --install grafana bitnami/grafana
+    --namespace service
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set global.storageClass=local-path
+    --set admin.password={{ grafana_password }}
+    --set persistence.enabled=true
+    --set persistence.size=5Gi
+    --wait
+    --timeout=5m
+  register: grafana_deploy
+  changed_when: "'deployed' in grafana_deploy.stdout or 'upgraded' in grafana_deploy.stdout"
+  tags: [services, monitoring, grafana]
+
+- name: Create Grafana Ingress
+  shell: |
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }} apply -f - <<EOF
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: grafana
+      namespace: service
+    spec:
+      ingressClassName: traefik
+      rules:
+      - host: monitoring.{{ domain.local }}
+        http:
+          paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: grafana
+                port:
+                  number: 3000
+    EOF
+  changed_when: false
+  tags: [services, monitoring, grafana]
+
+# -----------------------------------------------------------------------------
+# Summary
+# -----------------------------------------------------------------------------
+- name: Services Deployment Summary
+  debug:
+    msg: |
+      =====================================================
+      Services Deployment Complete!
+      =====================================================
+
+      Core Services:
+        - cert-manager: deployed
+        - Vault: vault.{{ domain.local }}
+        - Authentik: auth.{{ domain.local }}
+
+      Databases:
+        - PostgreSQL: postgresql.db.svc.cluster.local
+        - Valkey: valkey-master.db.svc.cluster.local
+
+      Applications:
+        - Glance: dashboard.{{ domain.local }}
+        - Vaultwarden: vw.{{ domain.local }}
+        - Grafana: monitoring.{{ domain.local }}
+        - Excalidraw: excalidraw.{{ domain.local }}
+        - MeTube: metube.{{ domain.local }}
+        - Bytebase: bytebase.{{ domain.local }}
+        - Syncthing: syncthing.{{ domain.local }}
+        - Vert: vert.{{ domain.local }}
+        - Affine: affine.{{ domain.local }}
+        - Penpot: penpot.{{ domain.local }}
+        - Ghost: ghost.{{ domain.local }}
+        - Harbor: harbor.{{ domain.local }}
+
+      JetBrains Stack:
+        - Hub: hub.{{ domain.local }}
+        - YouTrack: youtrack.{{ domain.local }}
+        - TeamCity: teamcity.{{ domain.local }}
+
+      Development:
+        - Coder: coder.{{ domain.local }}
+
+      Test with:
+        curl -H "Host: dashboard.{{ domain.local }}" http://<traefik-ip>:30080
+      =====================================================
+  tags: [services, summary]

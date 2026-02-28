@@ -14,7 +14,7 @@ authentik:
 # ========== Connect to external PostgreSQL ==========
 postgresql:
   external: true
-  host: "postgres-postgresql.db.svc.cluster.local"
+  host: "postgresql.db.svc.cluster.local"
   port: 5432
   username: "authentik"
   password: "{{ .Values.secrets.postgresPassword }}"
@@ -24,7 +24,7 @@ postgresql:
 # ========== Connect to external ValKey ==========
 valkey:
   enabled: true
-  host: "valkey-master.code.svc.cluster.local"  # or just valkey
+  host: "valkey-primary.code.svc.cluster.local"  # or just valkey
   port: 6379
   password: ""
   database: 0
@@ -32,7 +32,7 @@ valkey:
 # Persistent Storage only for media/templates/certs
 persistence:
   enabled: true
-  storageClass: openebs-hostpath
+  storageClass: local-path
   media:
     size: 1Gi
   templates:

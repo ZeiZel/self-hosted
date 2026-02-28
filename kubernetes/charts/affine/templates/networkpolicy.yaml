@@ -38,8 +38,8 @@ spec:
     # Allow DNS
     - to:
         - namespaceSelector:
-          matchLabels:
-            name: kube-system
+            matchLabels:
+              name: kube-system
       ports:
         - protocol: UDP
           port: 53

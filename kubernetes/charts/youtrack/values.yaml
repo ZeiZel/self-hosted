@@ -20,11 +20,11 @@ youtrack:
 
   resources:
     limits:
-      cpu: 2000m
+      cpu: 1000m
       memory: 2Gi
     requests:
-      cpu: 1000m
-      memory: 1Gi
+      cpu: 200m
+      memory: 512Mi
 
   # Конфигурация YouTrack
   config:
@@ -35,7 +35,7 @@ youtrack:
 # Persistent Storage
 persistence:
   enabled: true
-  storageClass: standard
+  storageClass: local-path
 
   # Data directory
   data:
@@ -61,7 +61,7 @@ persistence:
 # Hub интеграция (для SSO)
 hub:
   enabled: true
-  host: "hub.authentik.svc.cluster.local"
+  host: "hub.code.svc.cluster.local"
   port: 8080
   # Или используйте DNS:
   # host: "hub.example.com"

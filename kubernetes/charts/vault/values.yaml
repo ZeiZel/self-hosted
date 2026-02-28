@@ -12,7 +12,7 @@ image:
 
 # Vault Server конфигурация
 server:
-  replicaCount: 3  # For HA
+  replicaCount: 1  # For HA
 
   service:
     type: ClusterIP
@@ -30,14 +30,14 @@ server:
   # Data Storage конфигурация
   dataStorage:
     enabled: true
-    storageClass: standard
+    storageClass: local-path
     size: 3Gi
     mountPath: /vault/data
 
   # Audit Storage
   auditStorage:
     enabled: true
-    storageClass: standard
+    storageClass: local-path
     size: 1Gi
     mountPath: /vault/logs
 

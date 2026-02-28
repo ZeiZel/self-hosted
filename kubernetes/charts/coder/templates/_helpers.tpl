@@ -9,8 +9,8 @@ Expand the name of the chart.
 Create a default fully qualified app name.
 */}}
 {{- define "coder.fullname" -}}
-{{- if .Values.nameOverride }}
-{{- .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- if .Values.fullnameOverride }}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
 {{- $name := default .Chart.Name .Values.nameOverride }}
 {{- if contains $name .Release.Name }}
@@ -52,7 +52,11 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Create the name of the service account to use
 */}}
 {{- define "coder.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
 {{- default (include "coder.fullname" .) .Values.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name }}
+{{- end }}
 {{- end }}
 
 {{/*

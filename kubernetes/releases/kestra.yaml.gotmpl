@@ -29,39 +29,32 @@ common:
     fsGroup: 1000
 
 # Kestra application configuration
+# See: https://kestra.io/docs/configuration
 configurations:
   application:
     kestra:
-      # Repository - use PostgreSQL JDBC
       repository:
         type: postgres
-
-      # Queue - use PostgreSQL JDBC
       queue:
         type: postgres
-
-      # Storage - use MinIO S3
       storage:
         type: minio
         minio:
-          endpoint: "http://minio.db.svc.cluster.local:9000"
+          # MinIO endpoint - use separate endpoint/port fields (not URL format)
+          endpoint: "minio.db.svc.cluster.local"
+          port: 9000
+          secure: false
           accessKey: "{{ .Values.secrets.minioAccessKey }}"
           secretKey: "{{ .Values.secrets.minioSecretKey }}"
           bucket: "kestra"
           region: "us-east-1"
-
-      # Server URL
       url: "https://kestra.{{ .Values.infra.host }}"
-
-    # JDBC Datasource
     datasources:
       postgres:
-        url: jdbc:postgresql://postgres-postgresql.db.svc.cluster.local:5432/kestra
+        url: jdbc:postgresql://postgresql.db.svc.cluster.local:5432/kestra
         username: kestra
         password: "{{ .Values.secrets.kestraPostgresPassword }}"
         driverClassName: org.postgresql.Driver
-
-    # Metrics endpoint
     endpoints:
       all:
         port: 8081
@@ -74,8 +67,9 @@ deployments:
   standalone:
     enabled: true
     workerThreads: 0
+    # Docker-in-Docker disabled - requires privileged access
     dind:
-      enabled: true
+      enabled: false
 
 # Service configuration
 service:
@@ -108,17 +102,13 @@ dind:
   enabled: true
   mode: rootless
 
+# Disable built-in sub-charts - use external databases
+postgresql:
+  enabled: false
+
+minio:
+  enabled: false
+
 # Authentik OIDC (Enterprise Edition only)
 # Uncomment and configure if using Kestra Enterprise Edition
-# configurations:
-#   application:
-#     micronaut:
-#       security:
-#         oauth2:
-#           enabled: true
-#           clients:
-#             authentik:
-#               clientId: "{{ .Values.secrets.kestraOidcClientId }}"
-#               clientSecret: "{{ .Values.secrets.kestraOidcClientSecret }}"
-#               openid:
-#                 issuer: "https://authentik.{{ .Values.infra.host }}/application/o/kestra/"
+# See: https://kestra.io/docs/enterprise/authentication

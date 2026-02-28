@@ -49,7 +49,7 @@ stalwart:
 # Persistent Storage
 persistence:
   enabled: true
-  storageClass: openebs-hostpath
+  storageClass: local-path
 
   # Data directory (SQLite database, blobs, etc)
   data:
@@ -69,7 +69,7 @@ persistence:
 postgresql:
   enabled: false
   external: true
-  host: "postgres-postgresql.db.svc.cluster.local"
+  host: "postgresql.db.svc.cluster.local"
   port: 5432
   username: "stalwart"
   password: "{{ .Values.secrets.stalwartPostgresPassword }}"
@@ -78,7 +78,7 @@ postgresql:
 # Redis/ValKey for caching and sessions (optional)
 redis:
   enabled: false
-  host: "valkey-master.db.svc.cluster.local"
+  host: "valkey-primary.db.svc.cluster.local"
   port: 6379
   password: ""
 

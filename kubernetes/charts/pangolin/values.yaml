@@ -23,7 +23,7 @@ resources:
 
 persistence:
   enabled: true
-  storageClass: standard
+  storageClass: local-path
   accessMode: ReadWriteOnce
   size: 1Gi
   mountPath: /var/certificates

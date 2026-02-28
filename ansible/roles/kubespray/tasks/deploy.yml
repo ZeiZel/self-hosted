@@ -1,103 +1,140 @@
 ---
-- name: Check cluster connectivity
-  command: >
-    {{ kubespray_install_dir }}/venv/bin/ansible
-    -i {{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml
-    all -m ping
-  register: connectivity_check
-  changed_when: false
-  failed_when: false
+# =============================================================================
+# KUBESPRAY DEPLOYMENT TASKS
+# =============================================================================
+# Run kubespray cluster.yml playbook from localhost
 
-- name: Display connectivity status
-  debug:
-    msg: "{{ connectivity_check.stdout }}"
-
-- name: Check if Kubernetes cluster already exists
+# -----------------------------------------------------------------------------
+# Pre-deployment Checks
+# -----------------------------------------------------------------------------
+- name: Verify kubespray directory exists
   stat:
-    path: /etc/kubernetes/admin.conf
-  register: cluster_exists
-  delegate_to: "{{ groups['k8s_masters'][0] }}"
-  run_once: true
+    path: "{{ kubespray_dir }}/cluster.yml"
+  register: cluster_yml_stat
+  failed_when: not cluster_yml_stat.stat.exists
 
-- name: Determine deployment playbook (cluster.yml or scale.yml)
-  set_fact:
-    kubespray_playbook: "{{ 'scale.yml' if cluster_exists.stat.exists else 'cluster.yml' }}"
+- name: Verify inventory exists
+  stat:
+    path: "{{ kubespray_inventory_dir }}/hosts.yaml"
+  register: inventory_stat
+  failed_when: not inventory_stat.stat.exists
 
-- name: Display deployment mode
-  debug:
-    msg: "Deploying using {{ kubespray_playbook }} (cluster exists: {{ cluster_exists.stat.exists }})"
+- name: Verify virtualenv exists
+  stat:
+    path: "{{ kubespray_venv_dir }}/bin/ansible-playbook"
+  register: ansible_playbook_stat
+  failed_when: not ansible_playbook_stat.stat.exists
 
-- name: Setup SSH key for kubespray
-  openssh_keypair:
-    path: /root/.ssh/id_rsa
-    type: rsa
-    size: 4096
-    state: present
-  register: ssh_key
-
-- name: Add SSH key to authorized_keys on localhost
-  authorized_key:
-    user: "{{ ansible_user }}"
-    key: "{{ ssh_key.public_key }}"
-    state: present
-
-- name: Test SSH connectivity to self
-  command: ssh -o StrictHostKeyChecking=no {{ ansible_user }}@{{ ansible_host }} "echo ok"
-  changed_when: false
-  retries: 3
-  delay: 5
-
-- name: Run kubespray cluster deployment
-  shell: >
-    cd {{ kubespray_install_dir }}/kubespray &&
-    {{ kubespray_install_dir }}/venv/bin/ansible-playbook
-    -i {{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml
-    {{ kubespray_playbook }}
-    -b
-    -v
-    --private-key /root/.ssh/id_rsa
+# -----------------------------------------------------------------------------
+# Reset Cluster (Optional)
+# -----------------------------------------------------------------------------
+- name: Reset existing cluster (if requested)
+  shell: |
+    source {{ kubespray_venv_dir }}/bin/activate
+    cd {{ kubespray_dir }}
+    ansible-playbook -i {{ kubespray_inventory_dir }}/hosts.yaml \
+      reset.yml \
+      --become \
+      --become-user={{ kubespray_become_user }} \
+      --private-key={{ kubespray_ssh_key }} \
+      -e reset_confirmation=yes \
+      -v
+  args:
+    executable: /bin/bash
   environment:
     ANSIBLE_HOST_KEY_CHECKING: "False"
-    ANSIBLE_ROLES_PATH: "{{ kubespray_install_dir }}/kubespray/roles"
-  register: kubespray_deploy
-  async: 7200
-  poll: 60
+    ANSIBLE_DEPRECATION_WARNINGS: "False"
+  when: kubespray_reset_before_deploy | default(false)
+  register: kubespray_reset
+  ignore_errors: true
 
-- name: Wait for kubespray deployment to complete
-  async_status:
-    jid: "{{ kubespray_deploy.ansible_job_id }}"
-  register: job_result
-  until: job_result.finished
-  retries: 120
-  delay: 30
+# -----------------------------------------------------------------------------
+# Deploy Kubernetes Cluster
+# -----------------------------------------------------------------------------
+- name: Display deployment start message
+  debug:
+    msg: |
+      Starting Kubernetes cluster deployment...
+
+      This may take 30-60 minutes depending on your network and hardware.
+
+      Playbook: {{ kubespray_dir }}/cluster.yml
+      Inventory: {{ kubespray_inventory_dir }}/hosts.yaml
+
+- name: Run kubespray cluster.yml playbook
+  shell: |
+    source {{ kubespray_venv_dir }}/bin/activate
+    cd {{ kubespray_dir }}
+    ansible-playbook -i {{ kubespray_inventory_dir }}/hosts.yaml \
+      cluster.yml \
+      --become \
+      --become-user={{ kubespray_become_user }} \
+      -v
+  args:
+    executable: /bin/bash
+  environment:
+    ANSIBLE_HOST_KEY_CHECKING: "False"
+    ANSIBLE_DEPRECATION_WARNINGS: "False"
+    ANSIBLE_CALLBACKS_ENABLED: ""
+  register: kubespray_deploy
+  async: "{{ kubespray_deploy_timeout }}"
+  poll: "{{ kubespray_poll_interval }}"
+
+- name: Display deployment output
+  debug:
+    msg: "{{ kubespray_deploy.stdout_lines[-50:] }}"
+  when: kubespray_deploy.stdout_lines is defined
 
 - name: Check deployment result
   fail:
-    msg: "Kubespray deployment failed"
-  when: job_result.failed
+    msg: |
+      Kubespray deployment failed!
 
-- name: Copy kubeconfig to local machine
-  fetch:
-    src: "{{ kubespray_kubeconfig_path | default('/root/.kube/config') }}"
-    dest: "{{ kubespray_local_kubeconfig_path | default('~/.kube/config') }}"
-    flat: yes
-  when: kubespray_copy_kubeconfig | default(true)
+      Error: {{ kubespray_deploy.stderr | default('Unknown error') }}
 
-- name: Verify cluster is running
-  command: >
-    {{ kubespray_install_dir }}/venv/bin/ansible
-    -i {{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml
-    kube_control_plane[0]
-    -m shell
-    -a "kubectl get nodes"
-  register: cluster_status
-  changed_when: false
+      Check the full output above for details.
+  when: kubespray_deploy.rc != 0
 
-- name: Display cluster status
+# -----------------------------------------------------------------------------
+# Fetch Kubeconfig
+# -----------------------------------------------------------------------------
+- name: Create local .kube directory
+  file:
+    path: "{{ user_home }}/.kube"
+    state: directory
+    mode: '0700'
+  when: kubespray_fetch_kubeconfig
+
+- name: Fetch kubeconfig from first master node
+  shell: |
+    ssh -o StrictHostKeyChecking=no \
+      -i {{ kubespray_ssh_key }} \
+      {{ hostvars[groups['masters'][0]]['ansible_user'] }}@{{ hostvars[groups['masters'][0]]['ansible_host'] }} \
+      "sudo cat /etc/kubernetes/admin.conf"
+  register: kubeconfig_content
+  when: kubespray_fetch_kubeconfig
+
+- name: Save kubeconfig locally
+  copy:
+    content: "{{ kubeconfig_content.stdout }}"
+    dest: "{{ kubespray_local_kubeconfig }}"
+    mode: '0600'
+  when: kubespray_fetch_kubeconfig and kubeconfig_content.rc == 0
+
+- name: Update kubeconfig server address
+  replace:
+    path: "{{ kubespray_local_kubeconfig }}"
+    regexp: 'server: https://127\.0\.0\.1:6443'
+    replace: "server: https://{{ hostvars[groups['masters'][0]]['ansible_host'] }}:6443"
+  when: kubespray_fetch_kubeconfig and kubeconfig_content.rc == 0
+
+- name: Deployment complete
   debug:
-    msg: "{{ cluster_status.stdout }}"
+    msg: |
+      Kubernetes cluster deployment completed!
 
+      Kubeconfig saved to: {{ kubespray_local_kubeconfig }}
 
-
-
-
+      Test the cluster:
+        kubectl get nodes
+        kubectl get pods -A

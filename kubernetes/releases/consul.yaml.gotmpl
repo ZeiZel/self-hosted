@@ -1,46 +1,34 @@
 namespace: service
 
-global:
-  name: consul
-  datacenter: dc1
-  domain: consul
-  metrics:
-    enabled: true
-    enableAgentMetrics: true
+image:
+  repository: hashicorp/consul
+  tag: "1.18.2"
+  pullPolicy: IfNotPresent
 
 server:
   enabled: true
-  replicas: 3
-  storage: 1Gi
-  storageClass: openebs-hostpath
-  resources:
-    requests:
-      memory: "256Mi"
-      cpu: "100m"
-    limits:
-      memory: "512Mi"
-      cpu: "500m"
-
-client:
-  enabled: true
-  grpc: true
+  replicas: 1
 
 ui:
   enabled: true
-  service:
-    type: ClusterIP
-  ingress:
-    enabled: true
-    hosts:
-      - host: consul.{{ .Values.infra.host }}
-        paths:
-          - /
-    ingressClassName: traefik
 
-connectInject:
+persistence:
   enabled: true
-  default: false
+  storageClass: local-path
+  size: 1Gi
 
-dns:
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+ingress:
   enabled: true
-  enableRedirection: true
+  className: traefik
+  host: consul.{{ .Values.infra.host }}
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"

@@ -1,0 +1,156 @@
+---
+# Database infrastructure deployment
+# Deploys databases (PostgreSQL, Valkey, MySQL, MongoDB, MinIO, RabbitMQ)
+# Creates users and databases for applications
+
+- name: Display database deployment plan
+  debug:
+    msg:
+      - "Deploying database services"
+      - "Services: postgresql, valkey, mysql, mongodb, minio, rabbitmq"
+  tags: [infrastructure, databases]
+
+# Deploy PostgreSQL
+- name: Deploy PostgreSQL
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=postgresql
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: postgresql_deploy
+  changed_when: "'has been upgraded' in postgresql_deploy.stdout or 'installed' in postgresql_deploy.stdout"
+  tags: [infrastructure, databases, postgresql]
+
+- name: Wait for PostgreSQL pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n db -l app.kubernetes.io/name=postgresql
+    --timeout=300s
+  register: postgresql_ready
+  changed_when: false
+  tags: [infrastructure, databases, postgresql]
+
+# Deploy Valkey (Redis-compatible)
+- name: Deploy Valkey
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=valkey
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: valkey_deploy
+  changed_when: "'has been upgraded' in valkey_deploy.stdout or 'installed' in valkey_deploy.stdout"
+  tags: [infrastructure, databases, valkey]
+
+- name: Wait for Valkey pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n db -l app.kubernetes.io/name=valkey
+    --timeout=180s
+  register: valkey_ready
+  changed_when: false
+  tags: [infrastructure, databases, valkey]
+
+# Deploy MySQL
+- name: Deploy MySQL
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=mysql
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: mysql_deploy
+  changed_when: "'has been upgraded' in mysql_deploy.stdout or 'installed' in mysql_deploy.stdout"
+  tags: [infrastructure, databases, mysql]
+
+- name: Wait for MySQL pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n db -l app.kubernetes.io/name=mysql
+    --timeout=300s
+  register: mysql_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, databases, mysql]
+
+# Create PostgreSQL databases and users for applications
+- name: Create PostgreSQL databases for applications
+  shell: |
+    kubectl exec postgresql-0 -n db -- psql -U postgres -c "
+    DO \$\$
+    BEGIN
+      -- Create databases
+      IF NOT EXISTS (SELECT 1 FROM pg_database WHERE datname = '{{ item.name }}') THEN
+        CREATE DATABASE {{ item.name }};
+      END IF;
+
+      -- Create users
+      IF NOT EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{{ item.name }}') THEN
+        CREATE USER {{ item.name }} WITH PASSWORD '{{ item.password | default("changeme") }}';
+      END IF;
+
+      -- Grant privileges
+      GRANT ALL PRIVILEGES ON DATABASE {{ item.name }} TO {{ item.name }};
+    END
+    \$\$;
+    ALTER DATABASE {{ item.name }} OWNER TO {{ item.name }};
+    "
+  loop:
+    - { name: hub }
+    - { name: teamcity }
+    - { name: youtrack }
+    - { name: coder }
+    - { name: authentik }
+    - { name: vaultwarden }
+    - { name: affine }
+    - { name: penpot }
+    - { name: nextcloud }
+    - { name: stalwart }
+    - { name: remnawave }
+    - { name: supabase }
+    - { name: rybbit }
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: pg_databases
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, databases, postgresql]
+
+# Create MySQL databases for applications
+- name: Create MySQL databases for applications
+  shell: |
+    kubectl exec mysql-primary-0 -n db -- mysql -u root -p'{{ mysql_root_password | default("changeme") }}' -e "
+    CREATE DATABASE IF NOT EXISTS {{ item.name }};
+    CREATE USER IF NOT EXISTS '{{ item.name }}'@'%' IDENTIFIED BY '{{ item.password | default("changeme") }}';
+    GRANT ALL PRIVILEGES ON {{ item.name }}.* TO '{{ item.name }}'@'%';
+    FLUSH PRIVILEGES;
+    "
+  loop:
+    - { name: ghost }
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: mysql_databases
+  changed_when: false
+  failed_when: false
+  when: mysql_ready.rc == 0
+  tags: [infrastructure, databases, mysql]
+
+- name: Database deployment summary
+  debug:
+    msg:
+      - "Database services deployment complete"
+      - "PostgreSQL: {{ postgresql_ready.rc == 0 | ternary('Ready', 'Pending') }}"
+      - "Valkey: {{ valkey_ready.rc == 0 | ternary('Ready', 'Pending') }}"
+      - "MySQL: {{ mysql_ready.rc | default(1) == 0 | ternary('Ready', 'Pending/Skipped') }}"
+      - "Databases created: {{ pg_databases.results | selectattr('rc', 'defined') | selectattr('rc', 'eq', 0) | list | length }} PostgreSQL"
+  tags: [infrastructure, databases]

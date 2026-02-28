@@ -1,0 +1,53 @@
+namespace: service
+
+image:
+  repository: hashicorp/consul
+  tag: "1.18.2"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+server:
+  enabled: true
+  replicas: 1
+  bootstrapExpect: 1
+  storage: 1Gi
+  storageClass: local-path
+
+client:
+  enabled: false
+
+ui:
+  enabled: true
+
+service:
+  type: ClusterIP
+  ports:
+    http: 8500
+    grpc: 8502
+    dns: 8600
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 128Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+persistence:
+  enabled: true
+  storageClass: local-path
+  size: 1Gi
+
+ingress:
+  enabled: true
+  className: traefik
+  host: consul.zeizel.ru
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+
+serviceAccount:
+  create: true
+  name: consul

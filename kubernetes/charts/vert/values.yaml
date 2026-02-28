@@ -37,9 +37,8 @@ ingress:
   host: vert.localhost
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
   tls:
-    enabled: true
+    enabled: false
     secretName: vert-tls
     clusterIssuer: letsencrypt
 

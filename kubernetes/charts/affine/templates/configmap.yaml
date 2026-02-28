@@ -25,3 +25,25 @@ data:
   
   # Storage
   STORAGE_PROVIDER: "s3"
+
+  # PostgreSQL
+  {{- if .Values.postgresql.enabled }}
+  DATABASE_URL: "postgres://{{ .Values.postgresql.external.username }}:{{ .Values.postgresql.external.password }}@{{ .Values.postgresql.external.host }}:{{ .Values.postgresql.external.port }}/{{ .Values.postgresql.external.database }}"
+  {{- end }}
+
+  # Redis
+  {{- if .Values.redis.enabled }}
+  REDIS_SERVER_HOST: {{ .Values.redis.external.host | quote }}
+  REDIS_SERVER_PORT: {{ .Values.redis.external.port | quote }}
+  {{- if .Values.redis.external.password }}
+  REDIS_SERVER_PASSWORD: {{ .Values.redis.external.password | quote }}
+  {{- end }}
+  {{- end }}
+
+  # S3/MinIO
+  {{- if .Values.s3.enabled }}
+  AFFINE_S3_ENDPOINT: {{ .Values.s3.endpoint | quote }}
+  AFFINE_S3_BUCKET: {{ .Values.s3.bucket | quote }}
+  AFFINE_S3_REGION: {{ .Values.s3.region | quote }}
+  AFFINE_S3_FORCE_PATH_STYLE: {{ .Values.s3.forcePathStyle | quote }}
+  {{- end }}

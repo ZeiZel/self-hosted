@@ -57,7 +57,7 @@ resources:
 postgresql:
   enabled: false
   external:
-    host: postgres-postgresql.db.svc.cluster.local
+    host: postgresql.db.svc.cluster.local
     port: 5432
     username: remnawave
     password: ""
@@ -67,7 +67,7 @@ postgresql:
 redis:
   enabled: false
   external:
-    host: valkey-master.db.svc.cluster.local
+    host: valkey-primary.db.svc.cluster.local
     port: 6379
     password: ""
     database: 0

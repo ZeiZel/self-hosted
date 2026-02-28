@@ -24,9 +24,9 @@ entryPoints:
       tls:
         certResolver: letsencrypt
         domains:
-          - main: {{ vault.domain }}
+          - main: {{ domain.public }}
             sans:
-              - "*.{{ vault.domain }}"
+              - "*.{{ domain.public }}"
 
   traefik:
     address: ":{{ traefik_dashboard_port }}"
@@ -35,7 +35,7 @@ entryPoints:
 certificatesResolvers:
   letsencrypt:
     acme:
-      email: {{ vault.tls.letsencrypt.email }}
+      email: {{ tls.letsencrypt.email }}
       storage: {{ traefik_config_dir }}/acme.json
       httpChallenge:
         entryPoint: web
@@ -43,7 +43,7 @@ certificatesResolvers:
 # API and dashboard
 api:
   dashboard: true
-  insecure: false
+  insecure: true
 
 # Ping health check
 ping:
@@ -52,22 +52,6 @@ ping:
 # Logging
 log:
   level: INFO
-  filePath: /var/log/traefik/traefik.log
-  format: json
-
-# Access logs
-accessLog:
-  filePath: /var/log/traefik/access.log
-  format: json
-  bufferingSize: 100
-
-# Metrics
-metrics:
-  prometheus:
-    addEntryPointsLabels: true
-    addRoutersLabels: true
-    addServicesLabels: true
-    entryPoint: traefik
 
 # Providers
 providers:
@@ -75,24 +59,3 @@ providers:
   file:
     directory: {{ traefik_config_dir }}/dynamic
     watch: true
-
-  # HTTP provider for cluster backend routing
-  http:
-    endpoint: "http://{{ wireguard_server_ip }}:8081/traefik-config"
-    pollInterval: 10s
-    pollTimeout: 5s
-
-# Experimental features
-experimental:
-  http3: true
-
-# Server transport configuration
-serversTransport:
-  insecureSkipVerify: false
-  maxIdleConnsPerHost: 200
-
-# Host resolver
-hostResolver:
-  cnameFlattening: true
-  resolvConfig: /etc/resolv.conf
-  resolvDepth: 5

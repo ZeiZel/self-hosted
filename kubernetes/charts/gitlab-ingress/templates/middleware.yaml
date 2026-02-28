@@ -1,0 +1,15 @@
+{{- if .Values.middleware.headers.enabled }}
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: gitlab-headers
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "gitlab-ingress.labels" . | nindent 4 }}
+spec:
+  headers:
+    customRequestHeaders:
+      {{- range $key, $value := .Values.middleware.headers.customRequestHeaders }}
+      {{ $key }}: {{ $value | quote }}
+      {{- end }}
+{{- end }}

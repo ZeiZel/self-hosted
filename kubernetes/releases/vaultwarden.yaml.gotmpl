@@ -19,14 +19,14 @@ vaultwarden:
 
 persistence:
   enabled: true
-  storageClass: openebs-hostpath
+  storageClass: local-path
   data:
     size: 2Gi
 
 postgresql:
   enabled: true
   external: true
-  host: "postgres-postgresql.db.svc.cluster.local"
+  host: "postgresql.db.svc.cluster.local"
   password: "{{ .Values.secrets.postgresPassword }}"
 
 ingress:

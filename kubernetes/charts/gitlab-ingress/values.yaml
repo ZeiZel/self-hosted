@@ -1,0 +1,31 @@
+# GitLab IngressRoute Configuration
+
+# Host configuration - will be templated from release values
+hosts:
+  gitlab: "gitlab.example.com"
+  registry: "registry.gitlab.example.com"
+
+# Entry points for Traefik
+entryPoints:
+  - web
+  - websecure
+
+# GitLab webservice configuration
+webservice:
+  name: gitlab-webservice-default
+  port: 8181
+
+# GitLab registry configuration
+registry:
+  enabled: true
+  name: gitlab-registry
+  port: 5000
+
+# Headers middleware configuration (required for CSRF protection behind reverse proxy)
+middleware:
+  headers:
+    enabled: true
+    # These headers tell GitLab that Traefik terminates TLS
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"
+      X-Forwarded-Ssl: "on"

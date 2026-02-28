@@ -12,36 +12,17 @@ Group=root
 # Working directory
 WorkingDirectory={{ traefik_config_dir }}
 
-# Create required directories
+# Executable
 ExecStartPre=/bin/mkdir -p {{ traefik_config_dir }}/dynamic
 ExecStartPre=/bin/mkdir -p /var/log/traefik
-ExecStartPre=/bin/touch {{ traefik_config_dir }}/acme.json
-ExecStartPre=/bin/chmod 600 {{ traefik_config_dir }}/acme.json
-
-# Executable
-ExecStart={{ pangolin_install_dir }}/traefik \
-    --configFile={{ traefik_config_dir }}/traefik.yml
+ExecStartPre=/bin/sh -c "touch {{ traefik_config_dir }}/acme.json && chmod 600 {{ traefik_config_dir }}/acme.json"
+ExecStart={{ pangolin_install_dir }}/traefik --configFile={{ traefik_config_dir }}/traefik.yml
 
 # Restart policy
 Restart=always
 RestartSec=10s
 
-# Security hardening
-NoNewPrivileges=true
-PrivateTmp=true
-ProtectSystem=strict
-ProtectHome=true
-ReadWritePaths={{ traefik_config_dir }} /var/log/traefik
-ProtectKernelTunables=true
-ProtectKernelModules=true
-ProtectControlGroups=true
-RestrictRealtime=true
-RestrictNamespaces=true
-LockPersonality=true
-MemoryDenyWriteExecute=false
-RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
-SystemCallFilter=@system-service
-SystemCallErrorNumber=EPERM
+# Capabilities for binding to privileged ports
 AmbientCapabilities=CAP_NET_BIND_SERVICE
 
 # Limits

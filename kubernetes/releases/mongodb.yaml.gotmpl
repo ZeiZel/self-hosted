@@ -1,20 +1,46 @@
+## MongoDB configuration for shared infrastructure
+## https://github.com/bitnami/charts/tree/main/bitnami/mongodb
+
 namespace: db
 
-mongodb:
-  replicaSet: rs0
-  replicaCount: 3
-  image: mongo:7.0.12
-  auth:
-    enabled: false
+architecture: standalone
+
+auth:
+  enabled: true
+  rootUser: root
+  rootPassword: "{{ .Values.secrets.mongodbRootPassword }}"
+  databases:
+    - stoat
+  usernames:
+    - stoat
+  passwords:
+    - "{{ .Values.secrets.stoatMongoPassword }}"
 
 persistence:
   enabled: true
-  storageClass: openebs-hostpath
-  size: 3Gi
+  storageClass: local-path
+  size: 10Gi
+  accessModes:
+    - ReadWriteOnce
 
-consul:
-  enabled: true
-  datacenter: dc1
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
 
-arbiter:
+service:
+  type: ClusterIP
+  ports:
+    mongodb: 27017
+
+metrics:
+  enabled: false
+
+volumePermissions:
   enabled: true
+
+serviceAccount:
+  create: true

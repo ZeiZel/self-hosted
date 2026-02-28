@@ -101,6 +101,10 @@ spec:
               mountPath: {{ .Values.persistence.config.mountPath }}
             - name: stalwart-config
               mountPath: /opt/stalwart/etc
+            - name: logs
+              mountPath: /opt/stalwart-mail/logs
+            - name: tmp
+              mountPath: /tmp
 
           {{- if .Values.probes.liveness.enabled }}
           livenessProbe:
@@ -128,3 +132,7 @@ spec:
         - name: stalwart-config
           configMap:
             name: stalwart-config
+        - name: logs
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}

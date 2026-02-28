@@ -10,7 +10,7 @@ nextcloud:
 
 persistence:
   enabled: true
-  storageClass: openebs-hostpath
+  storageClass: local-path
   files:
     size: 1Gi
   config:
@@ -18,12 +18,12 @@ persistence:
 
 postgresql:
   external: true
-  host: "postgres-postgresql.db.svc.cluster.local"
+  host: "postgresql.db.svc.cluster.local"
   password: "{{ .Values.secrets.postgresPassword }}"
 
 redis:
   enabled: true
-  host: "valkey-master.code.svc.cluster.local"
+  host: "valkey-primary.code.svc.cluster.local"
 
 ingress:
   enabled: true

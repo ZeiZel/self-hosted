@@ -1,79 +1,67 @@
+## ClickHouse configuration for shared infrastructure
+## https://github.com/bitnami/charts/tree/main/bitnami/clickhouse
+
 namespace: db
 
-# ClickHouse
-clickhouse:
+# Replication
+replicaCount: 1
+shards: 1
+
+# Authentication
+auth:
+  username: default
+  password: "{{ .Values.secrets.clickhousePassword }}"
+
+# Service
+service:
+  type: ClusterIP
+  ports:
+    http: 8123
+    tcp: 9000
+
+# Resources
+resources:
+  requests:
+    cpu: 100m
+    memory: 512Mi
+  limits:
+    cpu: 1000m
+    memory: 2Gi
+
+# Persistence
+persistence:
+  enabled: true
+  storageClass: local-path
+  size: 20Gi
+  accessModes:
+    - ReadWriteOnce
+
+# Keeper (ZooKeeper alternative)
+keeper:
+  enabled: true
   replicaCount: 1
-  shards: 1
-  usePasswordFiles: false
-  
-  auth:
-    username: "default"
-    password: "{{ .Values.secrets.clickhousePassword }}"
-    
-  image:
-    registry: docker.io
-    repository: bitnami/clickhouse
-    tag: 25.5.1-debian-12-r0
-    pullPolicy: IfNotPresent
-
-  service:
-    type: ClusterIP
-    ports:
-      http: 8123
-      tcp: 9000
-
-  resources:
-    limits:
-      cpu: 2000m
-      memory: 4Gi
-    requests:
-      cpu: 100m
-      memory: 1Gi
-
   persistence:
     enabled: true
-    storageClass: openebs-hostpath
-    size: 50Gi
-    accessModes:
-      - ReadWriteOnce
+    storageClass: local-path
+    size: 5Gi
+  resources:
+    requests:
+      cpu: 50m
+      memory: 128Mi
+    limits:
+      cpu: 500m
+      memory: 512Mi
 
-  securityContext:
-    enabled: true
-    fsGroup: 1001
-    runAsUser: 1001
+# Metrics
+metrics:
+  enabled: false
+  serviceMonitor:
+    enabled: false
 
-  containerSecurityContext:
-    enabled: true
-    runAsNonRoot: true
-    allowPrivilegeEscalation: false
-
-  metrics:
-    enabled: true
-    serviceMonitor:
-      enabled: false
-      interval: 30s
-      scrapeTimeout: 10s
-      labels: {}
-
-  keeper:
-    enabled: true
-    replicaCount: 1
-    persistence:
-      enabled: true
-      storageClass: openebs-hostpath
-      size: 8Gi
-    resources:
-      limits:
-        cpu: 500m
-        memory: 1Gi
-      requests:
-        cpu: 50m
-        memory: 256Mi
-
-consul:
+# Volume permissions
+volumePermissions:
   enabled: true
-  host: "consul-server.service.svc.cluster.local"
-  tags:
-    - clickhouse
-    - database
-    - analytics
+
+# Service account
+serviceAccount:
+  create: true

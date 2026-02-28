@@ -1,0 +1,6 @@
+apiVersion: v2
+name: consul
+description: HashiCorp Consul - Service mesh and key-value store
+type: application
+version: 1.0.0
+appVersion: "1.18.2"

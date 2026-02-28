@@ -6,7 +6,7 @@ youtrack:
 
 persistence:
   enabled: true
-  storageClass: openebs-hostpath
+  storageClass: local-path
   data:
     size: 5Gi
   backups:
@@ -17,7 +17,7 @@ persistence:
 # Hub SSO конфигурация
 hub:
   enabled: true
-  host: "hub.authentik.svc.cluster.local"
+  host: "hub.code.svc.cluster.local"
   port: 8080
 
 # Authentik через Hub
