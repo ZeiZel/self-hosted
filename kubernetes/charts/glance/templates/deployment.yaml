@@ -49,28 +49,26 @@ spec:
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           ports:
-            - containerPort: 80
+            - containerPort: {{ .Values.glance.service.port }}
               name: http
           env:
-            - name: PORT
-              value: "80"
             - name: NODE_ENV
               value: "production"
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- if .Values.persistence.config.enabled }}
           volumeMounts:
-            - name: config
-              mountPath: {{ .Values.persistence.config.mountPath }}
             - name: glance-config
-              mountPath: /app/user-data/config.yml
-              subPath: config.yml
+              mountPath: /app/config/glance.yml
+              subPath: glance.yml
+          {{- if .Values.persistence.config.enabled }}
+            - name: data
+              mountPath: {{ .Values.persistence.config.mountPath }}
           {{- end }}
           {{- if .Values.probes.liveness.enabled }}
           livenessProbe:
             httpGet:
               path: {{ .Values.probes.liveness.path }}
-              port: 80
+              port: {{ .Values.glance.service.port }}
             initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.liveness.periodSeconds }}
           {{- end }}
@@ -78,17 +76,17 @@ spec:
           readinessProbe:
             httpGet:
               path: {{ .Values.probes.readiness.path }}
-              port: 80
+              port: {{ .Values.glance.service.port }}
             initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
           {{- end }}
-      {{- if .Values.persistence.config.enabled }}
       volumes:
-        - name: config
-          persistentVolumeClaim:
-            claimName: {{ include "glance.fullname" . }}-config
         - name: glance-config
           configMap:
             name: {{ include "glance.fullname" . }}-config
-      {{- end }}
+        {{- if .Values.persistence.config.enabled }}
+        - name: data
+          persistentVolumeClaim:
+            claimName: {{ include "glance.fullname" . }}-data
+        {{- end }}
 

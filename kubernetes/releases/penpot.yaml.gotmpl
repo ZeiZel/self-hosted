@@ -39,7 +39,7 @@ config:
 # PostgreSQL Configuration (External)
 # ============================================
 postgresql:
-  host: "postgres-postgresql.db.svc.cluster.local"
+  host: "postgresql.db.svc.cluster.local"
   port: 5432
   username: "penpot"
   password: "{{ .Values.secrets.postgresPassword }}"
@@ -50,7 +50,7 @@ postgresql:
 # Redis/Valkey Configuration (External)
 # ============================================
 redis:
-  host: "valkey-master.db.svc.cluster.local"
+  host: "valkey-primary.db.svc.cluster.local"
   port: 6379
   database: "0"
 
@@ -91,8 +91,8 @@ providers:
   oidc:
     enabled: true
     baseURI: "https://auth.{{ .Values.infra.host | default "localhost" }}/application/o/penpot/"
-    clientID: "{{ .Values.secrets.oidcClientId }}"
-    clientSecret: "{{ .Values.secrets.oidcClientSecret }}"
+    clientID: "penpot-7932f05049515d51"
+    clientSecret: "4061092aab4fff4740bf2fbcad224cf49dd67cdbe7aa718a5da93daa6bc62442"
     # Optional: явные URI (auto-discovery если не указаны)
     authURI: ""
     tokenURI: ""
@@ -227,7 +227,7 @@ exporter:
 persistence:
   assets:
     enabled: true
-    storageClass: "openebs-hostpath"  # Измени на свой StorageClass
+    storageClass: "local-path"  # Измени на свой StorageClass
     size: 20Gi
     accessModes:
       - ReadWriteOnce
@@ -235,7 +235,7 @@ persistence:
 
   exporter:
     enabled: false  # Включи если replicaCount > 1
-    storageClass: "openebs-hostpath"
+    storageClass: "local-path"
     size: 10Gi
     accessModes:
       - ReadWriteOnce

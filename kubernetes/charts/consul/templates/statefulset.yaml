@@ -1,0 +1,83 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ include "consul.fullname" . }}-server
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "consul.labels" . | nindent 4 }}
+    component: server
+spec:
+  serviceName: {{ include "consul.fullname" . }}-server
+  replicas: {{ .Values.server.replicas }}
+  selector:
+    matchLabels:
+      {{- include "consul.selectorLabels" . | nindent 6 }}
+      component: server
+  template:
+    metadata:
+      labels:
+        {{- include "consul.selectorLabels" . | nindent 8 }}
+        component: server
+    spec:
+      serviceAccountName: {{ include "consul.fullname" . }}
+      containers:
+        - name: consul
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          command:
+            - consul
+            - agent
+            - -config-file=/consul/config/consul.hcl
+          ports:
+            - containerPort: 8500
+              name: http
+            - containerPort: 8502
+              name: grpc
+            - containerPort: 8600
+              name: dns
+              protocol: UDP
+            - containerPort: 8301
+              name: serflan
+            - containerPort: 8302
+              name: serfwan
+            - containerPort: 8300
+              name: server
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: CONSUL_BIND_INTERFACE
+              value: eth0
+          resources:
+            {{- toYaml .Values.resources | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /consul/data
+            - name: config
+              mountPath: /consul/config
+          livenessProbe:
+            httpGet:
+              path: /v1/status/leader
+              port: 8500
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /v1/status/leader
+              port: 8500
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: {{ include "consul.fullname" . }}-config
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: ["ReadWriteOnce"]
+        storageClassName: {{ .Values.persistence.storageClass }}
+        resources:
+          requests:
+            storage: {{ .Values.persistence.size }}

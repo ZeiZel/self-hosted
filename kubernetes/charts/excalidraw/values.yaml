@@ -93,7 +93,7 @@ server:
 # Persistent Storage
 persistence:
   enabled: true
-  storageClass: standard
+  storageClass: local-path
 
   # Application data
   data:
@@ -152,11 +152,20 @@ consul:
     - excalidraw
     - whiteboard
 
-# Security
-securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
+# Security - excalidraw image requires port 80, needs NET_BIND_SERVICE
+podSecurityContext:
   fsGroup: 1000
+
+containerSecurityContext:
+  runAsUser: 0
+  runAsNonRoot: false
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false
+  capabilities:
+    drop:
+      - ALL
+    add:
+      - NET_BIND_SERVICE
 
 # Health Checks
 probes:

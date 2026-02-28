@@ -30,6 +30,11 @@
   include_tasks: base.yml
   tags: [infrastructure, base]
 
+# Database services: postgresql, valkey, mysql, mongodb, minio, rabbitmq
+- name: Include database services tasks
+  include_tasks: databases.yml
+  tags: [infrastructure, databases]
+
 # Application services: stoat, stalwart, youtrack, hub, teamcity, vaultwarden
 - name: Include application services tasks
   include_tasks: apps.yml

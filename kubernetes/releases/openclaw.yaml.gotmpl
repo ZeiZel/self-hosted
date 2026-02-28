@@ -18,12 +18,12 @@ resources:
 persistence:
   config:
     enabled: true
-    storageClass: standard
+    storageClass: local-path
     size: 10Gi
 
   workspace:
     enabled: true
-    storageClass: standard
+    storageClass: local-path
     size: 50Gi
 
 ingress:

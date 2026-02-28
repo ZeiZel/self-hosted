@@ -3,7 +3,7 @@ namespace: db
 # Kong Gateway configuration
 kong:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   resources:
     limits:
       cpu: 1000m
@@ -15,7 +15,7 @@ kong:
 # GoTrue Auth configuration
 auth:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   config:
     siteUrl: "https://supabase-studio.{{ .Values.infra.host }}"
     apiExternalUrl: "https://supabase.{{ .Values.infra.host }}"
@@ -38,7 +38,7 @@ auth:
 # PostgREST configuration
 rest:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   config:
     dbSchema: "public,storage,graphql_public"
     dbAnonRole: "anon"
@@ -56,7 +56,7 @@ rest:
 # Realtime configuration
 realtime:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   config:
     dbAfterConnectQuery: 'SET search_path TO _realtime'
     maxHeaderLength: 4096
@@ -71,7 +71,7 @@ realtime:
 # Storage configuration
 storage:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   config:
     backend: "s3"
     fileSizeLimit: 52428800  # 50MB
@@ -88,7 +88,7 @@ storage:
 # Meta API configuration
 meta:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   resources:
     limits:
       cpu: 500m
@@ -114,7 +114,7 @@ studio:
 # Edge Runtime configuration
 edgeRuntime:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   config:
     verifyJwt: true
   resources:
@@ -128,7 +128,7 @@ edgeRuntime:
 # ImgProxy configuration
 imgproxy:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   config:
     enableWebpDetection: true
     enforceWebp: false
@@ -146,7 +146,7 @@ imgproxy:
 postgresql:
   enabled: false
   external: true
-  host: "postgres-postgresql.db.svc.cluster.local"
+  host: "postgresql.db.svc.cluster.local"
   port: 5432
   database: "supabase"
   user: "postgres"
@@ -172,7 +172,7 @@ minio:
 redis:
   enabled: false
   external: true
-  host: "valkey-master.db.svc.cluster.local"
+  host: "valkey-primary.db.svc.cluster.local"
   port: 6379
   password: ""
   existingSecret: ""
@@ -273,7 +273,7 @@ consul:
 # Global settings
 global:
   imagePullSecrets: []
-  storageClass: "openebs-hostpath"
+  storageClass: "local-path"
   podSecurityContext:
     enabled: true
     fsGroup: 1001

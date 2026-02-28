@@ -1,0 +1,146 @@
+---
+# =============================================================================
+# KUBESPRAY POST-INSTALL TASKS
+# =============================================================================
+# Install essential cluster components after Kubernetes deployment
+# - local-path-provisioner (storage)
+# - Traefik (ingress controller)
+# - Required namespaces
+
+# -----------------------------------------------------------------------------
+# Namespaces
+# -----------------------------------------------------------------------------
+- name: Create required namespaces
+  command: >
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
+    create namespace {{ item }} --dry-run=client -o yaml | kubectl apply -f -
+  loop:
+    - ingress
+    - service
+    - db
+    - infrastructure
+    - code
+    - productivity
+    - social
+    - data
+    - automation
+    - content
+    - utilities
+  changed_when: false
+  tags: [kubespray, post-install, namespaces]
+
+# -----------------------------------------------------------------------------
+# Storage: local-path-provisioner
+# -----------------------------------------------------------------------------
+- name: Deploy local-path-provisioner
+  command: >
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
+    apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v{{ local_path_provisioner_version }}/deploy/local-path-storage.yaml
+  register: storage_deploy
+  changed_when: "'created' in storage_deploy.stdout or 'configured' in storage_deploy.stdout"
+  tags: [kubespray, post-install, storage]
+
+- name: Wait for local-path-provisioner to be ready
+  command: >
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
+    get pods -n local-path-storage -l app=local-path-provisioner
+    -o jsonpath='{.items[*].status.phase}'
+  register: storage_status
+  changed_when: false
+  retries: 30
+  delay: 5
+  until: "'Running' in storage_status.stdout"
+  tags: [kubespray, post-install, storage]
+
+- name: Set local-path as default StorageClass
+  shell: |
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }} patch storageclass local-path \
+      -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
+  changed_when: false
+  tags: [kubespray, post-install, storage]
+
+# -----------------------------------------------------------------------------
+# Ingress: Traefik
+# -----------------------------------------------------------------------------
+- name: Add Traefik Helm repository
+  command: >
+    helm repo add traefik https://traefik.github.io/charts
+  register: helm_repo_add
+  changed_when: "'has been added' in helm_repo_add.stdout"
+  failed_when: false
+  tags: [kubespray, post-install, traefik]
+
+- name: Update Helm repositories
+  command: helm repo update
+  changed_when: false
+  tags: [kubespray, post-install, traefik]
+
+- name: Deploy Traefik with NodePort
+  command: >
+    helm upgrade --install traefik traefik/traefik
+    --namespace ingress
+    --kubeconfig={{ kubespray_local_kubeconfig }}
+    --set service.type=NodePort
+    --set ports.web.nodePort={{ traefik_nodeport_http }}
+    --set ports.websecure.nodePort={{ traefik_nodeport_https }}
+    --set ports.web.exposedPort=80
+    --set ports.websecure.exposedPort=443
+    --set ingressRoute.dashboard.enabled=false
+    --set providers.kubernetesIngress.enabled=true
+    --set providers.kubernetesCRD.enabled=true
+    --set logs.general.level=INFO
+    --set ping.entryPoint=web
+    --wait
+    --timeout=5m
+  register: traefik_deploy
+  changed_when: "'deployed' in traefik_deploy.stdout or 'upgraded' in traefik_deploy.stdout"
+  tags: [kubespray, post-install, traefik]
+
+- name: Wait for Traefik to be ready
+  command: >
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
+    get pods -n ingress -l app.kubernetes.io/name=traefik
+    -o jsonpath='{.items[*].status.phase}'
+  register: traefik_status
+  changed_when: false
+  retries: 30
+  delay: 5
+  until: "'Running' in traefik_status.stdout"
+  tags: [kubespray, post-install, traefik]
+
+- name: Get Traefik NodePort info
+  command: >
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
+    get svc traefik -n ingress -o jsonpath='{.spec.ports[*].nodePort}'
+  register: traefik_ports
+  changed_when: false
+  tags: [kubespray, post-install, traefik]
+
+# -----------------------------------------------------------------------------
+# Summary
+# -----------------------------------------------------------------------------
+- name: Post-install Summary
+  debug:
+    msg: |
+      =====================================================
+      Kubernetes Post-Install Complete!
+      =====================================================
+
+      Storage:
+        - local-path-provisioner: deployed (default StorageClass)
+
+      Ingress:
+        - Traefik: deployed in ingress namespace
+        - NodePort HTTP: {{ traefik_nodeport_http }}
+        - NodePort HTTPS: {{ traefik_nodeport_https }}
+
+      Namespaces created:
+        - ingress, service, db, infrastructure
+        - code, productivity, social, data
+        - automation, content, utilities
+
+      Next steps:
+        1. Configure VPN (pangolin role)
+        2. Deploy applications via Helmfile
+      =====================================================
+  tags: [kubespray, post-install, summary]

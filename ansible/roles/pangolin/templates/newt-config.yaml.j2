@@ -7,7 +7,7 @@ client:
   # WireGuard interface configuration
   interface:
     name: {{ wireguard_interface }}
-    address: {{ node_wireguard_ip }}/{{ wireguard_network | ipaddr('prefix') }}
+    address: {{ node_wireguard_ip }}/24
     private_key: {{ wireguard_client_private_key }}
     mtu: 1420
 

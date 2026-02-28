@@ -6,7 +6,7 @@ server:
   # WireGuard interface configuration
   interface:
     name: {{ wireguard_interface }}
-    address: {{ wireguard_server_ip }}/{{ wireguard_network | ipaddr('prefix') }}
+    address: {{ wireguard_server_ip }}/24
     listen_port: {{ wireguard_port }}
     private_key: {{ wireguard_server_private_key }}
 
@@ -20,25 +20,27 @@ server:
 
   # IP allocation for clients
   peers:
+{% if groups['masters'] is defined %}
     # K8s master nodes (10.99.0.10-19)
-{% for host in groups['k8s_masters'] %}
-    - public_key: {{ vault.vpn.pangolin.client_keys[host].public_key }}
-      preshared_key: {{ wireguard_preshared_key }}
+{% for host in groups['masters'] %}
+    - public_key: {{ vpn.pangolin.client_keys[host].public_key }}
       allowed_ips:
         - {{ pangolin_node_ip_prefix }}.{{ 10 + loop.index0 }}/32
       persistent_keepalive: 25
       comment: {{ host }}
 {% endfor %}
+{% endif %}
 
+{% if groups['workers'] is defined %}
     # K8s worker nodes (10.99.0.20-29)
-{% for host in groups['k8s_workers'] %}
-    - public_key: {{ vault.vpn.pangolin.client_keys[host].public_key }}
-      preshared_key: {{ wireguard_preshared_key }}
+{% for host in groups['workers'] %}
+    - public_key: {{ vpn.pangolin.client_keys[host].public_key }}
       allowed_ips:
         - {{ pangolin_node_ip_prefix }}.{{ 20 + loop.index0 }}/32
       persistent_keepalive: 25
       comment: {{ host }}
 {% endfor %}
+{% endif %}
 
   # Firewall rules
   firewall:

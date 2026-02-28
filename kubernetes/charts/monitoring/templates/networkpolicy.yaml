@@ -14,7 +14,7 @@ spec:
     - Egress
 
   ingress:
-    # Allow ingress from Traefik
+    # Allow ingress from Traefik to all monitoring services
     - from:
         - namespaceSelector:
             matchLabels:
@@ -24,9 +24,13 @@ spec:
               app.kubernetes.io/name: traefik
       ports:
         - protocol: TCP
-          port: {{ .Values.service.port }}
+          port: {{ .Values.grafana.service.port }}
+        - protocol: TCP
+          port: {{ .Values.prometheus.service.port }}
+        - protocol: TCP
+          port: {{ .Values.loki.service.port }}
 
-    # Allow ingress from same namespace
+    # Allow ingress from same namespace (for internal communication)
     - from:
         - podSelector: {}
 
@@ -38,8 +42,8 @@ spec:
     # Allow DNS
     - to:
         - namespaceSelector:
-          matchLabels:
-            name: kube-system
+            matchLabels:
+              name: kube-system
       ports:
         - protocol: UDP
           port: 53

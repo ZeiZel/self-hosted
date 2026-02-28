@@ -9,9 +9,8 @@ templates:
       - envs/{{ .Environment.Name }}/*.*
       # Values - get val per env (mid priority)
       - envs/{{ .Environment.Name }}/values/*.*
-    secrets:
-      # Secrets - Values from envs/<env>/secrets (highest priority)
-      - envs/{{ .Environment.Name }}/secrets/*.*
+      # Plain secrets (temporary - use for initial setup)
+      - envs/{{ .Environment.Name }}/secrets/_all_plain.yaml
 
 environments:
   k8s:

@@ -13,13 +13,13 @@ coder:
 
   service:
     type: ClusterIP
-    port: 7080
-    httpsPort: 7443
+    port: 3000
+    httpsPort: 3443
 
   # PostgreSQL connection (use external postgres)
   postgres:
     external: true
-    host: "postgres-postgresql.db.svc.cluster.local"
+    host: "postgresql.db.svc.cluster.local"
     port: 5432
     database: "coder"
     user: "coder"
@@ -84,7 +84,7 @@ coder:
         memory: "4Gi"
     storage:
       size: "50Gi"
-      storageClass: "openebs-hostpath"
+      storageClass: "local-path"
     # Workspace inactivity timeout (stop after)
     inactivityTimeout: "4h"
     # Workspace TTL (delete after)
@@ -92,15 +92,15 @@ coder:
 
 resources:
   limits:
-    cpu: 2
-    memory: 4Gi
-  requests:
-    cpu: 1
+    cpu: 1000m
     memory: 2Gi
+  requests:
+    cpu: 200m
+    memory: 512Mi
 
 persistence:
   enabled: true
-  storageClass: openebs-hostpath
+  storageClass: local-path
   accessMode: ReadWriteOnce
   size: 10Gi
   mountPath: /home/coder

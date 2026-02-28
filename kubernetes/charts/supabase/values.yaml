@@ -21,7 +21,7 @@ global:
 postgresql:
   enabled: false  # Use external PostgreSQL
   external: true
-  host: "postgres-postgresql.db.svc.cluster.local"
+  host: "postgresql.db.svc.cluster.local"
   port: 5432
   database: "supabase"
   user: "postgres"
@@ -48,7 +48,7 @@ minio:
 redis:
   enabled: false  # Use external Valkey
   external: true
-  host: "valkey-master.db.svc.cluster.local"
+  host: "valkey-primary.db.svc.cluster.local"
   port: 6379
   password: ""
   existingSecret: ""
@@ -79,7 +79,7 @@ api:
 # Kong Gateway configuration
 kong:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: kong
     tag: "2.8.1"
@@ -106,7 +106,7 @@ kong:
 # GoTrue Auth configuration
 auth:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: supabase/gotrue
     tag: "v2.151.0"
@@ -150,7 +150,7 @@ auth:
 # PostgREST configuration
 rest:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: postgrest/postgrest
     tag: "v12.0.2"
@@ -180,7 +180,7 @@ rest:
 # Realtime configuration
 realtime:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: supabase/realtime
     tag: "v2.27.5"
@@ -208,7 +208,7 @@ realtime:
 # Storage configuration
 storage:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: supabase/storage-api
     tag: "v1.0.6"
@@ -238,7 +238,7 @@ storage:
 # Meta API configuration
 meta:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: supabase/postgres-meta
     tag: "v0.80.0"
@@ -286,7 +286,7 @@ studio:
 # Edge Runtime (Deno Functions) configuration
 edgeRuntime:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: supabase/edge-runtime
     tag: "v1.22.4"
@@ -311,7 +311,7 @@ edgeRuntime:
 # ImgProxy configuration
 imgproxy:
   enabled: true
-  replicaCount: 2
+  replicaCount: 1
   image:
     repository: darthsim/imgproxy
     tag: "latest"

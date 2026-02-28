@@ -1,43 +1,97 @@
 ---
-# Kubernetes version (kubespray v2.30.0 supports 1.32.x - 1.34.x)
-kube_version: "v1.32.11"
+# =============================================================================
+# KUBESPRAY ROLE DEFAULTS
+# =============================================================================
+# This role runs on localhost and deploys Kubernetes via kubespray to remote nodes
+
+# Kubernetes version (without 'v' prefix - kubespray requirement)
+kube_version: "1.32.0"
+
+# Kubespray configuration
+kubespray_repo: "https://github.com/kubernetes-sigs/kubespray.git"
+kubespray_version: "v2.30.0"
+kubespray_dir: "{{ lookup('env', 'HOME') }}/kubespray"
+kubespray_inventory_dir: "{{ kubespray_dir }}/inventory/mycluster"
+kubespray_venv_dir: "{{ kubespray_dir }}/venv"
+
+# Cluster name
+cluster_name: "k8s-cluster"
 
 # Network configuration
 pod_cidr: "10.233.64.0/18"
 service_cidr: "10.233.0.0/18"
+cni_plugin: "calico"
 
 # Container runtime
 container_manager: "containerd"
 
-# CNI plugin
-cni_plugin: "calico"
+# Kube proxy mode: iptables, ipvs
+kube_proxy_mode: "ipvs"
 
-# Kubespray configuration
-kubespray_install_dir: "/opt/kubespray"
-kubespray_version: "v2.30.0"
-cluster_name: "local-cluster"
+# DNS configuration
+dns_mode: "coredns"
 
-# Kubeconfig paths
-kubespray_kubeconfig_path: "/root/.kube/config"
-kubespray_local_kubeconfig_path: "~/.kube/config"
-kubespray_copy_kubeconfig: true
+# Etcd deployment: host, kubeadm, docker
+etcd_deployment_type: "host"
+
+# Addons
+helm_enabled: true
+metrics_server_enabled: true
+
+# Kubeconfig
+kubeconfig_localhost: true
+kubectl_localhost: true
+kubespray_fetch_kubeconfig: true
+kubespray_local_kubeconfig: "{{ lookup('env', 'HOME') }}/.kube/config"
 
 # Deployment options
 kubespray_force_clone: false
-kubespray_custom_config: true
-kubespray_reset_confirmation: false
+kubespray_skip_downloads: false
+kubespray_reset_before_deploy: false
 
-# Etcd configuration
-etcd_deployment_type: "host"
+# Timeouts
+kubespray_deploy_timeout: 7200
+kubespray_poll_interval: 30
 
-# Kube proxy mode
-kube_proxy_mode: "ipvs"
+# SSH configuration for kubespray
+kubespray_ssh_key: "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519"
+kubespray_become: true
+kubespray_become_user: "root"
 
-# DNS mode
-dns_mode: "coredns"
+# =============================================================================
+# POST-INSTALL CONFIGURATION
+# =============================================================================
 
-# Enable metrics server
-metrics_server_enabled: true
+# Storage provisioner
+local_path_provisioner_version: "0.0.30"
 
-# Helm deployment
-helm_enabled: true
+# Traefik ingress controller
+traefik_nodeport_http: 30080
+traefik_nodeport_https: 30443
+
+# Post-install options
+kubespray_post_install: true
+
+# =============================================================================
+# SERVICES DEPLOYMENT CONFIGURATION
+# =============================================================================
+
+# Enable/disable services deployment
+kubespray_deploy_services: true
+
+# Path to custom Helm charts
+kubernetes_charts_dir: "{{ playbook_dir }}/../kubernetes/charts"
+
+# Domain configuration
+domain:
+  public: "zeizel.ru"
+  local: "zeizel.local"
+
+# Database passwords (override in vault)
+database_password: "postgres123"
+valkey_password: "valkey123"
+
+# Service passwords (override in vault)
+authentik_secret_key: "changeme-secret-key-32-chars-min"
+authentik_admin_password: "admin123"
+grafana_password: "admin123"

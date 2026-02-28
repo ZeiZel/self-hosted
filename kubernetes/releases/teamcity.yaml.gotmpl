@@ -2,18 +2,18 @@ namespace: code
 
 server:
   persistence:
-    storageClass: openebs-hostpath
+    storageClass: local-path
     size: 5Gi
 
 agent:
-  replicaCount: 2
+  replicaCount: 1
   persistence:
-    storageClass: openebs-hostpath
+    storageClass: local-path
     size: 3Gi
 
 postgresql:
   external: true
-  host: "postgres-postgresql.db.svc.cluster.local"
+  host: "postgresql.db.svc.cluster.local"
   password: "{{ .Values.secrets.postgresPassword }}"
 
 ingress:
@@ -23,3 +23,11 @@ ingress:
 consul:
   enabled: true
   host: "consul.consul.svc.cluster.local"
+
+# Temporarily disable probes for initial setup
+# Re-enable after completing setup wizard at https://teamcity.{{ .Values.infra.host }}
+probes:
+  liveness:
+    enabled: false
+  readiness:
+    enabled: false

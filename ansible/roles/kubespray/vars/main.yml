@@ -1,14 +1,8 @@
 ---
-kubespray_install_dir: "/opt/kubespray"
-kubespray_version: "release-2.23"
-cluster_name: "local-cluster"
-kubespray_kubeconfig_path: "/root/.kube/config"
-kubespray_local_kubeconfig_path: "~/.kube/config"
-kubespray_copy_kubeconfig: true
-kubespray_force_clone: false
-kubespray_custom_config: true
+# =============================================================================
+# KUBESPRAY ROLE VARIABLES
+# =============================================================================
+# These variables override defaults/main.yml
+# Only set values here that need to differ from defaults
 
-
-
-
-
+# Leave empty to use defaults

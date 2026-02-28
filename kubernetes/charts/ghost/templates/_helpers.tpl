@@ -9,8 +9,8 @@ Expand the name of the chart.
 Create a default fully qualified app name.
 */}}
 {{- define "ghost.fullname" -}}
-{{- if .Values.nameOverride }}
-{{- .Values.nameOverride | trunc 63 | trimSuffix "-" }}
+{{- if .Values.fullnameOverride }}
+{{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
 {{- $name := default .Chart.Name .Values.nameOverride }}
 {{- if contains $name .Release.Name }}
@@ -69,4 +69,15 @@ Container security context
 */}}
 {{- define "ghost.containerSecurityContext" -}}
 {{- toYaml .Values.containerSecurityContext }}
+{{- end }}
+
+{{/*
+Create the name of the service account to use
+*/}}
+{{- define "ghost.serviceAccountName" -}}
+{{- if .Values.serviceAccount.create }}
+{{- default (include "ghost.fullname" .) .Values.serviceAccount.name }}
+{{- else }}
+{{- default "default" .Values.serviceAccount.name }}
+{{- end }}
 {{- end }}

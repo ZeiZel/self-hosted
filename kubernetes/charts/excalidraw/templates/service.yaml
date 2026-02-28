@@ -15,7 +15,7 @@ spec:
   type: {{ .Values.excalidraw.service.type }}
   ports:
     - port: {{ .Values.excalidraw.service.port }}
-      targetPort: 80
+      targetPort: {{ .Values.excalidraw.service.port }}
       name: http
   selector:
     app: excalidraw

@@ -1,0 +1,25 @@
+namespace: code
+
+hosts:
+  gitlab: gitlab.{{ .Values.infra.host }}
+  registry: registry.gitlab.{{ .Values.infra.host }}
+
+entryPoints:
+  - web
+  - websecure
+
+webservice:
+  name: gitlab-webservice-default
+  port: 8181
+
+registry:
+  enabled: true
+  name: gitlab-registry
+  port: 5000
+
+middleware:
+  headers:
+    enabled: true
+    customRequestHeaders:
+      X-Forwarded-Proto: "https"
+      X-Forwarded-Ssl: "on"

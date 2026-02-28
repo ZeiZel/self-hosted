@@ -6,52 +6,362 @@ metadata:
   labels:
     {{- include "glance.labels" . | nindent 4 }}
 data:
-  config.yml: |
-    pageInfo:
-      title: {{ .Values.glance.config.pageInfo.title }}
-      description: {{ .Values.glance.config.pageInfo.description }}
-      {{- if .Values.glance.config.pageInfo.navLinks }}
-      navLinks:
-        {{- range .Values.glance.config.pageInfo.navLinks }}
-        - title: {{ .title }}
-          path: {{ .path }}
-        {{- end }}
-      {{- end }}
-    appConfig:
-      theme: {{ .Values.glance.config.appConfig.theme }}
-      layout: {{ .Values.glance.config.appConfig.layout }}
-      iconSize: {{ .Values.glance.config.appConfig.iconSize }}
-      language: {{ .Values.glance.config.appConfig.language }}
-      startingView: {{ .Values.glance.config.appConfig.startingView }}
-      defaultOpeningMethod: {{ .Values.glance.config.appConfig.defaultOpeningMethod }}
-      statusCheck: {{ .Values.glance.config.appConfig.statusCheck }}
-      statusCheckInterval: {{ .Values.glance.config.appConfig.statusCheckInterval }}
-      faviconApi: {{ .Values.glance.config.appConfig.faviconApi }}
-      enableMultiTasking: {{ .Values.glance.config.appConfig.enableMultiTasking }}
-      allowConfigEdit: {{ .Values.glance.config.appConfig.allowConfigEdit }}
-      enableServiceWorker: {{ .Values.glance.config.appConfig.enableServiceWorker }}
-      disableConfiguration: {{ .Values.glance.config.appConfig.disableConfiguration }}
-      hideComponents:
-        hideHeading: {{ .Values.glance.config.appConfig.hideComponents.hideHeading }}
-        hideNav: {{ .Values.glance.config.appConfig.hideComponents.hideNav }}
-        hideSearch: {{ .Values.glance.config.appConfig.hideComponents.hideSearch }}
-        hideSettings: {{ .Values.glance.config.appConfig.hideComponents.hideSettings }}
-        hideFooter: {{ .Values.glance.config.appConfig.hideComponents.hideFooter }}
-      {{- if .Values.glance.config.sections }}
-      sections:
-        {{- range .Values.glance.config.sections }}
-        - name: {{ .name }}
-          items:
-            {{- range .items }}
-            - title: {{ .title }}
-              description: {{ .description }}
-              icon: {{ .icon }}
-              url: {{ .url }}
-            {{- end }}
-        {{- end }}
-      {{- end }}
+  glance.yml: |
+    theme:
+      background-color: 20 10 10
+      primary-color: 40 80 60
+      contrast-multiplier: 1.1
 
+    pages:
+      # ==================== HOME PAGE ====================
+      - name: Home
+        columns:
+          - size: small
+            widgets:
+              - type: clock
+                hour-format: "24h"
+                timezones:
+                  - timezone: Europe/Moscow
+                    label: Moscow
 
+              - type: calendar
 
+              - type: weather
+                location: Moscow, Russia
+                units: metric
+                hour-format: "24h"
 
+          - size: full
+            widgets:
+              - type: bookmarks
+                groups:
+                  - title: Quick Access
+                    color: 20 80 50
+                    links:
+                      - title: Grafana
+                        url: https://monitoring.zeizel.ru
+                        icon: si:grafana
+                      - title: Authentik
+                        url: https://auth.zeizel.ru
+                        icon: si:auth0
+                      - title: Vault
+                        url: https://vault.zeizel.ru
+                        icon: si:vault
 
+                  - title: Development
+                    color: 210 80 50
+                    links:
+                      - title: YouTrack
+                        url: https://youtrack.zeizel.ru
+                        icon: si:jetbrains
+                      - title: Coder
+                        url: https://coder.zeizel.ru
+                        icon: si:coder
+                      - title: Hub
+                        url: https://hub.zeizel.ru
+                        icon: si:jetbrains
+
+                  - title: Productivity
+                    color: 120 70 45
+                    links:
+                      - title: Affine
+                        url: https://affine.zeizel.ru
+                        icon: si:notion
+                      - title: Penpot
+                        url: https://penpot.zeizel.ru
+                        icon: si:penpot
+                      - title: Excalidraw
+                        url: https://excalidraw.zeizel.ru
+                        icon: si:excalidraw
+
+          - size: small
+            widgets:
+              - type: monitor
+                title: Core Services
+                cache: 1m
+                sites:
+                  - url: https://monitoring.zeizel.ru
+                    title: Grafana
+                  - url: https://auth.zeizel.ru
+                    title: Authentik
+                  - url: https://vault.zeizel.ru
+                    title: Vault
+                  - url: https://vw.zeizel.ru
+                    title: Vaultwarden
+
+      # ==================== MONITORING PAGE ====================
+      - name: Monitoring
+        columns:
+          - size: full
+            widgets:
+              - type: monitor
+                title: Infrastructure
+                cache: 1m
+                sites:
+                  - url: https://monitoring.zeizel.ru
+                    title: Grafana
+                  - url: https://auth.zeizel.ru
+                    title: Authentik
+                  - url: https://vault.zeizel.ru
+                    title: Vault
+                  - url: https://consul.zeizel.ru
+                    title: Consul
+                  - url: https://bytebase.zeizel.ru
+                    title: Bytebase
+                  - url: https://harbor.zeizel.ru
+                    title: Harbor
+
+              - type: monitor
+                title: Development
+                cache: 1m
+                sites:
+                  - url: https://gitlab.zeizel.ru
+                    title: GitLab
+                  - url: https://hub.zeizel.ru
+                    title: Hub
+                  - url: https://youtrack.zeizel.ru
+                    title: YouTrack
+                  - url: https://teamcity.zeizel.ru
+                    title: TeamCity
+                  - url: https://coder.zeizel.ru
+                    title: Coder
+
+              - type: monitor
+                title: Productivity
+                cache: 1m
+                sites:
+                  - url: https://affine.zeizel.ru
+                    title: Affine
+                  - url: https://penpot.zeizel.ru
+                    title: Penpot
+                  - url: https://excalidraw.zeizel.ru
+                    title: Excalidraw
+
+              - type: monitor
+                title: Automation
+                cache: 1m
+                sites:
+                  - url: https://n8n.zeizel.ru
+                    title: N8n
+                  - url: https://kestra.zeizel.ru
+                    title: Kestra
+
+              - type: monitor
+                title: Communication
+                cache: 1m
+                sites:
+                  - url: https://community.zeizel.ru
+                    title: Revolt (Stoat)
+
+              - type: monitor
+                title: Data & Storage
+                cache: 1m
+                sites:
+                  - url: https://vw.zeizel.ru
+                    title: Vaultwarden
+                  - url: https://syncthing.zeizel.ru
+                    title: Syncthing
+
+              - type: monitor
+                title: Content & Communication
+                cache: 1m
+                sites:
+                  - url: https://blog.zeizel.ru
+                    title: Ghost Blog
+                  - url: https://mail.zeizel.ru
+                    title: Stalwart Mail
+
+              - type: monitor
+                title: Utilities
+                cache: 1m
+                sites:
+                  - url: https://metube.zeizel.ru
+                    title: MeTube
+                  - url: https://vert.zeizel.ru
+                    title: Vert
+
+          - size: small
+            widgets:
+              - type: bookmarks
+                groups:
+                  - title: Monitoring Quick Links
+                    color: 20 80 50
+                    links:
+                      - title: Grafana Dashboards
+                        url: https://monitoring.zeizel.ru/dashboards
+                      - title: Grafana Explore
+                        url: https://monitoring.zeizel.ru/explore
+                      - title: Grafana Alerting
+                        url: https://monitoring.zeizel.ru/alerting/list
+                      - title: Kibana (ELK)
+                        url: https://kibana.zeizel.ru
+
+      # ==================== SERVICES PAGE ====================
+      - name: Services
+        columns:
+          - size: full
+            widgets:
+              - type: bookmarks
+                groups:
+                  - title: Infrastructure & Security
+                    color: 20 80 50
+                    links:
+                      - title: Grafana
+                        url: https://monitoring.zeizel.ru
+                        icon: si:grafana
+                        description: Metrics & Dashboards
+                      - title: Vault
+                        url: https://vault.zeizel.ru
+                        icon: si:vault
+                        description: Secret Management
+                      - title: Authentik
+                        url: https://auth.zeizel.ru
+                        icon: si:auth0
+                        description: Single Sign-On
+                      - title: Consul
+                        url: https://consul.zeizel.ru
+                        icon: si:consul
+                        description: Service Discovery
+                      - title: Bytebase
+                        url: https://bytebase.zeizel.ru
+                        description: Database Management
+                      - title: Harbor
+                        url: https://harbor.zeizel.ru
+                        icon: si:harbor
+                        description: Container Registry
+
+                  - title: Development & CI/CD
+                    color: 210 80 50
+                    links:
+                      - title: GitLab
+                        url: https://gitlab.zeizel.ru
+                        icon: si:gitlab
+                        description: Source Code & CI/CD
+                      - title: Hub
+                        url: https://hub.zeizel.ru
+                        icon: si:jetbrains
+                        description: JetBrains SSO
+                      - title: YouTrack
+                        url: https://youtrack.zeizel.ru
+                        icon: si:jetbrains
+                        description: Issue Tracker
+                      - title: TeamCity
+                        url: https://teamcity.zeizel.ru
+                        icon: si:jetbrains
+                        description: CI/CD Server
+                      - title: Coder
+                        url: https://coder.zeizel.ru
+                        icon: si:coder
+                        description: Dev Environments
+
+                  - title: Productivity & Design
+                    color: 120 70 45
+                    links:
+                      - title: Affine
+                        url: https://affine.zeizel.ru
+                        icon: si:notion
+                        description: Notes & Docs
+                      - title: Penpot
+                        url: https://penpot.zeizel.ru
+                        icon: si:penpot
+                        description: Design Tool
+                      - title: Excalidraw
+                        url: https://excalidraw.zeizel.ru
+                        icon: si:excalidraw
+                        description: Whiteboard
+
+                  - title: Automation & Workflows
+                    color: 180 70 50
+                    links:
+                      - title: N8n
+                        url: https://n8n.zeizel.ru
+                        icon: si:n8n
+                        description: Workflow Automation
+                      - title: Kestra
+                        url: https://kestra.zeizel.ru
+                        description: Data Orchestration
+
+                  - title: Communication
+                    color: 300 70 50
+                    links:
+                      - title: Revolt (Stoat)
+                        url: https://community.zeizel.ru
+                        icon: si:revolt
+                        description: Team Chat
+
+                  - title: Data & Passwords
+                    color: 270 70 50
+                    links:
+                      - title: Vaultwarden
+                        url: https://vw.zeizel.ru
+                        icon: si:bitwarden
+                        description: Password Manager
+                      - title: Syncthing
+                        url: https://syncthing.zeizel.ru
+                        icon: si:syncthing
+                        description: File Sync
+
+                  - title: Content & Communication
+                    color: 340 70 50
+                    links:
+                      - title: Ghost
+                        url: https://blog.zeizel.ru
+                        icon: si:ghost
+                        description: Blog Platform
+                      - title: Stalwart
+                        url: https://mail.zeizel.ru
+                        description: Mail Server
+
+                  - title: Media & Utilities
+                    color: 50 80 50
+                    links:
+                      - title: MeTube
+                        url: https://metube.zeizel.ru
+                        icon: si:youtube
+                        description: Video Download
+                      - title: Vert
+                        url: https://vert.zeizel.ru
+                        description: File Converter
+
+      # ==================== DATABASES PAGE ====================
+      - name: Databases
+        columns:
+          - size: full
+            widgets:
+              - type: bookmarks
+                groups:
+                  - title: Database Management
+                    color: 200 70 50
+                    links:
+                      - title: Bytebase
+                        url: https://bytebase.zeizel.ru
+                        description: Schema & Migration Management
+
+                  - title: Databases (Internal)
+                    color: 160 60 40
+                    links:
+                      - title: PostgreSQL
+                        url: "#"
+                        description: postgresql.db.svc.cluster.local:5432
+                      - title: MongoDB
+                        url: "#"
+                        description: mongodb.db.svc.cluster.local:27017
+                      - title: MySQL
+                        url: "#"
+                        description: mysql.db.svc.cluster.local:3306
+                      - title: Valkey (Redis)
+                        url: "#"
+                        description: valkey-primary.db.svc.cluster.local:6379
+                      - title: ClickHouse
+                        url: "#"
+                        description: clickhouse.db.svc.cluster.local:8123
+
+                  - title: Storage (Internal)
+                    color: 280 60 40
+                    links:
+                      - title: MinIO
+                        url: "#"
+                        description: minio.db.svc.cluster.local:9000
+                      - title: RabbitMQ
+                        url: "#"
+                        description: rabbitmq.db.svc.cluster.local:5672

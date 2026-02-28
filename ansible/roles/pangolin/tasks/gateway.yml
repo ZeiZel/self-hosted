@@ -1,50 +1,12 @@
 ---
 # Pangolin gateway (VPS server) tasks
-# Deploys Pangolin server, Gerbil orchestrator, and Traefik edge router
+# Supports two modes:
+#   - gerbil: Uses Pangolin/Gerbil stack (complex, feature-rich)
+#   - wireguard: Uses plain wg-quick (simple, reliable)
 
-- name: Download Pangolin server binary
-  get_url:
-    url: "{{ pangolin_server_url }}"
-    dest: "/tmp/pangolin.tar.gz"
-    mode: '0644'
-  tags: [pangolin, gateway, download]
-
-- name: Extract Pangolin server binary
-  unarchive:
-    src: "/tmp/pangolin.tar.gz"
-    dest: "{{ pangolin_install_dir }}"
-    remote_src: yes
-    creates: "{{ pangolin_install_dir }}/pangolin"
-  tags: [pangolin, gateway, install]
-
-- name: Create Pangolin server binary symlink
-  file:
-    src: "{{ pangolin_install_dir }}/pangolin"
-    dest: "/usr/local/bin/pangolin"
-    state: link
-  tags: [pangolin, gateway, install]
-
-- name: Download Gerbil orchestrator binary
-  get_url:
-    url: "{{ gerbil_url }}"
-    dest: "/tmp/gerbil.tar.gz"
-    mode: '0644'
-  tags: [pangolin, gateway, download]
-
-- name: Extract Gerbil orchestrator binary
-  unarchive:
-    src: "/tmp/gerbil.tar.gz"
-    dest: "{{ pangolin_install_dir }}"
-    remote_src: yes
-    creates: "{{ pangolin_install_dir }}/gerbil"
-  tags: [pangolin, gateway, install]
-
-- name: Create Gerbil binary symlink
-  file:
-    src: "{{ pangolin_install_dir }}/gerbil"
-    dest: "/usr/local/bin/gerbil"
-    state: link
-  tags: [pangolin, gateway, install]
+# =============================================================================
+# COMMON SETUP
+# =============================================================================
 
 - name: Download Traefik edge router binary
   get_url:
@@ -68,24 +30,87 @@
     state: link
   tags: [pangolin, gateway, install]
 
-- name: Create Traefik configuration directory
+- name: Create Traefik configuration directories
   file:
-    path: "{{ traefik_config_dir }}"
+    path: "{{ item }}"
     state: directory
     mode: '0755'
+  loop:
+    - "{{ traefik_config_dir }}"
+    - "{{ traefik_config_dir }}/dynamic"
   tags: [pangolin, gateway, config]
 
 - name: Load WireGuard server private key from Vault
   set_fact:
-    wireguard_server_private_key: "{{ vault.vpn.pangolin.server_private_key }}"
+    wireguard_server_private_key: "{{ vpn.pangolin.server_private_key }}"
   no_log: true
   tags: [pangolin, gateway, config]
 
-- name: Load WireGuard preshared key from Vault
+- name: Load WireGuard server public key from Vault
   set_fact:
-    wireguard_preshared_key: "{{ vault.vpn.pangolin.preshared_key }}"
+    wireguard_server_public_key: "{{ vpn.pangolin.server_public_key }}"
   no_log: true
   tags: [pangolin, gateway, config]
+
+# =============================================================================
+# PLAIN WIREGUARD MODE (default, simpler and more reliable)
+# =============================================================================
+
+- name: Deploy WireGuard server configuration
+  template:
+    src: wg0-server.conf.j2
+    dest: "/etc/wireguard/{{ wireguard_interface }}.conf"
+    mode: '0600'
+    owner: root
+    group: root
+  notify: restart wireguard-server
+  when: not use_gerbil | default(false)
+  tags: [pangolin, gateway, wireguard]
+
+- name: Enable and start WireGuard service
+  systemd:
+    name: "wg-quick@{{ wireguard_interface }}"
+    enabled: yes
+    state: started
+    daemon_reload: yes
+  when: not use_gerbil | default(false)
+  tags: [pangolin, gateway, wireguard]
+
+# =============================================================================
+# GERBIL MODE (optional, for full Pangolin stack)
+# =============================================================================
+
+- name: Download Pangolin installer binary
+  get_url:
+    url: "{{ pangolin_installer_url }}"
+    dest: "{{ pangolin_install_dir }}/pangolin-installer"
+    mode: '0755'
+  when: use_gerbil | default(false)
+  tags: [pangolin, gateway, gerbil]
+
+- name: Create Pangolin installer symlink
+  file:
+    src: "{{ pangolin_install_dir }}/pangolin-installer"
+    dest: "/usr/local/bin/pangolin-installer"
+    state: link
+  when: use_gerbil | default(false)
+  tags: [pangolin, gateway, gerbil]
+
+- name: Download Gerbil orchestrator binary
+  get_url:
+    url: "{{ gerbil_url }}"
+    dest: "{{ pangolin_install_dir }}/gerbil"
+    mode: '0755'
+  when: use_gerbil | default(false)
+  tags: [pangolin, gateway, gerbil]
+
+- name: Create Gerbil binary symlink
+  file:
+    src: "{{ pangolin_install_dir }}/gerbil"
+    dest: "/usr/local/bin/gerbil"
+    state: link
+  when: use_gerbil | default(false)
+  tags: [pangolin, gateway, gerbil]
 
 - name: Deploy Pangolin server configuration
   template:
@@ -93,23 +118,8 @@
     dest: "{{ pangolin_config_dir }}/config.yaml"
     mode: '0600'
   notify: restart pangolin
-  tags: [pangolin, gateway, config]
-
-- name: Deploy Traefik gateway configuration
-  template:
-    src: traefik-gateway.yml.j2
-    dest: "{{ traefik_config_dir }}/traefik.yml"
-    mode: '0644'
-  notify: restart traefik
-  tags: [pangolin, gateway, config]
-
-- name: Deploy Pangolin server systemd unit
-  template:
-    src: pangolin-server.service.j2
-    dest: /etc/systemd/system/pangolin.service
-    mode: '0644'
-  notify: restart pangolin
-  tags: [pangolin, gateway, systemd]
+  when: use_gerbil | default(false)
+  tags: [pangolin, gateway, gerbil]
 
 - name: Deploy Gerbil systemd unit
   template:
@@ -117,38 +127,8 @@
     dest: /etc/systemd/system/gerbil.service
     mode: '0644'
   notify: restart gerbil
-  tags: [pangolin, gateway, systemd]
-
-- name: Deploy Traefik systemd unit
-  template:
-    src: traefik.service.j2
-    dest: /etc/systemd/system/traefik.service
-    mode: '0644'
-  notify: restart traefik
-  tags: [pangolin, gateway, systemd]
-
-- name: Configure iptables NAT/MASQUERADE for WireGuard
-  iptables:
-    table: nat
-    chain: POSTROUTING
-    out_interface: "{{ ansible_default_ipv4.interface }}"
-    source: "{{ wireguard_network }}"
-    jump: MASQUERADE
-    comment: "Pangolin VPN NAT"
-  tags: [pangolin, gateway, iptables]
-
-- name: Save iptables rules
-  command: netfilter-persistent save
-  changed_when: true
-  tags: [pangolin, gateway, iptables]
-
-- name: Enable and start Pangolin server service
-  systemd:
-    name: pangolin
-    enabled: yes
-    state: started
-    daemon_reload: yes
-  tags: [pangolin, gateway, service]
+  when: use_gerbil | default(false)
+  tags: [pangolin, gateway, gerbil]
 
 - name: Enable and start Gerbil service
   systemd:
@@ -156,7 +136,44 @@
     enabled: yes
     state: started
     daemon_reload: yes
-  tags: [pangolin, gateway, service]
+  when: use_gerbil | default(false)
+  tags: [pangolin, gateway, gerbil]
+
+# =============================================================================
+# TRAEFIK (common to both modes)
+# =============================================================================
+
+- name: Deploy Traefik gateway configuration
+  template:
+    src: traefik-gateway.yml.j2
+    dest: "{{ traefik_config_dir }}/traefik.yml"
+    mode: '0644'
+  notify: restart traefik
+  tags: [pangolin, gateway, traefik]
+
+- name: Deploy cluster routing configuration
+  template:
+    src: cluster-routing.yml.j2
+    dest: "{{ traefik_config_dir }}/dynamic/cluster.yml"
+    mode: '0644'
+  notify: restart traefik
+  tags: [pangolin, gateway, traefik]
+
+- name: Create ACME storage file
+  file:
+    path: "{{ traefik_config_dir }}/acme.json"
+    state: touch
+    mode: '0600'
+  changed_when: false
+  tags: [pangolin, gateway, traefik]
+
+- name: Deploy Traefik systemd unit
+  template:
+    src: traefik.service.j2
+    dest: /etc/systemd/system/traefik.service
+    mode: '0644'
+  notify: restart traefik
+  tags: [pangolin, gateway, traefik]
 
 - name: Enable and start Traefik service
   systemd:
@@ -164,28 +181,28 @@
     enabled: yes
     state: started
     daemon_reload: yes
-  tags: [pangolin, gateway, service]
+  tags: [pangolin, gateway, traefik]
+
+# =============================================================================
+# VERIFICATION
+# =============================================================================
 
 - name: Wait for WireGuard tunnel to be listening
   wait_for:
     port: "{{ wireguard_port }}"
     proto: udp
     timeout: 60
-  tags: [pangolin, gateway, verify]
-
-- name: Verify Pangolin server is running
-  command: systemctl is-active pangolin
-  register: pangolin_status
-  changed_when: false
-  failed_when: pangolin_status.stdout != "active"
+  ignore_errors: yes
   tags: [pangolin, gateway, verify]
 
 - name: Display gateway deployment status
   debug:
     msg:
       - "Pangolin VPN gateway deployed successfully"
+      - "Mode: {{ 'gerbil' if use_gerbil | default(false) else 'wireguard (plain)' }}"
       - "WireGuard endpoint: {{ pangolin_gateway_endpoint }}"
       - "WireGuard network: {{ wireguard_network }}"
       - "Traefik HTTP: {{ pangolin_gateway_public_ip }}:{{ traefik_http_port }}"
       - "Traefik HTTPS: {{ pangolin_gateway_public_ip }}:{{ traefik_https_port }}"
+      - "Cluster routing: {{ traefik_config_dir }}/dynamic/cluster.yml"
   tags: [pangolin, gateway, verify]

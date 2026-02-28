@@ -6,10 +6,10 @@
 pangolin_mode: "node"
 
 # Version pinning
-pangolin_version: "1.15.0"
+pangolin_version: "1.15.4"
 gerbil_version: "1.3.0"
 traefik_version: "v3.4.0"
-newt_version: "1.2.0"
+newt_version: "1.10.0"
 
 # Installation paths
 pangolin_install_dir: "/opt/pangolin"
@@ -23,8 +23,18 @@ wireguard_port: 51820
 wireguard_interface: "wg0"
 
 # Gateway-specific (VPS server)
-pangolin_gateway_public_ip: "{{ ansible_default_ipv4.address }}"
+# Use the gateway's IP from inventory, not the current host's IP
+pangolin_gateway_public_ip: "{{ hostvars[groups['gateway'][0]]['ansible_host'] }}"
 pangolin_gateway_endpoint: "{{ pangolin_gateway_public_ip }}:{{ wireguard_port }}"
+
+# Cluster NodePorts (Traefik in cluster)
+cluster_nodeport_http: 30080
+cluster_nodeport_https: 30443
+
+# Gateway WireGuard mode
+# false = plain wg-quick (simple, reliable)
+# true = Pangolin/Gerbil stack (complex, feature-rich)
+use_gerbil: false
 
 # Traefik edge router
 traefik_http_port: 80
@@ -49,8 +59,8 @@ sysctl_config:
   net.ipv4.conf.all.src_valid_mark: 1
   net.ipv6.conf.all.forwarding: 1
 
-# Binary download URLs
-pangolin_server_url: "https://github.com/lvlcn-t/pangolin/releases/download/v{{ pangolin_version }}/pangolin_Linux_x86_64.tar.gz"
-gerbil_url: "https://github.com/lvlcn-t/gerbil/releases/download/v{{ gerbil_version }}/gerbil_Linux_x86_64.tar.gz"
+# Binary download URLs (fosrl/pangolin project)
+pangolin_installer_url: "https://github.com/fosrl/pangolin/releases/download/{{ pangolin_version }}/installer_linux_amd64"
+gerbil_url: "https://github.com/fosrl/gerbil/releases/download/{{ gerbil_version }}/gerbil_linux_amd64"
 traefik_url: "https://github.com/traefik/traefik/releases/download/{{ traefik_version }}/traefik_{{ traefik_version }}_linux_amd64.tar.gz"
-newt_url: "https://github.com/lvlcn-t/newt/releases/download/v{{ newt_version }}/newt_Linux_x86_64.tar.gz"
+newt_url: "https://github.com/fosrl/newt/releases/download/{{ newt_version }}/newt_linux_amd64"

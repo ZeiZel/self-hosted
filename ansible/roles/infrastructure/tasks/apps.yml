@@ -168,10 +168,260 @@
   failed_when: false
   tags: [infrastructure, apps, vaultwarden]
 
+# Deploy Coder (remote development)
+- name: Deploy Coder
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=coder
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: coder_deploy
+  changed_when: "'has been upgraded' in coder_deploy.stdout or 'installed' in coder_deploy.stdout"
+  tags: [infrastructure, apps, coder]
+
+- name: Wait for Coder pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n code -l app.kubernetes.io/name=coder
+    --timeout=300s
+  register: coder_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, coder]
+
+# Deploy Ghost (blog)
+- name: Deploy Ghost
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=ghost
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: ghost_deploy
+  changed_when: "'has been upgraded' in ghost_deploy.stdout or 'installed' in ghost_deploy.stdout"
+  tags: [infrastructure, apps, ghost]
+
+- name: Wait for Ghost pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n content -l app.kubernetes.io/name=ghost
+    --timeout=180s
+  register: ghost_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, ghost]
+
+# Deploy Affine (note-taking)
+- name: Deploy Affine
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=affine
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: affine_deploy
+  changed_when: "'has been upgraded' in affine_deploy.stdout or 'installed' in affine_deploy.stdout"
+  tags: [infrastructure, apps, affine]
+
+- name: Wait for Affine pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n productivity -l app.kubernetes.io/name=affine
+    --timeout=180s
+  register: affine_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, affine]
+
+# Deploy Excalidraw (whiteboard)
+- name: Deploy Excalidraw
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=excalidraw
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: excalidraw_deploy
+  changed_when: "'has been upgraded' in excalidraw_deploy.stdout or 'installed' in excalidraw_deploy.stdout"
+  tags: [infrastructure, apps, excalidraw]
+
+- name: Wait for Excalidraw pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n productivity -l app.kubernetes.io/name=excalidraw
+    --timeout=180s
+  register: excalidraw_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, excalidraw]
+
+# Deploy Penpot (design)
+- name: Deploy Penpot
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=penpot
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: penpot_deploy
+  changed_when: "'has been upgraded' in penpot_deploy.stdout or 'installed' in penpot_deploy.stdout"
+  tags: [infrastructure, apps, penpot]
+
+- name: Wait for Penpot pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n productivity -l app.kubernetes.io/name=penpot
+    --timeout=300s
+  register: penpot_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, penpot]
+
+# Deploy Glance (dashboard)
+- name: Deploy Glance
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=glance
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: glance_deploy
+  changed_when: "'has been upgraded' in glance_deploy.stdout or 'installed' in glance_deploy.stdout"
+  tags: [infrastructure, apps, glance]
+
+- name: Wait for Glance pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n infrastructure -l app.kubernetes.io/name=glance
+    --timeout=180s
+  register: glance_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, glance]
+
+# Deploy MeTube (youtube downloader)
+- name: Deploy MeTube
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=metube
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: metube_deploy
+  changed_when: "'has been upgraded' in metube_deploy.stdout or 'installed' in metube_deploy.stdout"
+  tags: [infrastructure, apps, metube]
+
+- name: Wait for MeTube pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n utilities -l app.kubernetes.io/name=metube
+    --timeout=180s
+  register: metube_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, metube]
+
+# Deploy Vert (converter)
+- name: Deploy Vert
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=vert
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: vert_deploy
+  changed_when: "'has been upgraded' in vert_deploy.stdout or 'installed' in vert_deploy.stdout"
+  tags: [infrastructure, apps, vert]
+
+- name: Wait for Vert pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n utilities -l app.kubernetes.io/name=vert
+    --timeout=180s
+  register: vert_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, vert]
+
+# Deploy Syncthing (file sync)
+- name: Deploy Syncthing
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=syncthing
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: syncthing_deploy
+  changed_when: "'has been upgraded' in syncthing_deploy.stdout or 'installed' in syncthing_deploy.stdout"
+  tags: [infrastructure, apps, syncthing]
+
+- name: Wait for Syncthing pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n data -l app.kubernetes.io/name=syncthing
+    --timeout=180s
+  register: syncthing_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, syncthing]
+
+# Deploy Bytebase (database management)
+- name: Deploy Bytebase
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=bytebase
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: bytebase_deploy
+  changed_when: "'has been upgraded' in bytebase_deploy.stdout or 'installed' in bytebase_deploy.stdout"
+  tags: [infrastructure, apps, bytebase]
+
+- name: Wait for Bytebase pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n infrastructure -l app.kubernetes.io/name=bytebase
+    --timeout=180s
+  register: bytebase_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, bytebase]
+
 - name: Get all application pods status
   command: >
     kubectl get pods -A
-    -l 'app.kubernetes.io/name in (stoat,stalwart,youtrack,hub,teamcity,vaultwarden)'
+    -l 'app.kubernetes.io/name in (stoat,stalwart,youtrack,hub,teamcity,vaultwarden,coder,ghost,affine,excalidraw,penpot,glance,metube,vert,syncthing,bytebase)'
   register: app_pods_status
   changed_when: false
   tags: [infrastructure, apps]
@@ -191,4 +441,14 @@
       - "✓ Hub: {{ hub_ready.rc == 0 | ternary('Ready', 'Pending') }}"
       - "✓ TeamCity: {{ teamcity_ready.rc == 0 | ternary('Ready', 'Pending') }}"
       - "✓ Vaultwarden: {{ vaultwarden_ready.rc == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Coder: {{ coder_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Ghost: {{ ghost_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Affine: {{ affine_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Excalidraw: {{ excalidraw_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Penpot: {{ penpot_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Glance: {{ glance_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ MeTube: {{ metube_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Vert: {{ vert_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Syncthing: {{ syncthing_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Bytebase: {{ bytebase_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
   tags: [infrastructure, apps]

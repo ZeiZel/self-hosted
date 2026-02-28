@@ -1,86 +1,72 @@
 ---
+# =============================================================================
+# KUBESPRAY RESET TASKS
+# =============================================================================
+# Reset/remove the Kubernetes cluster
+# Usage: ansible-playbook -i inventory all.yml --tags kubespray -e kubespray_reset_confirmation=true
+
 - name: Verify reset confirmation flag
   fail:
-    msg: "Cluster reset requires kubespray_reset_confirmation=true. This is a destructive operation!"
+    msg: |
+      Cluster reset requires explicit confirmation!
+
+      This is a DESTRUCTIVE operation that will:
+        - Remove all Kubernetes components
+        - Delete all pods, services, and deployments
+        - Remove etcd data
+
+      To proceed, run with:
+        ansible-playbook -i inventory all.yml --tags kubespray -e kubespray_reset_confirmation=true
   when: not kubespray_reset_confirmation | default(false)
   tags: [kubespray, reset]
 
 - name: Display reset warning
   debug:
-    msg:
-      - "WARNING: You are about to reset the Kubernetes cluster!"
-      - "This will remove all Kubernetes components and data."
-      - "This operation cannot be undone."
-      - "Cluster: {{ cluster_name }}"
+    msg: |
+      WARNING: Resetting Kubernetes cluster!
+      Cluster: {{ cluster_name }}
+      Nodes: {{ groups['masters'] | join(', ') }}, {{ groups['workers'] | join(', ') }}
   tags: [kubespray, reset]
 
-- name: Pause for confirmation
-  pause:
-    prompt: "Press Enter to continue with cluster reset, or Ctrl+C to abort"
+- name: Check if kubespray directory exists
+  stat:
+    path: "{{ kubespray_dir }}/reset.yml"
+  register: reset_yml_stat
   tags: [kubespray, reset]
 
-- name: Run kubespray cluster reset
-  command: >
-    {{ kubespray_install_dir }}/venv/bin/ansible-playbook
-    -i {{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml
-    {{ kubespray_install_dir }}/kubespray/reset.yml
-    -b
-    -v
+- name: Run kubespray reset playbook
+  shell: |
+    source {{ kubespray_venv_dir }}/bin/activate
+    cd {{ kubespray_dir }}
+    ansible-playbook -i {{ kubespray_inventory_dir }}/hosts.yaml \
+      reset.yml \
+      --become \
+      --become-user={{ kubespray_become_user }} \
+      --private-key={{ kubespray_ssh_key }} \
+      -e reset_confirmation=yes \
+      -v
+  args:
+    executable: /bin/bash
   environment:
     ANSIBLE_HOST_KEY_CHECKING: "False"
+    ANSIBLE_DEPRECATION_WARNINGS: "False"
   register: kubespray_reset
   async: 1800
   poll: 30
-  tags: [kubespray, reset]
-
-- name: Wait for kubespray reset to complete
-  async_status:
-    jid: "{{ kubespray_reset.ansible_job_id }}"
-  register: reset_result
-  until: reset_result.finished
-  retries: 60
-  delay: 30
-  tags: [kubespray, reset]
-
-- name: Check reset result
-  fail:
-    msg: "Kubespray reset failed"
-  when: reset_result.failed
+  when: reset_yml_stat.stat.exists
   tags: [kubespray, reset]
 
 - name: Remove local kubeconfig
   file:
-    path: "{{ kubespray_local_kubeconfig_path }}"
+    path: "{{ kubespray_local_kubeconfig }}"
     state: absent
-  delegate_to: localhost
   tags: [kubespray, reset]
-
-- name: Verify cluster is removed
-  command: >
-    {{ kubespray_install_dir }}/venv/bin/ansible
-    -i {{ kubespray_install_dir }}/inventory/{{ cluster_name }}/hosts.yaml
-    kube_control_plane[0]
-    -m stat
-    -a "path=/etc/kubernetes/admin.conf"
-  register: cluster_check
-  failed_when: false
-  changed_when: false
-  tags: [kubespray, reset]
-
-- name: Display reset status
-  debug:
-    msg: "Kubernetes cluster reset completed successfully!"
-  when: not cluster_check.stdout | default('') | regex_search('exists.*true')
-  tags: [kubespray, reset]
-
-- name: Cleanup kubespray inventory directory
-  file:
-    path: "{{ kubespray_install_dir }}/inventory/{{ cluster_name }}"
-    state: absent
-  when: kubespray_reset_confirmation | default(false)
-  tags: [kubespray, reset, cleanup]
 
 - name: Reset complete
   debug:
-    msg: "Cluster {{ cluster_name }} has been reset. You can now run a fresh deployment."
+    msg: |
+      Kubernetes cluster has been reset!
+
+      To redeploy, run:
+        ansible-playbook -i inventory all.yml --tags kubespray
   tags: [kubespray, reset]

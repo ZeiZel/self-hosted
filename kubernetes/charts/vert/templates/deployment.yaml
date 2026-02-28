@@ -30,9 +30,6 @@ spec:
         prometheus.io/port: "{{ .Values.service.targetPort }}"
         prometheus.io/path: "/metrics"
     spec:
-      securityContext:
-        {{- toYaml .Values.securityContext | nindent 8 }}
-
       containers:
         - name: {{ .Chart.Name }}
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
@@ -44,6 +41,14 @@ spec:
 
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
+
+          volumeMounts:
+            - name: cache
+              mountPath: /var/cache/nginx
+            - name: run
+              mountPath: /var/run
+            - name: tmp
+              mountPath: /tmp
 
           {{- if .Values.probes.liveness.enabled }}
           livenessProbe:
@@ -62,6 +67,14 @@ spec:
             initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
           {{- end }}
+
+      volumes:
+        - name: cache
+          emptyDir: {}
+        - name: run
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
 
       {{- with .Values.nodeSelector }}
       nodeSelector:

@@ -1,55 +1,58 @@
+## PostgreSQL configuration for shared infrastructure
+## https://github.com/bitnami/charts/tree/main/bitnami/postgresql
+
 namespace: db
 
-# PostgreSQL
-postgresqlVersion: "18"  # choose 18, 17, 16 or 15
+# Architecture: standalone or replication
+architecture: standalone
 
-postgresql:
-  replicaCount: 3
-  config:
-    superuserPassword: "{{ .Values.secrets.postgresPassword }}"
-    database: "postgres"
+# Authentication
+auth:
+  postgresPassword: "{{ .Values.secrets.postgresPassword }}"
+  database: postgres
+  username: admin
+  password: "{{ .Values.secrets.postgresPassword }}"
 
-persistence:
-  storageClass: openebs-hostpath
-  data:
-    size: 100Gi
-  wal:
+# Primary configuration
+primary:
+  persistence:
+    enabled: true
+    storageClass: local-path
     size: 50Gi
-  backups:
-    size: 100Gi
+    accessModes:
+      - ReadWriteOnce
 
-backup:
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: 1000m
+      memory: 1Gi
+
+  service:
+    type: ClusterIP
+    ports:
+      postgresql: 5432
+
+  # PostgreSQL configuration
+  configuration: ""
+  pgHbaConfiguration: ""
+
+# Metrics
+metrics:
+  enabled: false
+  serviceMonitor:
+    enabled: false
+
+# Volume permissions
+volumePermissions:
   enabled: true
-  schedule: "0 2 * * *"
 
-maintenance:
-  enabled: true
-  vacuum:
-    schedule: "0 3 * * *"
-  analyze:
-    schedule: "0 4 * * *"
+# Service account
+serviceAccount:
+  create: true
 
-pgbouncer:
-  enabled: true
-  replicas: 2
-  image:
-    tag: "1.23.1"
-
-pgadmin:
-  enabled: true
-  config:
-    email: "admin@{{ .Values.infra.host }}"
-    password: "{{ .Values.secrets.pgadminPassword }}"
-
-monitoring:
-  enabled: true
-  exporter:
-    tag: "v0.15.0"
-
-ingress:
-  pgadmin:
-    host: pgadmin.{{ .Values.infra.host }}.localhost
-
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
+# RBAC
+rbac:
+  create: true

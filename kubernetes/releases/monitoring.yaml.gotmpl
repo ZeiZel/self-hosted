@@ -1,15 +1,19 @@
 namespace: service
 
+# Disable ServiceMonitor (Prometheus Operator CRDs not installed)
+metrics:
+  enabled: false
+
 prometheus:
   enabled: true
   persistence:
-    storageClass: openebs-hostpath
+    storageClass: local-path
     size: 3Gi
 
 loki:
   enabled: true
   persistence:
-    storageClass: openebs-hostpath
+    storageClass: local-path
     size: 2Gi
 
 promtail:
@@ -21,8 +25,16 @@ grafana:
     user: admin
     password: "{{ .Values.secrets.grafanaPassword }}"
   persistence:
-    storageClass: openebs-hostpath
+    storageClass: local-path
     size: 5Gi
+  oidc:
+    enabled: true
+    clientId: "grafana-420287b0000cef85"
+    clientSecret: "392e6f75220e3ce999c5b9df723b8645c5901cb4d4f4eac65b756da4b70a70da"
+    authUrl: "https://auth.{{ .Values.infra.host }}/application/o/authorize/"
+    tokenUrl: "https://auth.{{ .Values.infra.host }}/application/o/token/"
+    userInfoUrl: "https://auth.{{ .Values.infra.host }}/application/o/userinfo/"
+    logoutUrl: "https://auth.{{ .Values.infra.host }}/application/o/grafana/end-session/"
 
 ingress:
   enabled: true

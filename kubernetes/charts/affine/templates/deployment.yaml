@@ -65,17 +65,25 @@ spec:
         {{- end }}
         resources:
           {{- toYaml .Values.resources | nindent 12 }}
-        {{- if .Values.persistence.enabled }}
         volumeMounts:
+        {{- if .Values.persistence.enabled }}
         - name: storage
           mountPath: {{ .Values.persistence.mountPath }}
         {{- end }}
-      {{- if .Values.persistence.enabled }}
+        - name: app-src
+          mountPath: /app/src
+        - name: tmp
+          mountPath: /tmp
       volumes:
+      {{- if .Values.persistence.enabled }}
       - name: storage
         persistentVolumeClaim:
           claimName: {{ include "affine.fullname" . }}
       {{- end }}
+      - name: app-src
+        emptyDir: {}
+      - name: tmp
+        emptyDir: {}
       {{- with .Values.nodeSelector }}
       nodeSelector:
         {{- toYaml . | nindent 8 }}

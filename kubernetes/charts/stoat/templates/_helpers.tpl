@@ -60,3 +60,30 @@ Create the name of the service account to use
 {{- default "default" .Values.global.serviceAccount.name }}
 {{- end }}
 {{- end }}
+
+{{/*
+Stoat aliases - the chart is named stoat but uses revolt software
+*/}}
+{{- define "stoat.name" -}}
+{{- include "revolt.name" . }}
+{{- end }}
+
+{{- define "stoat.fullname" -}}
+{{- include "revolt.fullname" . }}
+{{- end }}
+
+{{- define "stoat.chart" -}}
+{{- include "revolt.chart" . }}
+{{- end }}
+
+{{- define "stoat.labels" -}}
+{{- include "revolt.labels" . }}
+{{- end }}
+
+{{- define "stoat.selectorLabels" -}}
+{{- include "revolt.selectorLabels" . }}
+{{- end }}
+
+{{- define "stoat.serviceAccountName" -}}
+{{- include "revolt.serviceAccountName" . }}
+{{- end }}

@@ -73,7 +73,7 @@ vaultwarden:
 # Persistent Storage
 persistence:
   enabled: true
-  storageClass: standard
+  storageClass: local-path
 
   # Data directory
   data:

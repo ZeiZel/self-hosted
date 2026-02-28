@@ -1,0 +1,59 @@
+namespace: automation
+
+image:
+  repository: n8nio/n8n
+  tag: "1.70.0"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+service:
+  type: ClusterIP
+  port: 5678
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 1000m
+    memory: 1Gi
+
+persistence:
+  enabled: true
+  storageClass: local-path
+  size: 5Gi
+
+# Database
+database:
+  type: postgresdb
+  host: postgresql.db.svc.cluster.local
+  port: 5432
+  database: n8n
+  user: n8n
+  password: changeme
+
+# Redis/Valkey for queue
+redis:
+  enabled: true
+  host: valkey-primary.db.svc.cluster.local
+  port: 6379
+
+# n8n configuration
+config:
+  executions:
+    mode: queue
+  generic:
+    timezone: Europe/Moscow
+
+ingress:
+  enabled: true
+  className: traefik
+  host: n8n.zeizel.ru
+  annotations:
+    traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    traefik.ingress.kubernetes.io/router.tls: "true"
+
+serviceAccount:
+  create: true
+  name: n8n

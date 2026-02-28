@@ -40,14 +40,14 @@ resources:
 persistence:
   config:
     enabled: true
-    storageClass: standard
+    storageClass: local-path
     accessMode: ReadWriteOnce
     size: 10Gi
     mountPath: /home/node/.openclaw
 
   workspace:
     enabled: true
-    storageClass: standard
+    storageClass: local-path
     accessMode: ReadWriteOnce
     size: 50Gi
     mountPath: /workspace

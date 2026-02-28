@@ -19,16 +19,16 @@ server:
 
   resources:
     limits:
-      cpu: 2000m
+      cpu: 1000m
       memory: 2Gi
     requests:
-      cpu: 1000m
-      memory: 1Gi
+      cpu: 200m
+      memory: 512Mi
 
   # Persistent Storage
   persistence:
     enabled: true
-    storageClass: standard
+    storageClass: local-path
     size: 5Gi
     mountPath: /data/teamcity_server/datadir
 
@@ -39,7 +39,7 @@ agent:
     tag: "2024.03"
     pullPolicy: IfNotPresent
 
-  replicaCount: 2
+  replicaCount: 1
 
   service:
     type: ClusterIP
@@ -47,16 +47,16 @@ agent:
 
   resources:
     limits:
-      cpu: 2000m
+      cpu: 1000m
       memory: 2Gi
     requests:
-      cpu: 1000m
-      memory: 1Gi
+      cpu: 200m
+      memory: 512Mi
 
   # Persistent Storage для агентов
   persistence:
     enabled: true
-    storageClass: standard
+    storageClass: local-path
     size: 3Gi
     mountPath: /data/teamcity_agent/work
 

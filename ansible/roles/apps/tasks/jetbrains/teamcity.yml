@@ -7,8 +7,45 @@
 - name: Wait for TeamCity server pod to be ready
   command: >
     kubectl wait --for=condition=Ready pod
-    -n code -l app.kubernetes.io/name=teamcity,app.kubernetes.io/component=server
+    -n code -l app=teamcity-server
     --timeout={{ teamcity_wait_timeout }}s
+  changed_when: false
+
+# PostgreSQL JDBC driver must be downloaded manually as TeamCity image doesn't include it
+- name: Check if PostgreSQL JDBC driver exists
+  command: >
+    kubectl exec -n code deployment/teamcity-server --
+    test -f /data/teamcity_server/datadir/lib/jdbc/postgresql.jar
+  register: teamcity_jdbc_check
+  failed_when: false
+  changed_when: false
+
+- name: Create JDBC lib directory
+  command: >
+    kubectl exec -n code deployment/teamcity-server --
+    mkdir -p /data/teamcity_server/datadir/lib/jdbc
+  when: teamcity_jdbc_check.rc != 0
+  changed_when: true
+
+- name: Download PostgreSQL JDBC driver
+  command: >
+    kubectl exec -n code deployment/teamcity-server --
+    curl -L --connect-timeout 30 --max-time 180
+    -o /data/teamcity_server/datadir/lib/jdbc/postgresql.jar
+    https://repo1.maven.org/maven2/org/postgresql/postgresql/{{ teamcity_postgres_jdbc_version }}/postgresql-{{ teamcity_postgres_jdbc_version }}.jar
+  when: teamcity_jdbc_check.rc != 0
+  changed_when: true
+  register: teamcity_jdbc_download
+
+- name: Restart TeamCity to load JDBC driver
+  command: kubectl rollout restart deployment/teamcity-server -n code
+  when: teamcity_jdbc_download is changed
+  changed_when: true
+
+- name: Wait for TeamCity restart after JDBC driver install
+  command: >
+    kubectl rollout status deployment/teamcity-server -n code --timeout={{ teamcity_wait_timeout }}s
+  when: teamcity_jdbc_download is changed
   changed_when: false
 
 - name: Check TeamCity startup status

@@ -1,34 +1,34 @@
 ---
 repositories:
-  - name: charts
-    url: file://charts
+  # Ingress & Networking
   - name: traefik
     url: https://traefik.github.io/charts
+
+  # Certificates
   - name: jetstack
     url: https://charts.jetstack.io
-  - name: penpot
-    url: http://helm.penpot.app
+
+  # Authentication
   - name: authentik
     url: https://charts.goauthentik.io
+
+  # Databases (Bitnami OCI)
+  - name: bitnami
+    oci: true
+    url: registry-1.docker.io/bitnamicharts
+
+  # GitLab
+  - name: gitlab
+    url: https://charts.gitlab.io
+
+  # Productivity
+  - name: penpot
+    url: https://helm.penpot.app
+
+  # Automation
+  - name: kestra
+    url: https://helm.kestra.io
+
+  # DevOps
   - name: devtron
     url: https://helm.devtron.ai
-  - name: gitlab
-    url: https://charts.gitlab.io/
-  - name: harbor
-    url: https://helm.goharbor.io
-    docs: https://github.com/goharbor/harbor-helm
-  - name: nextcloud
-    url: https://nextcloud.github.io/helm/
-    docs: https://github.com/nextcloud/helm
-  - name: bitnami
-    url: https://charts.bitnami.com/bitnami
-    docs: https://github.com/bitnami/charts
-  - name: hashicorp
-    url: https://helm.releases.hashicorp.com
-    docs: https://github.com/hashicorp/consul-k8s
-  - name: kestra
-    url: https://helm.kestra.io/
-    docs: https://kestra.io/docs/installation/kubernetes
-  - name: n8n
-    url: oci://8gears.container-registry.com/library/n8n
-    docs: https://artifacthub.io/packages/helm/open-8gears/n8n

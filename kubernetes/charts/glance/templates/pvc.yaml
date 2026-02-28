@@ -2,7 +2,7 @@
 apiVersion: v1
 kind: PersistentVolumeClaim
 metadata:
-  name: {{ include "glance.fullname" . }}-config
+  name: {{ include "glance.fullname" . }}-data
   namespace: {{ .Release.Namespace }}
   labels:
     {{- include "glance.labels" . | nindent 4 }}

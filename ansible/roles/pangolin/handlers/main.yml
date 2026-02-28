@@ -22,12 +22,19 @@
     daemon_reload: yes
   listen: restart traefik
 
-- name: restart newt
+- name: restart wireguard
   systemd:
-    name: newt
+    name: "wg-quick@wg0"
     state: restarted
     daemon_reload: yes
-  listen: restart newt
+  listen: restart wireguard
+
+- name: restart wireguard-server
+  systemd:
+    name: "wg-quick@wg0"
+    state: restarted
+    daemon_reload: yes
+  listen: restart wireguard-server
 
 - name: reload ufw
   ufw:

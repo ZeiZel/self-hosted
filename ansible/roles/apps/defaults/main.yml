@@ -55,6 +55,8 @@ teamcity_url: "https://teamcity.{{ domain }}"
 teamcity_wait_timeout: 600
 teamcity_validate_certs: "{{ apps_validate_certs }}"
 teamcity_credentials_file: "{{ apps_credentials_dir }}/teamcity-credentials.txt"
+# PostgreSQL JDBC driver version - TeamCity doesn't include it by default
+teamcity_postgres_jdbc_version: "42.7.2"
 
 # =============================================================================
 # CODER

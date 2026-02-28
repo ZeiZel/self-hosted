@@ -1,5 +1,5 @@
 ---
-- name: Host
+- name: Host Setup
   hosts: local
   become: false
   gather_facts: true
@@ -8,47 +8,62 @@
     - role: setup_host
       tags: [setup_host, homebrew, dependencies, ssh, verify]
 
-- name: Master
-  hosts: master
+- name: kubernetes
+  hosts: local
+  become: false
+  gather_facts: true
+  tags: [kubespray, kubernetes]
+  roles:
+    - role: kubespray
+      tags: [kubernetes, kubespray]
+
+- name: Master Node Configuration
+  hosts: masters
+  become: true
   gather_facts: true
   tags: [master, deploy]
   roles:
     - role: server
+      tags: [server]
     - role: docker
-    - role: kubespray
-      tags: master
-      type: node
+      tags: [docker]
     - role: apps
-      tags: master
+      tags: [apps]
     - role: pangolin
-      tags: node
+      tags: [pangolin]
+      vars:
+        pangolin_mode: node
 
-- name: Worker
+- name: Worker Nodes Configuration
   hosts: workers
+  become: true
   gather_facts: true
   tags: [worker, deploy]
   roles:
     - role: server
+      tags: [server]
     - role: docker
-    - role: kubespray
-      tags: worker
-      type: node
+      tags: [docker]
     - role: apps
-      tags: worker
+      tags: [apps]
     - role: pangolin
-      tags: node
+      tags: [pangolin]
+      vars:
+        pangolin_mode: node
 
-- name: Gateway
+- name: Gateway Configuration
   hosts: gateway
+  become: true
   gather_facts: true
   tags: [gateway, deploy]
   roles:
     - role: server
+      tags: [server]
     - role: docker
-    - role: kubespray
-      tags: worker
-      type: gateway
+      tags: [docker]
     - role: apps
-      tags: gateway
+      tags: [apps]
     - role: pangolin
-      tags: gateway
+      tags: [pangolin]
+      vars:
+        pangolin_mode: gateway

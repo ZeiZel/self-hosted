@@ -7,6 +7,7 @@ metadata:
     {{- include "coder.labels" . | nindent 4 }}
 data:
   # Coder server configuration
+  CODER_HTTP_ADDRESS: "0.0.0.0:3000"
   CODER_ACCESS_URL: {{ include "coder.accessUrl" . | quote }}
   {{- if .Values.coder.config.wildcardAccessUrl }}
   CODER_WILDCARD_ACCESS_URL: {{ .Values.coder.config.wildcardAccessUrl | quote }}

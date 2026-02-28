@@ -24,7 +24,7 @@ prometheus:
 
   persistence:
     enabled: true
-    storageClass: standard
+    storageClass: local-path
     size: 3Gi
     mountPath: /prometheus
 
@@ -56,7 +56,7 @@ loki:
 
   persistence:
     enabled: true
-    storageClass: standard
+    storageClass: local-path
     size: 2Gi
     mountPath: /loki
 
@@ -97,7 +97,7 @@ grafana:
 
   persistence:
     enabled: true
-    storageClass: standard
+    storageClass: local-path
     size: 5Gi
     mountPath: /var/lib/grafana
 
@@ -111,6 +111,16 @@ grafana:
 
   # Plugins
   plugins: []
+
+  # OIDC/OAuth2 Configuration (Authentik)
+  oidc:
+    enabled: false
+    clientId: ""
+    clientSecret: ""
+    authUrl: "https://auth.example.com/application/o/authorize/"
+    tokenUrl: "https://auth.example.com/application/o/token/"
+    userInfoUrl: "https://auth.example.com/application/o/userinfo/"
+    logoutUrl: "https://auth.example.com/application/o/grafana/end-session/"
 
 # Ingress config
 ingress:

@@ -6,7 +6,7 @@ create:
 
 # Stalwart Image
 image:
-  repository: stalwartlabs/mail-server
+  repository: stalwartlabs/stalwart
   tag: "latest"
   pullPolicy: IfNotPresent
 
@@ -87,7 +87,7 @@ stalwart:
 # Persistent Storage
 persistence:
   enabled: true
-  storageClass: standard
+  storageClass: local-path
 
   # Data directory (SQLite database, blobs, etc)
   data:
@@ -116,7 +116,7 @@ postgresql:
 # Redis/ValKey (для кэширования и сессий)
 redis:
   enabled: false
-  host: "valkey-master.db.svc.cluster.local"
+  host: "valkey-primary.db.svc.cluster.local"
   port: 6379
   password: ""
 

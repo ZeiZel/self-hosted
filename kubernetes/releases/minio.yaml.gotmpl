@@ -1,21 +1,48 @@
+## MinIO configuration for shared infrastructure
+## https://github.com/bitnami/charts/tree/main/bitnami/minio
+
 namespace: db
 
-replicaCount: 1
 mode: standalone
+
+auth:
+  rootUser: minio
+  rootPassword: "{{ .Values.secrets.minioRootPassword }}"
+
+defaultBuckets: "stoat,affine,supabase,harbor"
 
 persistence:
   enabled: true
-  storageClass: openebs-hostpath
-  size: 2Gi
+  storageClass: local-path
+  size: 20Gi
+  accessModes:
+    - ReadWriteOnce
+
+resources:
+  requests:
+    cpu: 100m
+    memory: 256Mi
+  limits:
+    cpu: 500m
+    memory: 512Mi
+
+service:
+  type: ClusterIP
+  ports:
+    api: 9000
+    console: 9001
 
 ingress:
-  enabled: true
-  hosts:
-    - host: {{ .Values.infra.host }}
-      paths:
-        - path: /
-          pathType: Prefix
+  enabled: false
 
-minioConfig:
-  accessKey: minio
-  secretKey: minioSecurePassword123
+apiIngress:
+  enabled: false
+
+metrics:
+  enabled: false
+
+volumePermissions:
+  enabled: true
+
+serviceAccount:
+  create: true

@@ -1,7 +1,7 @@
 namespace: db
 
 # RabbitMQ Architecture
-architecture: replication
+architecture: standalone
 
 # Authentication
 auth:
@@ -10,12 +10,12 @@ auth:
   erlangCookie: "{{ .Values.secrets.rabbitmqErlangCookie }}"
 
 # Replication configuration
-replicaCount: 3
+replicaCount: 1
 
 # Persistence
 persistence:
   enabled: true
-  storageClass: openebs-hostpath
+  storageClass: local-path
   size: 8Gi
 
 # Resources
