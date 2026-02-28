@@ -1,0 +1,6 @@
+version: 1.0.0
+cluster:
+  name: selfhost
+  domain: example.com
+  localDomain: homelab.local
+initialized: false

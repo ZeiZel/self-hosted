@@ -1,0 +1,12 @@
+[install]
+# Use exact versions for reproducibility
+exact = true
+
+[run]
+# Enable source maps for better stack traces
+smol = false
+
+[test]
+# Test configuration
+coverage = true
+coverageDir = "coverage"
