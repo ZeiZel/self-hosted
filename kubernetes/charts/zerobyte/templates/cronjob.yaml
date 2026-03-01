@@ -1,0 +1,117 @@
+{{- range .Values.backupSources }}
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ include "zerobyte.fullname" $ }}-{{ .name }}
+  namespace: {{ $.Release.Namespace }}
+  labels:
+    {{- include "zerobyte.labels" $ | nindent 4 }}
+    backup-source: {{ .name }}
+spec:
+  schedule: {{ .schedule | quote }}
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "zerobyte.selectorLabels" $ | nindent 12 }}
+            backup-job: {{ .name }}
+        spec:
+          serviceAccountName: {{ include "zerobyte.serviceAccountName" $ }}
+          restartPolicy: OnFailure
+          securityContext:
+            fsGroup: {{ $.Values.securityContext.fsGroup }}
+            runAsGroup: {{ $.Values.securityContext.runAsGroup }}
+            runAsUser: {{ $.Values.securityContext.runAsUser }}
+          containers:
+            - name: backup
+              image: restic/restic:latest
+              imagePullPolicy: IfNotPresent
+              command:
+                - /bin/sh
+                - -c
+                - |
+                  set -e
+                  echo "Starting backup for {{ .name }} from {{ .namespace }}/{{ .pvcName }}"
+
+                  # Initialize repository if needed
+                  restic snapshots || restic init
+
+                  # Run backup
+                  restic backup /data \
+                    --tag {{ .name }} \
+                    --tag {{ .namespace }} \
+                    --tag kubernetes \
+                    --verbose
+
+                  # Apply retention policy
+                  restic forget \
+                    --keep-last {{ $.Values.restic.retention.keepLast }} \
+                    --keep-daily {{ $.Values.restic.retention.keepDaily }} \
+                    --keep-weekly {{ $.Values.restic.retention.keepWeekly }} \
+                    --keep-monthly {{ $.Values.restic.retention.keepMonthly }} \
+                    --keep-yearly {{ $.Values.restic.retention.keepYearly }} \
+                    --prune
+
+                  # Verify backup integrity
+                  restic check --read-data-subset=5%
+
+                  echo "Backup completed for {{ .name }}"
+              env:
+                - name: RESTIC_REPOSITORY
+                  {{- if eq $.Values.restic.repositoryType "nfs" }}
+                  value: "/repository"
+                  {{- else if eq $.Values.restic.repositoryType "s3" }}
+                  value: "s3:{{ $.Values.restic.s3.endpoint }}/{{ $.Values.restic.s3.bucket }}"
+                  {{- end }}
+                - name: RESTIC_PASSWORD
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "zerobyte.fullname" $ }}-secrets
+                      key: restic-password
+                {{- if eq $.Values.restic.repositoryType "s3" }}
+                - name: AWS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "zerobyte.fullname" $ }}-secrets
+                      key: s3-access-key
+                - name: AWS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: {{ include "zerobyte.fullname" $ }}-secrets
+                      key: s3-secret-key
+                {{- end }}
+              volumeMounts:
+                - name: data
+                  mountPath: /data
+                  readOnly: true
+                {{- if eq $.Values.restic.repositoryType "nfs" }}
+                - name: nfs-repository
+                  mountPath: /repository
+                {{- end }}
+                - name: cache
+                  mountPath: /root/.cache/restic
+              resources:
+                requests:
+                  cpu: 200m
+                  memory: 256Mi
+                limits:
+                  cpu: 1000m
+                  memory: 1Gi
+          volumes:
+            - name: data
+              persistentVolumeClaim:
+                claimName: {{ .pvcName }}
+            {{- if eq $.Values.restic.repositoryType "nfs" }}
+            - name: nfs-repository
+              nfs:
+                server: {{ $.Values.restic.nfs.server }}
+                path: {{ $.Values.restic.nfs.path }}
+            {{- end }}
+            - name: cache
+              emptyDir: {}
+{{- end }}

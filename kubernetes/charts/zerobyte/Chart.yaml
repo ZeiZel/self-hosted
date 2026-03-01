@@ -1,0 +1,16 @@
+apiVersion: v2
+name: zerobyte
+description: Zerobyte - Web UI for Restic backups with S3/NFS backend support
+type: application
+version: 1.0.0
+appVersion: "latest"
+keywords:
+  - backup
+  - restic
+  - zerobyte
+  - disaster-recovery
+maintainers:
+  - name: self-hosted
+home: https://github.com/kiwimato/zerobyte
+sources:
+  - https://github.com/kiwimato/zerobyte

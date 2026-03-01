@@ -1,0 +1,23 @@
+---
+galaxy_info:
+  author: self-hosted
+  description: Backup node setup with NFS server for Zerobyte/Restic
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+  galaxy_tags:
+    - backup
+    - nfs
+    - restic
+    - storage
+
+dependencies: []

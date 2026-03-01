@@ -1,0 +1,18 @@
+---
+# Handlers for backup-node role
+
+- name: Reload NFS exports
+  command: exportfs -ra
+  become: yes
+
+- name: Restart NFS server
+  systemd:
+    name: nfs-server
+    state: restarted
+  become: yes
+
+- name: Restart rpcbind
+  systemd:
+    name: rpcbind
+    state: restarted
+  become: yes

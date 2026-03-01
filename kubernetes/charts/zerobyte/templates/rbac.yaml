@@ -1,0 +1,71 @@
+{{- if .Values.rbac.create }}
+{{- if .Values.rbac.clusterWide }}
+# ClusterRole for cross-namespace PVC access
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "zerobyte.fullname" . }}
+  labels:
+    {{- include "zerobyte.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch", "create", "delete"]
+  - apiGroups: [""]
+    resources: ["pods/exec"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["namespaces"]
+    verbs: ["get", "list"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "zerobyte.fullname" . }}
+  labels:
+    {{- include "zerobyte.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "zerobyte.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "zerobyte.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- else }}
+# Namespace-scoped Role
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "zerobyte.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zerobyte.labels" . | nindent 4 }}
+rules:
+  - apiGroups: [""]
+    resources: ["persistentvolumeclaims"]
+    verbs: ["get", "list", "watch"]
+  - apiGroups: [""]
+    resources: ["pods"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "zerobyte.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "zerobyte.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "zerobyte.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "zerobyte.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+{{- end }}

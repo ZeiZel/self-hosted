@@ -60,6 +60,9 @@ data:
                       - title: Hub
                         url: https://hub.zeizel.ru
                         icon: si:jetbrains
+                      - title: Devtron
+                        url: https://devtron.zeizel.ru
+                        icon: si:kubernetes
 
                   - title: Productivity
                     color: 120 70 45
@@ -110,6 +113,8 @@ data:
                     title: Bytebase
                   - url: https://harbor.zeizel.ru
                     title: Harbor
+                  - url: https://devtron.zeizel.ru
+                    title: Devtron
 
               - type: monitor
                 title: Development
@@ -145,6 +150,8 @@ data:
                     title: N8n
                   - url: https://kestra.zeizel.ru
                     title: Kestra
+                  - url: https://openclaw.zeizel.ru
+                    title: OpenClaw
 
               - type: monitor
                 title: Communication
@@ -229,6 +236,14 @@ data:
                         url: https://harbor.zeizel.ru
                         icon: si:harbor
                         description: Container Registry
+                      - title: Devtron
+                        url: https://devtron.zeizel.ru
+                        icon: si:kubernetes
+                        description: Kubernetes DevOps
+                      - title: Zerobyte
+                        url: https://backup.zeizel.ru
+                        icon: si:backblaze
+                        description: Backup Management
 
                   - title: Development & CI/CD
                     color: 210 80 50
@@ -280,6 +295,10 @@ data:
                       - title: Kestra
                         url: https://kestra.zeizel.ru
                         description: Data Orchestration
+                      - title: OpenClaw
+                        url: https://openclaw.zeizel.ru
+                        icon: si:openai
+                        description: AI Automation
 
                   - title: Communication
                     color: 300 70 50

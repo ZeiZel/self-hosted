@@ -7,7 +7,7 @@
 
 all:
   hosts:
-{% for host in groups['masters'] + groups['workers'] %}
+{% for host in groups['masters'] + groups['workers'] + groups.get('storages', []) %}
     {{ host }}:
       ansible_host: {{ hostvars[host]['ansible_host'] }}
       ansible_user: {{ hostvars[host]['ansible_user'] }}
@@ -36,7 +36,7 @@ all:
     # Kubernetes worker nodes (includes control plane for workload scheduling)
     kube_node:
       hosts:
-{% for host in groups['masters'] + groups['workers'] %}
+{% for host in groups['masters'] + groups['workers'] + groups.get('storages', []) %}
         {{ host }}:
 {% endfor %}
 

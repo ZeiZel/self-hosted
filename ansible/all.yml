@@ -67,3 +67,53 @@
       tags: [pangolin]
       vars:
         pangolin_mode: gateway
+
+- name: Storage Nodes Configuration
+  hosts: storages
+  become: true
+  gather_facts: true
+  tags: [storage, storages, deploy]
+  roles:
+    - role: server
+      tags: [server]
+    - role: docker
+      tags: [docker]
+    - role: storage-node
+      tags: [storage-node, openebs]
+    - role: pangolin
+      tags: [pangolin]
+      vars:
+        pangolin_mode: node
+
+- name: Backup Node Configuration
+  hosts: backups
+  become: true
+  gather_facts: true
+  tags: [backup, backups, deploy]
+  roles:
+    - role: server
+      tags: [server]
+    - role: backup-node
+      tags: [backup-node, nfs, restic]
+
+- name: Deploy OpenEBS Storage
+  hosts: local
+  become: false
+  gather_facts: true
+  tags: [storage, openebs]
+  roles:
+    - role: storage
+      tags: [storage, openebs]
+
+- name: Deploy Zerobyte Backups
+  hosts: local
+  become: false
+  gather_facts: true
+  tags: [zerobyte]
+  tasks:
+    - name: Deploy Zerobyte via Helmfile
+      command: helmfile -e k8s apply --selector name=zerobyte
+      args:
+        chdir: "{{ playbook_dir }}/../kubernetes"
+      register: zerobyte_deploy
+      changed_when: "'no changes' not in zerobyte_deploy.stdout"

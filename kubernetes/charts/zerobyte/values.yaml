@@ -1,0 +1,184 @@
+namespace: infrastructure
+
+# Restic Browser image (web UI for restic repositories)
+image:
+  repository: floibach/restic-browser
+  tag: "v0.1.8"
+  pullPolicy: IfNotPresent
+
+# Replica count
+replicaCount: 1
+
+# Service configuration
+service:
+  type: ClusterIP
+  port: 8080
+
+# Restic repository configuration
+restic:
+  # Repository type: s3, nfs, sftp, rest
+  repositoryType: nfs
+
+  # NFS configuration (when repositoryType: nfs)
+  nfs:
+    server: "192.168.100.104"  # Backup node IP
+    path: "/backup/restic"
+    mountOptions:
+      - hard
+      - nfsvers=4.1
+      - rsize=1048576
+      - wsize=1048576
+
+  # S3 configuration (when repositoryType: s3)
+  s3:
+    endpoint: "minio.db.svc.cluster.local:9000"
+    bucket: "backups"
+    region: "us-east-1"
+    useSSL: false
+
+  # Repository password (required)
+  # Will be injected from Vault
+  passwordSecret: "zerobyte-restic-password"
+
+  # Retention policy
+  retention:
+    keepLast: 7
+    keepDaily: 7
+    keepWeekly: 4
+    keepMonthly: 12
+    keepYearly: 2
+
+# Backup sources (PVCs to backup)
+backupSources:
+  - name: "postgres-data"
+    namespace: "db"
+    pvcName: "data-postgresql-0"
+    schedule: "0 2 * * *"  # 2 AM daily
+  - name: "mongodb-data"
+    namespace: "db"
+    pvcName: "datadir-mongodb-0"
+    schedule: "0 3 * * *"  # 3 AM daily
+  - name: "minio-data"
+    namespace: "db"
+    pvcName: "minio"
+    schedule: "0 4 * * *"  # 4 AM daily
+
+# Resources
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Persistence for Zerobyte config and cache
+persistence:
+  config:
+    enabled: true
+    storageClass: openebs-hostpath
+    accessMode: ReadWriteOnce
+    size: 1Gi
+  cache:
+    enabled: true
+    storageClass: openebs-hostpath
+    accessMode: ReadWriteOnce
+    size: 5Gi
+
+# Security Context
+securityContext:
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+
+podSecurityContext:
+  runAsNonRoot: true
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: false  # Zerobyte needs write access
+  capabilities:
+    drop: [ALL]
+
+# Ingress
+ingress:
+  enabled: true
+  className: traefik
+  # Single host (legacy support)
+  host: zerobyte.localhost
+  # Multiple hosts configuration
+  hosts:
+    - host: zerobyte.zeizel.ru      # Remote access via pangolin VPN
+    - host: zerobyte.zeizel.local   # Local network access
+  annotations: {}
+  tls:
+    enabled: true
+    secretName: zerobyte-tls
+    clusterIssuer: letsencrypt
+
+# Authentik integration
+authentik:
+  enabled: false
+  middleware: "service-authentik-forward-auth@kubernetescrd"
+
+# Vault integration
+vault:
+  enabled: false
+  role: "zerobyte-role"
+  secrets:
+    - path: "secret/data/zerobyte/restic"
+      key: "password"
+
+# Consul integration
+consul:
+  enabled: true
+  tags:
+    - backup
+    - zerobyte
+    - infrastructure
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  egressRules:
+    allowNFS: true
+    allowS3: true
+    allowDatabases: false
+
+# Service Account
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
+  annotations: {}
+  name: ""
+
+# RBAC - needs access to PVCs across namespaces
+rbac:
+  create: true
+  clusterWide: true  # Needs cluster-wide access to backup PVCs
+
+# Probes
+probes:
+  liveness:
+    enabled: true
+    path: /
+    initialDelaySeconds: 30
+    periodSeconds: 10
+  readiness:
+    enabled: true
+    path: /
+    initialDelaySeconds: 10
+    periodSeconds: 5
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: false
+  minAvailable: 1
+
+# Metrics
+metrics:
+  enabled: true
+  port: 9090
+  path: /metrics

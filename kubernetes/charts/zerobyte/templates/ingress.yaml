@@ -2,10 +2,10 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: {{ include "glance.fullname" . }}
+  name: {{ include "zerobyte.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "glance.labels" . | nindent 4 }}
+    {{- include "zerobyte.labels" . | nindent 4 }}
   annotations:
     {{- if .Values.ingress.tls.enabled }}
     cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer | default "letsencrypt" | quote }}
@@ -43,9 +43,9 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "glance.fullname" $ }}
+                name: {{ include "zerobyte.fullname" $ }}
                 port:
-                  number: {{ $.Values.glance.service.port }}
+                  number: {{ $.Values.service.port }}
     {{- end }}
     {{- else }}
     - host: {{ .Values.ingress.host }}
@@ -55,13 +55,8 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: {{ include "glance.fullname" . }}
+                name: {{ include "zerobyte.fullname" . }}
                 port:
-                  number: {{ .Values.glance.service.port }}
+                  number: {{ .Values.service.port }}
     {{- end }}
 {{- end }}
-
-
-
-
-

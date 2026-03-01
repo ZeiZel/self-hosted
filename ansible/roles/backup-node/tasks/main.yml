@@ -1,0 +1,26 @@
+---
+# Backup node main tasks
+# Sets up NFS server for Zerobyte/Restic backups
+
+- name: Include NFS server setup
+  include_tasks: nfs.yml
+  when: nfs_enabled
+  tags: [backup-node, nfs]
+
+- name: Include storage setup
+  include_tasks: storage.yml
+  tags: [backup-node, storage]
+
+- name: Include Restic initialization
+  include_tasks: restic.yml
+  when: restic_init_repo
+  tags: [backup-node, restic]
+
+- name: Include monitoring setup
+  include_tasks: monitoring.yml
+  when: backup_monitoring_enabled
+  tags: [backup-node, monitoring]
+
+- name: Include manual backup operations
+  include_tasks: operations.yml
+  tags: [backup-node, operations]

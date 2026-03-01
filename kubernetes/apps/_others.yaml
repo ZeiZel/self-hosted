@@ -452,3 +452,15 @@ apps:
       - service/cert-manager
       - service/authentik
       - service/vault
+
+  # BACKUP
+  zerobyte:
+    repo: charts
+    chart: zerobyte
+    namespace: infrastructure
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/vault
+      - service/authentik
+      - infrastructure/glance

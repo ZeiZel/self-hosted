@@ -3,7 +3,7 @@
 # Deploys and configures OpenEBS storage provisioner
 
 - name: Create OpenEBS namespace
-  command: kubectl create namespace {{ storage_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+  shell: kubectl create namespace {{ storage_namespace }} --dry-run=client -o yaml | kubectl apply -f -
   register: ns_create
   changed_when: "'created' in ns_create.stdout"
   tags: [storage, namespace]

@@ -1,0 +1,22 @@
+---
+galaxy_info:
+  author: self-hosted
+  description: Storage node preparation for OpenEBS
+  license: MIT
+  min_ansible_version: "2.15"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - focal
+        - jammy
+        - noble
+    - name: Debian
+      versions:
+        - bullseye
+        - bookworm
+  galaxy_tags:
+    - storage
+    - openebs
+    - kubernetes
+
+dependencies: []

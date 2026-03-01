@@ -1,0 +1,107 @@
+---
+# NFS server setup for backup node
+
+- name: Install NFS server packages
+  apt:
+    name:
+      - nfs-kernel-server
+      - nfs-common
+      - rpcbind
+    state: present
+    update_cache: yes
+  become: yes
+  tags: [backup-node, nfs, packages]
+
+- name: Create backup group
+  group:
+    name: "{{ backup_group }}"
+    gid: "{{ backup_gid }}"
+    state: present
+  become: yes
+  tags: [backup-node, nfs, users]
+
+- name: Create backup user
+  user:
+    name: "{{ backup_user }}"
+    uid: "{{ backup_uid }}"
+    group: "{{ backup_group }}"
+    home: "{{ nfs_exports_dir }}"
+    shell: /bin/false
+    system: yes
+    create_home: no
+  become: yes
+  tags: [backup-node, nfs, users]
+
+- name: Create backup directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: "{{ backup_user }}"
+    group: "{{ backup_group }}"
+    mode: '0755'
+  become: yes
+  loop:
+    - "{{ nfs_exports_dir }}"
+    - "{{ nfs_restic_dir }}"
+    - "{{ nfs_dumps_dir }}"
+    - "{{ nfs_dumps_dir }}/postgres"
+    - "{{ nfs_dumps_dir }}/mongodb"
+    - "{{ nfs_dumps_dir }}/mysql"
+  tags: [backup-node, nfs, directories]
+
+- name: Configure NFS exports
+  template:
+    src: exports.j2
+    dest: /etc/exports
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: Reload NFS exports
+  tags: [backup-node, nfs, config]
+
+- name: Configure NFS server options
+  template:
+    src: nfs.conf.j2
+    dest: /etc/nfs.conf
+    owner: root
+    group: root
+    mode: '0644'
+  become: yes
+  notify: Restart NFS server
+  tags: [backup-node, nfs, config]
+
+- name: Enable and start NFS services
+  systemd:
+    name: "{{ item }}"
+    enabled: yes
+    state: started
+  become: yes
+  loop:
+    - rpcbind
+    - nfs-server
+  tags: [backup-node, nfs, services]
+
+- name: Configure firewall for NFS
+  ufw:
+    rule: allow
+    port: "{{ item.split('/')[0] }}"
+    proto: "{{ item.split('/')[1] }}"
+    from: "{{ nfs_allowed_networks | join(',') }}"
+    comment: "NFS server"
+  become: yes
+  loop: "{{ firewall_ports }}"
+  when: firewall_enabled
+  tags: [backup-node, nfs, firewall]
+
+- name: Verify NFS exports
+  command: exportfs -v
+  register: nfs_exports
+  changed_when: false
+  become: yes
+  tags: [backup-node, nfs, verify]
+
+- name: Display NFS exports
+  debug:
+    msg: "{{ nfs_exports.stdout_lines }}"
+  tags: [backup-node, nfs, verify]
