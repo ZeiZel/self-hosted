@@ -1,0 +1,35 @@
+---
+# Local access role defaults
+# Configures /etc/hosts on the local machine for cluster service access
+
+# Enable local access configuration
+local_access_enabled: true
+
+# Local domain suffix for cluster services
+local_domain: "zeizel.local"
+
+# Traefik node IP (where ingress controller runs)
+traefik_node_ip: "192.168.100.100"
+
+# Traefik NodePort for HTTP traffic
+traefik_nodeport_http: 30080
+traefik_nodeport_https: 30443
+
+# Marker for hosts file entries (for idempotent updates)
+hosts_marker: "# Kubernetes cluster services ({{ local_domain }})"
+
+# Services to configure for local access
+# These will be fetched from cluster ingresses if auto_discover is true
+local_access_services: []
+
+# Auto-discover services from cluster ingresses
+auto_discover_services: true
+
+# Additional custom services (always added)
+custom_local_services:
+  - "dashboard"
+  - "glance"
+  - "monitoring"
+  - "vault"
+  - "auth"
+  - "zerobyte"

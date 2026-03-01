@@ -1,0 +1,123 @@
+---
+# Storage node main tasks
+# Prepares a node for OpenEBS LocalPV
+
+- name: Install required packages
+  apt:
+    name:
+      - xfsprogs
+      - lvm2
+      - open-iscsi
+      - nfs-common
+    state: present
+    update_cache: yes
+  become: yes
+  tags: [storage-node, packages]
+
+- name: Enable and start iSCSI
+  systemd:
+    name: iscsid
+    enabled: yes
+    state: started
+  become: yes
+  when: iscsi_enabled
+  tags: [storage-node, iscsi]
+
+- name: Create OpenEBS directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+  loop:
+    - "{{ openebs_data_dir }}"
+    - "{{ openebs_local_dir }}"
+    - "{{ openebs_sparse_dir }}"
+  tags: [storage-node, directories]
+
+- name: Set up dedicated storage disk
+  block:
+    - name: Check if disk exists
+      stat:
+        path: "{{ storage_disk }}"
+      register: disk_check
+
+    - name: Create filesystem on storage disk
+      filesystem:
+        fstype: "{{ storage_filesystem }}"
+        dev: "{{ storage_disk }}"
+      when: disk_check.stat.exists
+      become: yes
+
+    - name: Mount storage disk
+      mount:
+        path: "{{ openebs_data_dir }}"
+        src: "{{ storage_disk }}"
+        fstype: "{{ storage_filesystem }}"
+        opts: "{{ storage_mount_options }}"
+        state: mounted
+      when: disk_check.stat.exists
+      become: yes
+
+    - name: Create subdirectories after mount
+      file:
+        path: "{{ item }}"
+        state: directory
+        owner: root
+        group: root
+        mode: '0755'
+      become: yes
+      loop:
+        - "{{ openebs_local_dir }}"
+        - "{{ openebs_sparse_dir }}"
+  when: storage_disk | length > 0
+  tags: [storage-node, disk]
+
+- name: Apply Kubernetes node labels
+  command: >
+    kubectl label node {{ inventory_hostname }}
+    {{ item }}
+    --overwrite
+  delegate_to: "{{ groups['masters'][0] }}"
+  loop: "{{ storage_node_labels }}"
+  changed_when: true
+  tags: [storage-node, labels]
+
+- name: Apply Kubernetes node taints
+  command: >
+    kubectl taint node {{ inventory_hostname }}
+    {{ item }}
+    --overwrite
+  delegate_to: "{{ groups['masters'][0] }}"
+  loop: "{{ storage_node_taints }}"
+  when: storage_node_taints | length > 0
+  changed_when: true
+  tags: [storage-node, taints]
+
+- name: Verify node is ready
+  command: kubectl get node {{ inventory_hostname }}
+  delegate_to: "{{ groups['masters'][0] }}"
+  register: node_status
+  changed_when: false
+  tags: [storage-node, verify]
+
+- name: Display node status
+  debug:
+    msg: "{{ node_status.stdout_lines }}"
+  tags: [storage-node, verify]
+
+- name: Storage node configuration summary
+  debug:
+    msg:
+      - "========================================="
+      - "Storage Node Configuration Complete"
+      - "========================================="
+      - "Node: {{ inventory_hostname }}"
+      - "OpenEBS data dir: {{ openebs_data_dir }}"
+      - "LocalPV path: {{ openebs_local_dir }}"
+      - "iSCSI enabled: {{ iscsi_enabled }}"
+      - "Labels: {{ storage_node_labels | join(', ') }}"
+      - "========================================="
+  tags: [storage-node]

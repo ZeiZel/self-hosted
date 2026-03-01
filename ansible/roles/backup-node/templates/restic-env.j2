@@ -1,0 +1,14 @@
+# Restic environment configuration
+# Source this file before running restic commands:
+# source {{ nfs_exports_dir }}/.restic-env
+
+export RESTIC_REPOSITORY="{{ nfs_restic_dir }}"
+export RESTIC_PASSWORD_FILE="{{ nfs_exports_dir }}/.restic-password"
+export RESTIC_CACHE_DIR="{{ nfs_exports_dir }}/.cache/restic"
+
+# Retention policy defaults
+export RESTIC_KEEP_LAST=7
+export RESTIC_KEEP_DAILY=7
+export RESTIC_KEEP_WEEKLY=4
+export RESTIC_KEEP_MONTHLY=12
+export RESTIC_KEEP_YEARLY=2

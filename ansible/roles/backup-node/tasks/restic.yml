@@ -1,0 +1,74 @@
+---
+# Restic repository initialization on backup node
+
+- name: Install Restic
+  apt:
+    name: restic
+    state: present
+    update_cache: yes
+  become: yes
+  tags: [backup-node, restic, packages]
+
+- name: Check if Restic repository exists
+  stat:
+    path: "{{ nfs_restic_dir }}/config"
+  register: restic_repo_check
+  tags: [backup-node, restic]
+
+- name: Initialize Restic repository
+  shell: |
+    export RESTIC_REPOSITORY="{{ nfs_restic_dir }}"
+    export RESTIC_PASSWORD="{{ restic_password }}"
+    restic init
+  when: not restic_repo_check.stat.exists
+  become: yes
+  no_log: true
+  tags: [backup-node, restic, init]
+
+- name: Fix Restic repository ownership
+  file:
+    path: "{{ nfs_restic_dir }}"
+    owner: "{{ backup_user }}"
+    group: "{{ backup_group }}"
+    recurse: yes
+  become: yes
+  when: not restic_repo_check.stat.exists
+  tags: [backup-node, restic, init]
+
+- name: Create Restic password file (secured)
+  copy:
+    content: "{{ restic_password }}"
+    dest: "{{ nfs_exports_dir }}/.restic-password"
+    owner: "{{ backup_user }}"
+    group: "{{ backup_group }}"
+    mode: '0600'
+  become: yes
+  no_log: true
+  tags: [backup-node, restic, password]
+
+- name: Create Restic environment file
+  template:
+    src: restic-env.j2
+    dest: "{{ nfs_exports_dir }}/.restic-env"
+    owner: "{{ backup_user }}"
+    group: "{{ backup_group }}"
+    mode: '0600'
+  become: yes
+  tags: [backup-node, restic, env]
+
+- name: Verify Restic repository
+  shell: |
+    export RESTIC_REPOSITORY="{{ nfs_restic_dir }}"
+    export RESTIC_PASSWORD="{{ restic_password }}"
+    restic check
+  become: yes
+  register: restic_check
+  changed_when: false
+  no_log: true
+  tags: [backup-node, restic, verify]
+
+- name: Display Restic repository status
+  debug:
+    msg: "Restic repository is healthy"
+  when: restic_check.rc == 0
+  tags: [backup-node, restic, verify]

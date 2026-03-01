@@ -1,0 +1,32 @@
+---
+# Storage node role defaults
+# Prepares a node for OpenEBS storage
+
+# Storage directories
+openebs_data_dir: "/var/openebs"
+openebs_local_dir: "{{ openebs_data_dir }}/local"
+openebs_sparse_dir: "{{ openebs_data_dir }}/sparse"
+
+# Storage disk (leave empty to use root filesystem)
+storage_disk: ""
+storage_filesystem: "ext4"
+storage_mount_options: "defaults,noatime,nodiratime"
+
+# iSCSI settings (required for some OpenEBS features)
+iscsi_enabled: true
+
+# Node labels for Kubernetes
+storage_node_labels:
+  - "openebs.io/engine=localpv"
+  - "node.kubernetes.io/storage=true"
+
+# Node taints (optional, to dedicate node for storage)
+storage_node_taints: []
+  # - "storage=true:NoSchedule"
+
+# Resource limits
+storage_reserved_cpu: "500m"
+storage_reserved_memory: "1Gi"
+
+# Monitoring
+storage_monitoring_enabled: true

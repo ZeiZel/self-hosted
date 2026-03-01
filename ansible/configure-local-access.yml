@@ -1,0 +1,132 @@
+---
+# =============================================================================
+# CONFIGURE LOCAL ACCESS
+# =============================================================================
+# This playbook configures /etc/hosts on the local machine to enable
+# access to cluster services via <service>.zeizel.local
+#
+# Usage:
+#   ansible-playbook -i inventory/hosts.ini configure-local-access.yml
+#   ansible-playbook -i inventory/hosts.ini configure-local-access.yml -e "local_domain=mylab.local"
+#   ansible-playbook -i inventory/hosts.ini configure-local-access.yml --tags verify
+#
+# Options:
+#   -e local_domain=<domain>      Local domain suffix (default: zeizel.local)
+#   -e traefik_node_ip=<ip>       IP of node running Traefik (default: 192.168.100.100)
+#   -e auto_discover_services=false  Disable auto-discovery from ingresses
+
+- name: Configure Local Access to Cluster Services
+  hosts: local
+  become: false
+  gather_facts: true
+  vars:
+    # Can be overridden via -e flag
+    local_access_enabled: true
+
+  tasks:
+    - name: Check if kubectl is available
+      command: kubectl version --client
+      register: kubectl_check
+      changed_when: false
+      failed_when: false
+      tags: [local-access, check]
+
+    - name: Fail if kubectl not available
+      fail:
+        msg: "kubectl is not available. Please configure kubectl access to the cluster first."
+      when: kubectl_check.rc != 0
+      tags: [local-access, check]
+
+    - name: Check cluster connectivity
+      command: kubectl cluster-info
+      register: cluster_check
+      changed_when: false
+      failed_when: false
+      tags: [local-access, check]
+
+    - name: Warn if cluster not accessible
+      debug:
+        msg: "WARNING: Cannot connect to cluster. Will use default/custom services list."
+      when: cluster_check.rc != 0
+      tags: [local-access, check]
+
+    - name: Set auto_discover based on cluster connectivity
+      set_fact:
+        auto_discover_services: "{{ cluster_check.rc == 0 }}"
+      tags: [local-access, check]
+
+    - name: Include local-access role
+      include_role:
+        name: local-access
+      tags: [local-access]
+
+# =============================================================================
+# VERIFY CONNECTIVITY
+# =============================================================================
+- name: Verify Local Access
+  hosts: local
+  become: false
+  gather_facts: false
+  tags: [verify]
+
+  tasks:
+    - name: Test connectivity to local services
+      uri:
+        url: "http://{{ traefik_node_ip | default('192.168.100.100') }}:{{ traefik_nodeport_http | default(30080) }}"
+        method: GET
+        headers:
+          Host: "{{ item }}.{{ local_domain | default('zeizel.local') }}"
+        timeout: 5
+        status_code: [200, 301, 302, 401, 403, 404]
+        validate_certs: false
+      register: local_test
+      failed_when: false
+      loop:
+        - glance
+        - zerobyte
+        - monitoring
+      tags: [verify, test]
+
+    - name: Display local connectivity results
+      debug:
+        msg: |
+          Local Access Test Results:
+          {% for result in local_test.results %}
+          - {{ result.item }}.{{ local_domain | default('zeizel.local') }}: {{ 'OK (' + (result.status | string) + ')' if result.status is defined else 'FAILED - ' + (result.msg | default('Unknown error')) }}
+          {% endfor %}
+      tags: [verify, test]
+
+    - name: Test connectivity to remote services
+      uri:
+        url: "https://{{ item }}.zeizel.ru"
+        method: GET
+        timeout: 10
+        status_code: [200, 301, 302, 401, 403, 502, 503]
+        validate_certs: false
+      register: remote_test
+      failed_when: false
+      loop:
+        - glance
+        - zerobyte
+        - monitoring
+      tags: [verify, test-remote]
+
+    - name: Display remote connectivity results
+      debug:
+        msg: |
+          Remote Access Test Results (via Pangolin):
+          {% for result in remote_test.results %}
+          - {{ result.item }}.zeizel.ru: {{ 'OK (' + (result.status | string) + ')' if result.status is defined else 'FAILED - ' + (result.msg | default('Unknown error')) }}
+          {% endfor %}
+      tags: [verify, test-remote]
+
+    - name: Summary
+      debug:
+        msg:
+          - "========================================="
+          - "Connectivity Test Summary"
+          - "========================================="
+          - "Local tests completed: {{ local_test.results | selectattr('status', 'defined') | list | length }}/{{ local_test.results | length }}"
+          - "Remote tests completed: {{ remote_test.results | selectattr('status', 'defined') | list | length }}/{{ remote_test.results | length }}"
+          - "========================================="
+      tags: [verify]

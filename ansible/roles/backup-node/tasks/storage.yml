@@ -1,0 +1,71 @@
+---
+# Storage setup for backup node
+
+- name: Check available disk space
+  shell: df -h {{ nfs_exports_dir }} | tail -1 | awk '{print $4}'
+  register: available_space
+  changed_when: false
+  become: yes
+  tags: [backup-node, storage]
+
+- name: Display available space
+  debug:
+    msg: "Available space on {{ nfs_exports_dir }}: {{ available_space.stdout }}"
+  tags: [backup-node, storage]
+
+- name: Set up dedicated disk if specified
+  block:
+    - name: Check if disk exists
+      stat:
+        path: "{{ backup_disk }}"
+      register: disk_check
+
+    - name: Create filesystem on backup disk
+      filesystem:
+        fstype: "{{ backup_filesystem }}"
+        dev: "{{ backup_disk }}"
+      when: disk_check.stat.exists
+      become: yes
+
+    - name: Mount backup disk
+      mount:
+        path: "{{ nfs_exports_dir }}"
+        src: "{{ backup_disk }}"
+        fstype: "{{ backup_filesystem }}"
+        opts: "{{ backup_mount_options }}"
+        state: mounted
+      when: disk_check.stat.exists
+      become: yes
+
+    - name: Fix permissions after mount
+      file:
+        path: "{{ nfs_exports_dir }}"
+        owner: "{{ backup_user }}"
+        group: "{{ backup_group }}"
+        mode: '0755'
+      become: yes
+  when: backup_disk | length > 0
+  tags: [backup-node, storage, disk]
+
+- name: Create cleanup cron job
+  cron:
+    name: "Cleanup old backups"
+    minute: "0"
+    hour: "4"
+    job: "find {{ nfs_exports_dir }}/dumps -type f -mtime +{{ backup_retention_days }} -delete"
+    user: root
+    state: present
+  become: yes
+  tags: [backup-node, storage, cron]
+
+- name: Create disk space monitoring cron
+  cron:
+    name: "Check backup disk space"
+    minute: "*/30"
+    job: >
+      df {{ nfs_exports_dir }} | awk 'NR==2 {if ($5+0 > 90) print "WARNING: Backup disk usage at " $5}'
+      | logger -t backup-monitor
+    user: root
+    state: present
+  become: yes
+  tags: [backup-node, storage, cron]

@@ -1,0 +1,58 @@
+---
+# Monitoring setup for backup node
+
+- name: Install node_exporter for Prometheus monitoring
+  apt:
+    name: prometheus-node-exporter
+    state: present
+  become: yes
+  tags: [backup-node, monitoring]
+
+- name: Enable and start node_exporter
+  systemd:
+    name: prometheus-node-exporter
+    enabled: yes
+    state: started
+  become: yes
+  tags: [backup-node, monitoring]
+
+- name: Create backup metrics script
+  template:
+    src: backup-metrics.sh.j2
+    dest: /usr/local/bin/backup-metrics.sh
+    owner: root
+    group: root
+    mode: '0755'
+  become: yes
+  tags: [backup-node, monitoring]
+
+- name: Create textfile collector directory
+  file:
+    path: /var/lib/prometheus/node-exporter
+    state: directory
+    owner: prometheus
+    group: prometheus
+    mode: '0755'
+  become: yes
+  tags: [backup-node, monitoring]
+
+- name: Add backup metrics cron job
+  cron:
+    name: "Generate backup metrics"
+    minute: "*/5"
+    job: "/usr/local/bin/backup-metrics.sh > /var/lib/prometheus/node-exporter/backup.prom"
+    user: root
+    state: present
+  become: yes
+  tags: [backup-node, monitoring, cron]
+
+- name: Allow Prometheus access from cluster
+  ufw:
+    rule: allow
+    port: "{{ backup_prometheus_port }}"
+    proto: tcp
+    from: "{{ nfs_allowed_networks | join(',') }}"
+    comment: "Prometheus node_exporter"
+  become: yes
+  when: firewall_enabled
+  tags: [backup-node, monitoring, firewall]

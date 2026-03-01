@@ -1,0 +1,166 @@
+---
+# =============================================================================
+# LOCAL ACCESS CONFIGURATION
+# =============================================================================
+# Configures /etc/hosts on local machine for cluster service access
+# This allows accessing services via <service>.zeizel.local
+
+- name: Display local access configuration
+  debug:
+    msg:
+      - "========================================="
+      - "Configuring Local Access"
+      - "========================================="
+      - "Local domain: {{ local_domain }}"
+      - "Traefik IP: {{ traefik_node_ip }}"
+      - "Auto-discover: {{ auto_discover_services }}"
+      - "========================================="
+  tags: [local-access, info]
+
+# -----------------------------------------------------------------------------
+# Auto-discover services from cluster ingresses
+# -----------------------------------------------------------------------------
+- name: Get ingresses with local domain
+  shell: |
+    kubectl get ingress -A -o jsonpath='{range .items[*]}{range .spec.rules[*]}{.host}{"\n"}{end}{end}' | \
+    grep "{{ local_domain }}" | \
+    sed 's/\.{{ local_domain | regex_escape }}$//' | \
+    sort -u
+  register: discovered_services
+  changed_when: false
+  when: auto_discover_services
+  tags: [local-access, discover]
+
+- name: Set discovered services list
+  set_fact:
+    all_local_services: "{{ (discovered_services.stdout_lines | default([])) + custom_local_services | unique }}"
+  tags: [local-access, discover]
+
+- name: Display services to configure
+  debug:
+    msg: "Services for local access: {{ all_local_services | join(', ') }}"
+  tags: [local-access, info]
+
+# -----------------------------------------------------------------------------
+# Build hosts entries
+# -----------------------------------------------------------------------------
+- name: Build hosts file entries
+  set_fact:
+    hosts_entries: "{{ traefik_node_ip }} {{ all_local_services | map('regex_replace', '$', '.' + local_domain) | join(' ') }}"
+  tags: [local-access, hosts]
+
+- name: Display hosts entries
+  debug:
+    msg: "Hosts entry: {{ hosts_entries }}"
+  tags: [local-access, info]
+
+# -----------------------------------------------------------------------------
+# Update /etc/hosts (with fallback for passwordless sudo)
+# -----------------------------------------------------------------------------
+- name: Check if marker exists in /etc/hosts
+  shell: grep -q "{{ hosts_marker }}" /etc/hosts
+  register: marker_check
+  changed_when: false
+  failed_when: false
+  tags: [local-access, hosts]
+
+- name: Generate hosts update script
+  copy:
+    content: |
+      #!/bin/bash
+      # Auto-generated script to update /etc/hosts for local cluster access
+      # Run with: sudo ./update-hosts.sh
+
+      MARKER="{{ hosts_marker }}"
+      ENTRIES="{{ hosts_entries }}"
+
+      # Remove old entries if marker exists
+      if grep -q "$MARKER" /etc/hosts; then
+        echo "Removing old entries..."
+        sed -i.bak "/$MARKER/d" /etc/hosts
+        sed -i.bak "/{{ traefik_node_ip }}.*{{ local_domain }}/d" /etc/hosts
+      fi
+
+      # Add new entries
+      echo "Adding new entries..."
+      echo "" >> /etc/hosts
+      echo "$MARKER" >> /etc/hosts
+      echo "$ENTRIES" >> /etc/hosts
+
+      echo "Done! Hosts file updated."
+      grep "{{ local_domain }}" /etc/hosts
+    dest: "/tmp/update-hosts.sh"
+    mode: '0755'
+  tags: [local-access, hosts]
+
+- name: Try to update /etc/hosts directly
+  shell: |
+    # Check if we can write to /etc/hosts
+    if sudo -n true 2>/dev/null; then
+      # Remove old entries
+      sudo sed -i.bak '/{{ hosts_marker | regex_escape }}/d' /etc/hosts 2>/dev/null || true
+      sudo sed -i.bak '/{{ traefik_node_ip }}.*{{ local_domain }}/d' /etc/hosts 2>/dev/null || true
+      # Add new entries
+      echo "" | sudo tee -a /etc/hosts > /dev/null
+      echo "{{ hosts_marker }}" | sudo tee -a /etc/hosts > /dev/null
+      echo "{{ hosts_entries }}" | sudo tee -a /etc/hosts > /dev/null
+      echo "SUCCESS"
+    else
+      echo "NEEDS_SUDO"
+    fi
+  register: hosts_update
+  changed_when: "'SUCCESS' in hosts_update.stdout"
+  failed_when: false
+  tags: [local-access, hosts]
+
+- name: Display manual instruction if sudo required
+  debug:
+    msg:
+      - "========================================="
+      - "MANUAL ACTION REQUIRED"
+      - "========================================="
+      - "Run the following command to update /etc/hosts:"
+      - ""
+      - "  sudo /tmp/update-hosts.sh"
+      - ""
+      - "Or manually add these lines to /etc/hosts:"
+      - "  {{ hosts_marker }}"
+      - "  {{ hosts_entries }}"
+      - "========================================="
+  when: "'NEEDS_SUDO' in hosts_update.stdout"
+  tags: [local-access, hosts]
+
+# -----------------------------------------------------------------------------
+# Verify configuration
+# -----------------------------------------------------------------------------
+- name: Verify hosts file entries
+  shell: grep "{{ local_domain }}" /etc/hosts
+  register: hosts_verify
+  changed_when: false
+  tags: [local-access, verify]
+
+- name: Display hosts file entries
+  debug:
+    msg: "{{ hosts_verify.stdout_lines }}"
+  tags: [local-access, verify]
+
+- name: Local access configuration complete
+  debug:
+    msg:
+      - "========================================="
+      - "Local Access Configured!"
+      - "========================================="
+      - ""
+      - "IMPORTANT: Use port {{ traefik_nodeport_http }} for HTTP access"
+      - ""
+      - "Access services via curl with Host header:"
+      - "  curl -H 'Host: <app>.{{ local_domain }}' http://{{ traefik_node_ip }}:{{ traefik_nodeport_http }}/"
+      - ""
+      - "Or in browser (set up proxy to port {{ traefik_nodeport_http }}):"
+      - "{% for svc in all_local_services %}  - http://{{ svc }}.{{ local_domain }}:{{ traefik_nodeport_http }}"
+      - "{% endfor %}"
+      - ""
+      - "For standard port 80 access, set up local SSH tunnel:"
+      - "  ssh -fNL 80:{{ traefik_node_ip }}:{{ traefik_nodeport_http }} proxmox"
+      - "========================================="
+  tags: [local-access]

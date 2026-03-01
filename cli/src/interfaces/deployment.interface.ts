@@ -9,11 +9,12 @@ export enum DeploymentPhase {
   INFRASTRUCTURE_SETUP = 1,
   KUBERNETES_BOOTSTRAP = 2,
   STORAGE_LAYER = 3,
-  CORE_SERVICES = 4,
-  DATABASES = 5,
-  APPLICATION_SERVICES = 6,
-  NETWORK_GATEWAY = 7,
-  VERIFICATION = 8,
+  BACKUP_SETUP = 4,
+  CORE_SERVICES = 5,
+  DATABASES = 6,
+  APPLICATION_SERVICES = 7,
+  NETWORK_GATEWAY = 8,
+  VERIFICATION = 9,
 }
 
 /**
@@ -113,6 +114,9 @@ export const deploymentConfigSchema = z.object({
     bypass_permissions: z.boolean().default(false),
     skip_phases: z.array(z.number()).default([]),
     parallel_deploys: z.number().min(1).max(10).default(3),
+    enable_local_access: z.boolean().default(false),
+    local_domain: z.string().default('zeizel.local'),
+    traefik_node_ip: z.string().ip().optional(),
   }).default({}),
 });
 
@@ -139,6 +143,7 @@ export function getPhaseName(phase: DeploymentPhase): string {
     [DeploymentPhase.INFRASTRUCTURE_SETUP]: 'Infrastructure Setup',
     [DeploymentPhase.KUBERNETES_BOOTSTRAP]: 'Kubernetes Bootstrap',
     [DeploymentPhase.STORAGE_LAYER]: 'Storage Layer',
+    [DeploymentPhase.BACKUP_SETUP]: 'Backup Infrastructure',
     [DeploymentPhase.CORE_SERVICES]: 'Core Services',
     [DeploymentPhase.DATABASES]: 'Databases',
     [DeploymentPhase.APPLICATION_SERVICES]: 'Application Services',

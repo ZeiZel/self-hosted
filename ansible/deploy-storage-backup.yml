@@ -1,0 +1,46 @@
+---
+# Simplified playbook for storage and backup node deployment
+# Does not require vault - uses default values
+
+- name: Prepare Backup Node
+  hosts: backups
+  become: true
+  gather_facts: true
+  vars:
+    # Override vault variables with defaults
+    vault_restic_password: "backup-secure-password-change-me"
+    domain: "zeizel.ru"
+  roles:
+    - role: backup-node
+      tags: [backup-node]
+
+- name: Prepare Storage Node
+  hosts: storages
+  become: true
+  gather_facts: true
+  roles:
+    - role: storage-node
+      tags: [storage-node]
+
+- name: Deploy OpenEBS
+  hosts: local
+  become: false
+  gather_facts: true
+  tags: [openebs]
+  roles:
+    - role: storage
+      tags: [storage, openebs]
+
+- name: Deploy Zerobyte via Helmfile
+  hosts: local
+  become: false
+  gather_facts: true
+  tags: [zerobyte]
+  tasks:
+    - name: Deploy Zerobyte
+      command: helmfile -e k8s apply --selector name=zerobyte
+      args:
+        chdir: "{{ playbook_dir }}/../kubernetes"
+      register: zerobyte_deploy
+      changed_when: "'no changes' not in zerobyte_deploy.stdout"
+      ignore_errors: true

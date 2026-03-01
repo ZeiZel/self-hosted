@@ -1,0 +1,208 @@
+---
+# =============================================================================
+# SCALE CLUSTER AND DEPLOY STORAGE INFRASTRUCTURE
+# =============================================================================
+# This playbook:
+# 1. Regenerates kubespray inventory with storage node
+# 2. Adds storage node to Kubernetes cluster
+# 3. Prepares storage node for OpenEBS
+# 4. Deploys OpenEBS storage provisioner
+# 5. Deploys Glance dashboard
+# 6. Deploys Zerobyte backup system
+# 7. Tests backup functionality
+
+# -----------------------------------------------------------------------------
+# Step 1: Regenerate kubespray inventory
+# -----------------------------------------------------------------------------
+- name: Regenerate Kubespray Inventory
+  hosts: local
+  become: false
+  gather_facts: true
+  tags: [prepare, inventory]
+  tasks:
+    - name: Include kubespray defaults
+      include_vars:
+        file: "{{ playbook_dir }}/roles/kubespray/defaults/main.yml"
+
+    - name: Create kubespray inventory directory
+      file:
+        path: "{{ kubespray_inventory_dir }}"
+        state: directory
+        mode: '0755'
+
+    - name: Generate kubespray inventory
+      template:
+        src: "{{ playbook_dir }}/roles/kubespray/templates/inventory.yaml.j2"
+        dest: "{{ kubespray_inventory_dir }}/hosts.yaml"
+        mode: '0644'
+
+    - name: Display inventory content
+      command: cat {{ kubespray_inventory_dir }}/hosts.yaml
+      register: inventory_content
+      changed_when: false
+
+    - name: Show generated inventory
+      debug:
+        msg: "{{ inventory_content.stdout_lines }}"
+
+# -----------------------------------------------------------------------------
+# Step 2: Add storage node to cluster
+# -----------------------------------------------------------------------------
+- name: Add Storage Node to Kubernetes Cluster
+  hosts: local
+  become: false
+  gather_facts: true
+  tags: [scale, kubespray]
+  vars:
+    scale_node_limit: "storage"
+  tasks:
+    - name: Include kubespray defaults
+      include_vars:
+        file: "{{ playbook_dir }}/roles/kubespray/defaults/main.yml"
+
+    - name: Include scale tasks
+      include_tasks: "{{ playbook_dir }}/roles/kubespray/tasks/scale.yml"
+
+# -----------------------------------------------------------------------------
+# Step 3: Prepare storage node
+# -----------------------------------------------------------------------------
+- name: Prepare Storage Node
+  hosts: storages
+  become: true
+  gather_facts: true
+  tags: [storage-node]
+  roles:
+    - role: storage-node
+      tags: [storage-node]
+
+# -----------------------------------------------------------------------------
+# Step 4: Deploy OpenEBS
+# -----------------------------------------------------------------------------
+- name: Deploy OpenEBS Storage
+  hosts: local
+  become: false
+  gather_facts: true
+  tags: [openebs, storage]
+  roles:
+    - role: storage
+      tags: [storage, openebs]
+
+# -----------------------------------------------------------------------------
+# Step 5: Deploy Glance
+# -----------------------------------------------------------------------------
+- name: Deploy Glance Dashboard
+  hosts: local
+  become: false
+  gather_facts: true
+  tags: [glance]
+  tasks:
+    - name: Deploy Glance via Helmfile
+      command: helmfile -e k8s apply --selector name=glance
+      args:
+        chdir: "{{ playbook_dir }}/../kubernetes"
+      register: glance_deploy
+      changed_when: "'no changes' not in glance_deploy.stdout"
+
+    - name: Display Glance deployment result
+      debug:
+        msg: "{{ glance_deploy.stdout_lines[-20:] }}"
+      when: glance_deploy.stdout_lines is defined
+
+# -----------------------------------------------------------------------------
+# Step 6: Deploy Zerobyte
+# -----------------------------------------------------------------------------
+- name: Deploy Zerobyte Backup System
+  hosts: local
+  become: false
+  gather_facts: true
+  tags: [zerobyte]
+  tasks:
+    - name: Deploy Zerobyte via Helmfile
+      command: helmfile -e k8s apply --selector name=zerobyte
+      args:
+        chdir: "{{ playbook_dir }}/../kubernetes"
+      register: zerobyte_deploy
+      changed_when: "'no changes' not in zerobyte_deploy.stdout"
+      ignore_errors: true
+
+    - name: Display Zerobyte deployment result
+      debug:
+        msg: "{{ zerobyte_deploy.stdout_lines[-20:] }}"
+      when: zerobyte_deploy.stdout_lines is defined
+
+# -----------------------------------------------------------------------------
+# Step 7: Test backup functionality
+# -----------------------------------------------------------------------------
+- name: Test Backup Functionality
+  hosts: backups
+  become: true
+  gather_facts: true
+  tags: [test-backup]
+  vars:
+    vault_restic_password: "backup-secure-password-change-me"
+  tasks:
+    - name: Include backup-node defaults
+      include_vars:
+        file: "{{ playbook_dir }}/roles/backup-node/defaults/main.yml"
+
+    - name: Create test file for backup
+      copy:
+        content: |
+          Test backup file created at {{ ansible_date_time.iso8601 }}
+          This verifies the backup infrastructure is working correctly.
+        dest: /backup/dumps/test-backup-{{ ansible_date_time.epoch }}.txt
+        mode: '0644'
+      register: test_file
+
+    - name: Run test backup
+      command: >
+        restic backup
+        --verbose
+        --tag test
+        --tag verification
+        /backup/dumps/test-backup-{{ ansible_date_time.epoch }}.txt
+      environment:
+        RESTIC_REPOSITORY: "{{ restic_repository }}"
+        RESTIC_PASSWORD: "{{ vault_restic_password }}"
+      register: test_backup_result
+      changed_when: true
+
+    - name: Display test backup result
+      debug:
+        msg: "{{ test_backup_result.stdout_lines }}"
+      when: test_backup_result.stdout_lines is defined
+
+    - name: List snapshots to verify
+      command: restic snapshots --json
+      environment:
+        RESTIC_REPOSITORY: "{{ restic_repository }}"
+        RESTIC_PASSWORD: "{{ vault_restic_password }}"
+      register: snapshots_result
+      changed_when: false
+
+    - name: Parse and display snapshots
+      debug:
+        msg: |
+          Backup verification complete!
+
+          Snapshots found: {{ (snapshots_result.stdout | from_json) | length }}
+
+          Latest snapshot details:
+          {{ (snapshots_result.stdout | from_json) | last | to_nice_yaml }}
+      when: snapshots_result.stdout | length > 2
+
+    - name: Cleanup test file
+      file:
+        path: /backup/dumps/test-backup-{{ ansible_date_time.epoch }}.txt
+        state: absent
+
+    - name: Backup infrastructure verification
+      debug:
+        msg:
+          - "========================================="
+          - "Backup Infrastructure Verified!"
+          - "========================================="
+          - "✓ Restic repository: {{ restic_repository }}"
+          - "✓ NFS export: {{ nfs_export_path }}"
+          - "✓ Test backup: SUCCESS"
+          - "========================================="

@@ -1,0 +1,101 @@
+namespace: infrastructure
+
+# Zerobyte configuration
+image:
+  repository: kiwimato/zerobyte
+  tag: "latest"
+  pullPolicy: IfNotPresent
+
+replicaCount: 1
+
+# Restic repository configuration
+restic:
+  repositoryType: nfs
+
+  # NFS to backup node (k8s-worker3)
+  nfs:
+    server: "192.168.100.104"
+    path: "/backup/restic"
+    mountOptions:
+      - hard
+      - nfsvers=4.1
+
+  # Restic password from secrets
+  passwordSecret: "{{ .Values.secrets.resticPassword | default "backup-secure-password" }}"
+
+  # Retention policy
+  retention:
+    keepLast: 7
+    keepDaily: 7
+    keepWeekly: 4
+    keepMonthly: 12
+    keepYearly: 2
+
+# Backup sources (PVCs to backup)
+backupSources:
+  - name: "postgres-data"
+    namespace: "db"
+    pvcName: "data-postgresql-0"
+    schedule: "0 2 * * *"
+  - name: "minio-data"
+    namespace: "db"
+    pvcName: "minio"
+    schedule: "0 3 * * *"
+  - name: "vault-data"
+    namespace: "service"
+    pvcName: "data-vault-0"
+    schedule: "0 4 * * *"
+  - name: "gitlab-data"
+    namespace: "code"
+    pvcName: "repo-data-gitlab-gitaly-0"
+    schedule: "0 5 * * *"
+
+# Resources
+resources:
+  limits:
+    cpu: 500m
+    memory: 512Mi
+  requests:
+    cpu: 100m
+    memory: 128Mi
+
+# Persistence
+persistence:
+  config:
+    enabled: true
+    storageClass: openebs-hostpath
+    size: 1Gi
+  cache:
+    enabled: true
+    storageClass: openebs-hostpath
+    size: 5Gi
+
+# Ingress
+ingress:
+  enabled: true
+  className: traefik
+  host: backup.{{ .Values.infra.host }}
+  tls:
+    enabled: true
+    secretName: zerobyte-tls
+    clusterIssuer: letsencrypt
+
+# Authentik protection
+authentik:
+  enabled: true
+  middleware: "service-authentik-forward-auth@kubernetescrd"
+
+# Consul service discovery
+consul:
+  enabled: true
+  tags:
+    - backup
+    - zerobyte
+    - infrastructure
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  egressRules:
+    allowNFS: true
+    allowS3: false

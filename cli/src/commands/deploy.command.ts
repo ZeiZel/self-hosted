@@ -20,6 +20,8 @@ export function createDeployCommand(app: INestApplicationContext): Command {
     .option('--dry-run', 'Show what would be executed without making changes')
     .option('--resume', 'Resume last incomplete deployment')
     .option('--fresh', 'Start fresh deployment (ignore any incomplete)')
+    .option('--enable-local-access', 'Configure local machine to access services via <app>.zeizel.local')
+    .option('--local-domain <domain>', 'Local domain suffix (default: zeizel.local)', 'zeizel.local')
     .addCommand(createHistoryCommand(app))
     .addCommand(createCleanCommand(app))
     .action(async (options) => {
@@ -97,6 +99,7 @@ export function createDeployCommand(app: INestApplicationContext): Command {
         'Services': enabledServices.length,
         'Dry run': options.dryRun ? 'Yes' : 'No',
         'Bypass confirmations': options.bypassPermissions ? 'Yes' : 'No',
+        'Local access': options.enableLocalAccess ? `Enabled (${options.localDomain})` : 'Disabled',
       });
 
       // Create or use deployment state
@@ -297,9 +300,17 @@ async function showPhaseTasks(phase: DeploymentPhase): Promise<void> {
       'Deploy CNI (Cilium/Calico)',
     ],
     [DeploymentPhase.STORAGE_LAYER]: [
+      'Prepare storage nodes (iSCSI, packages)',
       'Deploy OpenEBS on storage nodes',
-      'Create StorageClasses',
+      'Create StorageClasses (openebs-hostpath)',
       'Verify PVC provisioning',
+    ],
+    [DeploymentPhase.BACKUP_SETUP]: [
+      'Prepare backup node (NFS server)',
+      'Initialize Restic repository',
+      'Deploy Zerobyte backup UI',
+      'Configure backup CronJobs',
+      'Verify backup infrastructure',
     ],
     [DeploymentPhase.CORE_SERVICES]: [
       'Deploy namespaces',
@@ -331,6 +342,9 @@ async function showPhaseTasks(phase: DeploymentPhase): Promise<void> {
       'Run Helm tests',
       'Verify all pods Running',
       'Test ingress endpoints',
+      'Configure local access (/etc/hosts) if enabled',
+      'Test local connectivity (<app>.zeizel.local)',
+      'Test remote connectivity (<app>.zeizel.ru)',
       'Generate access credentials report',
     ],
   };

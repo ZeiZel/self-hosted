@@ -1,0 +1,53 @@
+---
+# Backup node role defaults
+# NFS server configuration for Zerobyte/Restic backups
+
+# NFS server settings
+nfs_enabled: true
+nfs_exports_dir: "/backup"
+nfs_restic_dir: "{{ nfs_exports_dir }}/restic"
+nfs_dumps_dir: "{{ nfs_exports_dir }}/dumps"
+nfs_export_path: "{{ nfs_exports_dir }}"
+
+# Restic repository path
+restic_repository: "{{ nfs_restic_dir }}"
+
+# Allowed networks for NFS access
+nfs_allowed_networks:
+  - "192.168.100.0/24"  # Cluster network
+
+# NFS export options
+nfs_export_options: "rw,sync,no_subtree_check,no_root_squash"
+
+# Storage settings
+backup_disk: ""  # Leave empty to use root filesystem
+backup_filesystem: "ext4"
+backup_mount_options: "defaults,noatime"
+
+# Retention settings (for cleanup scripts)
+backup_retention_days: 30
+backup_max_size_gb: 500
+
+# User/group for backup files
+backup_user: "backup"
+backup_group: "backup"
+backup_uid: 2000
+backup_gid: 2000
+
+# Restic repository initialization
+restic_init_repo: true
+restic_password: "{{ vault_restic_password | default('backup-secure-password') }}"
+
+# Monitoring
+backup_monitoring_enabled: true
+backup_prometheus_port: 9100  # node_exporter
+
+# Firewall settings
+firewall_enabled: true
+firewall_ports:
+  - "2049/tcp"   # NFS
+  - "2049/udp"   # NFS
+  - "111/tcp"    # rpcbind
+  - "111/udp"    # rpcbind
+  - "20048/tcp"  # mountd
+  - "20048/udp"  # mountd
