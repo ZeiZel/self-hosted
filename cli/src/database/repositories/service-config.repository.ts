@@ -62,9 +62,7 @@ export class ServiceConfigRepository {
    * Find all service configs
    */
   findAll(): ServiceConfig[] {
-    const rows = this.db.query<ServiceConfigRow>(
-      'SELECT * FROM service_configs ORDER BY name'
-    );
+    const rows = this.db.query<ServiceConfigRow>('SELECT * FROM service_configs ORDER BY name');
     return rows.map((row) => this.rowToServiceConfig(row));
   }
 
@@ -73,7 +71,7 @@ export class ServiceConfigRepository {
    */
   findEnabled(): ServiceConfig[] {
     const rows = this.db.query<ServiceConfigRow>(
-      'SELECT * FROM service_configs WHERE enabled = 1 ORDER BY name'
+      'SELECT * FROM service_configs WHERE enabled = 1 ORDER BY name',
     );
     return rows.map((row) => this.rowToServiceConfig(row));
   }
@@ -82,10 +80,9 @@ export class ServiceConfigRepository {
    * Find by ID
    */
   findById(id: string): ServiceConfig | null {
-    const row = this.db.queryOne<ServiceConfigRow>(
-      'SELECT * FROM service_configs WHERE id = ?',
-      [id]
-    );
+    const row = this.db.queryOne<ServiceConfigRow>('SELECT * FROM service_configs WHERE id = ?', [
+      id,
+    ]);
     return row ? this.rowToServiceConfig(row) : null;
   }
 
@@ -93,10 +90,9 @@ export class ServiceConfigRepository {
    * Find by name
    */
   findByName(name: string): ServiceConfig | null {
-    const row = this.db.queryOne<ServiceConfigRow>(
-      'SELECT * FROM service_configs WHERE name = ?',
-      [name]
-    );
+    const row = this.db.queryOne<ServiceConfigRow>('SELECT * FROM service_configs WHERE name = ?', [
+      name,
+    ]);
     return row ? this.rowToServiceConfig(row) : null;
   }
 
@@ -106,7 +102,7 @@ export class ServiceConfigRepository {
   findByNamespace(namespace: ServiceNamespace): ServiceConfig[] {
     const rows = this.db.query<ServiceConfigRow>(
       'SELECT * FROM service_configs WHERE namespace = ? ORDER BY name',
-      [namespace]
+      [namespace],
     );
     return rows.map((row) => this.rowToServiceConfig(row));
   }
@@ -117,7 +113,7 @@ export class ServiceConfigRepository {
   findByTier(tier: ServiceTier): ServiceConfig[] {
     const rows = this.db.query<ServiceConfigRow>(
       'SELECT * FROM service_configs WHERE tier = ? ORDER BY name',
-      [tier]
+      [tier],
     );
     return rows.map((row) => this.rowToServiceConfig(row));
   }

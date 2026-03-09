@@ -101,7 +101,7 @@ setup_repository() {
     fi
 }
 
-# Install dependencies and build
+# Install dependencies
 build_cli() {
     info "Installing dependencies..."
     cd "$INSTALL_DIR/cli"
@@ -109,9 +109,8 @@ build_cli() {
     bun install --frozen-lockfile 2>/dev/null || bun install
     success "Dependencies installed"
 
-    info "Building CLI..."
-    bun run build
-    success "CLI built successfully"
+    # Note: No build step needed - CLI runs directly with Bun
+    info "CLI ready (runs directly with Bun runtime)"
 }
 
 # Create wrapper script and install to bin

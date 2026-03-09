@@ -18,10 +18,7 @@ export function findRepoRoot(): string | null {
     }
 
     // Check if we're in the cli directory
-    if (
-      existsSync(join(currentDir, 'cli')) &&
-      existsSync(join(currentDir, 'kubernetes'))
-    ) {
+    if (existsSync(join(currentDir, 'cli')) && existsSync(join(currentDir, 'kubernetes'))) {
       return currentDir;
     }
 

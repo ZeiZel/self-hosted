@@ -143,8 +143,14 @@ export class PromptsService {
         choices: [
           { name: `${chalk.cyan('master')} - Kubernetes control plane`, value: MachineRole.MASTER },
           { name: `${chalk.green('worker')} - Kubernetes worker node`, value: MachineRole.WORKER },
-          { name: `${chalk.yellow('gateway')} - Public internet gateway (VPN)`, value: MachineRole.GATEWAY },
-          { name: `${chalk.magenta('storage')} - OpenEBS storage node`, value: MachineRole.STORAGE },
+          {
+            name: `${chalk.yellow('gateway')} - Public internet gateway (VPN)`,
+            value: MachineRole.GATEWAY,
+          },
+          {
+            name: `${chalk.magenta('storage')} - OpenEBS storage node`,
+            value: MachineRole.STORAGE,
+          },
           { name: `${chalk.gray('backups')} - Backup target (Velero)`, value: MachineRole.BACKUPS },
         ],
         validate: (input: MachineRole[]) => {

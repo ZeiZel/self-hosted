@@ -67,9 +67,18 @@ export const serviceConfigSchema = z.object({
   enabled: z.boolean().default(false),
   replicas: z.number().int().min(0).max(10).default(1),
   resources: z.object({
-    cpu: z.string().regex(/^\d+m?$/).default('100m'),
-    memory: z.string().regex(/^\d+(Mi|Gi)?$/).default('128Mi'),
-    storage: z.string().regex(/^\d+(Mi|Gi)?$/).default('1Gi'),
+    cpu: z
+      .string()
+      .regex(/^\d+m?$/)
+      .default('100m'),
+    memory: z
+      .string()
+      .regex(/^\d+(Mi|Gi)?$/)
+      .default('128Mi'),
+    storage: z
+      .string()
+      .regex(/^\d+(Mi|Gi)?$/)
+      .default('1Gi'),
   }),
   localDomain: z.string().optional(),
   publicDomain: z.string().optional(),

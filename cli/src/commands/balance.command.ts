@@ -130,10 +130,9 @@ function createAutoCommand(app: INestApplicationContext): Command {
         // Apply if not dry run
         if (!options.dryRun && plan.migrations.length > 0) {
           logger.newLine();
-          const confirm = await app.get(PromptsService).confirm(
-            `Apply ${plan.migrations.length} migration(s)?`,
-            false,
-          );
+          const confirm = await app
+            .get(PromptsService)
+            .confirm(`Apply ${plan.migrations.length} migration(s)?`, false);
 
           if (confirm) {
             const result = await balancingService.applyPlan(plan);
@@ -280,8 +279,7 @@ function createApplyCommand(_app: INestApplicationContext): Command {
  * Presets command
  */
 function createPresetsCommand(app: INestApplicationContext): Command {
-  const command = new Command('presets')
-    .description('Manage placement presets');
+  const command = new Command('presets').description('Manage placement presets');
 
   command
     .command('list')
@@ -425,9 +423,9 @@ function parseStrategy(str: string): BalancingStrategy | null {
   const strategies: Record<string, BalancingStrategy> = {
     'bin-packing': BalancingStrategy.BIN_PACKING,
     'round-robin': BalancingStrategy.ROUND_ROBIN,
-    'weighted': BalancingStrategy.WEIGHTED,
-    'affinity': BalancingStrategy.AFFINITY,
-    'spread': BalancingStrategy.SPREAD,
+    weighted: BalancingStrategy.WEIGHTED,
+    affinity: BalancingStrategy.AFFINITY,
+    spread: BalancingStrategy.SPREAD,
   };
   return strategies[str.toLowerCase()] || null;
 }
@@ -439,12 +437,10 @@ function displayPlan(plan: any, _tableService: TableService): void {
   logger.subHeader('Node Allocation');
 
   for (const node of plan.nodes) {
-    const cpuPercent = node.totalCpu > 0
-      ? Math.round((node.allocatedCpu / node.totalCpu) * 100)
-      : 0;
-    const memPercent = node.totalMemory > 0
-      ? Math.round((node.allocatedMemory / node.totalMemory) * 100)
-      : 0;
+    const cpuPercent =
+      node.totalCpu > 0 ? Math.round((node.allocatedCpu / node.totalCpu) * 100) : 0;
+    const memPercent =
+      node.totalMemory > 0 ? Math.round((node.allocatedMemory / node.totalMemory) * 100) : 0;
 
     logger.log(`  ${chalk.cyan(node.label)} [${node.roles.join(', ')}]`);
     logger.log(`    CPU: ${createBar(cpuPercent)} ${cpuPercent}%`);

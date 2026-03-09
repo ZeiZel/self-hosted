@@ -1,13 +1,10 @@
 [install]
-# Use exact versions for reproducibility
 exact = true
 
 [run]
-# Enable source maps for better stack traces
 smol = false
 
 [test]
-# Test configuration
 preload = ["./src/__tests__/setup.ts"]
 coverage = true
 coverageDir = "coverage"

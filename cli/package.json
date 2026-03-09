@@ -45,6 +45,7 @@
     "@typescript-eslint/parser": "^8.19.1",
     "eslint": "^9.17.0",
     "eslint-config-prettier": "^9.1.0",
+    "jiti": "2.6.1",
     "prettier": "^3.4.2",
     "typescript": "^5.7.2"
   },

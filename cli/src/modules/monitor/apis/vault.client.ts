@@ -1,11 +1,6 @@
 import { Injectable } from '@nestjs/common';
 import { BaseApiClient } from './base-api.client';
-import {
-  ApiEndpoint,
-  ApiHealthStatus,
-  VaultState,
-  VaultStatus,
-} from './interfaces/api.interface';
+import { ApiEndpoint, ApiHealthStatus, VaultState, VaultStatus } from './interfaces/api.interface';
 
 /**
  * Vault API client

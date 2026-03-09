@@ -70,10 +70,12 @@ export class DaemonService {
   /**
    * Get daemon logs (from SQLite)
    */
-  getLogs(options: {
-    status?: DaemonHealthStatus;
-    limit?: number;
-  } = {}): DaemonHealthLog[] {
+  getLogs(
+    options: {
+      status?: DaemonHealthStatus;
+      limit?: number;
+    } = {},
+  ): DaemonHealthLog[] {
     return this.daemonClient.getHealthLogs({
       status: options.status,
       limit: options.limit || 50,
@@ -83,10 +85,12 @@ export class DaemonService {
   /**
    * Get container logs (from Docker)
    */
-  async getContainerLogs(options: {
-    follow?: boolean;
-    tail?: number;
-  } = {}): Promise<string> {
+  async getContainerLogs(
+    options: {
+      follow?: boolean;
+      tail?: number;
+    } = {},
+  ): Promise<string> {
     return this.daemonInit.getLogs(options);
   }
 
@@ -163,8 +167,11 @@ export class DaemonService {
       }
 
       // Clean old logs periodically (every 24 hours worth of checks)
-      const checksSinceClean = parseInt(this.daemonClient.getState('checks_since_clean') || '0', 10);
-      if (checksSinceClean >= (86400 / fullConfig.checkInterval)) {
+      const checksSinceClean = parseInt(
+        this.daemonClient.getState('checks_since_clean') || '0',
+        10,
+      );
+      if (checksSinceClean >= 86400 / fullConfig.checkInterval) {
         const deleted = this.daemonClient.cleanOldLogs(fullConfig.retentionDays);
         console.log(`[${new Date().toISOString()}] Cleaned ${deleted} old log entries`);
         this.daemonClient.setState('checks_since_clean', '0');

@@ -167,8 +167,10 @@ export class DaemonInitService {
   async isContainerRunning(): Promise<boolean> {
     const result = await this.runCommand('docker', [
       'ps',
-      '--filter', 'name=selfhost-daemon',
-      '--filter', 'status=running',
+      '--filter',
+      'name=selfhost-daemon',
+      '--filter',
+      'status=running',
       '-q',
     ]);
     return result.success && result.stdout.trim().length > 0;
@@ -180,7 +182,8 @@ export class DaemonInitService {
   private async getContainerId(): Promise<string | null> {
     const result = await this.runCommand('docker', [
       'ps',
-      '--filter', 'name=selfhost-daemon',
+      '--filter',
+      'name=selfhost-daemon',
       '-q',
     ]);
     return result.success ? result.stdout.trim() || null : null;
@@ -208,15 +211,16 @@ export class DaemonInitService {
       throw new Error('Not in a selfhost repository. Cannot build daemon image.');
     }
 
-    const content = DOCKER_COMPOSE_TEMPLATE
-      .replace(/\{\{imageName\}\}/g, 'selfhost-daemon')
+    const content = DOCKER_COMPOSE_TEMPLATE.replace(/\{\{imageName\}\}/g, 'selfhost-daemon')
       .replace(/\{\{imageTag\}\}/g, 'latest')
       .replace(/\{\{dataDir\}\}/g, dataDir)
       .replace(/\{\{kubeconfig\}\}/g, kubeconfig)
       .replace(/\{\{checkInterval\}\}/g, String(config.checkInterval));
 
     // Add build context
-    const fullContent = content + `
+    const fullContent =
+      content +
+      `
     build:
       context: ${repoRoot}
       dockerfile: docker/selfhost-daemon/Dockerfile
@@ -258,10 +262,7 @@ export class DaemonInitService {
     stdout: string;
     stderr: string;
   }> {
-    return this.runCommand('docker-compose', [
-      '-f', this.composeFile,
-      ...args,
-    ]);
+    return this.runCommand('docker-compose', ['-f', this.composeFile, ...args]);
   }
 
   /**

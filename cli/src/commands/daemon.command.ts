@@ -98,54 +98,50 @@ function createInitSubcommand(app: INestApplicationContext): Command {
  * Start subcommand
  */
 function createStartSubcommand(app: INestApplicationContext): Command {
-  return new Command('start')
-    .description('Start the daemon container')
-    .action(async () => {
-      const daemonService = app.get(DaemonService);
+  return new Command('start').description('Start the daemon container').action(async () => {
+    const daemonService = app.get(DaemonService);
 
-      // Check if initialized
-      const initialized = await daemonService.isInitialized();
-      if (!initialized) {
-        logger.error('Daemon not initialized. Run `selfhost daemon init` first.');
-        process.exit(1);
-      }
+    // Check if initialized
+    const initialized = await daemonService.isInitialized();
+    if (!initialized) {
+      logger.error('Daemon not initialized. Run `selfhost daemon init` first.');
+      process.exit(1);
+    }
 
-      const spinner = logger.spinner('Starting daemon...').start();
+    const spinner = logger.spinner('Starting daemon...').start();
 
-      try {
-        const containerId = await daemonService.start();
-        spinner.succeed('Daemon started successfully');
-        logger.log(`  Container ID: ${chalk.gray(containerId.slice(0, 12))}`);
-        logger.newLine();
-        logger.info('View logs with: selfhost daemon logs');
-      } catch (error) {
-        spinner.fail('Failed to start daemon');
-        logger.error(error instanceof Error ? error.message : String(error));
-        process.exit(1);
-      }
-    });
+    try {
+      const containerId = await daemonService.start();
+      spinner.succeed('Daemon started successfully');
+      logger.log(`  Container ID: ${chalk.gray(containerId.slice(0, 12))}`);
+      logger.newLine();
+      logger.info('View logs with: selfhost daemon logs');
+    } catch (error) {
+      spinner.fail('Failed to start daemon');
+      logger.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
 }
 
 /**
  * Stop subcommand
  */
 function createStopSubcommand(app: INestApplicationContext): Command {
-  return new Command('stop')
-    .description('Stop the daemon container')
-    .action(async () => {
-      const daemonService = app.get(DaemonService);
+  return new Command('stop').description('Stop the daemon container').action(async () => {
+    const daemonService = app.get(DaemonService);
 
-      const spinner = logger.spinner('Stopping daemon...').start();
+    const spinner = logger.spinner('Stopping daemon...').start();
 
-      try {
-        await daemonService.stop();
-        spinner.succeed('Daemon stopped successfully');
-      } catch (error) {
-        spinner.fail('Failed to stop daemon');
-        logger.error(error instanceof Error ? error.message : String(error));
-        process.exit(1);
-      }
-    });
+    try {
+      await daemonService.stop();
+      spinner.succeed('Daemon stopped successfully');
+    } catch (error) {
+      spinner.fail('Failed to stop daemon');
+      logger.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
 }
 
 /**
@@ -235,22 +231,20 @@ function createLogsSubcommand(app: INestApplicationContext): Command {
  * Restart subcommand
  */
 function createRestartSubcommand(app: INestApplicationContext): Command {
-  return new Command('restart')
-    .description('Restart the daemon container')
-    .action(async () => {
-      const daemonService = app.get(DaemonService);
+  return new Command('restart').description('Restart the daemon container').action(async () => {
+    const daemonService = app.get(DaemonService);
 
-      const spinner = logger.spinner('Restarting daemon...').start();
+    const spinner = logger.spinner('Restarting daemon...').start();
 
-      try {
-        await daemonService.restart();
-        spinner.succeed('Daemon restarted successfully');
-      } catch (error) {
-        spinner.fail('Failed to restart daemon');
-        logger.error(error instanceof Error ? error.message : String(error));
-        process.exit(1);
-      }
-    });
+    try {
+      await daemonService.restart();
+      spinner.succeed('Daemon restarted successfully');
+    } catch (error) {
+      spinner.fail('Failed to restart daemon');
+      logger.error(error instanceof Error ? error.message : String(error));
+      process.exit(1);
+    }
+  });
 }
 
 /**

@@ -41,15 +41,20 @@ export function createPlanCommand(app: INestApplicationContext): Command {
       const enabledServices = servicesService.getEnabled();
 
       // Calculate node resources
-      const nodes = machines.map((m) => ({
-        label: m.label,
-        ip: m.ip,
-        roles: m.roles,
-        totalCpu: m.facts?.cpuCores ? m.facts.cpuCores * 1000 : 4000, // millicores
-        totalMemory: m.facts?.memoryTotal ?? 8 * 1024 * 1024 * 1024, // bytes
-        allocatedCpu: 0,
-        allocatedMemory: 0,
-      }));
+      const nodes = machines.map((m) => {
+        const facts = m.facts as Record<string, unknown> | undefined;
+        const cpuCores = typeof facts?.cpuCores === 'number' ? facts.cpuCores : 4;
+        const memoryTotal = typeof facts?.memoryTotal === 'number' ? facts.memoryTotal : 8 * 1024 * 1024 * 1024;
+        return {
+          label: m.label,
+          ip: m.ip,
+          roles: m.roles,
+          totalCpu: cpuCores * 1000, // millicores
+          totalMemory: memoryTotal, // bytes
+          allocatedCpu: 0,
+          allocatedMemory: 0,
+        };
+      });
 
       // Service placement using bin-packing
       const placements: {
@@ -101,14 +106,15 @@ export function createPlanCommand(app: INestApplicationContext): Command {
           .filter((n) => preferredRoles.some((r) => n.roles.includes(r)))
           .sort((a, b) => {
             // Sort by available resources (descending)
-            const aAvailable = (a.totalMemory - a.allocatedMemory);
-            const bAvailable = (b.totalMemory - b.allocatedMemory);
+            const aAvailable = a.totalMemory - a.allocatedMemory;
+            const bAvailable = b.totalMemory - b.allocatedMemory;
             return bAvailable - aAvailable;
           });
 
-        const targetNode = eligibleNodes.find((n) =>
-          (n.totalCpu - n.allocatedCpu) >= serviceCpu &&
-          (n.totalMemory - n.allocatedMemory) >= serviceMemory
+        const targetNode = eligibleNodes.find(
+          (n) =>
+            n.totalCpu - n.allocatedCpu >= serviceCpu &&
+            n.totalMemory - n.allocatedMemory >= serviceMemory,
         );
 
         if (targetNode) {
@@ -124,9 +130,10 @@ export function createPlanCommand(app: INestApplicationContext): Command {
           });
         } else {
           // Fallback to any node with capacity
-          const fallbackNode = nodes.find((n) =>
-            (n.totalCpu - n.allocatedCpu) >= serviceCpu &&
-            (n.totalMemory - n.allocatedMemory) >= serviceMemory
+          const fallbackNode = nodes.find(
+            (n) =>
+              n.totalCpu - n.allocatedCpu >= serviceCpu &&
+              n.totalMemory - n.allocatedMemory >= serviceMemory,
           );
 
           if (fallbackNode) {
@@ -161,7 +168,9 @@ export function createPlanCommand(app: INestApplicationContext): Command {
       const usedMemory = nodes.reduce((sum, n) => sum + n.allocatedMemory, 0);
       const totalStorage = servicesService.calculateTotalResources().storage;
 
-      console.log(tableService.resourceSummary(totalCpu, usedCpu, totalMemory, usedMemory, totalStorage));
+      console.log(
+        tableService.resourceSummary(totalCpu, usedCpu, totalMemory, usedMemory, totalStorage),
+      );
 
       // Warnings
       if (inventoryValidation.warnings.length > 0 || servicesValidation.warnings.length > 0) {

@@ -97,27 +97,33 @@ export const deploymentConfigSchema = z.object({
     localDomain: z.string().default('homelab.local'),
   }),
 
-  nodes: z.array(z.object({
-    ip: z.string().ip(),
-    label: z.string().min(1).max(63),
-    roles: z.array(z.nativeEnum(MachineRole)).min(1),
-    ssh_user: z.string().default('root'),
-    ssh_port: z.number().default(22),
-  })).min(1),
+  nodes: z
+    .array(
+      z.object({
+        ip: z.string().ip(),
+        label: z.string().min(1).max(63),
+        roles: z.array(z.nativeEnum(MachineRole)).min(1),
+        ssh_user: z.string().default('root'),
+        ssh_port: z.number().default(22),
+      }),
+    )
+    .min(1),
 
-  services: z.record(z.string(), z.union([
-    z.object({ enabled: z.literal(false) }),
-    serviceConfigSchema,
-  ])),
+  services: z.record(
+    z.string(),
+    z.union([z.object({ enabled: z.literal(false) }), serviceConfigSchema]),
+  ),
 
-  settings: z.object({
-    bypass_permissions: z.boolean().default(false),
-    skip_phases: z.array(z.number()).default([]),
-    parallel_deploys: z.number().min(1).max(10).default(3),
-    enable_local_access: z.boolean().default(false),
-    local_domain: z.string().default('zeizel.local'),
-    traefik_node_ip: z.string().ip().optional(),
-  }).default({}),
+  settings: z
+    .object({
+      bypass_permissions: z.boolean().default(false),
+      skip_phases: z.array(z.number()).default([]),
+      parallel_deploys: z.number().min(1).max(10).default(3),
+      enable_local_access: z.boolean().default(false),
+      local_domain: z.string().default('zeizel.local'),
+      traefik_node_ip: z.string().ip().optional(),
+    })
+    .default({}),
 });
 
 export type DeploymentConfig = z.infer<typeof deploymentConfigSchema>;

@@ -91,9 +91,11 @@ describe('AlertsService', () => {
     });
 
     it('should generate memory warning alert', () => {
-      const nodes = [createNode({
-        memory: { total: 16 * 1024 * 1024 * 1024, used: 14 * 1024 * 1024 * 1024, percent: 87 },
-      })];
+      const nodes = [
+        createNode({
+          memory: { total: 16 * 1024 * 1024 * 1024, used: 14 * 1024 * 1024 * 1024, percent: 87 },
+        }),
+      ];
       const services: ServiceMetrics[] = [];
 
       const alerts = alertsService.generateAlerts(nodes, services);
@@ -127,9 +129,11 @@ describe('AlertsService', () => {
 
     it('should generate replicas unavailable alert', () => {
       const nodes: NodeMetrics[] = [];
-      const services = [createService({
-        replicas: { desired: 3, ready: 1, available: 1 },
-      })];
+      const services = [
+        createService({
+          replicas: { desired: 3, ready: 1, available: 1 },
+        }),
+      ];
 
       const alerts = alertsService.generateAlerts(nodes, services);
 
@@ -138,9 +142,11 @@ describe('AlertsService', () => {
 
     it('should generate critical alert when all replicas are down', () => {
       const nodes: NodeMetrics[] = [];
-      const services = [createService({
-        replicas: { desired: 3, ready: 0, available: 0 },
-      })];
+      const services = [
+        createService({
+          replicas: { desired: 3, ready: 0, available: 0 },
+        }),
+      ];
 
       const alerts = alertsService.generateAlerts(nodes, services);
 
@@ -149,9 +155,11 @@ describe('AlertsService', () => {
     });
 
     it('should generate failed pods alert', () => {
-      const nodes = [createNode({
-        pods: { total: 10, running: 8, pending: 0, failed: 2 },
-      })];
+      const nodes = [
+        createNode({
+          pods: { total: 10, running: 8, pending: 0, failed: 2 },
+        }),
+      ];
       const services: ServiceMetrics[] = [];
 
       const alerts = alertsService.generateAlerts(nodes, services);
@@ -192,10 +200,42 @@ describe('AlertsService', () => {
   describe('getAlertCounts', () => {
     it('should count alerts correctly', () => {
       const alerts = [
-        { id: '1', severity: AlertSeverity.CRITICAL, title: 'Test', message: '', source: '', timestamp: '', acknowledged: false },
-        { id: '2', severity: AlertSeverity.CRITICAL, title: 'Test', message: '', source: '', timestamp: '', acknowledged: true },
-        { id: '3', severity: AlertSeverity.WARNING, title: 'Test', message: '', source: '', timestamp: '', acknowledged: false },
-        { id: '4', severity: AlertSeverity.INFO, title: 'Test', message: '', source: '', timestamp: '', acknowledged: false },
+        {
+          id: '1',
+          severity: AlertSeverity.CRITICAL,
+          title: 'Test',
+          message: '',
+          source: '',
+          timestamp: '',
+          acknowledged: false,
+        },
+        {
+          id: '2',
+          severity: AlertSeverity.CRITICAL,
+          title: 'Test',
+          message: '',
+          source: '',
+          timestamp: '',
+          acknowledged: true,
+        },
+        {
+          id: '3',
+          severity: AlertSeverity.WARNING,
+          title: 'Test',
+          message: '',
+          source: '',
+          timestamp: '',
+          acknowledged: false,
+        },
+        {
+          id: '4',
+          severity: AlertSeverity.INFO,
+          title: 'Test',
+          message: '',
+          source: '',
+          timestamp: '',
+          acknowledged: false,
+        },
       ];
 
       const counts = alertsService.getAlertCounts(alerts);
@@ -210,9 +250,33 @@ describe('AlertsService', () => {
 
   describe('filterAlerts', () => {
     const alerts = [
-      { id: '1', severity: AlertSeverity.CRITICAL, title: 'Test', message: '', source: 'node-1', timestamp: '', acknowledged: false },
-      { id: '2', severity: AlertSeverity.WARNING, title: 'Test', message: '', source: 'node-1', timestamp: '', acknowledged: true },
-      { id: '3', severity: AlertSeverity.WARNING, title: 'Test', message: '', source: 'node-2', timestamp: '', acknowledged: false },
+      {
+        id: '1',
+        severity: AlertSeverity.CRITICAL,
+        title: 'Test',
+        message: '',
+        source: 'node-1',
+        timestamp: '',
+        acknowledged: false,
+      },
+      {
+        id: '2',
+        severity: AlertSeverity.WARNING,
+        title: 'Test',
+        message: '',
+        source: 'node-1',
+        timestamp: '',
+        acknowledged: true,
+      },
+      {
+        id: '3',
+        severity: AlertSeverity.WARNING,
+        title: 'Test',
+        message: '',
+        source: 'node-2',
+        timestamp: '',
+        acknowledged: false,
+      },
     ];
 
     it('should filter by severity', () => {
@@ -243,9 +307,33 @@ describe('AlertsService', () => {
   describe('sortBySeverity', () => {
     it('should sort alerts with critical first', () => {
       const alerts = [
-        { id: '1', severity: AlertSeverity.INFO, title: 'Info', message: '', source: '', timestamp: '', acknowledged: false },
-        { id: '2', severity: AlertSeverity.CRITICAL, title: 'Critical', message: '', source: '', timestamp: '', acknowledged: false },
-        { id: '3', severity: AlertSeverity.WARNING, title: 'Warning', message: '', source: '', timestamp: '', acknowledged: false },
+        {
+          id: '1',
+          severity: AlertSeverity.INFO,
+          title: 'Info',
+          message: '',
+          source: '',
+          timestamp: '',
+          acknowledged: false,
+        },
+        {
+          id: '2',
+          severity: AlertSeverity.CRITICAL,
+          title: 'Critical',
+          message: '',
+          source: '',
+          timestamp: '',
+          acknowledged: false,
+        },
+        {
+          id: '3',
+          severity: AlertSeverity.WARNING,
+          title: 'Warning',
+          message: '',
+          source: '',
+          timestamp: '',
+          acknowledged: false,
+        },
       ];
 
       const sorted = alertsService.sortBySeverity(alerts);

@@ -192,11 +192,13 @@ export class ServicesService {
       // Update existing
       this.serviceConfigRepository.update(existing.id, {
         enabled: updates.enabled,
-        resources: updates.resources ? {
-          cpu: parseCpuToMillicores(updates.resources.cpu),
-          memory: parseMemoryToBytes(updates.resources.memory),
-          storage: parseMemoryToBytes(updates.resources.storage),
-        } : undefined,
+        resources: updates.resources
+          ? {
+              cpu: parseCpuToMillicores(updates.resources.cpu),
+              memory: parseMemoryToBytes(updates.resources.memory),
+              storage: parseMemoryToBytes(updates.resources.storage),
+            }
+          : undefined,
       });
     }
   }

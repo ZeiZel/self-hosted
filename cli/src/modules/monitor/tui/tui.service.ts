@@ -48,10 +48,12 @@ export class TuiService {
   /**
    * Start the TUI
    */
-  async start(options: {
-    refreshInterval?: number;
-    onMigrate?: (request: MigrationRequest) => Promise<void>;
-  } = {}): Promise<void> {
+  async start(
+    options: {
+      refreshInterval?: number;
+      onMigrate?: (request: MigrationRequest) => Promise<void>;
+    } = {},
+  ): Promise<void> {
     this.running = true;
     this.onMigrate = options.onMigrate;
 

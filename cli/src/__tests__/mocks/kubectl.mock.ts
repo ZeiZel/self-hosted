@@ -22,12 +22,8 @@ export const mockNodes = {
           cpu: '8',
           memory: '16Gi',
         },
-        addresses: [
-          { type: 'InternalIP', address: '192.168.1.10' },
-        ],
-        conditions: [
-          { type: 'Ready', status: 'True' },
-        ],
+        addresses: [{ type: 'InternalIP', address: '192.168.1.10' }],
+        conditions: [{ type: 'Ready', status: 'True' }],
       },
     },
     {
@@ -42,12 +38,8 @@ export const mockNodes = {
           cpu: '16',
           memory: '32Gi',
         },
-        addresses: [
-          { type: 'InternalIP', address: '192.168.1.11' },
-        ],
-        conditions: [
-          { type: 'Ready', status: 'True' },
-        ],
+        addresses: [{ type: 'InternalIP', address: '192.168.1.11' }],
+        conditions: [{ type: 'Ready', status: 'True' }],
       },
     },
     {
@@ -62,12 +54,8 @@ export const mockNodes = {
           cpu: '16',
           memory: '32Gi',
         },
-        addresses: [
-          { type: 'InternalIP', address: '192.168.1.12' },
-        ],
-        conditions: [
-          { type: 'Ready', status: 'True' },
-        ],
+        addresses: [{ type: 'InternalIP', address: '192.168.1.12' }],
+        conditions: [{ type: 'Ready', status: 'True' }],
       },
     },
   ],
@@ -100,9 +88,7 @@ export const mockPods = {
       },
       status: {
         phase: 'Running',
-        containerStatuses: [
-          { ready: true, restartCount: 0 },
-        ],
+        containerStatuses: [{ ready: true, restartCount: 0 }],
       },
     },
     {
@@ -127,9 +113,7 @@ export const mockPods = {
       },
       status: {
         phase: 'Running',
-        containerStatuses: [
-          { ready: true, restartCount: 0 },
-        ],
+        containerStatuses: [{ ready: true, restartCount: 0 }],
       },
     },
     {
@@ -154,9 +138,7 @@ export const mockPods = {
       },
       status: {
         phase: 'Running',
-        containerStatuses: [
-          { ready: true, restartCount: 2 },
-        ],
+        containerStatuses: [{ ready: true, restartCount: 2 }],
       },
     },
     {
@@ -224,7 +206,10 @@ export const mockNamespaces = {
 /**
  * Mock kubectl response map
  */
-export const mockKubectlResponses: Record<string, { stdout: string; stderr: string; code: number }> = {
+export const mockKubectlResponses: Record<
+  string,
+  { stdout: string; stderr: string; code: number }
+> = {
   'cluster-info': {
     stdout: 'Kubernetes control plane is running at https://192.168.1.10:6443',
     stderr: '',
@@ -304,7 +289,11 @@ export function createMockClusterClient() {
         health: NodeHealth.HEALTHY,
         replicas: { desired: 1, ready: 1, available: 1 },
         cpu: { requested: 2000, limit: 4000, used: 1500 },
-        memory: { requested: 2 * 1024 * 1024 * 1024, limit: 4 * 1024 * 1024 * 1024, used: 1.5 * 1024 * 1024 * 1024 },
+        memory: {
+          requested: 2 * 1024 * 1024 * 1024,
+          limit: 4 * 1024 * 1024 * 1024,
+          used: 1.5 * 1024 * 1024 * 1024,
+        },
         restarts: 0,
         age: '7d',
         lastUpdated: new Date().toISOString(),

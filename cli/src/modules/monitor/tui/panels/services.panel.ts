@@ -1,8 +1,4 @@
-import {
-  ServiceMetrics,
-  PodStatus,
-  formatBytes,
-} from '../../../../interfaces/monitor.interface';
+import { ServiceMetrics, PodStatus, formatBytes } from '../../../../interfaces/monitor.interface';
 import chalk from 'chalk';
 
 /**
@@ -23,11 +19,11 @@ export function renderServicesPanel(
   lines.push(
     chalk.gray(
       '  ' +
-      padRight('Name', 15) +
-      padRight('Namespace', 12) +
-      padRight('Node', 12) +
-      padRight('Memory', 8) +
-      'Status',
+        padRight('Name', 15) +
+        padRight('Namespace', 12) +
+        padRight('Node', 12) +
+        padRight('Memory', 8) +
+        'Status',
     ),
   );
   lines.push(chalk.gray('─'.repeat(innerWidth)));

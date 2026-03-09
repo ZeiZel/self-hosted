@@ -20,8 +20,15 @@ export function createDeployCommand(app: INestApplicationContext): Command {
     .option('--dry-run', 'Show what would be executed without making changes')
     .option('--resume', 'Resume last incomplete deployment')
     .option('--fresh', 'Start fresh deployment (ignore any incomplete)')
-    .option('--enable-local-access', 'Configure local machine to access services via <app>.zeizel.local')
-    .option('--local-domain <domain>', 'Local domain suffix (default: zeizel.local)', 'zeizel.local')
+    .option(
+      '--enable-local-access',
+      'Configure local machine to access services via <app>.zeizel.local',
+    )
+    .option(
+      '--local-domain <domain>',
+      'Local domain suffix (default: zeizel.local)',
+      'zeizel.local',
+    )
     .addCommand(createHistoryCommand(app))
     .addCommand(createCleanCommand(app))
     .action(async (options) => {
@@ -52,10 +59,10 @@ export function createDeployCommand(app: INestApplicationContext): Command {
         } else {
           logger.warn(`Found incomplete deployment from ${activeDeployment.startedAt}`);
           logger.keyValue({
-            'Status': activeDeployment.status,
+            Status: activeDeployment.status,
             'Current phase': getPhaseName(activeDeployment.currentPhase),
-            'Completed': activeDeployment.completedPhases.length,
-            'Failed': activeDeployment.failedPhases.length,
+            Completed: activeDeployment.completedPhases.length,
+            Failed: activeDeployment.failedPhases.length,
           });
           logger.newLine();
 
@@ -95,8 +102,8 @@ export function createDeployCommand(app: INestApplicationContext): Command {
 
       logger.subHeader('Deployment Overview');
       logger.keyValue({
-        'Machines': machines.length,
-        'Services': enabledServices.length,
+        Machines: machines.length,
+        Services: enabledServices.length,
         'Dry run': options.dryRun ? 'Yes' : 'No',
         'Bypass confirmations': options.bypassPermissions ? 'Yes' : 'No',
         'Local access': options.enableLocalAccess ? `Enabled (${options.localDomain})` : 'Disabled',
@@ -115,7 +122,9 @@ export function createDeployCommand(app: INestApplicationContext): Command {
       configService.updateDeploymentState(deploymentState.id, { status: 'running' });
 
       // Phases to execute
-      const allPhases = Object.values(DeploymentPhase).filter((v) => typeof v === 'number') as DeploymentPhase[];
+      const allPhases = Object.values(DeploymentPhase).filter(
+        (v) => typeof v === 'number',
+      ) as DeploymentPhase[];
       let phases = allPhases;
 
       // If resuming, skip completed phases
@@ -189,10 +198,7 @@ export function createDeployCommand(app: INestApplicationContext): Command {
           const errorMsg = error instanceof Error ? error.message : String(error);
           configService.markPhaseFailed(deploymentState!.id, phase, errorMsg);
 
-          const action = await prompts.errorAction(
-            getPhaseName(phase),
-            errorMsg,
-          );
+          const action = await prompts.errorAction(getPhaseName(phase), errorMsg);
 
           switch (action) {
             case 'retry':
@@ -207,6 +213,7 @@ export function createDeployCommand(app: INestApplicationContext): Command {
               logger.error('Deployment aborted');
               configService.completeDeployment(deploymentState!.id, 'cancelled');
               process.exit(1);
+              break; // unreachable but satisfies linter
             case 'debug':
               // Show logs
               break;
@@ -251,9 +258,9 @@ function createHistoryCommand(app: INestApplicationContext): Command {
 
         logger.log(`${chalk.bold(deployment.id)}`);
         logger.keyValue({
-          'Started': deployment.startedAt,
-          'Completed': deployment.completedAt ?? chalk.gray('In progress'),
-          'Status': statusColor(deployment.status),
+          Started: deployment.startedAt,
+          Completed: deployment.completedAt ?? chalk.gray('In progress'),
+          Status: statusColor(deployment.status),
           'Phases completed': deployment.completedPhases.length,
           'Phases failed': deployment.failedPhases.length,
           'Phases skipped': deployment.skippedPhases.length,

@@ -110,12 +110,7 @@ export class ConstraintsService {
         continue;
       }
 
-      const satisfied = this.checkConstraint(
-        constraint,
-        targetNode,
-        serviceToNode,
-        nodes,
-      );
+      const satisfied = this.checkConstraint(constraint, targetNode, serviceToNode, nodes);
 
       if (!satisfied) {
         const violation: ConstraintViolation = {
@@ -181,10 +176,7 @@ export class ConstraintsService {
   /**
    * Get human-readable violation message
    */
-  private getViolationMessage(
-    constraint: PlacementConstraint,
-    node: NodeState,
-  ): string {
+  private getViolationMessage(constraint: PlacementConstraint, node: NodeState): string {
     const prefix = constraint.hard ? 'Hard constraint violation' : 'Soft constraint warning';
 
     switch (constraint.type) {

@@ -37,10 +37,10 @@ export class ErrorHandlerService {
     const cliError = error instanceof CliError ? error : Errors.wrap(error);
 
     if (this.jsonMode) {
-      // eslint-disable-next-line no-undef
+       
       process.stdout.write(JSON.stringify(cliError.toJSON(), null, 2) + '\n');
     } else {
-      // eslint-disable-next-line no-undef
+       
       process.stderr.write(cliError.format(this.verbose, this.useColor) + '\n');
     }
   }
@@ -50,7 +50,7 @@ export class ErrorHandlerService {
    */
   handleAndExit(error: unknown, exitCode = 1): never {
     this.handle(error);
-    // eslint-disable-next-line no-undef
+     
     process.exit(exitCode);
   }
 

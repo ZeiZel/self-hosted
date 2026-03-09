@@ -35,9 +35,7 @@ function createListCommand(app: INestApplicationContext): Command {
       const servicesService = app.get(ServicesService);
       const tableService = app.get(TableService);
 
-      let services = options.enabled
-        ? servicesService.getEnabled()
-        : servicesService.getAll();
+      let services = options.enabled ? servicesService.getEnabled() : servicesService.getAll();
 
       if (options.namespace) {
         services = services.filter((s) => s.namespace === options.namespace);
@@ -68,82 +66,77 @@ function createListCommand(app: INestApplicationContext): Command {
       logger.newLine();
       logger.keyValue({
         'Total services': summary.total,
-        'Enabled': summary.enabled,
-        'Heavy': summary.byTier.heavy,
-        'Medium': summary.byTier.medium,
-        'Light': summary.byTier.light,
+        Enabled: summary.enabled,
+        Heavy: summary.byTier.heavy,
+        Medium: summary.byTier.medium,
+        Light: summary.byTier.light,
       });
     });
 }
 
 function createSelectCommand(app: INestApplicationContext): Command {
-  return new Command('select')
-    .description('Interactive service selection')
-    .action(async () => {
-      const servicesService = app.get(ServicesService);
-      const prompts = app.get(PromptsService);
+  return new Command('select').description('Interactive service selection').action(async () => {
+    const servicesService = app.get(ServicesService);
+    const prompts = app.get(PromptsService);
 
-      logger.header('Service Selection');
-      logger.info('Select services to deploy. Core services are always enabled.');
-      logger.newLine();
+    logger.header('Service Selection');
+    logger.info('Select services to deploy. Core services are always enabled.');
+    logger.newLine();
 
-      const allServices = servicesService.getAll();
+    const allServices = servicesService.getAll();
 
-      // Group by namespace for easier selection
-      const byNamespace = new Map<ServiceNamespace, typeof allServices>();
-      for (const service of allServices) {
-        const existing = byNamespace.get(service.namespace) ?? [];
-        existing.push(service);
-        byNamespace.set(service.namespace, existing);
-      }
+    // Group by namespace for easier selection
+    const byNamespace = new Map<ServiceNamespace, typeof allServices>();
+    for (const service of allServices) {
+      const existing = byNamespace.get(service.namespace) ?? [];
+      existing.push(service);
+      byNamespace.set(service.namespace, existing);
+    }
 
-      // Process each namespace
-      for (const [namespace, services] of byNamespace) {
-        // Skip certain namespaces from selection
-        if (namespace === ServiceNamespace.INGRESS) continue;
+    // Process each namespace
+    for (const [namespace, services] of byNamespace) {
+      // Skip certain namespaces from selection
+      if (namespace === ServiceNamespace.INGRESS) continue;
 
-        logger.subHeader(namespace.toUpperCase());
+      logger.subHeader(namespace.toUpperCase());
 
-        const choices = services.map((s) => {
-          const isCore = CORE_SERVICES.includes(s.name);
-          const resourceInfo = `${s.config.resources.memory} / ${s.config.resources.cpu}`;
+      const choices = services.map((s) => {
+        const isCore = CORE_SERVICES.includes(s.name);
+        const resourceInfo = `${s.config.resources.memory} / ${s.config.resources.cpu}`;
 
-          return {
-            name: `${s.name} ${chalk.gray(`(${resourceInfo})`)}${isCore ? chalk.cyan(' [core]') : ''}`,
-            value: s.name,
-            checked: s.config.enabled || isCore,
-            disabled: isCore ? 'Core service (always enabled)' : false,
-          };
-        });
-
-        const selected = await prompts.multiSelect(
-          `Select ${namespace} services:`,
-          choices,
-        );
-
-        // Update service states
-        for (const service of services) {
-          if (!CORE_SERVICES.includes(service.name)) {
-            servicesService.setEnabled(service.name, selected.includes(service.name));
-          }
-        }
-      }
-
-      // Calculate totals
-      const totals = servicesService.calculateTotalResources();
-
-      logger.newLine();
-      logger.success('Services selected');
-      logger.keyValue({
-        'Total CPU': formatCpu(totals.cpu),
-        'Total Memory': formatBytes(totals.memory),
-        'Total Storage': formatBytes(totals.storage),
+        return {
+          name: `${s.name} ${chalk.gray(`(${resourceInfo})`)}${isCore ? chalk.cyan(' [core]') : ''}`,
+          value: s.name,
+          checked: s.config.enabled || isCore,
+          disabled: isCore ? 'Core service (always enabled)' : false,
+        };
       });
 
-      logger.newLine();
-      logger.info('Configure individual services: selfhost services configure <name>');
-      logger.info('View summary: selfhost services summary');
+      const selected = await prompts.multiSelect(`Select ${namespace} services:`, choices);
+
+      // Update service states
+      for (const service of services) {
+        if (!CORE_SERVICES.includes(service.name)) {
+          servicesService.setEnabled(service.name, selected.includes(service.name));
+        }
+      }
+    }
+
+    // Calculate totals
+    const totals = servicesService.calculateTotalResources();
+
+    logger.newLine();
+    logger.success('Services selected');
+    logger.keyValue({
+      'Total CPU': formatCpu(totals.cpu),
+      'Total Memory': formatBytes(totals.memory),
+      'Total Storage': formatBytes(totals.storage),
     });
+
+    logger.newLine();
+    logger.info('Configure individual services: selfhost services configure <name>');
+    logger.info('View summary: selfhost services summary');
+  });
 }
 
 function createConfigureCommand(app: INestApplicationContext): Command {
@@ -170,11 +163,11 @@ function createConfigureCommand(app: INestApplicationContext): Command {
 
       logger.newLine();
       logger.keyValue({
-        'Namespace': service.namespace,
-        'Chart': service.chart,
-        'Version': service.version,
-        'Tier': service.tier,
-        'Dependencies': service.needs.join(', ') || 'None',
+        Namespace: service.namespace,
+        Chart: service.chart,
+        Version: service.version,
+        Tier: service.tier,
+        Dependencies: service.needs.join(', ') || 'None',
       });
       logger.newLine();
 
@@ -269,41 +262,39 @@ function createValidateCommand(app: INestApplicationContext): Command {
 }
 
 function createSummaryCommand(app: INestApplicationContext): Command {
-  return new Command('summary')
-    .description('Show enabled services summary')
-    .action(async () => {
-      const servicesService = app.get(ServicesService);
-      const tableService = app.get(TableService);
+  return new Command('summary').description('Show enabled services summary').action(async () => {
+    const servicesService = app.get(ServicesService);
+    const tableService = app.get(TableService);
 
-      const enabled = servicesService.getEnabled();
-      const summary = servicesService.getSummary();
-      const totals = servicesService.calculateTotalResources();
+    const enabled = servicesService.getEnabled();
+    const summary = servicesService.getSummary();
+    const totals = servicesService.calculateTotalResources();
 
-      logger.header('Enabled Services Summary');
+    logger.header('Enabled Services Summary');
 
-      console.log(tableService.servicesTable(enabled));
+    console.log(tableService.servicesTable(enabled));
 
-      logger.newLine();
-      logger.subHeader('Resource Requirements');
-      logger.keyValue({
-        'Total CPU': formatCpu(totals.cpu),
-        'Total Memory': formatBytes(totals.memory),
-        'Total Storage': formatBytes(totals.storage),
-      });
-
-      logger.newLine();
-      logger.subHeader('Service Tiers');
-      logger.keyValue({
-        'Heavy services': summary.byTier.heavy,
-        'Medium services': summary.byTier.medium,
-        'Light services': summary.byTier.light,
-      });
-
-      logger.newLine();
-      logger.subHeader('Deployment Order');
-      const order = servicesService.getDeploymentOrder();
-      order.forEach((s, i) => {
-        logger.log(`  ${chalk.gray(`${i + 1}.`)} ${s.name} ${chalk.gray(`(${s.namespace})`)}`);
-      });
+    logger.newLine();
+    logger.subHeader('Resource Requirements');
+    logger.keyValue({
+      'Total CPU': formatCpu(totals.cpu),
+      'Total Memory': formatBytes(totals.memory),
+      'Total Storage': formatBytes(totals.storage),
     });
+
+    logger.newLine();
+    logger.subHeader('Service Tiers');
+    logger.keyValue({
+      'Heavy services': summary.byTier.heavy,
+      'Medium services': summary.byTier.medium,
+      'Light services': summary.byTier.light,
+    });
+
+    logger.newLine();
+    logger.subHeader('Deployment Order');
+    const order = servicesService.getDeploymentOrder();
+    order.forEach((s, i) => {
+      logger.log(`  ${chalk.gray(`${i + 1}.`)} ${s.name} ${chalk.gray(`(${s.namespace})`)}`);
+    });
+  });
 }

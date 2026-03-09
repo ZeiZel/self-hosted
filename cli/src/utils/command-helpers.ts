@@ -1,10 +1,14 @@
 import { INestApplicationContext } from '@nestjs/common';
-import { formatError, Errors, CliError, printErrorAndExit } from './errors';
+import { Errors, CliError, printErrorAndExit } from './errors';
 
 /**
  * Safely get a service from the NestJS application context
  */
-export function getService<T>(app: INestApplicationContext, serviceClass: new (...args: unknown[]) => T): T {
+export function getService<T>(
+  app: INestApplicationContext,
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  serviceClass: new (...args: any[]) => T,
+): T {
   try {
     return app.get(serviceClass);
   } catch (error) {
@@ -16,7 +20,7 @@ export function getService<T>(app: INestApplicationContext, serviceClass: new (.
  * Wrap a command action with error handling
  */
 export function withErrorHandling<T extends unknown[]>(
-  action: (...args: T) => Promise<void>
+  action: (...args: T) => Promise<void>,
 ): (...args: T) => Promise<void> {
   return async (...args: T) => {
     try {
@@ -30,21 +34,25 @@ export function withErrorHandling<T extends unknown[]>(
 /**
  * Create an action handler with automatic service injection and error handling
  */
-export function createCommandAction<TServices extends Record<string, new (...args: unknown[]) => unknown>>(
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export function createCommandAction<TServices extends Record<string, new (...args: any[]) => any>>(
   app: INestApplicationContext,
   serviceClasses: TServices,
   handler: (
     services: { [K in keyof TServices]: InstanceType<TServices[K]> },
     options: Record<string, unknown>,
     ...args: string[]
-  ) => Promise<void>
+  ) => Promise<void>,
 ): (options: Record<string, unknown>, ...args: string[]) => Promise<void> {
   return async (options: Record<string, unknown>, ...args: string[]) => {
     try {
       // Inject all services
       const services = {} as { [K in keyof TServices]: InstanceType<TServices[K]> };
       for (const [key, serviceClass] of Object.entries(serviceClasses)) {
-        services[key as keyof TServices] = getService(app, serviceClass as new (...args: unknown[]) => unknown) as InstanceType<TServices[keyof TServices]>;
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        services[key as keyof TServices] = getService(app, serviceClass as any) as InstanceType<
+          TServices[keyof TServices]
+        >;
       }
 
       await handler(services, options, ...args);
@@ -52,15 +60,21 @@ export function createCommandAction<TServices extends Record<string, new (...arg
       // Handle JSON output mode - return error as JSON
       if (options.json) {
         const cliError = error instanceof CliError ? error : Errors.wrap(error);
-        // eslint-disable-next-line no-undef
-        process.stdout.write(JSON.stringify({
-          error: true,
-          type: cliError.type,
-          message: cliError.message,
-          hint: cliError.hint,
-          details: cliError.details,
-        }, null, 2) + '\n');
-        // eslint-disable-next-line no-undef
+         
+        process.stdout.write(
+          JSON.stringify(
+            {
+              error: true,
+              type: cliError.type,
+              message: cliError.message,
+              hint: cliError.hint,
+              details: cliError.details,
+            },
+            null,
+            2,
+          ) + '\n',
+        );
+         
         process.exit(1);
       } else {
         printErrorAndExit(error);

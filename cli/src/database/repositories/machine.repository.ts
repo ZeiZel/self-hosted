@@ -77,7 +77,7 @@ export class MachineRepository {
   findByRole(role: MachineRole): Machine[] {
     const rows = this.db.query<MachineRow>(
       "SELECT * FROM machines WHERE roles LIKE '%' || ? || '%' ORDER BY label",
-      [role]
+      [role],
     );
     return rows.map((row) => this.rowToMachine(row));
   }
@@ -88,7 +88,7 @@ export class MachineRepository {
   findByStatus(status: MachineStatus): Machine[] {
     const rows = this.db.query<MachineRow>(
       'SELECT * FROM machines WHERE status = ? ORDER BY label',
-      [status]
+      [status],
     );
     return rows.map((row) => this.rowToMachine(row));
   }
@@ -224,7 +224,7 @@ export class MachineRepository {
    */
   countByStatus(): Record<MachineStatus, number> {
     const rows = this.db.query<{ status: string; count: number }>(
-      'SELECT status, COUNT(*) as count FROM machines GROUP BY status'
+      'SELECT status, COUNT(*) as count FROM machines GROUP BY status',
     );
 
     const result: Record<MachineStatus, number> = {

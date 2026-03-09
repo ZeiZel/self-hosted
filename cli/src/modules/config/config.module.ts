@@ -1,6 +1,10 @@
 import { Module, DynamicModule, Provider, Global } from '@nestjs/common';
 import { MODULE_OPTIONS } from '../../core/constants';
-import type { ConfigModuleOptions, AsyncModuleOptions, ModuleOptionsFactory } from '../../core/interfaces';
+import type {
+  ConfigModuleOptions,
+  AsyncModuleOptions,
+  ModuleOptionsFactory,
+} from '../../core/interfaces';
 import { ConfigService } from './config.service';
 
 /**

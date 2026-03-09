@@ -103,12 +103,14 @@ export const deploymentSchema = z.object({
   failedPhases: z.array(z.nativeEnum(DeploymentPhase)),
   skippedPhases: z.array(z.nativeEnum(DeploymentPhase)),
   config: z.record(z.unknown()),
-  logs: z.array(z.object({
-    timestamp: z.string(),
-    phase: z.nativeEnum(DeploymentPhase),
-    level: z.enum(['info', 'warn', 'error']),
-    message: z.string(),
-  })),
+  logs: z.array(
+    z.object({
+      timestamp: z.string(),
+      phase: z.nativeEnum(DeploymentPhase),
+      level: z.enum(['info', 'warn', 'error']),
+      message: z.string(),
+    }),
+  ),
   startedAt: z.string(),
   completedAt: z.string().optional(),
   createdAt: z.string(),

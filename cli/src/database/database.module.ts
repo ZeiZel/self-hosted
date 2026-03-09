@@ -1,6 +1,10 @@
 import { Module, DynamicModule, Provider, Global } from '@nestjs/common';
 import { MODULE_OPTIONS } from '../core/constants';
-import type { DatabaseModuleOptions, AsyncModuleOptions, ModuleOptionsFactory } from '../core/interfaces';
+import type {
+  DatabaseModuleOptions,
+  AsyncModuleOptions,
+  ModuleOptionsFactory,
+} from '../core/interfaces';
 import { DatabaseService } from './database.service';
 import { MachineRepository } from './repositories/machine.repository';
 import { DeploymentRepository } from './repositories/deployment.repository';

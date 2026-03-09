@@ -8,16 +8,7 @@ import { ConfigModule } from '../modules/config/config.module';
 
 @Module({
   imports: [MonitorModule, ConfigModule],
-  providers: [
-    HealthCheckerService,
-    DaemonClientService,
-    DaemonInitService,
-    DaemonService,
-  ],
-  exports: [
-    DaemonService,
-    DaemonClientService,
-    HealthCheckerService,
-  ],
+  providers: [HealthCheckerService, DaemonClientService, DaemonInitService, DaemonService],
+  exports: [DaemonService, DaemonClientService, HealthCheckerService],
 })
 export class DaemonModule {}

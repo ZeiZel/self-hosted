@@ -109,26 +109,30 @@ function createStatusSubcommand(app: INestApplicationContext): Command {
 
         // Nodes
         const nodesStatus = state.summary.nodes;
-        const nodesColor = nodesStatus.critical > 0
-          ? chalk.red
-          : nodesStatus.warning > 0
-            ? chalk.yellow
-            : chalk.green;
-        logger.log(`  Nodes:   ${nodesColor(`${nodesStatus.healthy}/${nodesStatus.total} healthy`)}`);
+        const nodesColor =
+          nodesStatus.critical > 0
+            ? chalk.red
+            : nodesStatus.warning > 0
+              ? chalk.yellow
+              : chalk.green;
+        logger.log(
+          `  Nodes:   ${nodesColor(`${nodesStatus.healthy}/${nodesStatus.total} healthy`)}`,
+        );
 
         // Pods
         const podsStatus = state.summary.pods;
-        const podsColor = podsStatus.failed > 0
-          ? chalk.red
-          : podsStatus.pending > 0
-            ? chalk.yellow
-            : chalk.green;
+        const podsColor =
+          podsStatus.failed > 0 ? chalk.red : podsStatus.pending > 0 ? chalk.yellow : chalk.green;
         logger.log(`  Pods:    ${podsColor(`${podsStatus.running}/${podsStatus.total} running`)}`);
 
         // Resources
         logger.newLine();
-        logger.log(`  CPU:     ${createBar(state.summary.cpu.percent)} ${state.summary.cpu.percent}%`);
-        logger.log(`  Memory:  ${createBar(state.summary.memory.percent)} ${state.summary.memory.percent}%`);
+        logger.log(
+          `  CPU:     ${createBar(state.summary.cpu.percent)} ${state.summary.cpu.percent}%`,
+        );
+        logger.log(
+          `  Memory:  ${createBar(state.summary.memory.percent)} ${state.summary.memory.percent}%`,
+        );
 
         // Alerts summary
         const alertCounts = {
@@ -138,7 +142,9 @@ function createStatusSubcommand(app: INestApplicationContext): Command {
 
         logger.newLine();
         if (alertCounts.critical > 0) {
-          logger.log(`  Alerts:  ${chalk.red(`${alertCounts.critical} critical`)}, ${chalk.yellow(`${alertCounts.warning} warning`)}`);
+          logger.log(
+            `  Alerts:  ${chalk.red(`${alertCounts.critical} critical`)}, ${chalk.yellow(`${alertCounts.warning} warning`)}`,
+          );
         } else if (alertCounts.warning > 0) {
           logger.log(`  Alerts:  ${chalk.yellow(`${alertCounts.warning} warning`)}`);
         } else {
@@ -254,11 +260,12 @@ function createNodesSubcommand(app: INestApplicationContext): Command {
         logger.newLine();
 
         for (const node of state.nodes) {
-          const healthIcon = node.health === 'healthy'
-            ? chalk.green('●')
-            : node.health === 'warning'
-              ? chalk.yellow('●')
-              : chalk.red('●');
+          const healthIcon =
+            node.health === 'healthy'
+              ? chalk.green('●')
+              : node.health === 'warning'
+                ? chalk.yellow('●')
+                : chalk.red('●');
 
           logger.log(`  ${healthIcon} ${chalk.bold(node.name)}`);
           logger.log(`    IP: ${node.ip}`);
@@ -325,15 +332,15 @@ function createServicesSubcommand(app: INestApplicationContext): Command {
           logger.log(chalk.bold(`  ${namespace}/`));
 
           for (const service of nsServices) {
-            const statusIcon = service.status === 'Running'
-              ? chalk.green('●')
-              : service.status === 'Pending'
-                ? chalk.yellow('◐')
-                : chalk.red('✖');
+            const statusIcon =
+              service.status === 'Running'
+                ? chalk.green('●')
+                : service.status === 'Pending'
+                  ? chalk.yellow('◐')
+                  : chalk.red('✖');
 
-            const restarts = service.restarts > 0
-              ? chalk.yellow(` (${service.restarts} restarts)`)
-              : '';
+            const restarts =
+              service.restarts > 0 ? chalk.yellow(` (${service.restarts} restarts)`) : '';
 
             logger.log(`    ${statusIcon} ${service.name} on ${service.node}${restarts}`);
           }
