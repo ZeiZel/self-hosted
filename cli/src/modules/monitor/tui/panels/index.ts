@@ -3,3 +3,6 @@ export * from './services.panel';
 export * from './summary.panel';
 export * from './alerts.panel';
 export * from './migration.panel';
+export * from './consul.panel';
+export * from './vault.panel';
+export * from './traefik.panel';

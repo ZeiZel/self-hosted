@@ -4,3 +4,4 @@ export * from './cluster-client.service';
 export * from './metrics-stream.service';
 export * from './alerts.service';
 export * from './tui';
+export * from './apis';
