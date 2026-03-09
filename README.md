@@ -2,6 +2,95 @@
 
 > Complete production-ready infrastructure platform for full control over your data and services.
 
+## Quick Install
+
+Install the CLI tool with a single command:
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/ZeiZel/self-hosted/main/scripts/install.sh | bash
+```
+
+Or with wget:
+```bash
+wget -qO- https://raw.githubusercontent.com/ZeiZel/self-hosted/main/scripts/install.sh | bash
+```
+
+To uninstall:
+```bash
+curl -fsSL https://raw.githubusercontent.com/ZeiZel/self-hosted/main/scripts/install.sh | bash -s -- --uninstall
+```
+
+---
+
+## CLI Tool
+
+The `selfhost` CLI provides automated infrastructure deployment and management.
+
+### Commands
+
+| Command | Description |
+|---------|-------------|
+| `selfhost init` | Initialize a new selfhost project |
+| `selfhost inventory` | Manage server inventory (add/remove/list hosts) |
+| `selfhost services` | Manage services (list/enable/disable) |
+| `selfhost plan` | Generate deployment plan |
+| `selfhost deploy` | Deploy services to cluster |
+| `selfhost status` | Show cluster and services status |
+| `selfhost validate` | Validate configuration and manifests |
+| `selfhost config` | Manage CLI configuration |
+| `selfhost balance` | Resource balancing utilities |
+| `selfhost monitor` | Open monitoring TUI dashboard |
+| `selfhost daemon` | Manage background daemon service |
+
+### Usage Examples
+
+```bash
+# Initialize new project
+selfhost init
+
+# Add a server to inventory
+selfhost inventory add --host 192.168.1.100 --user admin --role master
+
+# List available services
+selfhost services list
+
+# Deploy all enabled services
+selfhost deploy
+
+# Deploy specific service
+selfhost deploy --service gitlab
+
+# Check cluster status
+selfhost status
+
+# Open interactive monitoring dashboard
+selfhost monitor
+
+# Validate all configurations
+selfhost validate
+
+# Show verbose output
+selfhost status --verbose
+```
+
+### Global Options
+
+```
+--verbose       Enable verbose output
+--no-color      Disable colored output
+--config <path> Path to configuration file
+-v, --version   Display version number
+-h, --help      Display help
+```
+
+### Requirements
+
+- **Bun** runtime (automatically installed by the installer)
+- **macOS** or **Linux**
+- **Git**
+
+---
+
 ## Services (42 total)
 
 **Base Infrastructure**

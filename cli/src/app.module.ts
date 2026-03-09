@@ -12,6 +12,7 @@ import { HostModule } from './modules/host';
 import { UiModule } from './modules/ui';
 import { BalancingModule } from './modules/balancing';
 import { MonitorModule } from './modules/monitor';
+import { DaemonModule } from './daemon';
 import { findRepoRoot } from './utils/paths';
 
 /**
@@ -64,6 +65,7 @@ export class AppModule {
         UiModule,
         BalancingModule,
         MonitorModule,
+        DaemonModule,
       ],
     };
   }

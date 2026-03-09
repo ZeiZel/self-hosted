@@ -142,6 +142,28 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       )
     `);
 
+    // Daemon health check logs table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS daemon_health_logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        check_type TEXT NOT NULL,
+        target TEXT NOT NULL,
+        status TEXT NOT NULL,
+        message TEXT,
+        metadata TEXT,
+        timestamp TEXT NOT NULL
+      )
+    `);
+
+    // Daemon state tracking table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS daemon_state (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `);
+
     // Create indexes for common queries
     db.exec(`
       CREATE INDEX IF NOT EXISTS idx_machines_status ON machines(status);
@@ -151,6 +173,9 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_metrics_target ON metrics(target_id, target_type);
       CREATE INDEX IF NOT EXISTS idx_metrics_timestamp ON metrics(timestamp);
       CREATE INDEX IF NOT EXISTS idx_metrics_type ON metrics(type);
+      CREATE INDEX IF NOT EXISTS idx_daemon_health_logs_status ON daemon_health_logs(status);
+      CREATE INDEX IF NOT EXISTS idx_daemon_health_logs_timestamp ON daemon_health_logs(timestamp);
+      CREATE INDEX IF NOT EXISTS idx_daemon_health_logs_target ON daemon_health_logs(target);
     `);
   }
 

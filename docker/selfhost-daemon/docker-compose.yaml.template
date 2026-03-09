@@ -1,0 +1,30 @@
+version: '3.8'
+
+services:
+  selfhost-daemon:
+    image: selfhost-daemon:latest
+    container_name: selfhost-daemon
+    restart: unless-stopped
+    build:
+      context: ../..
+      dockerfile: docker/selfhost-daemon/Dockerfile
+    volumes:
+      # Shared SQLite database for CLI communication
+      - ${DATA_DIR:-~/.selfhost}:/data
+      # Kubernetes configuration (read-only)
+      - ${KUBECONFIG:-~/.kube/config}:/root/.kube/config:ro
+    environment:
+      - CHECK_INTERVAL=${CHECK_INTERVAL:-60}
+      - DATA_DIR=/data
+      - KUBECONFIG=/root/.kube/config
+      - RETENTION_DAYS=${RETENTION_DAYS:-7}
+    # Use host network for cluster access
+    network_mode: host
+    labels:
+      - "com.selfhost.service=daemon"
+      - "com.selfhost.version=1.0.0"
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"

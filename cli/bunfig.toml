@@ -8,5 +8,7 @@ smol = false
 
 [test]
 # Test configuration
+preload = ["./src/__tests__/setup.ts"]
 coverage = true
 coverageDir = "coverage"
+timeout = 30000
