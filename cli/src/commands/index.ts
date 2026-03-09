@@ -6,3 +6,5 @@ export * from './deploy.command';
 export * from './status.command';
 export * from './validate.command';
 export * from './config.command';
+export * from './balance.command';
+export * from './monitor.command';
