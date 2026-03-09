@@ -51,6 +51,13 @@ export const PATHS = {
  */
 export const CLI_METADATA = {
   NAME: 'selfhost',
-  VERSION: '1.0.0',
   DESCRIPTION: 'CLI tool for automated self-hosted infrastructure deployment',
+} as const;
+
+/**
+ * GitHub repository info for update checking
+ */
+export const GITHUB_INFO = {
+  OWNER: 'ZeiZel',
+  REPO: 'self-hosted',
 } as const;

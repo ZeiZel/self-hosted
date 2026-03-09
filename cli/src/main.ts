@@ -4,6 +4,7 @@ import { AppModule } from './app.module';
 import type { CliOptions } from './core';
 import { createCli } from './cli';
 import { Errors, CliError } from './shared/errors';
+import { runBackgroundUpdateCheck, showPendingUpdateNotification } from './utils/update-checker';
 
 /**
  * Parse CLI options from command line arguments
@@ -83,6 +84,9 @@ async function bootstrap(): Promise<void> {
       });
     }
 
+    // Start background update check (non-blocking)
+    runBackgroundUpdateCheck();
+
     // Create NestJS application context with configured modules
     const app = await NestFactory.createApplicationContext(AppModule.forRoot({ cliOptions }), {
       logger: false,
@@ -90,8 +94,11 @@ async function bootstrap(): Promise<void> {
 
     // Create and run CLI
     const cli = createCli(app);
-     
+
     await cli.parseAsync(process.argv);
+
+    // Show update notification if available
+    showPendingUpdateNotification();
 
     // Clean up
     await app.close();
