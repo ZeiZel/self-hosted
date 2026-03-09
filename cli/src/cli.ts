@@ -8,6 +8,8 @@ import { createDeployCommand } from './commands/deploy.command';
 import { createStatusCommand } from './commands/status.command';
 import { createValidateCommand } from './commands/validate.command';
 import { createConfigCommand } from './commands/config.command';
+import { createBalanceCommand } from './commands/balance.command';
+import { createMonitorCommand } from './commands/monitor.command';
 import chalk from 'chalk';
 
 const VERSION = '1.0.0';
@@ -47,6 +49,8 @@ export function createCli(app: INestApplicationContext): Command {
   program.addCommand(createStatusCommand(app));
   program.addCommand(createValidateCommand(app));
   program.addCommand(createConfigCommand(app));
+  program.addCommand(createBalanceCommand(app));
+  program.addCommand(createMonitorCommand(app));
 
   // Default action (no command)
   program.action(() => {
