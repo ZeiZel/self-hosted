@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { ClusterClientService } from './cluster-client.service';
 import { MetricsStreamService } from './metrics-stream.service';
 import { AlertsService } from './alerts.service';
@@ -19,11 +19,11 @@ import { logger } from '../../utils/logger';
 @Injectable()
 export class MonitorService {
   constructor(
-    private clusterClient: ClusterClientService,
-    private metricsStream: MetricsStreamService,
-    private alertsService: AlertsService,
-    private tuiService: TuiService,
-    private migratorService: MigratorService,
+    @Inject(ClusterClientService) private clusterClient: ClusterClientService,
+    @Inject(MetricsStreamService) private metricsStream: MetricsStreamService,
+    @Inject(AlertsService) private alertsService: AlertsService,
+    @Inject(TuiService) private tuiService: TuiService,
+    @Inject(MigratorService) private migratorService: MigratorService,
   ) {}
 
   /**

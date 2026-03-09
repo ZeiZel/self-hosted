@@ -6,6 +6,7 @@ import { HostService } from '../modules/host/host.service';
 import { PromptsService } from '../modules/ui/prompts.service';
 import { TableService } from '../modules/ui/table.service';
 import { logger } from '../utils/logger';
+import { Errors, formatError, printErrorAndExit } from '../utils/errors';
 
 export function createInventoryCommand(app: INestApplicationContext): Command {
   const command = new Command('inventory');
@@ -95,8 +96,7 @@ function createAddCommand(app: INestApplicationContext): Command {
           'Roles': machine.roles.join(', '),
         });
       } catch (error) {
-        logger.error(error instanceof Error ? error.message : String(error));
-        process.exit(1);
+        printErrorAndExit(error);
       }
     });
 }
@@ -152,8 +152,7 @@ function createRemoveCommand(app: INestApplicationContext): Command {
       const machine = inventoryService.getByLabel(label) ?? inventoryService.getById(label);
 
       if (!machine) {
-        logger.error(`Machine '${label}' not found`);
-        process.exit(1);
+        printErrorAndExit(Errors.machineNotFound(label));
       }
 
       if (!options.force) {
@@ -198,8 +197,7 @@ function createValidateCommand(app: INestApplicationContext): Command {
       if (result.valid) {
         logger.success('Inventory is valid');
       } else {
-        logger.error('Inventory has errors');
-        process.exit(1);
+        printErrorAndExit(Errors.validationFailed(result.errors));
       }
     });
 }

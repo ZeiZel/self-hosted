@@ -85,5 +85,6 @@
       "Bash(kubectl get:*)",
       "Bash(xargs:*)"
     ]
-  }
+  },
+  "outputStyle": "default"
 }

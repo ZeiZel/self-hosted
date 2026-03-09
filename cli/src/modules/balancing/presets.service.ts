@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { join } from 'path';
 import {
   PlacementPreset,
@@ -17,7 +17,7 @@ import { logger } from '../../utils/logger';
 export class PresetsService {
   private readonly PRESETS_FILE = 'placement-presets.yaml';
 
-  constructor(private configService: ConfigService) {}
+  constructor(@Inject(ConfigService) private configService: ConfigService) {}
 
   /**
    * Get presets file path

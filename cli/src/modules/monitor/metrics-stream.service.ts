@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { Subject, Observable, interval, BehaviorSubject } from 'rxjs';
 import { switchMap, takeUntil, catchError } from 'rxjs/operators';
 import { ClusterClientService } from './cluster-client.service';
@@ -22,8 +22,8 @@ export class MetricsStreamService {
   private isStreaming = false;
 
   constructor(
-    private clusterClient: ClusterClientService,
-    private alertsService: AlertsService,
+    @Inject(ClusterClientService) private clusterClient: ClusterClientService,
+    @Inject(AlertsService) private alertsService: AlertsService,
   ) {}
 
   /**
