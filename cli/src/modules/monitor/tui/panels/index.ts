@@ -6,3 +6,4 @@ export * from './migration.panel';
 export * from './consul.panel';
 export * from './vault.panel';
 export * from './traefik.panel';
+export * from './settings.panel';

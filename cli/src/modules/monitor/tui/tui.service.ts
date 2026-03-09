@@ -15,8 +15,13 @@ import {
   renderSummaryPanel,
   renderAlertsPanel,
   renderMigrationPanel,
+  renderSettingsPanel,
+  createSettingsPanelState,
+  updateFieldValue,
+  navigateField,
   MigrationPanelState,
 } from './panels';
+import type { SettingsPanelState } from '../../../telegram/interfaces/telegram.interface';
 
 /**
  * TUI rendering service for the monitor dashboard
@@ -37,6 +42,8 @@ export class TuiService {
     targetNodeIndex: 0,
     nodes: [],
   };
+
+  private settingsState: SettingsPanelState = createSettingsPanelState();
 
   private clusterState: ClusterState | null = null;
   private subscription: Subscription | null = null;
@@ -150,6 +157,12 @@ export class TuiService {
       return;
     }
 
+    // Handle settings panel
+    if (this.settingsState.visible) {
+      this.handleSettingsKey(key);
+      return;
+    }
+
     switch (key) {
       case 'r':
         // Refresh
@@ -190,6 +203,11 @@ export class TuiService {
         if (this.state.selectedService && this.clusterState) {
           this.showMigrationPanel();
         }
+        break;
+
+      case 'g':
+        // Settings panel
+        this.toggleSettingsPanel();
         break;
 
       case '\r':
@@ -383,6 +401,89 @@ export class TuiService {
   }
 
   /**
+   * Toggle settings panel
+   */
+  private toggleSettingsPanel(): void {
+    this.settingsState = {
+      ...this.settingsState,
+      visible: !this.settingsState.visible,
+    };
+    this.render();
+  }
+
+  /**
+   * Handle keypress in settings panel
+   */
+  private handleSettingsKey(key: string): void {
+    switch (key) {
+      case '\x1B':
+      case 'g':
+        // Escape or 'g' - close settings
+        this.settingsState = {
+          ...this.settingsState,
+          visible: false,
+        };
+        this.render();
+        break;
+
+      case '\x1B[A':
+      case 'k':
+        // Up
+        this.settingsState = navigateField(this.settingsState, -1);
+        this.render();
+        break;
+
+      case '\x1B[B':
+      case 'j':
+        // Down
+        this.settingsState = navigateField(this.settingsState, 1);
+        this.render();
+        break;
+
+      case '\x1B[C':
+        // Right - increase value
+        this.settingsState = updateFieldValue(this.settingsState, 1);
+        this.render();
+        break;
+
+      case '\x1B[D':
+        // Left - decrease value
+        this.settingsState = updateFieldValue(this.settingsState, -1);
+        this.render();
+        break;
+
+      case ' ':
+        // Space - toggle boolean
+        const currentField = this.settingsState.fields[this.settingsState.selectedIndex];
+        if (currentField?.type === 'boolean') {
+          this.settingsState = updateFieldValue(this.settingsState, 1);
+          this.render();
+        }
+        break;
+
+      case '\r':
+      case '\n':
+        // Enter - save settings
+        if (this.settingsState.modified) {
+          this.saveSettings();
+        }
+        break;
+    }
+  }
+
+  /**
+   * Save settings (placeholder - would integrate with config service)
+   */
+  private saveSettings(): void {
+    // TODO: Integrate with config service to persist settings
+    this.settingsState = {
+      ...this.settingsState,
+      modified: false,
+    };
+    this.render();
+  }
+
+  /**
    * Main render function
    */
   private render(): void {
@@ -447,6 +548,11 @@ export class TuiService {
 
     if (!this.clusterState) {
       return [chalk.gray('  No data available')];
+    }
+
+    // Settings panel overlay
+    if (this.settingsState.visible) {
+      return renderSettingsPanel(this.settingsState, width);
     }
 
     // Migration panel overlay

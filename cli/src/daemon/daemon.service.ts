@@ -1,7 +1,8 @@
-import { Injectable, Inject } from '@nestjs/common';
+import { Injectable, Inject, Optional, forwardRef } from '@nestjs/common';
 import { HealthCheckerService } from './health-checker.service';
 import { DaemonClientService } from './daemon-client.service';
 import { DaemonInitService } from './daemon-init.service';
+import { TelegramAlertService } from '../telegram/telegram-alert.service';
 import {
   DaemonStatus,
   DaemonConfig,
@@ -23,6 +24,9 @@ export class DaemonService {
     private readonly daemonClient: DaemonClientService,
     @Inject(DaemonInitService)
     private readonly daemonInit: DaemonInitService,
+    @Optional()
+    @Inject(forwardRef(() => TelegramAlertService))
+    private readonly telegramAlert?: TelegramAlertService,
   ) {}
 
   /**
@@ -132,6 +136,15 @@ export class DaemonService {
     const logs = this.healthChecker.convertToLogs(result);
     if (logs.length > 0) {
       this.daemonClient.logHealthChecks(logs);
+
+      // Send alerts to Telegram for critical/degraded statuses
+      if (this.telegramAlert) {
+        try {
+          await this.telegramAlert.processAlerts(logs);
+        } catch (error) {
+          console.error('[Telegram] Failed to process alerts:', error);
+        }
+      }
     }
 
     // Update last check timestamp
