@@ -164,6 +164,35 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       )
     `);
 
+    // Telegram config table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS telegram_config (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        token TEXT NOT NULL,
+        chat_id TEXT NOT NULL,
+        enabled INTEGER NOT NULL DEFAULT 1,
+        rate_limit_seconds INTEGER DEFAULT 60,
+        alert_on_critical INTEGER DEFAULT 1,
+        alert_on_degraded INTEGER DEFAULT 0,
+        last_alert_at TEXT,
+        created_at TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      )
+    `);
+
+    // Telegram alert log table
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS telegram_alert_log (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        check_type TEXT NOT NULL,
+        target TEXT NOT NULL,
+        status TEXT NOT NULL,
+        message_id TEXT,
+        sent_at TEXT NOT NULL,
+        error TEXT
+      )
+    `);
+
     // Create indexes for common queries
     db.exec(`
       CREATE INDEX IF NOT EXISTS idx_machines_status ON machines(status);
@@ -176,6 +205,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
       CREATE INDEX IF NOT EXISTS idx_daemon_health_logs_status ON daemon_health_logs(status);
       CREATE INDEX IF NOT EXISTS idx_daemon_health_logs_timestamp ON daemon_health_logs(timestamp);
       CREATE INDEX IF NOT EXISTS idx_daemon_health_logs_target ON daemon_health_logs(target);
+      CREATE INDEX IF NOT EXISTS idx_telegram_alert_log_sent_at ON telegram_alert_log(sent_at);
     `);
   }
 

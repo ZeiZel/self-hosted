@@ -210,6 +210,7 @@ export enum TuiPanel {
   SUMMARY = 'summary',
   ALERTS = 'alerts',
   MIGRATION = 'migration',
+  SETTINGS = 'settings',
 }
 
 /**
@@ -240,6 +241,7 @@ export const KEYBOARD_SHORTCUTS: Record<string, string> = {
   s: 'Services panel',
   a: 'Alerts panel',
   m: 'Migration panel',
+  g: 'Settings panel',
 };
 
 /**

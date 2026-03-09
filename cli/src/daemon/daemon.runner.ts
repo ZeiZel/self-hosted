@@ -13,6 +13,7 @@ import { SharedModule } from '../shared/shared.module';
 import { CoreModule } from '../core/core.module';
 import { MonitorModule } from '../modules/monitor/monitor.module';
 import { ConfigModule } from '../modules/config/config.module';
+import { TelegramModule } from '../telegram/telegram.module';
 import { DaemonService } from './daemon.service';
 import { HealthCheckerService } from './health-checker.service';
 import { DaemonClientService } from './daemon-client.service';
@@ -36,6 +37,7 @@ import { DEFAULT_DAEMON_CONFIG } from './interfaces/daemon.interface';
       }),
     }),
     MonitorModule,
+    TelegramModule,
   ],
   providers: [HealthCheckerService, DaemonClientService, DaemonInitService, DaemonService],
 })

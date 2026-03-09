@@ -13,6 +13,7 @@ import { UiModule } from './modules/ui';
 import { BalancingModule } from './modules/balancing';
 import { MonitorModule } from './modules/monitor';
 import { DaemonModule } from './daemon';
+import { TelegramModule } from './telegram';
 import { findRepoRoot } from './utils/paths';
 
 /**
@@ -66,6 +67,7 @@ export class AppModule {
         BalancingModule,
         MonitorModule,
         DaemonModule,
+        TelegramModule,
       ],
     };
   }

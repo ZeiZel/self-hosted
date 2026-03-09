@@ -12,6 +12,7 @@ import { createBalanceCommand } from './commands/balance.command';
 import { createMonitorCommand } from './commands/monitor.command';
 import { createDaemonCommand } from './commands/daemon.command';
 import { createTestCommand } from './commands/test.command';
+import { createBotCommand } from './commands/bot.command';
 import chalk from 'chalk';
 
 const VERSION = '1.0.0';
@@ -55,6 +56,7 @@ export function createCli(app: INestApplicationContext): Command {
   program.addCommand(createMonitorCommand(app));
   program.addCommand(createDaemonCommand(app));
   program.addCommand(createTestCommand(app));
+  program.addCommand(createBotCommand(app));
 
   // Default action (no command)
   program.action(() => {
