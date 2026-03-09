@@ -1,24 +1,28 @@
 import { Injectable } from '@nestjs/common';
-import { ConfigService } from '../config/config.service';
 import { ServicesParser } from './services.parser';
+import { ServiceConfigRepository } from '../../database';
+import { ServiceTier, ServiceNamespace } from '../../database/entities/service-config.entity';
 import {
   Service,
   ServiceConfig,
   ServiceDefinition,
-  ServiceNamespace,
+  ServiceNamespace as LegacyNamespace,
   CORE_SERVICES,
   SERVICE_DEPENDENCIES,
   getServiceTier,
 } from '../../interfaces/service.interface';
 import { parseCpuToMillicores, parseMemoryToBytes } from '../../utils/validation';
 
+/**
+ * Services service for managing service selection and configuration
+ */
 @Injectable()
 export class ServicesService {
   private servicesCache: ServiceDefinition[] | null = null;
 
   constructor(
-    private readonly configService: ConfigService,
     private readonly parser: ServicesParser,
+    private readonly serviceConfigRepository: ServiceConfigRepository,
   ) {}
 
   /**
@@ -26,10 +30,9 @@ export class ServicesService {
    */
   getAll(): Service[] {
     const definitions = this.getDefinitions();
-    const configs = this.configService.loadServicesConfig();
 
     return definitions.map((def) => {
-      const config = configs[def.name] ?? this.getDefaultConfig(def.name);
+      const config = this.getConfig(def.name) ?? this.getDefaultConfig(def.name);
       const resources = this.parser.getResourceDefaults(def.name);
 
       return {
@@ -63,7 +66,7 @@ export class ServicesService {
   /**
    * Get services by namespace
    */
-  getByNamespace(namespace: ServiceNamespace): Service[] {
+  getByNamespace(namespace: LegacyNamespace): Service[] {
     return this.getAll().filter((s) => s.namespace === namespace);
   }
 
@@ -82,10 +85,39 @@ export class ServicesService {
   }
 
   /**
+   * Get service config from repository
+   */
+  private getConfig(name: string): ServiceConfig | undefined {
+    const dbConfig = this.serviceConfigRepository.findByName(name);
+    if (!dbConfig) return undefined;
+
+    return {
+      enabled: dbConfig.enabled,
+      replicas: 1,
+      resources: {
+        cpu: `${dbConfig.resources.cpu}m`,
+        memory: this.formatMemory(dbConfig.resources.memory),
+        storage: this.formatMemory(dbConfig.resources.storage),
+      },
+      expose: false,
+    };
+  }
+
+  /**
+   * Format bytes to human readable
+   */
+  private formatMemory(bytes: number): string {
+    if (bytes === 0) return '0';
+    if (bytes >= 1024 * 1024 * 1024) {
+      return `${Math.round(bytes / (1024 * 1024 * 1024))}Gi`;
+    }
+    return `${Math.round(bytes / (1024 * 1024))}Mi`;
+  }
+
+  /**
    * Enable/disable a service
    */
   setEnabled(name: string, enabled: boolean): void {
-    const configs = this.configService.loadServicesConfig();
     const definition = this.getDefinitions().find((d) => d.name === name);
 
     if (!definition) {
@@ -97,33 +129,76 @@ export class ServicesService {
       throw new Error(`Core service '${name}' cannot be disabled`);
     }
 
-    configs[name] = {
-      ...this.getDefaultConfig(name),
-      ...configs[name],
+    // Upsert config
+    const resources = this.parser.getResourceDefaults(name);
+    this.serviceConfigRepository.upsert({
+      name,
       enabled,
-    };
+      tier: this.getTierEnum(getServiceTier(resources)),
+      namespace: this.getNamespaceEnum(definition.namespace),
+      resources: {
+        cpu: parseCpuToMillicores(resources.cpu),
+        memory: parseMemoryToBytes(resources.memory),
+        storage: parseMemoryToBytes(resources.storage),
+      },
+    });
+  }
 
-    this.configService.saveServicesConfig(configs);
+  /**
+   * Convert tier string to enum
+   */
+  private getTierEnum(tier: string): ServiceTier {
+    const mapping: Record<string, ServiceTier> = {
+      heavy: ServiceTier.HEAVY,
+      medium: ServiceTier.MEDIUM,
+      light: ServiceTier.LIGHT,
+    };
+    return mapping[tier] ?? ServiceTier.MEDIUM;
+  }
+
+  /**
+   * Convert namespace string to enum
+   */
+  private getNamespaceEnum(namespace: LegacyNamespace): ServiceNamespace {
+    return namespace as unknown as ServiceNamespace;
   }
 
   /**
    * Update service configuration
    */
   updateConfig(name: string, updates: Partial<ServiceConfig>): void {
-    const configs = this.configService.loadServicesConfig();
     const definition = this.getDefinitions().find((d) => d.name === name);
 
     if (!definition) {
       throw new Error(`Service '${name}' not found`);
     }
 
-    configs[name] = {
-      ...this.getDefaultConfig(name),
-      ...configs[name],
-      ...updates,
-    };
-
-    this.configService.saveServicesConfig(configs);
+    const existing = this.serviceConfigRepository.findByName(name);
+    if (!existing) {
+      // Create new config
+      const resources = this.parser.getResourceDefaults(name);
+      this.serviceConfigRepository.create({
+        name,
+        enabled: updates.enabled ?? false,
+        tier: this.getTierEnum(getServiceTier(resources)),
+        namespace: this.getNamespaceEnum(definition.namespace),
+        resources: {
+          cpu: parseCpuToMillicores(updates.resources?.cpu ?? resources.cpu),
+          memory: parseMemoryToBytes(updates.resources?.memory ?? resources.memory),
+          storage: parseMemoryToBytes(updates.resources?.storage ?? resources.storage),
+        },
+      });
+    } else {
+      // Update existing
+      this.serviceConfigRepository.update(existing.id, {
+        enabled: updates.enabled,
+        resources: updates.resources ? {
+          cpu: parseCpuToMillicores(updates.resources.cpu),
+          memory: parseMemoryToBytes(updates.resources.memory),
+          storage: parseMemoryToBytes(updates.resources.storage),
+        } : undefined,
+      });
+    }
   }
 
   /**
@@ -266,13 +341,13 @@ export class ServicesService {
     total: number;
     enabled: number;
     byTier: { heavy: number; medium: number; light: number };
-    byNamespace: Record<ServiceNamespace, number>;
+    byNamespace: Record<LegacyNamespace, number>;
   } {
     const all = this.getAll();
     const enabled = this.getEnabled();
 
     const byTier = { heavy: 0, medium: 0, light: 0 };
-    const byNamespace: Record<ServiceNamespace, number> = {} as Record<ServiceNamespace, number>;
+    const byNamespace: Record<LegacyNamespace, number> = {} as Record<LegacyNamespace, number>;
 
     for (const service of enabled) {
       byTier[service.tier]++;

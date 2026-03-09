@@ -10,14 +10,16 @@ import {
   AffinityStrategy,
   SpreadStrategy,
 } from './strategies';
-import { ConfigModule } from '../config/config.module';
 import { InventoryModule } from '../inventory/inventory.module';
 import { ServicesModule } from '../services/services.module';
 import { HostModule } from '../host/host.module';
 
+/**
+ * Balancing module for service placement optimization
+ * ConfigModule is @Global() so no explicit import needed
+ */
 @Module({
   imports: [
-    ConfigModule,
     InventoryModule,
     ServicesModule,
     HostModule,

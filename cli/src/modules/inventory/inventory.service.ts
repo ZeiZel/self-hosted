@@ -1,73 +1,72 @@
-import { Injectable } from '@nestjs/common';
-import { randomUUID } from 'crypto';
-import { ConfigService } from '../config/config.service';
+import { Injectable, Inject } from '@nestjs/common';
 import {
+  MachineRepository,
   Machine,
   MachineRole,
-  SshConfig,
+  MachineStatus,
+  CreateMachineInput,
+  UpdateMachineInput,
   areRolesCompatible,
   machineSchema,
-} from '../../interfaces/machine.interface';
+} from '../../database';
+import { Errors } from '../../shared/errors';
 
-export interface AddMachineInput {
-  label: string;
-  ip: string;
-  roles: MachineRole[];
-  ssh: Partial<SshConfig>;
-}
-
+/**
+ * Inventory service for managing cluster machines
+ */
 @Injectable()
 export class InventoryService {
-  constructor(private readonly configService: ConfigService) {}
+  constructor(
+    @Inject(MachineRepository)
+    private readonly machineRepository: MachineRepository,
+  ) {}
 
   /**
    * Get all machines
    */
   getAll(): Machine[] {
-    return this.configService.loadInventory();
+    return this.machineRepository.findAll();
   }
 
   /**
    * Get machine by ID
    */
   getById(id: string): Machine | undefined {
-    return this.getAll().find((m) => m.id === id);
+    return this.machineRepository.findById(id) ?? undefined;
   }
 
   /**
    * Get machine by label
    */
   getByLabel(label: string): Machine | undefined {
-    return this.getAll().find((m) => m.label === label);
+    return this.machineRepository.findByLabel(label) ?? undefined;
   }
 
   /**
    * Get machine by IP
    */
   getByIp(ip: string): Machine | undefined {
-    return this.getAll().find((m) => m.ip === ip);
+    return this.machineRepository.findByIp(ip) ?? undefined;
   }
 
   /**
    * Get machines by role
    */
   getByRole(role: MachineRole): Machine[] {
-    return this.getAll().filter((m) => m.roles.includes(role));
+    return this.machineRepository.findByRole(role);
   }
 
   /**
    * Add a new machine
    */
-  add(input: AddMachineInput): Machine {
-    const machines = this.getAll();
-
+  add(input: CreateMachineInput): Machine {
     // Validate unique label
-    if (machines.some((m) => m.label === input.label)) {
+    if (this.machineRepository.findByLabel(input.label)) {
       throw new Error(`Machine with label '${input.label}' already exists`);
     }
 
     // Validate unique IP
-    if (machines.some((m) => m.ip === input.ip)) {
+    if (this.machineRepository.findByIp(input.ip)) {
       throw new Error(`Machine with IP '${input.ip}' already exists`);
     }
 
@@ -76,51 +75,28 @@ export class InventoryService {
       throw new Error(`Incompatible roles: ${input.roles.join(', ')}`);
     }
 
-    const machine: Machine = {
-      id: randomUUID(),
-      label: input.label,
-      ip: input.ip,
-      roles: input.roles,
-      ssh: {
-        host: input.ip,
-        port: input.ssh.port ?? 22,
-        username: input.ssh.username ?? 'root',
-        privateKeyPath: input.ssh.privateKeyPath,
-        password: input.ssh.password,
-      },
-      status: 'unknown',
-    };
-
-    // Validate with schema
-    machineSchema.parse(machine);
-
-    machines.push(machine);
-    this.configService.saveInventory(machines);
-
-    return machine;
+    return this.machineRepository.create(input);
   }
 
   /**
    * Update a machine
    */
-  update(id: string, updates: Partial<Omit<Machine, 'id'>>): Machine {
-    const machines = this.getAll();
-    const index = machines.findIndex((m) => m.id === id);
-
-    if (index === -1) {
-      throw new Error(`Machine with ID '${id}' not found`);
+  update(id: string, updates: UpdateMachineInput): Machine {
+    const existing = this.machineRepository.findById(id);
+    if (!existing) {
+      throw Errors.machineNotFound(id);
     }
 
     // Validate unique label if changing
-    if (updates.label && updates.label !== machines[index].label) {
-      if (machines.some((m) => m.label === updates.label)) {
+    if (updates.label && updates.label !== existing.label) {
+      if (this.machineRepository.findByLabel(updates.label)) {
         throw new Error(`Machine with label '${updates.label}' already exists`);
       }
     }
 
     // Validate unique IP if changing
-    if (updates.ip && updates.ip !== machines[index].ip) {
-      if (machines.some((m) => m.ip === updates.ip)) {
+    if (updates.ip && updates.ip !== existing.ip) {
+      if (this.machineRepository.findByIp(updates.ip)) {
         throw new Error(`Machine with IP '${updates.ip}' already exists`);
       }
     }
@@ -130,41 +106,33 @@ export class InventoryService {
       throw new Error(`Incompatible roles: ${updates.roles.join(', ')}`);
     }
 
-    machines[index] = { ...machines[index], ...updates };
-
     // Update SSH host if IP changed
-    if (updates.ip) {
-      machines[index].ssh.host = updates.ip;
+    if (updates.ip && !updates.ssh?.host) {
+      updates.ssh = { ...updates.ssh, host: updates.ip };
     }
 
-    // Validate with schema
-    machineSchema.parse(machines[index]);
+    const result = this.machineRepository.update(id, updates);
+    if (!result) {
+      throw Errors.machineNotFound(id);
+    }
 
-    this.configService.saveInventory(machines);
-
-    return machines[index];
+    return result;
   }
 
   /**
    * Remove a machine
    */
   remove(id: string): void {
-    const machines = this.getAll();
-    const index = machines.findIndex((m) => m.id === id);
-
-    if (index === -1) {
-      throw new Error(`Machine with ID '${id}' not found`);
+    if (!this.machineRepository.delete(id)) {
+      throw Errors.machineNotFound(id);
     }
-
-    machines.splice(index, 1);
-    this.configService.saveInventory(machines);
   }
 
   /**
    * Remove all machines
    */
   clear(): void {
-    this.configService.saveInventory([]);
+    this.machineRepository.deleteAll();
   }
 
   /**
@@ -286,27 +254,14 @@ export class InventoryService {
     online: number;
     offline: number;
   } {
-    const machines = this.getAll();
-
-    const byRole: Record<MachineRole, number> = {
-      [MachineRole.MASTER]: 0,
-      [MachineRole.WORKER]: 0,
-      [MachineRole.GATEWAY]: 0,
-      [MachineRole.STORAGE]: 0,
-      [MachineRole.BACKUPS]: 0,
-    };
-
-    for (const machine of machines) {
-      for (const role of machine.roles) {
-        byRole[role]++;
-      }
-    }
+    const countByStatus = this.machineRepository.countByStatus();
+    const countByRole = this.machineRepository.countByRole();
 
     return {
-      total: machines.length,
-      byRole,
-      online: machines.filter((m) => m.status === 'online').length,
-      offline: machines.filter((m) => m.status === 'offline').length,
+      total: this.machineRepository.count(),
+      byRole: countByRole,
+      online: countByStatus[MachineStatus.ONLINE],
+      offline: countByStatus[MachineStatus.OFFLINE],
     };
   }
 }

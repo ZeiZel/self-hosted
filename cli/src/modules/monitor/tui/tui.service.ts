@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { Subscription } from 'rxjs';
 import chalk from 'chalk';
 import {
@@ -43,7 +43,7 @@ export class TuiService {
   private running = false;
   private onMigrate?: (request: MigrationRequest) => Promise<void>;
 
-  constructor(private metricsStream: MetricsStreamService) {}
+  constructor(@Inject(MetricsStreamService) private metricsStream: MetricsStreamService) {}
 
   /**
    * Start the TUI

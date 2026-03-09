@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import {
   BalancingStrategy,
   BalancingOptions,
@@ -34,16 +34,16 @@ export class BalancingService {
   private strategies: Map<BalancingStrategy, BaseStrategy> = new Map();
 
   constructor(
-    private inventoryService: InventoryService,
-    private servicesService: ServicesService,
-    private constraintsService: ConstraintsService,
-    private migratorService: MigratorService,
-    private presetsService: PresetsService,
-    private binPackingStrategy: BinPackingStrategy,
-    private roundRobinStrategy: RoundRobinStrategy,
-    private weightedStrategy: WeightedStrategy,
-    private affinityStrategy: AffinityStrategy,
-    private spreadStrategy: SpreadStrategy,
+    @Inject(InventoryService) private inventoryService: InventoryService,
+    @Inject(ServicesService) private servicesService: ServicesService,
+    @Inject(ConstraintsService) private constraintsService: ConstraintsService,
+    @Inject(MigratorService) private migratorService: MigratorService,
+    @Inject(PresetsService) private presetsService: PresetsService,
+    @Inject(BinPackingStrategy) private binPackingStrategy: BinPackingStrategy,
+    @Inject(RoundRobinStrategy) private roundRobinStrategy: RoundRobinStrategy,
+    @Inject(WeightedStrategy) private weightedStrategy: WeightedStrategy,
+    @Inject(AffinityStrategy) private affinityStrategy: AffinityStrategy,
+    @Inject(SpreadStrategy) private spreadStrategy: SpreadStrategy,
   ) {
     this.strategies.set(BalancingStrategy.BIN_PACKING, this.binPackingStrategy);
     this.strategies.set(BalancingStrategy.ROUND_ROBIN, this.roundRobinStrategy);

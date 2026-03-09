@@ -1,24 +1,99 @@
 import 'reflect-metadata';
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
+import type { CliOptions } from './core';
 import { createCli } from './cli';
-import { Logger } from './utils/logger';
+import { Errors, CliError } from './shared/errors';
 
+/**
+ * Parse CLI options from command line arguments
+ */
+function parseCliOptions(): CliOptions {
+  // eslint-disable-next-line no-undef
+  const args = process.argv;
+
+  return {
+    verbose: args.includes('--verbose'),
+    noColor: args.includes('--no-color'),
+    configPath: getArgValue(args, '--config'),
+  };
+}
+
+/**
+ * Get value of a CLI argument
+ */
+function getArgValue(args: string[], flag: string): string | undefined {
+  const index = args.indexOf(flag);
+  if (index === -1 || index === args.length - 1) {
+    return undefined;
+  }
+  return args[index + 1];
+}
+
+/**
+ * Handle fatal error and exit
+ */
+function handleFatalError(error: unknown, verbose: boolean): never {
+  const cliError = error instanceof CliError ? error : wrapModuleError(error, verbose);
+  // eslint-disable-next-line no-undef
+  process.stderr.write(cliError.format(verbose) + '\n');
+  // eslint-disable-next-line no-undef
+  process.exit(1);
+}
+
+/**
+ * Wrap NestJS module initialization errors with better messages
+ */
+function wrapModuleError(error: unknown, verbose: boolean): CliError {
+  const message = error instanceof Error ? error.message : String(error);
+
+  // Common patterns in module errors
+  if (message.includes('Not in a valid selfhost repository')) {
+    return Errors.notInRepo();
+  }
+
+  if (message.includes('Configuration not loaded')) {
+    return Errors.configNotLoaded();
+  }
+
+  if (message.includes('SQLITE') || message.includes('database')) {
+    return Errors.databaseError(message, error instanceof Error ? error : undefined);
+  }
+
+  // Generic module error
+  return new CliError(
+    'UNKNOWN' as any,
+    'Failed to initialize CLI',
+    {
+      details: verbose ? message : undefined,
+      hint: verbose ? undefined : 'Run with --verbose for more details',
+      cause: error instanceof Error ? error : undefined,
+    }
+  );
+}
+
+/**
+ * Bootstrap the CLI application
+ */
 async function bootstrap(): Promise<void> {
-  const logger = new Logger();
+  // Parse CLI options early for error handling
+  const cliOptions = parseCliOptions();
 
   try {
     // Check for Bun runtime
     if (typeof Bun === 'undefined') {
-      logger.error('This CLI requires Bun runtime. Please install Bun: https://bun.sh');
-      // eslint-disable-next-line no-undef
-      process.exit(1);
+      throw new CliError(
+        'DEPENDENCY_ERROR' as any,
+        'This CLI requires Bun runtime',
+        { hint: 'Please install Bun: https://bun.sh' }
+      );
     }
 
-    // Create NestJS application context (standalone mode)
-    const app = await NestFactory.createApplicationContext(AppModule, {
-      logger: false,
-    });
+    // Create NestJS application context with configured modules
+    const app = await NestFactory.createApplicationContext(
+      AppModule.forRoot({ cliOptions }),
+      { logger: false }
+    );
 
     // Create and run CLI
     const cli = createCli(app);
@@ -28,10 +103,9 @@ async function bootstrap(): Promise<void> {
     // Clean up
     await app.close();
   } catch (error) {
-    logger.error('Fatal error:', error instanceof Error ? error.message : String(error));
-    // eslint-disable-next-line no-undef
-    process.exit(1);
+    handleFatalError(error, cliOptions.verbose);
   }
 }
 
+// Run bootstrap
 bootstrap();

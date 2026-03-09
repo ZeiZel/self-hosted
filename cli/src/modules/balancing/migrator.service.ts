@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Inject } from '@nestjs/common';
 import { join } from 'path';
 import {
   MigrationPlan,
@@ -26,7 +26,7 @@ export interface MigrationResult {
 @Injectable()
 export class MigratorService {
   constructor(
-    private configService: ConfigService,
+    @Inject(ConfigService) private configService: ConfigService,
   ) {}
 
   /**
