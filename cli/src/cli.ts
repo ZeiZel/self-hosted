@@ -13,9 +13,9 @@ import { createMonitorCommand } from './commands/monitor.command';
 import { createDaemonCommand } from './commands/daemon.command';
 import { createTestCommand } from './commands/test.command';
 import { createBotCommand } from './commands/bot.command';
+import { createUpdateCommand } from './commands/update.command';
+import { getVersion } from './utils/version';
 import chalk from 'chalk';
-
-const VERSION = '1.0.0';
 
 const BANNER = `
 ${chalk.cyan('╔═══════════════════════════════════════════════════════════╗')}
@@ -30,7 +30,7 @@ export function createCli(app: INestApplicationContext): Command {
   program
     .name('selfhost')
     .description('CLI tool for automated self-hosted infrastructure deployment')
-    .version(VERSION, '-v, --version', 'Display version number')
+    .version(getVersion(), '-v, --version', 'Display version number')
     .addHelpText('beforeAll', BANNER)
     .configureHelp({
       sortSubcommands: true,
@@ -57,6 +57,7 @@ export function createCli(app: INestApplicationContext): Command {
   program.addCommand(createDaemonCommand(app));
   program.addCommand(createTestCommand(app));
   program.addCommand(createBotCommand(app));
+  program.addCommand(createUpdateCommand());
 
   // Default action (no command)
   program.action(() => {

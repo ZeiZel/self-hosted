@@ -15,7 +15,8 @@
     "lint:fix": "eslint src --ext .ts --fix",
     "format": "prettier --write \"src/**/*.ts\"",
     "test": "bun test",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "release": "bun run scripts/release.ts"
   },
   "dependencies": {
     "@nestjs/common": "^10.4.15",
