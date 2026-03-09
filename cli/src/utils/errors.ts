@@ -215,16 +215,16 @@ export function printErrorAndExit(error: unknown, verbose = false, exitCode = 1)
   const message = formatError(error, verbose);
 
   // Use process.stderr.write to ensure output is flushed
-  // eslint-disable-next-line no-undef
+   
   process.stderr.write(message + '\n');
 
   // Add hint for verbose mode if not already verbose and not a CliError
   if (!verbose && !(error instanceof CliError)) {
-    // eslint-disable-next-line no-undef
+     
     process.stderr.write('\n  Run with --verbose for more details\n');
   }
 
-  // eslint-disable-next-line no-undef
+   
   process.exit(exitCode);
 }
 

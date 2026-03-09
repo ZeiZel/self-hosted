@@ -55,12 +55,13 @@ export class HostService {
       arch: 'uname -m',
       cpuCores: 'nproc',
       cpuModel: 'cat /proc/cpuinfo | grep "model name" | head -1 | cut -d: -f2 | xargs',
-      memoryTotal: 'cat /proc/meminfo | grep MemTotal | awk \'{print $2}\'',
-      memoryAvailable: 'cat /proc/meminfo | grep MemAvailable | awk \'{print $2}\'',
-      diskTotal: 'df -B1 / | tail -1 | awk \'{print $2}\'',
-      diskAvailable: 'df -B1 / | tail -1 | awk \'{print $4}\'',
+      memoryTotal: "cat /proc/meminfo | grep MemTotal | awk '{print $2}'",
+      memoryAvailable: "cat /proc/meminfo | grep MemAvailable | awk '{print $2}'",
+      diskTotal: "df -B1 / | tail -1 | awk '{print $2}'",
+      diskAvailable: "df -B1 / | tail -1 | awk '{print $4}'",
       dockerVersion: 'docker --version 2>/dev/null | cut -d" " -f3 | tr -d ","|| echo ""',
-      kubernetesVersion: 'kubectl version --client -o json 2>/dev/null | jq -r .clientVersion.gitVersion || echo ""',
+      kubernetesVersion:
+        'kubectl version --client -o json 2>/dev/null | jq -r .clientVersion.gitVersion || echo ""',
     };
 
     const results: Record<string, string> = {};

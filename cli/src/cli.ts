@@ -58,7 +58,7 @@ export function createCli(app: INestApplicationContext): Command {
 
   // Default action (no command)
   program.action(() => {
-    // eslint-disable-next-line no-undef
+     
     console.log(BANNER);
     program.help();
   });

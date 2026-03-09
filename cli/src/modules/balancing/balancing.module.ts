@@ -19,11 +19,7 @@ import { HostModule } from '../host/host.module';
  * ConfigModule is @Global() so no explicit import needed
  */
 @Module({
-  imports: [
-    InventoryModule,
-    ServicesModule,
-    HostModule,
-  ],
+  imports: [InventoryModule, ServicesModule, HostModule],
   providers: [
     // Strategies
     BinPackingStrategy,
@@ -37,11 +33,6 @@ import { HostModule } from '../host/host.module';
     PresetsService,
     BalancingService,
   ],
-  exports: [
-    BalancingService,
-    ConstraintsService,
-    MigratorService,
-    PresetsService,
-  ],
+  exports: [BalancingService, ConstraintsService, MigratorService, PresetsService],
 })
 export class BalancingModule {}

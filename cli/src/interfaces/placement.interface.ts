@@ -227,21 +227,29 @@ export const placementDecisionSchema = z.object({
 });
 
 export const placementPresetSchema = z.object({
-  name: z.string().min(1).max(63).regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/),
+  name: z
+    .string()
+    .min(1)
+    .max(63)
+    .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/),
   description: z.string().optional().default(''),
   createdAt: z.string().datetime(),
   strategy: z.nativeEnum(BalancingStrategy),
-  placements: z.array(z.object({
-    service: z.string(),
-    node: z.string(),
-  })),
-  constraints: z.array(z.object({
-    type: z.nativeEnum(ConstraintType),
-    service: z.string(),
-    target: z.string().optional(),
-    roles: z.array(z.nativeEnum(MachineRole)).optional(),
-    hard: z.boolean(),
-  })),
+  placements: z.array(
+    z.object({
+      service: z.string(),
+      node: z.string(),
+    }),
+  ),
+  constraints: z.array(
+    z.object({
+      type: z.nativeEnum(ConstraintType),
+      service: z.string(),
+      target: z.string().optional(),
+      roles: z.array(z.nativeEnum(MachineRole)).optional(),
+      hard: z.boolean(),
+    }),
+  ),
 });
 
 export const balancingOptionsSchema = z.object({

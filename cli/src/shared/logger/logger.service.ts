@@ -146,7 +146,9 @@ export class LoggerService {
     const maxKeyLength = Math.max(...Object.keys(pairs).map((k) => k.length));
     Object.entries(pairs).forEach(([key, value]) => {
       const paddedKey = key.padEnd(maxKeyLength);
-      console.log(`  ${this.color(chalk.gray, paddedKey)}  ${this.color(chalk.white, String(value))}`);
+      console.log(
+        `  ${this.color(chalk.gray, paddedKey)}  ${this.color(chalk.white, String(value))}`,
+      );
     });
   }
 
@@ -166,9 +168,7 @@ export class LoggerService {
     lines.forEach((line) => {
       const padding = ' '.repeat(maxLength - line.length);
       console.log(
-        this.color(chalk.gray, '│') +
-        ` ${line}${padding} ` +
-        this.color(chalk.gray, '│')
+        this.color(chalk.gray, '│') + ` ${line}${padding} ` + this.color(chalk.gray, '│'),
       );
     });
 
@@ -182,8 +182,8 @@ export class LoggerService {
     const percentage = current / total;
     const filled = Math.round(width * percentage);
     const empty = width - filled;
-    const bar = this.color(chalk.green, '█'.repeat(filled)) +
-                this.color(chalk.gray, '░'.repeat(empty));
+    const bar =
+      this.color(chalk.green, '█'.repeat(filled)) + this.color(chalk.gray, '░'.repeat(empty));
     const percent = Math.round(percentage * 100);
     return `${bar} ${percent}%`;
   }

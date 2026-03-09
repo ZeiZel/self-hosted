@@ -16,9 +16,9 @@ async function healthcheck() {
     const db = new Database(dbPath, { readonly: true });
 
     // Check if daemon is marked as running
-    const result = db.query("SELECT value FROM daemon_state WHERE key = 'running'").get() as
-      | { value: string }
-      | null;
+    const result = db.query("SELECT value FROM daemon_state WHERE key = 'running'").get() as {
+      value: string;
+    } | null;
 
     db.close();
 
@@ -28,9 +28,9 @@ async function healthcheck() {
     }
 
     // Check last check timestamp
-    const lastCheck = db
-      .query("SELECT value FROM daemon_state WHERE key = 'last_check'")
-      .get() as { value: string } | null;
+    const lastCheck = db.query("SELECT value FROM daemon_state WHERE key = 'last_check'").get() as {
+      value: string;
+    } | null;
 
     if (lastCheck) {
       const lastCheckTime = new Date(lastCheck.value);

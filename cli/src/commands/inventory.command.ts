@@ -6,7 +6,8 @@ import { HostService } from '../modules/host/host.service';
 import { PromptsService } from '../modules/ui/prompts.service';
 import { TableService } from '../modules/ui/table.service';
 import { logger } from '../utils/logger';
-import { Errors, formatError, printErrorAndExit } from '../utils/errors';
+import { Errors, printErrorAndExit } from '../utils/errors';
+import { MachineStatus } from '../database/entities/machine.entity';
 
 export function createInventoryCommand(app: INestApplicationContext): Command {
   const command = new Command('inventory');
@@ -91,9 +92,9 @@ function createAddCommand(app: INestApplicationContext): Command {
 
         logger.success(`Machine '${machine.label}' added successfully`);
         logger.keyValue({
-          'ID': machine.id,
-          'IP': machine.ip,
-          'Roles': machine.roles.join(', '),
+          ID: machine.id,
+          IP: machine.ip,
+          Roles: machine.roles.join(', '),
         });
       } catch (error) {
         printErrorAndExit(error);
@@ -128,10 +129,10 @@ function createListCommand(app: INestApplicationContext): Command {
       const summary = inventoryService.getSummary();
       logger.keyValue({
         'Total machines': summary.total,
-        'Masters': summary.byRole.master,
-        'Workers': summary.byRole.worker,
-        'Gateways': summary.byRole.gateway,
-        'Storage': summary.byRole.storage,
+        Masters: summary.byRole.master,
+        Workers: summary.byRole.worker,
+        Gateways: summary.byRole.gateway,
+        Storage: summary.byRole.storage,
       });
 
       logger.newLine();
@@ -158,7 +159,7 @@ function createRemoveCommand(app: INestApplicationContext): Command {
       if (!options.force) {
         const confirm = await prompts.confirm(
           `Remove machine '${machine.label}' (${machine.ip})?`,
-          false
+          false,
         );
         if (!confirm) {
           return;
@@ -225,10 +226,13 @@ function createTestCommand(app: INestApplicationContext): Command {
 
         if (result.success) {
           spinner.succeed(`${machine.label} (${machine.ip}) - Connected`);
-          inventoryService.update(machine.id, { status: 'online', lastSeen: new Date().toISOString() });
+          inventoryService.update(machine.id, {
+            status: MachineStatus.ONLINE,
+            lastSeen: new Date().toISOString(),
+          });
         } else {
           spinner.fail(`${machine.label} (${machine.ip}) - ${result.error}`);
-          inventoryService.update(machine.id, { status: 'error' });
+          inventoryService.update(machine.id, { status: MachineStatus.ERROR });
         }
       }
     });

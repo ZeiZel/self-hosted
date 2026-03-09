@@ -42,13 +42,19 @@ export function renderSummaryPanel(summary: ClusterSummary, width: number = 35):
   const cpuBar = createProgressBar(summary.cpu.percent, 10);
   const cpuColor = getResourceColor(summary.cpu.percent);
   lines.push(`  CPU:      ${cpuColor(cpuBar)} ${summary.cpu.percent}%`);
-  lines.push(chalk.gray(`            ${formatCpu(summary.cpu.used)}/${formatCpu(summary.cpu.total)} cores`));
+  lines.push(
+    chalk.gray(`            ${formatCpu(summary.cpu.used)}/${formatCpu(summary.cpu.total)} cores`),
+  );
 
   // Memory
   const memBar = createProgressBar(summary.memory.percent, 10);
   const memColor = getResourceColor(summary.memory.percent);
   lines.push(`  Memory:   ${memColor(memBar)} ${summary.memory.percent}%`);
-  lines.push(chalk.gray(`            ${formatBytes(summary.memory.used)}/${formatBytes(summary.memory.total)}`));
+  lines.push(
+    chalk.gray(
+      `            ${formatBytes(summary.memory.used)}/${formatBytes(summary.memory.total)}`,
+    ),
+  );
 
   lines.push('');
 

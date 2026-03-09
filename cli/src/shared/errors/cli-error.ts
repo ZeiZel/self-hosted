@@ -27,7 +27,7 @@ export class CliError extends Error {
   constructor(
     type: CliErrorType,
     message: string,
-    options?: { hint?: string; details?: string; cause?: Error }
+    options?: { hint?: string; details?: string; cause?: Error },
   ) {
     super(message);
     this.name = 'CliError';
@@ -44,7 +44,9 @@ export class CliError extends Error {
    */
   format(verbose = false, useColor = true): string {
     const lines: string[] = [];
-    const color = useColor ? chalk : { red: { bold: (s: string) => s }, gray: (s: string) => s, yellow: (s: string) => s };
+    const color = useColor
+      ? chalk
+      : { red: { bold: (s: string) => s }, gray: (s: string) => s, yellow: (s: string) => s };
 
     // Error header
     lines.push(color.red.bold(`Error: ${this.message}`));
@@ -90,98 +92,63 @@ export class CliError extends Error {
  */
 export const Errors = {
   notInRepo(): CliError {
-    return new CliError(
-      CliErrorType.NOT_IN_REPO,
-      'Not in a valid selfhost repository',
-      {
-        hint: 'Run this command from the repository root (directory containing kubernetes/ and ansible/)',
-        details: 'The CLI looks for kubernetes/, ansible/, and CLAUDE.md in the current or parent directories.',
-      }
-    );
+    return new CliError(CliErrorType.NOT_IN_REPO, 'Not in a valid selfhost repository', {
+      hint: 'Run this command from the repository root (directory containing kubernetes/ and ansible/)',
+      details:
+        'The CLI looks for kubernetes/, ansible/, and CLAUDE.md in the current or parent directories.',
+    });
   },
 
   notInitialized(): CliError {
-    return new CliError(
-      CliErrorType.NOT_INITIALIZED,
-      'CLI is not initialized',
-      {
-        hint: 'Run `selfhost init` first to initialize the project',
-        details: 'The init command sets up configuration and prepares the project for deployment.',
-      }
-    );
+    return new CliError(CliErrorType.NOT_INITIALIZED, 'CLI is not initialized', {
+      hint: 'Run `selfhost init` first to initialize the project',
+      details: 'The init command sets up configuration and prepares the project for deployment.',
+    });
   },
 
   configNotLoaded(): CliError {
-    return new CliError(
-      CliErrorType.CONFIG_ERROR,
-      'Configuration could not be loaded',
-      {
-        hint: 'Check that ~/.selfhosted directory exists and is writable',
-        details: 'The CLI stores its configuration in ~/.selfhosted/config.yaml',
-      }
-    );
+    return new CliError(CliErrorType.CONFIG_ERROR, 'Configuration could not be loaded', {
+      hint: 'Check that ~/.selfhosted directory exists and is writable',
+      details: 'The CLI stores its configuration in ~/.selfhosted/config.yaml',
+    });
   },
 
   databaseError(message: string, cause?: Error): CliError {
-    return new CliError(
-      CliErrorType.DATABASE_ERROR,
-      `Database error: ${message}`,
-      {
-        hint: 'Check that the database file is not corrupted or locked',
-        cause,
-      }
-    );
+    return new CliError(CliErrorType.DATABASE_ERROR, `Database error: ${message}`, {
+      hint: 'Check that the database file is not corrupted or locked',
+      cause,
+    });
   },
 
   noMachinesConfigured(): CliError {
-    return new CliError(
-      CliErrorType.CONFIG_ERROR,
-      'No machines configured in inventory',
-      {
-        hint: 'Run `selfhost inventory add` to add machines to your cluster',
-      }
-    );
+    return new CliError(CliErrorType.CONFIG_ERROR, 'No machines configured in inventory', {
+      hint: 'Run `selfhost inventory add` to add machines to your cluster',
+    });
   },
 
   noServicesSelected(): CliError {
-    return new CliError(
-      CliErrorType.CONFIG_ERROR,
-      'No services selected for deployment',
-      {
-        hint: 'Run `selfhost services select` to choose which services to deploy',
-      }
-    );
+    return new CliError(CliErrorType.CONFIG_ERROR, 'No services selected for deployment', {
+      hint: 'Run `selfhost services select` to choose which services to deploy',
+    });
   },
 
   machineNotFound(identifier: string): CliError {
-    return new CliError(
-      CliErrorType.CONFIG_ERROR,
-      `Machine not found: ${identifier}`,
-      {
-        hint: 'Run `selfhost inventory list` to see available machines',
-      }
-    );
+    return new CliError(CliErrorType.CONFIG_ERROR, `Machine not found: ${identifier}`, {
+      hint: 'Run `selfhost inventory list` to see available machines',
+    });
   },
 
   serviceNotFound(name: string): CliError {
-    return new CliError(
-      CliErrorType.CONFIG_ERROR,
-      `Service not found: ${name}`,
-      {
-        hint: 'Run `selfhost services list` to see available services',
-      }
-    );
+    return new CliError(CliErrorType.CONFIG_ERROR, `Service not found: ${name}`, {
+      hint: 'Run `selfhost services list` to see available services',
+    });
   },
 
   validationFailed(errors: string[]): CliError {
-    return new CliError(
-      CliErrorType.VALIDATION_ERROR,
-      'Validation failed',
-      {
-        details: errors.map((e) => `  - ${e}`).join('\n'),
-        hint: 'Fix the errors above and try again',
-      }
-    );
+    return new CliError(CliErrorType.VALIDATION_ERROR, 'Validation failed', {
+      details: errors.map((e) => `  - ${e}`).join('\n'),
+      hint: 'Fix the errors above and try again',
+    });
   },
 
   dependencyMissing(dependency: string): CliError {
@@ -190,30 +157,22 @@ export const Errors = {
       `Required dependency not found: ${dependency}`,
       {
         hint: 'Ensure all required tools are installed and in PATH',
-      }
+      },
     );
   },
 
   permissionDenied(resource: string): CliError {
-    return new CliError(
-      CliErrorType.PERMISSION_ERROR,
-      `Permission denied: ${resource}`,
-      {
-        hint: 'Check file/directory permissions or run with appropriate privileges',
-      }
-    );
+    return new CliError(CliErrorType.PERMISSION_ERROR, `Permission denied: ${resource}`, {
+      hint: 'Check file/directory permissions or run with appropriate privileges',
+    });
   },
 
   networkError(operation: string, cause?: Error): CliError {
-    return new CliError(
-      CliErrorType.NETWORK_ERROR,
-      `Network error during: ${operation}`,
-      {
-        hint: 'Check your network connection and try again',
-        details: cause?.message,
-        cause,
-      }
-    );
+    return new CliError(CliErrorType.NETWORK_ERROR, `Network error during: ${operation}`, {
+      hint: 'Check your network connection and try again',
+      details: cause?.message,
+      cause,
+    });
   },
 
   wrap(error: unknown, context?: string): CliError {
@@ -241,29 +200,24 @@ export const Errors = {
         {
           details: message,
           cause: error instanceof Error ? error : undefined,
-        }
+        },
       );
     }
     if (message.includes('EACCES') || message.includes('permission denied')) {
-      return new CliError(
-        CliErrorType.PERMISSION_ERROR,
-        `${contextPrefix}Permission denied`,
-        {
-          details: message,
-          cause: error instanceof Error ? error : undefined,
-        }
-      );
+      return new CliError(CliErrorType.PERMISSION_ERROR, `${contextPrefix}Permission denied`, {
+        details: message,
+        cause: error instanceof Error ? error : undefined,
+      });
     }
     if (message.includes('ECONNREFUSED') || message.includes('ETIMEDOUT')) {
-      return Errors.networkError(context ?? 'operation', error instanceof Error ? error : undefined);
+      return Errors.networkError(
+        context ?? 'operation',
+        error instanceof Error ? error : undefined,
+      );
     }
 
-    return new CliError(
-      CliErrorType.UNKNOWN,
-      `${contextPrefix}${message}`,
-      {
-        cause: error instanceof Error ? error : undefined,
-      }
-    );
+    return new CliError(CliErrorType.UNKNOWN, `${contextPrefix}${message}`, {
+      cause: error instanceof Error ? error : undefined,
+    });
   },
 };

@@ -67,8 +67,8 @@ export function createInitCommand(app: INestApplicationContext): Command {
       logger.subHeader('Local machine info');
       const localInfo = await hostService.getLocalInfo();
       logger.keyValue({
-        'OS': localInfo.os,
-        'Architecture': localInfo.arch,
+        OS: localInfo.os,
+        Architecture: localInfo.arch,
         'Home directory': localInfo.homeDir,
         'SSH key exists': localInfo.sshKeyExists ? 'Yes' : 'No',
       });

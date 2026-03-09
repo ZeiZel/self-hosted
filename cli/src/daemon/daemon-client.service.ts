@@ -203,13 +203,15 @@ export class DaemonClientService {
   /**
    * Get all health logs with optional filters
    */
-  getHealthLogs(options: {
-    status?: DaemonHealthStatus;
-    checkType?: DaemonCheckType;
-    target?: string;
-    limit?: number;
-    offset?: number;
-  } = {}): DaemonHealthLog[] {
+  getHealthLogs(
+    options: {
+      status?: DaemonHealthStatus;
+      checkType?: DaemonCheckType;
+      target?: string;
+      limit?: number;
+      offset?: number;
+    } = {},
+  ): DaemonHealthLog[] {
     const conditions: string[] = [];
     const params: unknown[] = [];
 
@@ -240,13 +242,16 @@ export class DaemonClientService {
       message: string | null;
       metadata: string | null;
       timestamp: string;
-    }>(`
+    }>(
+      `
       SELECT id, check_type, target, status, message, metadata, timestamp
       FROM daemon_health_logs
       ${whereClause}
       ORDER BY timestamp DESC
       LIMIT ${limit} OFFSET ${offset}
-    `, params);
+    `,
+      params,
+    );
 
     return results.map((row) => ({
       id: row.id,

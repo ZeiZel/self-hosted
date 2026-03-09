@@ -45,8 +45,7 @@ export class TraefikClient extends BaseApiClient {
 
     // Check for errors
     const httpErrors =
-      (overview.http?.routers?.errors || 0) +
-      (overview.http?.services?.errors || 0);
+      (overview.http?.routers?.errors || 0) + (overview.http?.services?.errors || 0);
 
     if (httpErrors > 0) {
       return {
@@ -134,9 +133,7 @@ export class TraefikClient extends BaseApiClient {
   /**
    * Get HTTP middlewares
    */
-  async getHttpMiddlewares(): Promise<
-    Array<{ name: string; type: string; status: string }>
-  > {
+  async getHttpMiddlewares(): Promise<Array<{ name: string; type: string; status: string }>> {
     const response = await this.fetch<
       Array<{
         name: string;
@@ -159,9 +156,7 @@ export class TraefikClient extends BaseApiClient {
   /**
    * Get entrypoints
    */
-  async getEntrypoints(): Promise<
-    Array<{ name: string; address: string }>
-  > {
+  async getEntrypoints(): Promise<Array<{ name: string; address: string }>> {
     const response = await this.fetch<
       Array<{
         name: string;

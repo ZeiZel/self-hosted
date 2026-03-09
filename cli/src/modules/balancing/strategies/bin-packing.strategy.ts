@@ -70,14 +70,8 @@ export class BinPackingStrategy extends BaseStrategy {
     return decisions;
   }
 
-  private getPlacementReason(
-    service: Service,
-    node: NodeState,
-    preferredRoles: string[],
-  ): string {
-    const utilization = Math.round(
-      ((node.allocatedMemory) / (node.totalMemory || 1)) * 100,
-    );
+  private getPlacementReason(service: Service, node: NodeState, preferredRoles: string[]): string {
+    const utilization = Math.round((node.allocatedMemory / (node.totalMemory || 1)) * 100);
 
     if (['traefik', 'pangolin'].includes(service.name)) {
       return 'Gateway/ingress service';

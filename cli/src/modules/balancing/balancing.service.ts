@@ -93,11 +93,7 @@ export class BalancingService {
     }
 
     // Validate constraints
-    const validation = this.constraintsService.validatePlacements(
-      placements,
-      constraints,
-      nodes,
-    );
+    const validation = this.constraintsService.validatePlacements(placements, constraints, nodes);
 
     // Calculate metrics
     const metrics = this.calculateMetrics(placements, nodes, constraints, migrations);
@@ -196,10 +192,7 @@ export class BalancingService {
   /**
    * Build node state from machines
    */
-  private buildNodeState(
-    machines: Machine[],
-    options: BalancingOptions,
-  ): NodeState[] {
+  private buildNodeState(machines: Machine[], options: BalancingOptions): NodeState[] {
     return machines
       .filter((m) => !options.excludeNodes?.includes(m.label))
       .filter((m) => m.status === 'online' || m.status === 'unknown')
@@ -253,11 +246,7 @@ export class BalancingService {
     const balanceScore = Math.max(0, Math.round(100 - stdDev));
 
     // Count constraint satisfaction
-    const validation = this.constraintsService.validatePlacements(
-      placements,
-      constraints,
-      nodes,
-    );
+    const validation = this.constraintsService.validatePlacements(placements, constraints, nodes);
 
     return {
       totalCpuUtilization: getUtilization(usedCpu, totalCpu),
@@ -347,11 +336,7 @@ export class BalancingService {
     };
   }
 
-  private compareMetric(
-    a: number,
-    b: number,
-    preference: 'higher' | 'lower',
-  ): 'A' | 'B' | 'tie' {
+  private compareMetric(a: number, b: number, preference: 'higher' | 'lower'): 'A' | 'B' | 'tie' {
     if (a === b) return 'tie';
     if (preference === 'higher') {
       return a > b ? 'A' : 'B';

@@ -245,9 +245,7 @@ export class MetricRepository {
    * Delete metrics for a target
    */
   deleteByTarget(targetId: string, targetType: 'machine' | 'service'): number {
-    const stmt = this.db.prepare(
-      'DELETE FROM metrics WHERE target_id = ? AND target_type = ?'
-    );
+    const stmt = this.db.prepare('DELETE FROM metrics WHERE target_id = ? AND target_type = ?');
     const result = stmt.run(targetId, targetType);
     return result.changes;
   }

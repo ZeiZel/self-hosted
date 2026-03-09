@@ -4,37 +4,35 @@ import { isIP } from 'net';
 /**
  * Custom Zod validators
  */
-export const ipAddressSchema = z.string().refine(
-  (val) => isIP(val) !== 0,
-  { message: 'Invalid IP address' }
-);
+export const ipAddressSchema = z
+  .string()
+  .refine((val) => isIP(val) !== 0, { message: 'Invalid IP address' });
 
-export const hostnameSchema = z.string().regex(
-  /^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/i,
-  { message: 'Invalid hostname (lowercase alphanumeric with hyphens)' }
-);
+export const hostnameSchema = z
+  .string()
+  .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/i, {
+    message: 'Invalid hostname (lowercase alphanumeric with hyphens)',
+  });
 
-export const domainSchema = z.string().regex(
-  /^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i,
-  { message: 'Invalid domain name' }
-);
+export const domainSchema = z
+  .string()
+  .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)*$/i, {
+    message: 'Invalid domain name',
+  });
 
 export const portSchema = z.number().int().min(1).max(65535);
 
-export const cpuResourceSchema = z.string().regex(
-  /^\d+m?$/,
-  { message: 'Invalid CPU resource (e.g., "100m", "2")' }
-);
+export const cpuResourceSchema = z
+  .string()
+  .regex(/^\d+m?$/, { message: 'Invalid CPU resource (e.g., "100m", "2")' });
 
-export const memoryResourceSchema = z.string().regex(
-  /^\d+(Ki|Mi|Gi|Ti)?$/,
-  { message: 'Invalid memory resource (e.g., "128Mi", "2Gi")' }
-);
+export const memoryResourceSchema = z
+  .string()
+  .regex(/^\d+(Ki|Mi|Gi|Ti)?$/, { message: 'Invalid memory resource (e.g., "128Mi", "2Gi")' });
 
-export const storageResourceSchema = z.string().regex(
-  /^\d+(Ki|Mi|Gi|Ti)?$/,
-  { message: 'Invalid storage resource (e.g., "10Gi", "100Mi")' }
-);
+export const storageResourceSchema = z
+  .string()
+  .regex(/^\d+(Ki|Mi|Gi|Ti)?$/, { message: 'Invalid storage resource (e.g., "10Gi", "100Mi")' });
 
 /**
  * Parse CPU resource to millicores

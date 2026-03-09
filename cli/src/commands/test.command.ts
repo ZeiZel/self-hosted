@@ -12,7 +12,7 @@ interface HelmTestResult {
   error?: string;
 }
 
-export function createTestCommand(app: INestApplicationContext): Command {
+export function createTestCommand(_app: INestApplicationContext): Command {
   const command = new Command('test');
 
   command
@@ -36,11 +36,7 @@ export function createTestCommand(app: INestApplicationContext): Command {
       try {
         if (options.service) {
           // Test specific service
-          const result = await runHelmTest(
-            options.service,
-            options.namespace,
-            options.timeout,
-          );
+          const result = await runHelmTest(options.service, options.namespace, options.timeout);
 
           if (options.json) {
             console.log(JSON.stringify(result, null, 2));
@@ -68,11 +64,7 @@ export function createTestCommand(app: INestApplicationContext): Command {
           for (const release of releases) {
             const spinner = logger.spinner(`Testing ${release.name}...`).start();
 
-            const result = await runHelmTest(
-              release.name,
-              release.namespace,
-              options.timeout,
-            );
+            const result = await runHelmTest(release.name, release.namespace, options.timeout);
             results.push(result);
 
             if (result.status === 'passed') {

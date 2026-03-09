@@ -14,10 +14,7 @@ export interface MigrationPanelState {
 /**
  * Render migration panel
  */
-export function renderMigrationPanel(
-  state: MigrationPanelState,
-  width: number = 60,
-): string[] {
+export function renderMigrationPanel(state: MigrationPanelState, width: number = 60): string[] {
   const lines: string[] = [];
   const innerWidth = width - 4;
 

@@ -271,24 +271,26 @@ export const monitorOptionsSchema = z.object({
   refreshInterval: z.number().int().min(1).max(60).default(5),
   headless: z.boolean().default(false),
   showAlerts: z.boolean().default(true),
-  alertThresholds: z.object({
-    cpu: z.object({
-      warning: z.number().min(0).max(100),
-      critical: z.number().min(0).max(100),
-    }),
-    memory: z.object({
-      warning: z.number().min(0).max(100),
-      critical: z.number().min(0).max(100),
-    }),
-    restarts: z.object({
-      warning: z.number().int().min(0),
-      critical: z.number().int().min(0),
-    }),
-    pendingPods: z.object({
-      warning: z.number().int().min(0),
-      critical: z.number().int().min(0),
-    }),
-  }).default(DEFAULT_ALERT_THRESHOLDS),
+  alertThresholds: z
+    .object({
+      cpu: z.object({
+        warning: z.number().min(0).max(100),
+        critical: z.number().min(0).max(100),
+      }),
+      memory: z.object({
+        warning: z.number().min(0).max(100),
+        critical: z.number().min(0).max(100),
+      }),
+      restarts: z.object({
+        warning: z.number().int().min(0),
+        critical: z.number().int().min(0),
+      }),
+      pendingPods: z.object({
+        warning: z.number().int().min(0),
+        critical: z.number().int().min(0),
+      }),
+    })
+    .default(DEFAULT_ALERT_THRESHOLDS),
   filterNamespace: z.string().optional(),
   filterNode: z.string().optional(),
 });
@@ -305,16 +307,10 @@ export function calculateHealth(
   memoryPercent: number,
   thresholds: AlertThresholds = DEFAULT_ALERT_THRESHOLDS,
 ): NodeHealth {
-  if (
-    cpuPercent >= thresholds.cpu.critical ||
-    memoryPercent >= thresholds.memory.critical
-  ) {
+  if (cpuPercent >= thresholds.cpu.critical || memoryPercent >= thresholds.memory.critical) {
     return NodeHealth.CRITICAL;
   }
-  if (
-    cpuPercent >= thresholds.cpu.warning ||
-    memoryPercent >= thresholds.memory.warning
-  ) {
+  if (cpuPercent >= thresholds.cpu.warning || memoryPercent >= thresholds.memory.warning) {
     return NodeHealth.WARNING;
   }
   return NodeHealth.HEALTHY;

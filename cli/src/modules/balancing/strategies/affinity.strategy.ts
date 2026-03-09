@@ -36,11 +36,7 @@ export class AffinityStrategy extends BaseStrategy {
       const sortedGroup = this.sortServices(groupServices);
 
       // Find best node for the entire group
-      const groupNode = this.findBestNodeForGroup(
-        sortedGroup,
-        workingNodes,
-        constraints,
-      );
+      const groupNode = this.findBestNodeForGroup(sortedGroup, workingNodes, constraints);
 
       if (groupNode) {
         for (const service of sortedGroup) {

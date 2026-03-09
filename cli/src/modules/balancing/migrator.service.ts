@@ -25,9 +25,7 @@ export interface MigrationResult {
  */
 @Injectable()
 export class MigratorService {
-  constructor(
-    @Inject(ConfigService) private configService: ConfigService,
-  ) {}
+  constructor(@Inject(ConfigService) private configService: ConfigService) {}
 
   /**
    * Create migration plans from placement decisions
@@ -68,7 +66,9 @@ export class MigratorService {
       migration.status = MigrationStatus.IN_PROGRESS;
       migration.startedAt = new Date().toISOString();
 
-      logger.info(`Starting migration: ${migration.service} from ${migration.sourceNode} to ${migration.targetNode}`);
+      logger.info(
+        `Starting migration: ${migration.service} from ${migration.sourceNode} to ${migration.targetNode}`,
+      );
 
       // Step 1: Drain the pod from source node
       migration.status = MigrationStatus.DRAINING;
@@ -126,9 +126,7 @@ export class MigratorService {
       // Execute in batches
       for (let i = 0; i < migrations.length; i += parallel) {
         const batch = migrations.slice(i, i + parallel);
-        const batchResults = await Promise.all(
-          batch.map((m) => this.executeMigration(m)),
-        );
+        const batchResults = await Promise.all(batch.map((m) => this.executeMigration(m)));
         results.push(...batchResults);
 
         if (stopOnError && batchResults.some((r) => !r.success)) {
@@ -178,7 +176,9 @@ export class MigratorService {
    * Drain service from source node (cordon + evict)
    */
   private async drainService(migration: MigrationPlan): Promise<void> {
-    const spinner = logger.spinner(`Draining ${migration.service} from ${migration.sourceNode}`).start();
+    const spinner = logger
+      .spinner(`Draining ${migration.service} from ${migration.sourceNode}`)
+      .start();
 
     try {
       // In a real implementation, this would use kubectl:
@@ -198,7 +198,9 @@ export class MigratorService {
    * Update service placement (node selector/affinity)
    */
   private async updatePlacement(migration: MigrationPlan): Promise<void> {
-    const spinner = logger.spinner(`Scheduling ${migration.service} on ${migration.targetNode}`).start();
+    const spinner = logger
+      .spinner(`Scheduling ${migration.service} on ${migration.targetNode}`)
+      .start();
 
     try {
       // This would typically update the Helm values or use kubectl patch

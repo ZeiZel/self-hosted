@@ -9,7 +9,7 @@ import { Errors, CliError } from './shared/errors';
  * Parse CLI options from command line arguments
  */
 function parseCliOptions(): CliOptions {
-  // eslint-disable-next-line no-undef
+   
   const args = process.argv;
 
   return {
@@ -35,9 +35,9 @@ function getArgValue(args: string[], flag: string): string | undefined {
  */
 function handleFatalError(error: unknown, verbose: boolean): never {
   const cliError = error instanceof CliError ? error : wrapModuleError(error, verbose);
-  // eslint-disable-next-line no-undef
+   
   process.stderr.write(cliError.format(verbose) + '\n');
-  // eslint-disable-next-line no-undef
+   
   process.exit(1);
 }
 
@@ -61,15 +61,11 @@ function wrapModuleError(error: unknown, verbose: boolean): CliError {
   }
 
   // Generic module error
-  return new CliError(
-    'UNKNOWN' as any,
-    'Failed to initialize CLI',
-    {
-      details: verbose ? message : undefined,
-      hint: verbose ? undefined : 'Run with --verbose for more details',
-      cause: error instanceof Error ? error : undefined,
-    }
-  );
+  return new CliError('UNKNOWN' as any, 'Failed to initialize CLI', {
+    details: verbose ? message : undefined,
+    hint: verbose ? undefined : 'Run with --verbose for more details',
+    cause: error instanceof Error ? error : undefined,
+  });
 }
 
 /**
@@ -82,22 +78,19 @@ async function bootstrap(): Promise<void> {
   try {
     // Check for Bun runtime
     if (typeof Bun === 'undefined') {
-      throw new CliError(
-        'DEPENDENCY_ERROR' as any,
-        'This CLI requires Bun runtime',
-        { hint: 'Please install Bun: https://bun.sh' }
-      );
+      throw new CliError('DEPENDENCY_ERROR' as any, 'This CLI requires Bun runtime', {
+        hint: 'Please install Bun: https://bun.sh',
+      });
     }
 
     // Create NestJS application context with configured modules
-    const app = await NestFactory.createApplicationContext(
-      AppModule.forRoot({ cliOptions }),
-      { logger: false }
-    );
+    const app = await NestFactory.createApplicationContext(AppModule.forRoot({ cliOptions }), {
+      logger: false,
+    });
 
     // Create and run CLI
     const cli = createCli(app);
-    // eslint-disable-next-line no-undef
+     
     await cli.parseAsync(process.argv);
 
     // Clean up

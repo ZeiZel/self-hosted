@@ -36,66 +36,75 @@ export class AlertsService {
   /**
    * Generate alerts based on current metrics
    */
-  generateAlerts(
-    nodes: NodeMetrics[],
-    services: ServiceMetrics[],
-  ): Alert[] {
+  generateAlerts(nodes: NodeMetrics[], services: ServiceMetrics[]): Alert[] {
     const alerts: Alert[] = [];
 
     // Node alerts
     for (const node of nodes) {
       // CPU alerts
       if (node.cpu.percent >= this.thresholds.cpu.critical) {
-        alerts.push(this.createAlert(
-          AlertSeverity.CRITICAL,
-          `Node ${node.name} CPU critical`,
-          `CPU usage at ${node.cpu.percent}%, threshold: ${this.thresholds.cpu.critical}%`,
-          node.name,
-        ));
+        alerts.push(
+          this.createAlert(
+            AlertSeverity.CRITICAL,
+            `Node ${node.name} CPU critical`,
+            `CPU usage at ${node.cpu.percent}%, threshold: ${this.thresholds.cpu.critical}%`,
+            node.name,
+          ),
+        );
       } else if (node.cpu.percent >= this.thresholds.cpu.warning) {
-        alerts.push(this.createAlert(
-          AlertSeverity.WARNING,
-          `Node ${node.name} CPU warning`,
-          `CPU usage at ${node.cpu.percent}%, threshold: ${this.thresholds.cpu.warning}%`,
-          node.name,
-        ));
+        alerts.push(
+          this.createAlert(
+            AlertSeverity.WARNING,
+            `Node ${node.name} CPU warning`,
+            `CPU usage at ${node.cpu.percent}%, threshold: ${this.thresholds.cpu.warning}%`,
+            node.name,
+          ),
+        );
       }
 
       // Memory alerts
       if (node.memory.percent >= this.thresholds.memory.critical) {
-        alerts.push(this.createAlert(
-          AlertSeverity.CRITICAL,
-          `Node ${node.name} memory critical`,
-          `Memory usage at ${node.memory.percent}%, threshold: ${this.thresholds.memory.critical}%`,
-          node.name,
-        ));
+        alerts.push(
+          this.createAlert(
+            AlertSeverity.CRITICAL,
+            `Node ${node.name} memory critical`,
+            `Memory usage at ${node.memory.percent}%, threshold: ${this.thresholds.memory.critical}%`,
+            node.name,
+          ),
+        );
       } else if (node.memory.percent >= this.thresholds.memory.warning) {
-        alerts.push(this.createAlert(
-          AlertSeverity.WARNING,
-          `Node ${node.name} memory warning`,
-          `Memory usage at ${node.memory.percent}%, threshold: ${this.thresholds.memory.warning}%`,
-          node.name,
-        ));
+        alerts.push(
+          this.createAlert(
+            AlertSeverity.WARNING,
+            `Node ${node.name} memory warning`,
+            `Memory usage at ${node.memory.percent}%, threshold: ${this.thresholds.memory.warning}%`,
+            node.name,
+          ),
+        );
       }
 
       // Node health alerts
       if (node.health === NodeHealth.CRITICAL) {
-        alerts.push(this.createAlert(
-          AlertSeverity.CRITICAL,
-          `Node ${node.name} unhealthy`,
-          `Node is in critical health state`,
-          node.name,
-        ));
+        alerts.push(
+          this.createAlert(
+            AlertSeverity.CRITICAL,
+            `Node ${node.name} unhealthy`,
+            `Node is in critical health state`,
+            node.name,
+          ),
+        );
       }
 
       // Failed pods on node
       if (node.pods.failed > 0) {
-        alerts.push(this.createAlert(
-          AlertSeverity.WARNING,
-          `Failed pods on ${node.name}`,
-          `${node.pods.failed} pod(s) in failed state`,
-          node.name,
-        ));
+        alerts.push(
+          this.createAlert(
+            AlertSeverity.WARNING,
+            `Failed pods on ${node.name}`,
+            `${node.pods.failed} pod(s) in failed state`,
+            node.name,
+          ),
+        );
       }
     }
 
@@ -103,67 +112,76 @@ export class AlertsService {
     for (const service of services) {
       // Restart alerts
       if (service.restarts >= this.thresholds.restarts.critical) {
-        alerts.push(this.createAlert(
-          AlertSeverity.CRITICAL,
-          `${service.name} restart loop`,
-          `${service.restarts} restarts, threshold: ${this.thresholds.restarts.critical}`,
-          service.name,
-        ));
+        alerts.push(
+          this.createAlert(
+            AlertSeverity.CRITICAL,
+            `${service.name} restart loop`,
+            `${service.restarts} restarts, threshold: ${this.thresholds.restarts.critical}`,
+            service.name,
+          ),
+        );
       } else if (service.restarts >= this.thresholds.restarts.warning) {
-        alerts.push(this.createAlert(
-          AlertSeverity.WARNING,
-          `${service.name} multiple restarts`,
-          `${service.restarts} restarts, threshold: ${this.thresholds.restarts.warning}`,
-          service.name,
-        ));
+        alerts.push(
+          this.createAlert(
+            AlertSeverity.WARNING,
+            `${service.name} multiple restarts`,
+            `${service.restarts} restarts, threshold: ${this.thresholds.restarts.warning}`,
+            service.name,
+          ),
+        );
       }
 
       // Status alerts
-      if (
-        service.status === PodStatus.FAILED ||
-        service.status === PodStatus.ERROR
-      ) {
-        alerts.push(this.createAlert(
-          AlertSeverity.CRITICAL,
-          `${service.name} failed`,
-          `Service is in ${service.status} state`,
-          service.name,
-        ));
+      if (service.status === PodStatus.FAILED || service.status === PodStatus.ERROR) {
+        alerts.push(
+          this.createAlert(
+            AlertSeverity.CRITICAL,
+            `${service.name} failed`,
+            `Service is in ${service.status} state`,
+            service.name,
+          ),
+        );
       } else if (service.status === PodStatus.CRASH_LOOP) {
-        alerts.push(this.createAlert(
-          AlertSeverity.CRITICAL,
-          `${service.name} crash looping`,
-          `Service is in CrashLoopBackOff state`,
-          service.name,
-        ));
+        alerts.push(
+          this.createAlert(
+            AlertSeverity.CRITICAL,
+            `${service.name} crash looping`,
+            `Service is in CrashLoopBackOff state`,
+            service.name,
+          ),
+        );
       } else if (service.status === PodStatus.IMAGE_PULL) {
-        alerts.push(this.createAlert(
-          AlertSeverity.WARNING,
-          `${service.name} image pull error`,
-          `Unable to pull container image`,
-          service.name,
-        ));
+        alerts.push(
+          this.createAlert(
+            AlertSeverity.WARNING,
+            `${service.name} image pull error`,
+            `Unable to pull container image`,
+            service.name,
+          ),
+        );
       } else if (service.status === PodStatus.PENDING) {
-        alerts.push(this.createAlert(
-          AlertSeverity.INFO,
-          `${service.name} pending`,
-          `Service is waiting to be scheduled`,
-          service.name,
-        ));
+        alerts.push(
+          this.createAlert(
+            AlertSeverity.INFO,
+            `${service.name} pending`,
+            `Service is waiting to be scheduled`,
+            service.name,
+          ),
+        );
       }
 
       // Replica alerts
       if (service.replicas.ready < service.replicas.desired) {
         const severity =
-          service.replicas.ready === 0
-            ? AlertSeverity.CRITICAL
-            : AlertSeverity.WARNING;
-        alerts.push(this.createAlert(
-          severity,
-          `${service.name} replicas unavailable`,
-          `${service.replicas.ready}/${service.replicas.desired} replicas ready`,
-          service.name,
-        ));
+          service.replicas.ready === 0 ? AlertSeverity.CRITICAL : AlertSeverity.WARNING;
+        alerts.push(
+          this.createAlert(
+            severity,
+            `${service.name} replicas unavailable`,
+            `${service.replicas.ready}/${service.replicas.desired} replicas ready`,
+            service.name,
+          ),
+        );
       }
     }
 
@@ -209,7 +227,7 @@ export class AlertsService {
     let hash = 0;
     for (let i = 0; i < str.length; i++) {
       const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
+      hash = (hash << 5) - hash + char;
       hash = hash & hash;
     }
     return Math.abs(hash).toString(16);
@@ -273,10 +291,7 @@ export class AlertsService {
       if (options.source && alert.source !== options.source) {
         return false;
       }
-      if (
-        options.acknowledged !== undefined &&
-        alert.acknowledged !== options.acknowledged
-      ) {
+      if (options.acknowledged !== undefined && alert.acknowledged !== options.acknowledged) {
         return false;
       }
       return true;

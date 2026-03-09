@@ -1,4 +1,5 @@
-import type { ModuleMetadata, Type } from '@nestjs/common';
+import type { ModuleMetadata, Type, InjectionToken } from '@nestjs/common';
+import type { OptionalFactoryDependency } from '@nestjs/common/interfaces/modules/optional-factory-dependency.interface';
 
 /**
  * CLI runtime options (parsed from command line)
@@ -67,8 +68,9 @@ export interface AsyncModuleOptions<T> extends Pick<ModuleMetadata, 'imports'> {
   isGlobal?: boolean;
   useExisting?: Type<ModuleOptionsFactory<T>>;
   useClass?: Type<ModuleOptionsFactory<T>>;
-  useFactory?: (...args: unknown[]) => Promise<T> | T;
-  inject?: unknown[];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  useFactory?: (...args: any[]) => Promise<T> | T;
+  inject?: Array<InjectionToken | OptionalFactoryDependency>;
 }
 
 /**
@@ -87,4 +89,3 @@ export interface ConfigModuleOptions extends ModuleOptions {
   baseDir: string;
   repoRoot?: string;
 }
-

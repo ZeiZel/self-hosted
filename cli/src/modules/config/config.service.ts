@@ -1,23 +1,60 @@
 import { Injectable, Inject, OnModuleInit } from '@nestjs/common';
 import { z } from 'zod';
 import { join } from 'path';
-import { existsSync, mkdirSync } from 'fs';
-import { homedir } from 'os';
-import { createHash } from 'crypto';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'fs';
+import { createHash, randomUUID } from 'crypto';
+import { DeploymentPhase } from '../../interfaces/deployment.interface';
 import { MODULE_OPTIONS, PATHS } from '../../core/constants';
-import type { ConfigModuleOptions, AppConfig, ClusterConfig, RepoPaths } from '../../core/interfaces';
+import type {
+  ConfigModuleOptions,
+  AppConfig,
+  ClusterConfig,
+  RepoPaths,
+} from '../../core/interfaces';
 import { loadYaml, saveYaml } from '../../utils/yaml';
+
+/**
+ * Deployment state data
+ */
+export interface DeploymentStateData {
+  id: string;
+  status: 'pending' | 'running' | 'success' | 'failed' | 'cancelled';
+  startedAt: string;
+  completedAt?: string;
+  currentPhase: DeploymentPhase;
+  completedPhases: DeploymentPhase[];
+  failedPhases: DeploymentPhase[];
+  skippedPhases: DeploymentPhase[];
+  machines: Array<{ label: string; ip: string; roles: string[] }>;
+  services: string[];
+  logs: Array<{
+    phase: DeploymentPhase;
+    level: 'info' | 'warn' | 'error';
+    message: string;
+    timestamp: string;
+  }>;
+}
+
+/**
+ * Deployment creation input
+ */
+interface CreateDeploymentInput {
+  machines: Array<{ label: string; ip: string; roles: string[] }>;
+  services: string[];
+}
 
 /**
  * CLI configuration schema
  */
 const appConfigSchema = z.object({
   version: z.string().default('1.0.0'),
-  cluster: z.object({
-    name: z.string().default('selfhost'),
-    domain: z.string().default('example.com'),
-    localDomain: z.string().default('homelab.local'),
-  }).default({}),
+  cluster: z
+    .object({
+      name: z.string().default('selfhost'),
+      domain: z.string().default('example.com'),
+      localDomain: z.string().default('homelab.local'),
+    })
+    .default({}),
   initialized: z.boolean().default(false),
   lastDeployment: z.string().datetime().optional(),
   activeDeploymentId: z.string().optional(),
@@ -31,6 +68,7 @@ export class ConfigService implements OnModuleInit {
   private config: AppConfig | null = null;
   private paths: RepoPaths | null = null;
   private projectHash: string | null = null;
+  private deployments: DeploymentStateData[] = [];
 
   constructor(
     @Inject(MODULE_OPTIONS.CONFIG)
@@ -265,5 +303,188 @@ export class ConfigService implements OnModuleInit {
    */
   setLastDeployment(timestamp: string): void {
     this.updateConfig({ lastDeployment: timestamp });
+  }
+
+  // ==================== Deployment State Management ====================
+
+  /**
+   * Get deployments file path
+   */
+  private getDeploymentsPath(): string {
+    return join(this.getStateDir(), 'deployments.json');
+  }
+
+  /**
+   * Load deployments from file
+   */
+  private loadDeployments(): void {
+    const path = this.getDeploymentsPath();
+    if (existsSync(path)) {
+      try {
+        const content = readFileSync(path, 'utf-8');
+        this.deployments = JSON.parse(content);
+      } catch {
+        this.deployments = [];
+      }
+    }
+  }
+
+  /**
+   * Save deployments to file
+   */
+  private saveDeployments(): void {
+    const path = this.getDeploymentsPath();
+    writeFileSync(path, JSON.stringify(this.deployments, null, 2));
+  }
+
+  /**
+   * Get active deployment
+   */
+  getActiveDeployment(): DeploymentStateData | null {
+    this.loadDeployments();
+    return this.deployments.find((d) => d.status === 'running' || d.status === 'pending') ?? null;
+  }
+
+  /**
+   * Create new deployment state
+   */
+  createDeploymentState(input: CreateDeploymentInput): DeploymentStateData {
+    this.loadDeployments();
+
+    const deployment: DeploymentStateData = {
+      id: randomUUID().slice(0, 8),
+      status: 'pending',
+      startedAt: new Date().toISOString(),
+      currentPhase: DeploymentPhase.INFRASTRUCTURE_SETUP,
+      completedPhases: [],
+      failedPhases: [],
+      skippedPhases: [],
+      machines: input.machines,
+      services: input.services,
+      logs: [],
+    };
+
+    this.deployments.unshift(deployment);
+    this.saveDeployments();
+    this.setActiveDeployment(deployment.id);
+
+    return deployment;
+  }
+
+  /**
+   * Update deployment state
+   */
+  updateDeploymentState(
+    id: string,
+    updates: Partial<Pick<DeploymentStateData, 'status' | 'currentPhase'>>,
+  ): void {
+    this.loadDeployments();
+    const deployment = this.deployments.find((d) => d.id === id);
+    if (deployment) {
+      Object.assign(deployment, updates);
+      this.saveDeployments();
+    }
+  }
+
+  /**
+   * Mark phase as completed
+   */
+  markPhaseCompleted(id: string, phase: DeploymentPhase): void {
+    this.loadDeployments();
+    const deployment = this.deployments.find((d) => d.id === id);
+    if (deployment && !deployment.completedPhases.includes(phase)) {
+      deployment.completedPhases.push(phase);
+      this.saveDeployments();
+    }
+  }
+
+  /**
+   * Mark phase as failed
+   */
+  markPhaseFailed(id: string, phase: DeploymentPhase, error: string): void {
+    this.loadDeployments();
+    const deployment = this.deployments.find((d) => d.id === id);
+    if (deployment) {
+      if (!deployment.failedPhases.includes(phase)) {
+        deployment.failedPhases.push(phase);
+      }
+      deployment.logs.push({
+        phase,
+        level: 'error',
+        message: error,
+        timestamp: new Date().toISOString(),
+      });
+      this.saveDeployments();
+    }
+  }
+
+  /**
+   * Mark phase as skipped
+   */
+  markPhaseSkipped(id: string, phase: DeploymentPhase): void {
+    this.loadDeployments();
+    const deployment = this.deployments.find((d) => d.id === id);
+    if (deployment && !deployment.skippedPhases.includes(phase)) {
+      deployment.skippedPhases.push(phase);
+      this.saveDeployments();
+    }
+  }
+
+  /**
+   * Add deployment log entry
+   */
+  addDeploymentLog(
+    id: string,
+    phase: DeploymentPhase,
+    level: 'info' | 'warn' | 'error',
+    message: string,
+  ): void {
+    this.loadDeployments();
+    const deployment = this.deployments.find((d) => d.id === id);
+    if (deployment) {
+      deployment.logs.push({
+        phase,
+        level,
+        message,
+        timestamp: new Date().toISOString(),
+      });
+      this.saveDeployments();
+    }
+  }
+
+  /**
+   * Complete deployment
+   */
+  completeDeployment(id: string, status: 'success' | 'failed' | 'cancelled'): void {
+    this.loadDeployments();
+    const deployment = this.deployments.find((d) => d.id === id);
+    if (deployment) {
+      deployment.status = status;
+      deployment.completedAt = new Date().toISOString();
+      this.saveDeployments();
+      this.setActiveDeployment(undefined);
+      this.setLastDeployment(deployment.completedAt);
+    }
+  }
+
+  /**
+   * List all deployments
+   */
+  listDeployments(): DeploymentStateData[] {
+    this.loadDeployments();
+    return this.deployments;
+  }
+
+  /**
+   * Clean old deployments
+   */
+  cleanOldDeployments(keepCount: number): void {
+    this.loadDeployments();
+    if (keepCount === 0) {
+      this.deployments = [];
+    } else {
+      this.deployments = this.deployments.slice(0, keepCount);
+    }
+    this.saveDeployments();
   }
 }

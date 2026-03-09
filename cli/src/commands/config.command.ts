@@ -34,10 +34,10 @@ function createShowCommand(app: INestApplicationContext): Command {
       } else {
         logger.header('Current Configuration');
         logger.keyValue({
-          'Version': config.version,
-          'Initialized': config.initialized,
+          Version: config.version,
+          Initialized: config.initialized,
           'Cluster name': config.cluster.name,
-          'Domain': config.cluster.domain,
+          Domain: config.cluster.domain,
           'Local domain': config.cluster.localDomain,
           'Last deployment': config.lastDeployment ?? 'Never',
         });
@@ -118,12 +118,7 @@ function createGenerateCommand(app: INestApplicationContext): Command {
           ],
           services: {
             // Core services (always enabled)
-            ...Object.fromEntries(
-              CORE_SERVICES.map((name) => [
-                name,
-                { enabled: true },
-              ]),
-            ),
+            ...Object.fromEntries(CORE_SERVICES.map((name) => [name, { enabled: true }])),
             // Databases
             postgresql: {
               enabled: true,

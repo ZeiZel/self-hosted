@@ -32,20 +32,12 @@ import { DEFAULT_DAEMON_CONFIG } from './interfaces/daemon.interface';
     }),
     DatabaseModule.forRootAsync({
       useFactory: () => ({
-        filename: join(
-          process.env.DATA_DIR || join(homedir(), '.selfhost'),
-          'selfhost.db',
-        ),
+        filename: join(process.env.DATA_DIR || join(homedir(), '.selfhost'), 'selfhost.db'),
       }),
     }),
     MonitorModule,
   ],
-  providers: [
-    HealthCheckerService,
-    DaemonClientService,
-    DaemonInitService,
-    DaemonService,
-  ],
+  providers: [HealthCheckerService, DaemonClientService, DaemonInitService, DaemonService],
 })
 class DaemonRunnerModule {}
 

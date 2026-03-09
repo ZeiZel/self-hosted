@@ -50,9 +50,11 @@ export interface Machine {
   ip: string;
   roles: MachineRole[];
   ssh: SshConfig;
-  facts?: MachineFacts;
+  facts?: MachineFacts | Record<string, unknown>;
   lastSeen?: string;
   status: 'unknown' | 'online' | 'offline' | 'error';
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 /**
@@ -60,7 +62,11 @@ export interface Machine {
  */
 export const machineSchema = z.object({
   id: z.string().uuid(),
-  label: z.string().min(1).max(63).regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/),
+  label: z
+    .string()
+    .min(1)
+    .max(63)
+    .regex(/^[a-z0-9]([a-z0-9-]*[a-z0-9])?$/),
   ip: z.string().ip(),
   roles: z.array(z.nativeEnum(MachineRole)).min(1),
   ssh: z.object({
@@ -70,21 +76,23 @@ export const machineSchema = z.object({
     privateKeyPath: z.string().optional(),
     password: z.string().optional(),
   }),
-  facts: z.object({
-    hostname: z.string(),
-    os: z.string(),
-    osVersion: z.string(),
-    kernel: z.string(),
-    arch: z.string(),
-    cpuCores: z.number(),
-    cpuModel: z.string(),
-    memoryTotal: z.number(),
-    memoryAvailable: z.number(),
-    diskTotal: z.number(),
-    diskAvailable: z.number(),
-    dockerVersion: z.string().optional(),
-    kubernetesVersion: z.string().optional(),
-  }).optional(),
+  facts: z
+    .object({
+      hostname: z.string(),
+      os: z.string(),
+      osVersion: z.string(),
+      kernel: z.string(),
+      arch: z.string(),
+      cpuCores: z.number(),
+      cpuModel: z.string(),
+      memoryTotal: z.number(),
+      memoryAvailable: z.number(),
+      diskTotal: z.number(),
+      diskAvailable: z.number(),
+      dockerVersion: z.string().optional(),
+      kubernetesVersion: z.string().optional(),
+    })
+    .optional(),
   lastSeen: z.string().datetime().optional(),
   status: z.enum(['unknown', 'online', 'offline', 'error']).default('unknown'),
 });

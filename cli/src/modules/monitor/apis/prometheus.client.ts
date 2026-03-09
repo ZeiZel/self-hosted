@@ -114,9 +114,7 @@ export class PrometheusClient extends BaseApiClient {
    * Get cluster CPU usage
    */
   async getClusterCpuUsage(): Promise<number | null> {
-    return this.getMetricValue(
-      '100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)',
-    );
+    return this.getMetricValue('100 - (avg(rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)');
   }
 
   /**
@@ -141,18 +139,13 @@ export class PrometheusClient extends BaseApiClient {
   > {
     const [cpuResults, memResults, diskResults] = await Promise.all([
       this.query('100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)'),
-      this.query(
-        '(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100',
-      ),
+      this.query('(1 - (node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes)) * 100'),
       this.query(
         '100 - ((node_filesystem_avail_bytes{mountpoint="/"} / node_filesystem_size_bytes{mountpoint="/"}) * 100)',
       ),
     ]);
 
-    const nodeMap = new Map<
-      string,
-      { cpuUsage: number; memoryUsage: number; diskUsage: number }
-    >();
+    const nodeMap = new Map<string, { cpuUsage: number; memoryUsage: number; diskUsage: number }>();
 
     for (const result of cpuResults) {
       const node = result.metric.instance || result.metric.node || 'unknown';

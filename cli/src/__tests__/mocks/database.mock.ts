@@ -121,66 +121,69 @@ export function seedTestData(db: Database): void {
   const now = new Date().toISOString();
 
   // Seed machines
-  db.run(`
+  db.run(
+    `
     INSERT INTO machines (id, label, ip, roles, status, ssh_host, ssh_port, ssh_username, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [
-    'machine-1',
-    'master-01',
-    '192.168.1.10',
-    '["master"]',
-    'online',
-    '192.168.1.10',
-    22,
-    'root',
-    now,
-    now,
-  ]);
+  `,
+    [
+      'machine-1',
+      'master-01',
+      '192.168.1.10',
+      '["master"]',
+      'online',
+      '192.168.1.10',
+      22,
+      'root',
+      now,
+      now,
+    ],
+  );
 
-  db.run(`
+  db.run(
+    `
     INSERT INTO machines (id, label, ip, roles, status, ssh_host, ssh_port, ssh_username, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `, [
-    'machine-2',
-    'worker-01',
-    '192.168.1.11',
-    '["worker"]',
-    'online',
-    '192.168.1.11',
-    22,
-    'root',
-    now,
-    now,
-  ]);
+  `,
+    [
+      'machine-2',
+      'worker-01',
+      '192.168.1.11',
+      '["worker"]',
+      'online',
+      '192.168.1.11',
+      22,
+      'root',
+      now,
+      now,
+    ],
+  );
 
   // Seed service configs
-  db.run(`
+  db.run(
+    `
     INSERT INTO service_configs (id, name, enabled, tier, namespace, resources, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `, [
-    'svc-1',
-    'traefik',
-    1,
-    'infrastructure',
-    'ingress',
-    '{"cpu": "500m", "memory": "512Mi"}',
-    now,
-    now,
-  ]);
+  `,
+    [
+      'svc-1',
+      'traefik',
+      1,
+      'infrastructure',
+      'ingress',
+      '{"cpu": "500m", "memory": "512Mi"}',
+      now,
+      now,
+    ],
+  );
 
-  db.run(`
+  db.run(
+    `
     INSERT INTO service_configs (id, name, enabled, tier, namespace, resources, created_at, updated_at)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?)
-  `, [
-    'svc-2',
-    'postgresql',
-    1,
-    'database',
-    'db',
-    '{"cpu": "2000m", "memory": "4Gi"}',
-    now,
-    now,
-  ]);
+  `,
+    ['svc-2', 'postgresql', 1, 'database', 'db', '{"cpu": "2000m", "memory": "4Gi"}', now, now],
+  );
 }
 
 /**

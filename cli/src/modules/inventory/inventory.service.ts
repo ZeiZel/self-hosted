@@ -152,9 +152,7 @@ export class InventoryService {
 
     if (gateways.length === 0) {
       // Check if master also has gateway role
-      const masterWithGateway = masters.find((m) =>
-        m.roles.includes(MachineRole.GATEWAY)
-      );
+      const masterWithGateway = masters.find((m) => m.roles.includes(MachineRole.GATEWAY));
       if (!masterWithGateway) {
         errors.push('At least one gateway node is required (can be combined with master)');
       }

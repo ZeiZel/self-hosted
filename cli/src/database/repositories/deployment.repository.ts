@@ -65,7 +65,7 @@ export class DeploymentRepository {
    */
   findActive(): Deployment | null {
     const stmt = this.db.prepare<DeploymentRow>(
-      "SELECT * FROM deployments WHERE status IN ('pending', 'running') ORDER BY started_at DESC LIMIT 1"
+      "SELECT * FROM deployments WHERE status IN ('pending', 'running') ORDER BY started_at DESC LIMIT 1",
     );
     const row = stmt.get();
     return row ? this.rowToDeployment(row) : null;
@@ -76,7 +76,7 @@ export class DeploymentRepository {
    */
   findByStatus(status: DeploymentStatus): Deployment[] {
     const stmt = this.db.prepare<DeploymentRow>(
-      'SELECT * FROM deployments WHERE status = ? ORDER BY started_at DESC'
+      'SELECT * FROM deployments WHERE status = ? ORDER BY started_at DESC',
     );
     const rows = stmt.all(status);
     return rows.map((row) => this.rowToDeployment(row));
@@ -120,11 +120,12 @@ export class DeploymentRepository {
    * Update deployment status
    */
   updateStatus(id: string, status: DeploymentStatus): Deployment | null {
-    const completedAt = status === DeploymentStatus.SUCCESS ||
-                        status === DeploymentStatus.FAILED ||
-                        status === DeploymentStatus.CANCELLED
-      ? new Date().toISOString()
-      : null;
+    const completedAt =
+      status === DeploymentStatus.SUCCESS ||
+      status === DeploymentStatus.FAILED ||
+      status === DeploymentStatus.CANCELLED
+        ? new Date().toISOString()
+        : null;
 
     const stmt = this.db.prepare(`
       UPDATE deployments
@@ -229,12 +230,7 @@ export class DeploymentRepository {
       WHERE id = ?
     `);
 
-    stmt.run(
-      JSON.stringify(deployment.skippedPhases),
-      phase + 1,
-      updateTimestamp().updatedAt,
-      id,
-    );
+    stmt.run(JSON.stringify(deployment.skippedPhases), phase + 1, updateTimestamp().updatedAt, id);
 
     return this.findById(id);
   }

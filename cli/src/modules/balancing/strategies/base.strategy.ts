@@ -130,9 +130,7 @@ export abstract class BaseStrategy {
       }
 
       // Check hard constraints
-      const hardConstraints = constraints.filter(
-        (c) => c.service === service.name && c.hard,
-      );
+      const hardConstraints = constraints.filter((c) => c.service === service.name && c.hard);
       for (const constraint of hardConstraints) {
         if (!this.checkConstraint(constraint, service, node)) {
           return false;
@@ -146,13 +144,8 @@ export abstract class BaseStrategy {
   /**
    * Filter nodes by role preference
    */
-  protected filterByRolePreference(
-    nodes: NodeState[],
-    preferredRoles: MachineRole[],
-  ): NodeState[] {
-    const matching = nodes.filter((n) =>
-      preferredRoles.some((r) => n.roles.includes(r)),
-    );
+  protected filterByRolePreference(nodes: NodeState[], preferredRoles: MachineRole[]): NodeState[] {
+    const matching = nodes.filter((n) => preferredRoles.some((r) => n.roles.includes(r)));
     return matching.length > 0 ? matching : nodes;
   }
 
@@ -195,10 +188,7 @@ export abstract class BaseStrategy {
   /**
    * Update node allocation after placing a service
    */
-  protected allocateOnNode(
-    node: NodeState,
-    service: Service,
-  ): void {
+  protected allocateOnNode(node: NodeState, service: Service): void {
     const cpu = parseCpuToMillicores(service.config.resources.cpu) * service.config.replicas;
     const memory = parseMemoryToBytes(service.config.resources.memory) * service.config.replicas;
 

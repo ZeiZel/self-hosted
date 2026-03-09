@@ -39,9 +39,7 @@ export class ClusterClientService {
    */
   private async kubectl(args: string[]): Promise<KubectlResult> {
     return new Promise((resolve) => {
-      const fullArgs = this.kubeconfig
-        ? ['--kubeconfig', this.kubeconfig, ...args]
-        : args;
+      const fullArgs = this.kubeconfig ? ['--kubeconfig', this.kubeconfig, ...args] : args;
 
       const proc = spawn('kubectl', fullArgs);
       let stdout = '';
@@ -78,10 +76,7 @@ export class ClusterClientService {
    */
   async getNodeMetrics(): Promise<NodeMetrics[]> {
     // Get nodes with resources
-    const nodesResult = await this.kubectl([
-      'get', 'nodes',
-      '-o', 'json',
-    ]);
+    const nodesResult = await this.kubectl(['get', 'nodes', '-o', 'json']);
 
     if (!nodesResult.success) {
       return this.getMockNodeMetrics();
@@ -91,10 +86,7 @@ export class ClusterClientService {
       const nodesData = JSON.parse(nodesResult.stdout);
 
       // Get metrics if available
-      const metricsResult = await this.kubectl([
-        'top', 'nodes',
-        '--no-headers',
-      ]);
+      const metricsResult = await this.kubectl(['top', 'nodes', '--no-headers']);
 
       const metricsMap = new Map<string, { cpu: number; memory: number }>();
       if (metricsResult.success) {
@@ -129,19 +121,19 @@ export class ClusterClientService {
         const usage = metricsMap.get(name) || { cpu: 0, memory: 0 };
 
         // Parse conditions
-        const conditions: NodeCondition[] = (node.status?.conditions || []).map(
-          (c: any) => ({
-            type: c.type,
-            status: c.status,
-            reason: c.reason,
-            message: c.message,
-          }),
-        );
+        const conditions: NodeCondition[] = (node.status?.conditions || []).map((c: any) => ({
+          type: c.type,
+          status: c.status,
+          reason: c.reason,
+          message: c.message,
+        }));
 
         // Determine roles
         const roles: MachineRole[] = [];
-        if (labels['node-role.kubernetes.io/master'] !== undefined ||
-            labels['node-role.kubernetes.io/control-plane'] !== undefined) {
+        if (
+          labels['node-role.kubernetes.io/master'] !== undefined ||
+          labels['node-role.kubernetes.io/control-plane'] !== undefined
+        ) {
           roles.push(MachineRole.MASTER);
         }
         if (labels['node-role.kubernetes.io/worker'] !== undefined || roles.length === 0) {
@@ -192,11 +184,7 @@ export class ClusterClientService {
   async getServiceMetrics(namespace?: string): Promise<ServiceMetrics[]> {
     const nsArg = namespace ? ['-n', namespace] : ['-A'];
 
-    const result = await this.kubectl([
-      'get', 'pods',
-      ...nsArg,
-      '-o', 'json',
-    ]);
+    const result = await this.kubectl(['get', 'pods', ...nsArg, '-o', 'json']);
 
     if (!result.success) {
       return this.getMockServiceMetrics();
@@ -207,9 +195,11 @@ export class ClusterClientService {
       const services: ServiceMetrics[] = [];
 
       for (const pod of podsData.items || []) {
-        const name = pod.metadata?.labels?.['app.kubernetes.io/name'] ||
-                     pod.metadata?.labels?.['app'] ||
-                     pod.metadata?.name || 'unknown';
+        const name =
+          pod.metadata?.labels?.['app.kubernetes.io/name'] ||
+          pod.metadata?.labels?.['app'] ||
+          pod.metadata?.name ||
+          'unknown';
 
         // Skip if we already have this service
         if (services.some((s) => s.name === name && s.namespace === pod.metadata?.namespace)) {
@@ -230,12 +220,8 @@ export class ClusterClientService {
             available: status === PodStatus.RUNNING ? 1 : 0,
           },
           cpu: {
-            requested: this.parseCpu(
-              pod.spec?.containers?.[0]?.resources?.requests?.cpu || '100m',
-            ),
-            limit: this.parseCpu(
-              pod.spec?.containers?.[0]?.resources?.limits?.cpu || '1000m',
-            ),
+            requested: this.parseCpu(pod.spec?.containers?.[0]?.resources?.requests?.cpu || '100m'),
+            limit: this.parseCpu(pod.spec?.containers?.[0]?.resources?.limits?.cpu || '1000m'),
             used: 0, // Would need metrics-server
           },
           memory: {
@@ -263,10 +249,7 @@ export class ClusterClientService {
    * Get cluster summary
    */
   async getClusterSummary(): Promise<ClusterSummary> {
-    const [nodes, services] = await Promise.all([
-      this.getNodeMetrics(),
-      this.getServiceMetrics(),
-    ]);
+    const [nodes, services] = await Promise.all([this.getNodeMetrics(), this.getServiceMetrics()]);
 
     // Get namespace count
     const nsResult = await this.kubectl(['get', 'namespaces', '-o', 'json']);
@@ -334,8 +317,11 @@ export class ClusterClientService {
    */
   private async enrichWithPodCounts(nodes: NodeMetrics[]): Promise<void> {
     const result = await this.kubectl([
-      'get', 'pods', '-A',
-      '-o', 'jsonpath={range .items[*]}{.spec.nodeName}{" "}{.status.phase}{"\\n"}{end}',
+      'get',
+      'pods',
+      '-A',
+      '-o',
+      'jsonpath={range .items[*]}{.spec.nodeName}{" "}{.status.phase}{"\\n"}{end}',
     ]);
 
     if (!result.success) return;

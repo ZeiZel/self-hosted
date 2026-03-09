@@ -30,15 +30,9 @@ export function renderTraefikPanel(
   if (state.overview) {
     const http = state.overview.http;
     lines.push(chalk.bold('  HTTP Stats:'));
-    lines.push(
-      `    Routers: ${formatCount(http.routers.total, http.routers.errors)}`,
-    );
-    lines.push(
-      `    Services: ${formatCount(http.services.total, http.services.errors)}`,
-    );
-    lines.push(
-      `    Middlewares: ${formatCount(http.middlewares.total, http.middlewares.errors)}`,
-    );
+    lines.push(`    Routers: ${formatCount(http.routers.total, http.routers.errors)}`);
+    lines.push(`    Services: ${formatCount(http.services.total, http.services.errors)}`);
+    lines.push(`    Middlewares: ${formatCount(http.middlewares.total, http.middlewares.errors)}`);
     lines.push('');
   }
 
@@ -121,7 +115,9 @@ export function renderRouterDetails(router: TraefikRouter): string[] {
   const lines: string[] = [];
 
   lines.push(chalk.bold(`  Router: ${router.name}`));
-  lines.push(`    Status: ${router.status === 'enabled' ? chalk.green('enabled') : chalk.red('disabled')}`);
+  lines.push(
+    `    Status: ${router.status === 'enabled' ? chalk.green('enabled') : chalk.red('disabled')}`,
+  );
   lines.push(`    Rule: ${chalk.white(router.rule)}`);
   lines.push(`    Service: ${chalk.cyan(router.service)}`);
   lines.push(`    Entry Points: ${router.entryPoints.join(', ')}`);

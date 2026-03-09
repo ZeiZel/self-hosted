@@ -4,10 +4,7 @@ import { VaultState, ApiHealthStatus } from '../../apis/interfaces/api.interface
 /**
  * Render Vault panel content
  */
-export function renderVaultPanel(
-  state: VaultState | undefined,
-  width: number = 40,
-): string[] {
+export function renderVaultPanel(state: VaultState | undefined, width: number = 40): string[] {
   const lines: string[] = [];
   const innerWidth = width - 4;
 

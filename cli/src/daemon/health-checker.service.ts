@@ -23,10 +23,7 @@ export class HealthCheckerService {
    * Perform full health check
    */
   async performHealthCheck(): Promise<HealthCheckResult> {
-    const [nodes, services] = await Promise.all([
-      this.checkNodes(),
-      this.checkServices(),
-    ]);
+    const [nodes, services] = await Promise.all([this.checkNodes(), this.checkServices()]);
 
     // API checks would be added in Task 3
     const apis: HealthCheckResult['apis'] = [];

@@ -51,19 +51,11 @@ export class TableService {
     });
 
     for (const service of services) {
-      const enabled = service.config.enabled
-        ? chalk.green('✔')
-        : chalk.gray('✖');
+      const enabled = service.config.enabled ? chalk.green('✔') : chalk.gray('✖');
       const resources = `${service.config.resources.memory} / ${service.config.resources.cpu}`;
       const tier = this.formatTier(service.tier);
 
-      table.push([
-        service.name,
-        this.formatNamespace(service.namespace),
-        enabled,
-        resources,
-        tier,
-      ]);
+      table.push([service.name, this.formatNamespace(service.namespace), enabled, resources, tier]);
     }
 
     return table.toString();
