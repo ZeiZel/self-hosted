@@ -5,11 +5,13 @@ import { TelegramBotService } from './telegram-bot.service';
 import { TelegramAlertService } from './telegram-alert.service';
 import { DatabaseModule } from '../database/database.module';
 import { MonitorModule } from '../modules/monitor/monitor.module';
+import { DaemonModule } from '../daemon/daemon.module';
 
 @Module({
   imports: [
     DatabaseModule,
     forwardRef(() => MonitorModule),
+    forwardRef(() => DaemonModule),
   ],
   providers: [
     TelegramService,
