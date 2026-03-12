@@ -89,7 +89,7 @@ async function bootstrap(): Promise<void> {
 
     // Create NestJS application context with configured modules
     const app = await NestFactory.createApplicationContext(AppModule.forRoot({ cliOptions }), {
-      logger: false,
+      logger: cliOptions.verbose ? ['error', 'warn'] : false,
     });
 
     // Create and run CLI
