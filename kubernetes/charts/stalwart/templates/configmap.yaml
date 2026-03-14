@@ -57,10 +57,10 @@ data:
     enable = false
     allow-invalid-certs = true
 
-    # LDAP bind credentials
+    # LDAP bind credentials - secret injected via Vault
     [directory."ldap".bind]
     dn = "{{ .Values.ldap.bindDN }}"
-    secret = "changeme"
+    secret = "%{env:LDAP_BIND_PASSWORD}%"  # Injected via Vault - see vault.hashicorp.com annotations
 
     # LDAP authentication method
     [directory."ldap".auth]

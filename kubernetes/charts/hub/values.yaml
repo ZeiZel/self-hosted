@@ -60,7 +60,7 @@ postgresql:
   host: "postgresql.db.svc.cluster.local"
   port: 5432
   username: "hub"
-  password: "changeme"
+  password: ""  # Injected via Vault - see vault.hashicorp.com annotations
   database: "hub"
   ssl: false
 

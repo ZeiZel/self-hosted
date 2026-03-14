@@ -7,7 +7,7 @@ create:
 # Prometheus config
 prometheus:
   enabled: true
-  image: prom/prometheus:latest
+  image: prom/prometheus:v3.1.0  # Pinned version - do not use :latest
   replicaCount: 1
 
   service:
@@ -39,7 +39,7 @@ prometheus:
 # Loki config
 loki:
   enabled: true
-  image: grafana/loki:latest
+  image: grafana/loki:3.3.2  # Pinned version - do not use :latest
   replicaCount: 1
 
   service:
@@ -67,7 +67,7 @@ loki:
 # Promtail config (Log collector)
 promtail:
   enabled: true
-  image: grafana/promtail:latest
+  image: grafana/promtail:3.3.2  # Pinned version - do not use :latest
 
   resources:
     limits:
@@ -80,7 +80,7 @@ promtail:
 # Grafana config
 grafana:
   enabled: true
-  image: grafana/grafana:latest
+  image: grafana/grafana:11.4.0  # Pinned version - do not use :latest
   replicaCount: 1
 
   service:
@@ -104,7 +104,7 @@ grafana:
   # Admin config
   admin:
     user: admin
-    password: "changeme"
+    password: ""  # Injected via Vault - see vault.hashicorp.com annotations
 
   # Theme
   theme: dark

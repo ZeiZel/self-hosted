@@ -31,7 +31,7 @@ database:
   port: 5432
   database: n8n
   user: n8n
-  password: changeme
+  password: ""  # Injected via Vault - see vault.hashicorp.com annotations
 
 # Redis/Valkey for queue
 redis:
@@ -57,3 +57,54 @@ ingress:
 serviceAccount:
   create: true
   name: n8n
+  automountServiceAccountToken: false
+  annotations: {}
+
+# RBAC
+rbac:
+  create: true
+  rules: []
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  egressRules:
+    allowDatabases: true
+    allowConsul: true
+    allowVault: true
+    allowAuthentik: false
+  ingress: []
+  egress: []
+
+# Metrics
+metrics:
+  enabled: true
+  port: "http"
+  path: "/metrics"
+  interval: "30s"
+  scrapeTimeout: "10s"
+
+# Security Context
+securityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  runAsGroup: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+containerSecurityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
+
+# Vault integration
+vault:
+  enabled: false
+  # Note: Before enabling, configure Vault:
+  # 1. Create policy for n8n service
+  # 2. Create secret at secret/data/n8n/secrets
+  # 3. Enable Kubernetes auth method in Vault
+  # 4. Create role binding ServiceAccount to Vault policy
