@@ -105,11 +105,38 @@
     - role: storage
       tags: [storage, openebs]
 
+- name: Deploy Infrastructure via Helmfile
+  hosts: local
+  become: false
+  gather_facts: true
+  tags: [infrastructure, helmfile]
+  roles:
+    - role: infrastructure
+      tags: [infrastructure, base, databases, apps]
+
+- name: Deploy Monitoring Stack
+  hosts: local
+  become: false
+  gather_facts: true
+  tags: [monitoring]
+  roles:
+    - role: monitoring
+      tags: [monitoring, prometheus, grafana, loki]
+
+- name: Deploy Backup Configuration
+  hosts: local
+  become: false
+  gather_facts: true
+  tags: [backup]
+  roles:
+    - role: backup
+      tags: [backup, velero]
+
 - name: Deploy Zerobyte Backups
   hosts: local
   become: false
   gather_facts: true
-  tags: [zerobyte]
+  tags: [zerobyte, backup]
   tasks:
     - name: Deploy Zerobyte via Helmfile
       command: helmfile -e k8s apply --selector name=zerobyte
@@ -117,3 +144,12 @@
         chdir: "{{ playbook_dir }}/../kubernetes"
       register: zerobyte_deploy
       changed_when: "'no changes' not in zerobyte_deploy.stdout"
+
+- name: Validation and Verification
+  hosts: local
+  become: false
+  gather_facts: true
+  tags: [validate, verify]
+  roles:
+    - role: validate
+      tags: [validate, verify, test]

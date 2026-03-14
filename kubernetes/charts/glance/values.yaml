@@ -6,7 +6,7 @@ create:
 # Glance Image
 image:
   repository: glanceapp/glance
-  tag: "latest"
+  tag: "v0.7.12"  # Pinned version - NEVER use :latest
   pullPolicy: IfNotPresent
 
 # Glance Server конфигурация
@@ -89,11 +89,24 @@ ingress:
     enabled: true
     secretName: glance-tls
 
-# Security Context
-securityContext:
+# Pod Security Context
+podSecurityContext:
+  runAsNonRoot: true
   runAsUser: 1000
   runAsGroup: 1000
   fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+
+# Container Security Context
+containerSecurityContext:
+  runAsUser: 1000
+  runAsNonRoot: true
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop:
+      - ALL
 
 # Probes
 probes:

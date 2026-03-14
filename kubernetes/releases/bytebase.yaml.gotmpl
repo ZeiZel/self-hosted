@@ -1,6 +1,7 @@
 namespace: infrastructure
 
 bytebase:
+  # Bytebase's own PostgreSQL database for storing metadata
   postgres:
     external: true
     host: "postgresql.db.svc.cluster.local"
@@ -22,12 +23,116 @@ consul:
   tags:
     - bytebase
     - database
+    - management
 
-# Note: ClickHouse can be added as a managed database in Bytebase UI after deployment
-# Use the following connection details:
-# - Host: clickhouse.db.svc.cluster.local
-# - Port: 8123 (HTTP) or 9000 (Native)
-# - Database: default
-# - User: default
-# - Password: (from secrets)
+# Authentik SSO for Bytebase admin access
+authentik:
+  enabled: true
+  middleware: "service-authentik-forward-auth@kubernetescrd"
+
+# Vault integration for database credentials
+vault:
+  enabled: true
+
+# Network Policy - allow access to all database namespaces
+networkPolicy:
+  enabled: true
+  egressRules:
+    allowDatabases: true  # Allows PostgreSQL, MySQL, MongoDB, ClickHouse, Valkey, MinIO
+    allowConsul: true
+    allowVault: true
+    allowAuthentik: true
+  # Explicit egress to all databases in db namespace
+  egress:
+    # PostgreSQL
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: db
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: postgresql
+      ports:
+        - protocol: TCP
+          port: 5432
+    # MySQL
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: db
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mysql
+      ports:
+        - protocol: TCP
+          port: 3306
+    # MongoDB
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: db
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mongodb
+      ports:
+        - protocol: TCP
+          port: 27017
+    # ClickHouse
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: db
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: clickhouse
+      ports:
+        - protocol: TCP
+          port: 8123  # HTTP
+        - protocol: TCP
+          port: 9000  # Native
+    # Valkey (Redis-compatible)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: db
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: valkey
+      ports:
+        - protocol: TCP
+          port: 6379
+
+# ==============================================================================
+# DATABASE CONNECTION REFERENCE
+# ==============================================================================
+# After deploying Bytebase, add managed databases via the UI:
+#
+# PostgreSQL (all services using PostgreSQL):
+#   Host: postgresql.db.svc.cluster.local
+#   Port: 5432
+#   Databases: authentik, gitlab, hub, teamcity, youtrack, coder, vaultwarden,
+#              affine, penpot, nextcloud, stalwart, remnawave, rybbit
+#
+# MySQL:
+#   Host: mysql.db.svc.cluster.local
+#   Port: 3306
+#   Databases: ghost
+#
+# MongoDB (Stoat/Revolt):
+#   Host: mongodb.db.svc.cluster.local
+#   Port: 27017
+#   Databases: revolt
+#
+# ClickHouse (Analytics):
+#   Host: clickhouse.db.svc.cluster.local
+#   HTTP Port: 8123
+#   Native Port: 9000
+#   Databases: rybbit, analytics
+#
+# Valkey/Redis:
+#   Host: valkey-master.db.svc.cluster.local
+#   Port: 6379
+#   Note: Valkey is Redis-compatible, use Redis connection type
+#
+# ==============================================================================
 

@@ -418,6 +418,196 @@
   failed_when: false
   tags: [infrastructure, apps, bytebase]
 
+# Deploy GitLab (code management)
+- name: Deploy GitLab
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=gitlab
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: gitlab_deploy
+  changed_when: "'has been upgraded' in gitlab_deploy.stdout or 'installed' in gitlab_deploy.stdout"
+  tags: [infrastructure, apps, gitlab]
+
+- name: Wait for GitLab pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n code -l app=webservice
+    --timeout=600s
+  register: gitlab_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, gitlab]
+
+# Deploy GitLab Ingress (custom routes)
+- name: Deploy GitLab Ingress
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=gitlab-ingress
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: gitlab_ingress_deploy
+  changed_when: "'has been upgraded' in gitlab_ingress_deploy.stdout or 'installed' in gitlab_ingress_deploy.stdout"
+  tags: [infrastructure, apps, gitlab]
+
+# Deploy Harbor (container registry)
+- name: Deploy Harbor
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=harbor
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: harbor_deploy
+  changed_when: "'has been upgraded' in harbor_deploy.stdout or 'installed' in harbor_deploy.stdout"
+  tags: [infrastructure, apps, harbor]
+
+- name: Wait for Harbor pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n infrastructure -l app.kubernetes.io/name=harbor
+    --timeout=300s
+  register: harbor_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, harbor]
+
+# Deploy Nextcloud (file sync)
+- name: Deploy Nextcloud
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=nextcloud
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: nextcloud_deploy
+  changed_when: "'has been upgraded' in nextcloud_deploy.stdout or 'installed' in nextcloud_deploy.stdout"
+  tags: [infrastructure, apps, nextcloud]
+
+- name: Wait for Nextcloud pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n data -l app.kubernetes.io/name=nextcloud
+    --timeout=300s
+  register: nextcloud_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, nextcloud]
+
+# Deploy Rybbit (analytics)
+- name: Deploy Rybbit
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=rybbit
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: rybbit_deploy
+  changed_when: "'has been upgraded' in rybbit_deploy.stdout or 'installed' in rybbit_deploy.stdout"
+  tags: [infrastructure, apps, rybbit]
+
+- name: Wait for Rybbit pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n data -l app.kubernetes.io/name=rybbit
+    --timeout=180s
+  register: rybbit_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, rybbit]
+
+# Deploy Notesnook (notes)
+- name: Deploy Notesnook
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=notesnook
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: notesnook_deploy
+  changed_when: "'has been upgraded' in notesnook_deploy.stdout or 'installed' in notesnook_deploy.stdout"
+  tags: [infrastructure, apps, notesnook]
+
+- name: Wait for Notesnook pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n productivity -l app.kubernetes.io/name=notesnook
+    --timeout=180s
+  register: notesnook_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, notesnook]
+
+# Deploy Monitoring stack
+- name: Deploy Monitoring
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=monitoring
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: monitoring_deploy
+  changed_when: "'has been upgraded' in monitoring_deploy.stdout or 'installed' in monitoring_deploy.stdout"
+  tags: [infrastructure, apps, monitoring]
+
+- name: Wait for Monitoring pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n service -l app.kubernetes.io/name=prometheus
+    --timeout=300s
+  register: monitoring_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, monitoring]
+
+# Deploy Logging stack
+- name: Deploy Logging
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=logging
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: logging_deploy
+  changed_when: "'has been upgraded' in logging_deploy.stdout or 'installed' in logging_deploy.stdout"
+  tags: [infrastructure, apps, logging]
+
+- name: Wait for Logging pods
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n service -l app.kubernetes.io/name=loki
+    --timeout=300s
+  register: logging_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, apps, logging]
+
 - name: Get all application pods status
   command: >
     kubectl get pods -A
@@ -451,4 +641,11 @@
       - "✓ Vert: {{ vert_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
       - "✓ Syncthing: {{ syncthing_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
       - "✓ Bytebase: {{ bytebase_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ GitLab: {{ gitlab_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Harbor: {{ harbor_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Nextcloud: {{ nextcloud_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Rybbit: {{ rybbit_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Notesnook: {{ notesnook_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Monitoring: {{ monitoring_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "✓ Logging: {{ logging_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
   tags: [infrastructure, apps]

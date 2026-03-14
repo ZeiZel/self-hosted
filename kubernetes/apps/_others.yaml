@@ -7,7 +7,17 @@ apps:
     namespace: default
     version: v1.0.0
 
-  # EXTERNAL
+  # STORAGE
+
+  openebs:
+    repo: openebs
+    chart: openebs
+    namespace: openebs
+    version: "4.3.0"
+    needs:
+      - default/namespaces
+
+  # INGRESS
 
   traefik:
     repo: traefik
@@ -179,10 +189,10 @@ apps:
       - service/vault
 
   harbor:
-    repo: charts
+    repo: harbor
     chart: harbor
     namespace: infrastructure
-    version: v1.0.0
+    version: "1.16.2"
     needs:
       - ingress/traefik
       - db/postgres

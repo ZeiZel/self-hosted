@@ -29,7 +29,37 @@
 
 ***
 
-## 📁 Project Structure
+## Domain Responsibility Separation (CRITICAL)
+
+**This platform has three distinct tools with non-overlapping responsibilities:**
+
+### Helmfile = Kubernetes Deployment Orchestration
+- Single entry point for ALL Helm chart deployments
+- `kubernetes/apps/_others.yaml` defines service registry with `needs:` dependencies
+- Deployment chain: `namespaces -> traefik -> consul -> vault -> cert-manager -> authentik -> databases -> apps`
+- **NEVER call helmfile directly in production** - use Ansible
+
+### Ansible = Infrastructure Provisioning and Orchestration
+- ONLY tool for server provisioning and configuration
+- ALL deployments run through: `ansible-playbook -i inventory/hosts.ini all.yml`
+- Tags: `prepare`, `kubespray`, `storage`, `infrastructure`, `pangolin`, `monitoring`
+- The `infrastructure` role calls Helmfile with appropriate selectors
+- **Full installation = single Ansible run**
+
+### CLI = Wrapper and Monitoring
+- Wrapper around Ansible playbook execution
+- Interactive prompts and deployment phase management
+- Monitoring daemon for Telegram alerts
+- **Does NOT directly interact with Kubernetes or Helm**
+
+```
+# Correct deployment flow:
+User -> CLI (selfhost deploy) -> Ansible (all.yml) -> Helmfile -> Kubernetes
+```
+
+***
+
+## Project Structure
 
 ```
 self-hosted/

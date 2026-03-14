@@ -15,7 +15,7 @@
   command: >
     helmfile -e {{ helmfile_environment }}
     apply
-    --selector name=postgresql
+    --selector name=postgres
     --suppress-secrets
   args:
     chdir: "{{ kubernetes_path }}"
@@ -82,6 +82,106 @@
   changed_when: false
   failed_when: false
   tags: [infrastructure, databases, mysql]
+
+# Deploy MongoDB
+- name: Deploy MongoDB
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=mongodb
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: mongodb_deploy
+  changed_when: "'has been upgraded' in mongodb_deploy.stdout or 'installed' in mongodb_deploy.stdout"
+  tags: [infrastructure, databases, mongodb]
+
+- name: Wait for MongoDB pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n db -l app.kubernetes.io/name=mongodb
+    --timeout=300s
+  register: mongodb_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, databases, mongodb]
+
+# Deploy MinIO
+- name: Deploy MinIO
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=minio
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: minio_deploy
+  changed_when: "'has been upgraded' in minio_deploy.stdout or 'installed' in minio_deploy.stdout"
+  tags: [infrastructure, databases, minio]
+
+- name: Wait for MinIO pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n db -l app.kubernetes.io/name=minio
+    --timeout=300s
+  register: minio_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, databases, minio]
+
+# Deploy ClickHouse
+- name: Deploy ClickHouse
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=clickhouse
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: clickhouse_deploy
+  changed_when: "'has been upgraded' in clickhouse_deploy.stdout or 'installed' in clickhouse_deploy.stdout"
+  tags: [infrastructure, databases, clickhouse]
+
+- name: Wait for ClickHouse pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n db -l app.kubernetes.io/name=clickhouse
+    --timeout=300s
+  register: clickhouse_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, databases, clickhouse]
+
+# Deploy RabbitMQ
+- name: Deploy RabbitMQ
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=rabbitmq
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: rabbitmq_deploy
+  changed_when: "'has been upgraded' in rabbitmq_deploy.stdout or 'installed' in rabbitmq_deploy.stdout"
+  tags: [infrastructure, databases, rabbitmq]
+
+- name: Wait for RabbitMQ pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n db -l app.kubernetes.io/name=rabbitmq
+    --timeout=300s
+  register: rabbitmq_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, databases, rabbitmq]
 
 # Create PostgreSQL databases and users for applications
 - name: Create PostgreSQL databases for applications
@@ -152,5 +252,9 @@
       - "PostgreSQL: {{ postgresql_ready.rc == 0 | ternary('Ready', 'Pending') }}"
       - "Valkey: {{ valkey_ready.rc == 0 | ternary('Ready', 'Pending') }}"
       - "MySQL: {{ mysql_ready.rc | default(1) == 0 | ternary('Ready', 'Pending/Skipped') }}"
+      - "MongoDB: {{ mongodb_ready.rc | default(1) == 0 | ternary('Ready', 'Pending/Skipped') }}"
+      - "MinIO: {{ minio_ready.rc | default(1) == 0 | ternary('Ready', 'Pending/Skipped') }}"
+      - "ClickHouse: {{ clickhouse_ready.rc | default(1) == 0 | ternary('Ready', 'Pending/Skipped') }}"
+      - "RabbitMQ: {{ rabbitmq_ready.rc | default(1) == 0 | ternary('Ready', 'Pending/Skipped') }}"
       - "Databases created: {{ pg_databases.results | selectattr('rc', 'defined') | selectattr('rc', 'eq', 0) | list | length }} PostgreSQL"
   tags: [infrastructure, databases]
