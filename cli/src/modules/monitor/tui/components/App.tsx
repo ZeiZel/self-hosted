@@ -5,15 +5,18 @@ import { NodesPanel } from './NodesPanel';
 import { ServicesPanel } from './ServicesPanel';
 import { SummaryPanel } from './SummaryPanel';
 import { AlertsPanel } from './AlertsPanel';
+import { PodDetailPanel } from './PodDetailPanel';
 import { HelpOverlay } from './HelpOverlay';
 import { StatusBar } from './StatusBar';
 import type { MetricsHistoryService } from '../data/metrics-history.service';
+import { useTerminalSize } from '../hooks/useTerminalSize';
 
 export interface AppProps {
   clusterState: ClusterState | null;
   metricsHistory: MetricsHistoryService;
   onRefresh: () => void;
   onMigrate?: (service: string, namespace: string, targetNode: string) => Promise<void>;
+  onGetPodDetails?: (namespace: string, podName: string) => Promise<{ events: any[]; logs: string[] } | null>;
 }
 
 type PanelId = 'nodes' | 'services' | 'summary' | 'alerts';
@@ -23,14 +26,19 @@ export const App: React.FC<AppProps> = ({
   metricsHistory,
   onRefresh,
   onMigrate,
+  onGetPodDetails,
 }) => {
   const { exit } = useApp();
   const { focusNext, focusPrevious } = useFocusManager();
+  const { height, width, layout } = useTerminalSize();
   const [activePanel, setActivePanel] = useState<PanelId>('nodes');
   const [expandedPanel, setExpandedPanel] = useState<PanelId | null>(null);
   const [showHelp, setShowHelp] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [searchActive, setSearchActive] = useState(false);
+  const [selectedServiceIndex, setSelectedServiceIndex] = useState(0);
+  const [detailService, setDetailService] = useState<ServiceMetrics | null>(null);
+  const [detailData, setDetailData] = useState<{ events: any[]; logs: string[] } | null>(null);
 
   // Handle keyboard input
   useInput((input, key) => {
@@ -165,7 +173,33 @@ export const App: React.FC<AppProps> = ({
       setSearchQuery('');
       return;
     }
+
+    // Show pod details with 'd' key
+    if (input === 'd' && activePanel === 'services' && clusterState?.services.length) {
+      const service = clusterState.services[selectedServiceIndex];
+      if (service) {
+        setDetailService(service);
+        // Fetch additional details if callback provided
+        if (onGetPodDetails) {
+          onGetPodDetails(service.namespace, service.name).then(data => {
+            setDetailData(data);
+          });
+        }
+      }
+      return;
+    }
   });
+
+  // Handle service selection changes from ServicesPanel
+  const handleServiceSelect = useCallback((index: number) => {
+    setSelectedServiceIndex(index);
+  }, []);
+
+  // Close pod detail view
+  const handleCloseDetail = useCallback(() => {
+    setDetailService(null);
+    setDetailData(null);
+  }, []);
 
   if (!clusterState) {
     return (
@@ -181,10 +215,30 @@ export const App: React.FC<AppProps> = ({
     return <HelpOverlay onClose={() => setShowHelp(false)} />;
   }
 
-  // Expanded panel view
+  // Pod detail view
+  if (detailService) {
+    return (
+      <Box flexDirection="column" width={width} height={height}>
+        <StatusBar
+          lastUpdate={clusterState.timestamp}
+          activePanel="services"
+          expanded={true}
+        />
+        <PodDetailPanel
+          service={detailService}
+          onClose={handleCloseDetail}
+          events={detailData?.events || []}
+          logs={detailData?.logs || []}
+        />
+      </Box>
+    );
+  }
+
+  // Expanded panel view - takes full terminal height
+  const expandedContentHeight = height - layout.statusBarHeight;
   if (expandedPanel) {
     return (
-      <Box flexDirection="column" width="100%" height="100%">
+      <Box flexDirection="column" width={width} height={height}>
         <StatusBar
           lastUpdate={clusterState.timestamp}
           activePanel={expandedPanel}
@@ -196,6 +250,7 @@ export const App: React.FC<AppProps> = ({
             metricsHistory={metricsHistory}
             focused={true}
             expanded={true}
+            maxHeight={expandedContentHeight}
           />
         )}
         {expandedPanel === 'services' && (
@@ -205,6 +260,7 @@ export const App: React.FC<AppProps> = ({
             expanded={true}
             searchQuery={searchQuery}
             searchActive={searchActive}
+            maxHeight={expandedContentHeight}
           />
         )}
         {expandedPanel === 'summary' && (
@@ -220,15 +276,16 @@ export const App: React.FC<AppProps> = ({
             alerts={clusterState.alerts}
             focused={true}
             expanded={true}
+            maxHeight={expandedContentHeight}
           />
         )}
       </Box>
     );
   }
 
-  // Normal grid layout
+  // Normal grid layout - uses dynamic heights from useTerminalSize
   return (
-    <Box flexDirection="column" width="100%">
+    <Box flexDirection="column" width={width} height={height}>
       <StatusBar
         lastUpdate={clusterState.timestamp}
         activePanel={activePanel}
@@ -236,16 +293,17 @@ export const App: React.FC<AppProps> = ({
       />
 
       {/* Top row: Nodes + Summary */}
-      <Box flexDirection="row" height={12}>
-        <Box width="60%">
+      <Box flexDirection="row" height={layout.topRowHeight}>
+        <Box width={layout.leftColumnWidth}>
           <NodesPanel
             nodes={clusterState.nodes}
             metricsHistory={metricsHistory}
             focused={activePanel === 'nodes'}
             expanded={false}
+            maxHeight={layout.topRowHeight}
           />
         </Box>
-        <Box width="40%">
+        <Box width={layout.rightColumnWidth}>
           <SummaryPanel
             summary={clusterState.summary}
             metricsHistory={metricsHistory}
@@ -256,22 +314,24 @@ export const App: React.FC<AppProps> = ({
       </Box>
 
       {/* Middle: Services */}
-      <Box height={10}>
+      <Box height={layout.middleRowHeight}>
         <ServicesPanel
           services={clusterState.services}
           focused={activePanel === 'services'}
           expanded={false}
           searchQuery={searchQuery}
           searchActive={searchActive}
+          maxHeight={layout.middleRowHeight}
         />
       </Box>
 
       {/* Bottom: Alerts */}
-      <Box height={6}>
+      <Box height={layout.bottomRowHeight}>
         <AlertsPanel
           alerts={clusterState.alerts}
           focused={activePanel === 'alerts'}
           expanded={false}
+          maxHeight={layout.bottomRowHeight}
         />
       </Box>
     </Box>

@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { MonitorService } from './monitor.service';
 import { ClusterClientService } from './cluster-client.service';
 import { MetricsStreamService } from './metrics-stream.service';
+import { DaemonApiClient } from './daemon-api.client';
 import { AlertsService } from './alerts.service';
 import { TuiService } from './tui/tui.service';
 import { InkTuiService } from './tui/ink-tui.service';
@@ -16,6 +17,7 @@ import { ApiModule } from './apis/api.module';
     ClusterClientService,
     AlertsService,
     MetricsStreamService,
+    DaemonApiClient,
     MetricsHistoryService,
     EndpointCheckerService,
     TuiService,
@@ -26,6 +28,7 @@ import { ApiModule } from './apis/api.module';
     MonitorService,
     ClusterClientService,
     MetricsStreamService,
+    DaemonApiClient,
     AlertsService,
     TuiService,
     InkTuiService,

@@ -104,7 +104,8 @@ export interface PrometheusAlert {
  */
 export interface PrometheusQueryResult {
   metric: Record<string, string>;
-  value: [number, string];
+  value?: [number, string];
+  values?: Array<[number, string]>; // For range queries
 }
 
 /**

@@ -2,6 +2,8 @@ import React, { useState, useMemo } from 'react';
 import { Box, Text, useInput } from 'ink';
 import type { ServiceMetrics, PodStatus } from '../../../../interfaces/monitor.interface';
 import { Panel } from './Panel';
+import { calculateVisibleItems, calculateScrollOffset } from '../hooks/useTerminalSize';
+import { truncate, fitWidth } from '../utils/text-truncate';
 
 interface ServicesPanelProps {
   services: ServiceMetrics[];
@@ -9,9 +11,10 @@ interface ServicesPanelProps {
   expanded: boolean;
   searchQuery: string;
   searchActive: boolean;
+  maxHeight?: number;
 }
 
-type GroupMode = 'none' | 'node' | 'namespace' | 'status';
+type GroupMode = 'none' | 'node' | 'namespace' | 'status' | 'helm';
 
 export const ServicesPanel: React.FC<ServicesPanelProps> = ({
   services,
@@ -19,10 +22,18 @@ export const ServicesPanel: React.FC<ServicesPanelProps> = ({
   expanded,
   searchQuery,
   searchActive,
+  maxHeight,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
   const [groupMode, setGroupMode] = useState<GroupMode>('node');
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set());
+  const [scrollOffset, setScrollOffset] = useState(0);
+
+  // Calculate visible items based on height (header takes 1 line)
+  const visibleCount = useMemo(() => {
+    if (!maxHeight) return expanded ? 50 : 8;
+    return calculateVisibleItems(maxHeight, 1, 1);
+  }, [maxHeight, expanded]);
 
   // Filter services by search query
   const filteredServices = useMemo(() => {
@@ -43,9 +54,22 @@ export const ServicesPanel: React.FC<ServicesPanelProps> = ({
 
     const map = new Map<string, ServiceMetrics[]>();
     for (const svc of filteredServices) {
-      const key = groupMode === 'node' ? svc.node
-        : groupMode === 'namespace' ? svc.namespace
-        : svc.status;
+      let key: string;
+      switch (groupMode) {
+        case 'node':
+          key = svc.node;
+          break;
+        case 'namespace':
+          key = svc.namespace;
+          break;
+        case 'helm':
+          key = svc.helmRelease || svc.helmChart || '(no helm release)';
+          break;
+        case 'status':
+        default:
+          key = svc.status;
+          break;
+      }
       if (!map.has(key)) map.set(key, []);
       map.get(key)!.push(svc);
     }
@@ -59,22 +83,30 @@ export const ServicesPanel: React.FC<ServicesPanelProps> = ({
     if (!focused) return;
 
     if (key.downArrow || input === 'j') {
-      setSelectedIndex(i => Math.min(i + 1, filteredServices.length - 1));
+      const newIndex = Math.min(selectedIndex + 1, filteredServices.length - 1);
+      setSelectedIndex(newIndex);
+      setScrollOffset(calculateScrollOffset(newIndex, visibleCount, filteredServices.length, scrollOffset));
     }
     if (key.upArrow || input === 'k') {
-      setSelectedIndex(i => Math.max(i - 1, 0));
+      const newIndex = Math.max(selectedIndex - 1, 0);
+      setSelectedIndex(newIndex);
+      setScrollOffset(calculateScrollOffset(newIndex, visibleCount, filteredServices.length, scrollOffset));
     }
-    if (input === 'g' && !key.shift) {
-      setSelectedIndex(0);
-    }
-    if (input === 'G') {
-      setSelectedIndex(filteredServices.length - 1);
-    }
-    // Cycle group mode
-    if (input === 'g' && !searchActive) {
-      const modes: GroupMode[] = ['none', 'node', 'namespace', 'status'];
+    if (input === 'g' && !key.shift && !searchActive) {
+      // Cycle group mode when pressing 'g' alone
+      const modes: GroupMode[] = ['none', 'node', 'namespace', 'status', 'helm'];
       const idx = modes.indexOf(groupMode);
       setGroupMode(modes[(idx + 1) % modes.length]);
+    }
+    if (input === 'G') {
+      const newIndex = filteredServices.length - 1;
+      setSelectedIndex(newIndex);
+      setScrollOffset(calculateScrollOffset(newIndex, visibleCount, filteredServices.length, scrollOffset));
+    }
+    // Home key behavior for gg
+    if (key.ctrl && input === 'g') {
+      setSelectedIndex(0);
+      setScrollOffset(0);
     }
     // Toggle collapse
     if (input === 'c') {
@@ -128,7 +160,17 @@ export const ServicesPanel: React.FC<ServicesPanelProps> = ({
     return `${Math.floor(bytes / Math.pow(k, i))}${sizes[i]}`;
   };
 
-  const title = `SERVICES [3] ${searchActive ? `/ ${searchQuery}_` : `[g:${groupMode}]`}`;
+  // Calculate scroll indicators
+  const hasScrollUp = scrollOffset > 0;
+  const hasScrollDown = scrollOffset + visibleCount < filteredServices.length;
+  const scrollIndicator = filteredServices.length > visibleCount
+    ? ` ${scrollOffset + 1}-${Math.min(scrollOffset + visibleCount, filteredServices.length)}/${filteredServices.length}`
+    : '';
+
+  const title = `SERVICES [3] ${searchActive ? `/ ${searchQuery}_` : `[g:${groupMode}]`}${scrollIndicator}`;
+
+  // Get visible services based on scroll offset
+  const visibleServices = filteredServices.slice(scrollOffset, scrollOffset + visibleCount);
 
   return (
     <Panel title={title} focused={focused}>
@@ -139,10 +181,13 @@ export const ServicesPanel: React.FC<ServicesPanelProps> = ({
         </Text>
       </Box>
 
+      {hasScrollUp && <Text color="gray">  ↑ more</Text>}
+
       {groupMode === 'none' ? (
-        // Flat list
-        filteredServices.slice(0, expanded ? 50 : 8).map((svc, idx) => {
-          const isSelected = idx === selectedIndex;
+        // Flat list with proper scrolling
+        visibleServices.map((svc, idx) => {
+          const actualIndex = scrollOffset + idx;
+          const isSelected = actualIndex === selectedIndex;
           const { icon, color } = getStatusIcon(svc.status);
 
           return (
@@ -151,10 +196,10 @@ export const ServicesPanel: React.FC<ServicesPanelProps> = ({
                 {isSelected ? '▶' : ' '}
               </Text>
               <Text bold={isSelected}>
-                {svc.name.slice(0, 15).padEnd(16)}
+                {fitWidth(svc.name, 15).padEnd(16)}
               </Text>
-              <Text>{svc.namespace.slice(0, 12).padEnd(13)}</Text>
-              <Text>{svc.node.slice(0, 12).padEnd(13)}</Text>
+              <Text>{fitWidth(svc.namespace, 12).padEnd(13)}</Text>
+              <Text>{fitWidth(svc.node, 12).padEnd(13)}</Text>
               <Text>{formatMemory(svc.memory.requested).padEnd(6)}</Text>
               <Text color={color}>{icon}</Text>
               <Text>  {svc.age.padEnd(5)}</Text>
@@ -165,26 +210,27 @@ export const ServicesPanel: React.FC<ServicesPanelProps> = ({
           );
         })
       ) : (
-        // Grouped list
+        // Grouped list with dynamic item count
         groups.map(group => {
           const isCollapsed = collapsedGroups.has(group.key);
+          const groupItemCount = Math.max(3, Math.floor(visibleCount / groups.length));
 
           return (
             <Box key={group.key} flexDirection="column">
               <Box>
                 <Text bold>
-                  {isCollapsed ? '▶' : '▼'} {group.key} ({group.services.length})
+                  {isCollapsed ? '▶' : '▼'} {truncate(group.key, 20)} ({group.services.length})
                 </Text>
               </Box>
-              {!isCollapsed && group.services.slice(0, expanded ? 20 : 5).map((svc, idx) => {
+              {!isCollapsed && group.services.slice(0, groupItemCount).map((svc, idx) => {
                 const { icon, color } = getStatusIcon(svc.status);
 
                 return (
                   <Box key={`${svc.namespace}/${svc.name}`} marginLeft={2}>
                     <Text>
-                      {svc.name.slice(0, 15).padEnd(16)}
+                      {fitWidth(svc.name, 15).padEnd(16)}
                     </Text>
-                    <Text>{svc.namespace.slice(0, 12).padEnd(13)}</Text>
+                    <Text>{fitWidth(svc.namespace, 12).padEnd(13)}</Text>
                     <Text>{formatMemory(svc.memory.requested).padEnd(6)}</Text>
                     <Text color={color}>{icon}</Text>
                     <Text>  {svc.age.padEnd(5)}</Text>
@@ -194,10 +240,17 @@ export const ServicesPanel: React.FC<ServicesPanelProps> = ({
                   </Box>
                 );
               })}
+              {!isCollapsed && group.services.length > groupItemCount && (
+                <Box marginLeft={2}>
+                  <Text color="gray">  ... {group.services.length - groupItemCount} more</Text>
+                </Box>
+              )}
             </Box>
           );
         })
       )}
+
+      {hasScrollDown && <Text color="gray">  ↓ more</Text>}
 
       {filteredServices.length === 0 && (
         <Text color="gray">No services found</Text>

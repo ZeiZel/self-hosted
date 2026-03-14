@@ -191,4 +191,273 @@ export class PrometheusClient extends BaseApiClient {
       lastUpdated: new Date().toISOString(),
     };
   }
+
+  /**
+   * Execute range query
+   */
+  async queryRange(
+    promql: string,
+    start: Date,
+    end: Date,
+    step: string = '15s',
+  ): Promise<PrometheusQueryResult[]> {
+    const params = new URLSearchParams({
+      query: promql,
+      start: start.toISOString(),
+      end: end.toISOString(),
+      step,
+    });
+
+    const response = await this.fetch<{
+      status: string;
+      data: {
+        resultType: string;
+        result: PrometheusQueryResult[];
+      };
+    }>(`/query_range?${params.toString()}`);
+
+    if (!response.success || response.data?.status !== 'success') {
+      return [];
+    }
+
+    return response.data.data.result || [];
+  }
+
+  /**
+   * Get pod CPU usage
+   */
+  async getPodCpuUsage(namespace?: string): Promise<Array<{
+    pod: string;
+    namespace: string;
+    container: string;
+    cpuUsage: number;
+  }>> {
+    const nsFilter = namespace ? `, namespace="${namespace}"` : '';
+    const query = `sum(rate(container_cpu_usage_seconds_total{container!=""${nsFilter}}[5m])) by (pod, namespace, container) * 1000`;
+    const results = await this.query(query);
+
+    return results.map(result => ({
+      pod: result.metric.pod || 'unknown',
+      namespace: result.metric.namespace || 'unknown',
+      container: result.metric.container || 'unknown',
+      cpuUsage: parseFloat(result.value[1]) || 0, // millicores
+    }));
+  }
+
+  /**
+   * Get pod memory usage
+   */
+  async getPodMemoryUsage(namespace?: string): Promise<Array<{
+    pod: string;
+    namespace: string;
+    container: string;
+    memoryUsage: number;
+  }>> {
+    const nsFilter = namespace ? `, namespace="${namespace}"` : '';
+    const query = `sum(container_memory_working_set_bytes{container!=""${nsFilter}}) by (pod, namespace, container)`;
+    const results = await this.query(query);
+
+    return results.map(result => ({
+      pod: result.metric.pod || 'unknown',
+      namespace: result.metric.namespace || 'unknown',
+      container: result.metric.container || 'unknown',
+      memoryUsage: parseFloat(result.value[1]) || 0, // bytes
+    }));
+  }
+
+  /**
+   * Get pod restart count
+   */
+  async getPodRestartCount(namespace?: string): Promise<Array<{
+    pod: string;
+    namespace: string;
+    restarts: number;
+  }>> {
+    const nsFilter = namespace ? `, namespace="${namespace}"` : '';
+    const query = `sum(kube_pod_container_status_restarts_total${nsFilter ? `{${nsFilter.slice(2)}}` : ''}) by (pod, namespace)`;
+    const results = await this.query(query);
+
+    return results.map(result => ({
+      pod: result.metric.pod || 'unknown',
+      namespace: result.metric.namespace || 'unknown',
+      restarts: parseInt(result.value[1], 10) || 0,
+    }));
+  }
+
+  /**
+   * Get node CPU usage per node
+   */
+  async getNodeCpuUsageByNode(): Promise<Array<{
+    node: string;
+    cpuUsagePercent: number;
+  }>> {
+    const query = '100 - (avg by (instance) (rate(node_cpu_seconds_total{mode="idle"}[5m])) * 100)';
+    const results = await this.query(query);
+
+    return results.map(result => ({
+      node: this.extractNodeName(result.metric.instance || ''),
+      cpuUsagePercent: parseFloat(result.value[1]) || 0,
+    }));
+  }
+
+  /**
+   * Get node memory usage per node
+   */
+  async getNodeMemoryUsageByNode(): Promise<Array<{
+    node: string;
+    memoryUsagePercent: number;
+    memoryUsedBytes: number;
+    memoryTotalBytes: number;
+  }>> {
+    const [usageResults, totalResults] = await Promise.all([
+      this.query('node_memory_MemTotal_bytes - node_memory_MemAvailable_bytes'),
+      this.query('node_memory_MemTotal_bytes'),
+    ]);
+
+    const nodeMap = new Map<string, { used: number; total: number }>();
+
+    for (const result of totalResults) {
+      const node = this.extractNodeName(result.metric.instance || '');
+      nodeMap.set(node, {
+        used: 0,
+        total: parseFloat(result.value[1]) || 0,
+      });
+    }
+
+    for (const result of usageResults) {
+      const node = this.extractNodeName(result.metric.instance || '');
+      const existing = nodeMap.get(node);
+      if (existing) {
+        existing.used = parseFloat(result.value[1]) || 0;
+      }
+    }
+
+    return Array.from(nodeMap.entries()).map(([node, data]) => ({
+      node,
+      memoryUsagePercent: data.total > 0 ? (data.used / data.total) * 100 : 0,
+      memoryUsedBytes: data.used,
+      memoryTotalBytes: data.total,
+    }));
+  }
+
+  /**
+   * Get historical CPU usage for a node
+   */
+  async getNodeCpuHistory(
+    nodeName: string,
+    duration: string = '5m',
+    step: string = '15s',
+  ): Promise<Array<{ timestamp: number; value: number }>> {
+    const end = new Date();
+    const start = new Date(end.getTime() - this.parseDuration(duration));
+
+    const query = `100 - (avg(rate(node_cpu_seconds_total{mode="idle", instance=~"${nodeName}.*"}[1m])) * 100)`;
+    const results = await this.queryRange(query, start, end, step);
+
+    if (results.length === 0) return [];
+
+    const result = results[0];
+    // For range queries, value is [timestamp, value] array
+    return (result.values || []).map((v: [number, string]) => ({
+      timestamp: v[0] * 1000, // Convert to ms
+      value: parseFloat(v[1]) || 0,
+    }));
+  }
+
+  /**
+   * Get historical memory usage for a node
+   */
+  async getNodeMemoryHistory(
+    nodeName: string,
+    duration: string = '5m',
+    step: string = '15s',
+  ): Promise<Array<{ timestamp: number; value: number }>> {
+    const end = new Date();
+    const start = new Date(end.getTime() - this.parseDuration(duration));
+
+    const query = `(1 - (node_memory_MemAvailable_bytes{instance=~"${nodeName}.*"} / node_memory_MemTotal_bytes{instance=~"${nodeName}.*"})) * 100`;
+    const results = await this.queryRange(query, start, end, step);
+
+    if (results.length === 0) return [];
+
+    const result = results[0];
+    return (result.values || []).map((v: [number, string]) => ({
+      timestamp: v[0] * 1000,
+      value: parseFloat(v[1]) || 0,
+    }));
+  }
+
+  /**
+   * Get pod CPU history
+   */
+  async getPodCpuHistory(
+    namespace: string,
+    podName: string,
+    duration: string = '5m',
+    step: string = '15s',
+  ): Promise<Array<{ timestamp: number; value: number }>> {
+    const end = new Date();
+    const start = new Date(end.getTime() - this.parseDuration(duration));
+
+    const query = `sum(rate(container_cpu_usage_seconds_total{namespace="${namespace}", pod="${podName}", container!=""}[1m])) * 1000`;
+    const results = await this.queryRange(query, start, end, step);
+
+    if (results.length === 0) return [];
+
+    const result = results[0];
+    return (result.values || []).map((v: [number, string]) => ({
+      timestamp: v[0] * 1000,
+      value: parseFloat(v[1]) || 0,
+    }));
+  }
+
+  /**
+   * Get pod memory history
+   */
+  async getPodMemoryHistory(
+    namespace: string,
+    podName: string,
+    duration: string = '5m',
+    step: string = '15s',
+  ): Promise<Array<{ timestamp: number; value: number }>> {
+    const end = new Date();
+    const start = new Date(end.getTime() - this.parseDuration(duration));
+
+    const query = `sum(container_memory_working_set_bytes{namespace="${namespace}", pod="${podName}", container!=""})`;
+    const results = await this.queryRange(query, start, end, step);
+
+    if (results.length === 0) return [];
+
+    const result = results[0];
+    return (result.values || []).map((v: [number, string]) => ({
+      timestamp: v[0] * 1000,
+      value: parseFloat(v[1]) || 0,
+    }));
+  }
+
+  /**
+   * Extract node name from instance string (removes port)
+   */
+  private extractNodeName(instance: string): string {
+    return instance.split(':')[0];
+  }
+
+  /**
+   * Parse duration string to milliseconds
+   */
+  private parseDuration(duration: string): number {
+    const match = duration.match(/^(\d+)([smhd])$/);
+    if (!match) return 5 * 60 * 1000; // default 5 minutes
+
+    const value = parseInt(match[1], 10);
+    const unit = match[2];
+
+    switch (unit) {
+      case 's': return value * 1000;
+      case 'm': return value * 60 * 1000;
+      case 'h': return value * 60 * 60 * 1000;
+      case 'd': return value * 24 * 60 * 60 * 1000;
+      default: return 5 * 60 * 1000;
+    }
+  }
 }

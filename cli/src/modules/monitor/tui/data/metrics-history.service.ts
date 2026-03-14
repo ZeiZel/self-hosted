@@ -127,9 +127,9 @@ export class MetricsHistoryService {
   constructor(@Optional() @Inject('METRICS_HISTORY_CAPACITY') capacity?: number) {
     this.capacity = capacity ?? MetricsHistoryService.DEFAULT_CAPACITY;
     this.clusterHistory = {
-      cpu: new CircularBuffer(capacity),
-      memory: new CircularBuffer(capacity),
-      podCount: new CircularBuffer(capacity),
+      cpu: new CircularBuffer(this.capacity),
+      memory: new CircularBuffer(this.capacity),
+      podCount: new CircularBuffer(this.capacity),
     };
   }
 

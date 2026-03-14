@@ -116,7 +116,7 @@ export class DaemonInitService {
 
     // Get container ID
     const containerId = await this.getContainerId();
-    this.daemonClient.markRunning(containerId);
+    this.daemonClient.markRunning(containerId ?? undefined);
 
     return containerId || 'unknown';
   }
