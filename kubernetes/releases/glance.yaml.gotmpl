@@ -70,6 +70,7 @@ ingress:
   tls:
     enabled: true
     secretName: glance-tls
+    clusterIssuer: letsencrypt-prod
 
 consul:
   enabled: true

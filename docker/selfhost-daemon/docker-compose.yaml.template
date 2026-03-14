@@ -1,5 +1,3 @@
-version: '3.8'
-
 services:
   selfhost-daemon:
     image: selfhost-daemon:latest

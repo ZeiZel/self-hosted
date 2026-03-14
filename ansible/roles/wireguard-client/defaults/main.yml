@@ -1,0 +1,28 @@
+---
+# WireGuard client defaults
+
+# Gateway configuration
+wireguard_gateway_host: "{{ hostvars[groups['gateway'][0]]['ansible_host'] | default('80.90.178.207') }}"
+wireguard_gateway_port: 51820
+wireguard_gateway_public_key: ""  # Must be set or fetched from gateway
+
+# Client configuration
+wireguard_client_ip: "10.99.0.2"
+wireguard_network: "10.99.0.0/24"
+wireguard_interface: "wg0"
+
+# Routes through VPN
+wireguard_allowed_ips:
+  - "10.99.0.0/24"      # VPN network
+  - "10.233.0.0/16"     # Kubernetes pod network
+
+# Kubernetes API
+kubernetes_api_ip: "10.99.0.10"
+kubernetes_api_port: 6443
+
+# Local paths
+wireguard_config_dir: "{{ ansible_env.HOME }}/.selfhosted/wireguard"
+wireguard_launchd_label: "com.selfhosted.wireguard"
+
+# macOS specific
+homebrew_bash_path: "/opt/homebrew/bin/bash"

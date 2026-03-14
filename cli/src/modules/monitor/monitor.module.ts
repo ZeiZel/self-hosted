@@ -4,6 +4,9 @@ import { ClusterClientService } from './cluster-client.service';
 import { MetricsStreamService } from './metrics-stream.service';
 import { AlertsService } from './alerts.service';
 import { TuiService } from './tui/tui.service';
+import { InkTuiService } from './tui/ink-tui.service';
+import { MetricsHistoryService } from './tui/data/metrics-history.service';
+import { EndpointCheckerService } from './apis/endpoint-checker';
 import { BalancingModule } from '../balancing/balancing.module';
 import { ApiModule } from './apis/api.module';
 
@@ -13,7 +16,10 @@ import { ApiModule } from './apis/api.module';
     ClusterClientService,
     AlertsService,
     MetricsStreamService,
+    MetricsHistoryService,
+    EndpointCheckerService,
     TuiService,
+    InkTuiService,
     MonitorService,
   ],
   exports: [
@@ -22,6 +28,9 @@ import { ApiModule } from './apis/api.module';
     MetricsStreamService,
     AlertsService,
     TuiService,
+    InkTuiService,
+    MetricsHistoryService,
+    EndpointCheckerService,
     ApiModule,
   ],
 })

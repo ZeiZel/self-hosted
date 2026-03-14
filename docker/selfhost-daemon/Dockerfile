@@ -1,6 +1,24 @@
-FROM oven/bun:1.1-alpine
+FROM oven/bun:1.2-alpine AS builder
 
-# Install kubectl
+# Install build dependencies for native modules (better-sqlite3)
+RUN apk add --no-cache python3 make g++ curl bash
+
+WORKDIR /app
+
+# Copy package files first for better caching
+COPY cli/package.json cli/bun.lock ./
+
+# Install dependencies
+RUN bun install --frozen-lockfile
+
+# Copy source code
+COPY cli/src ./src
+COPY cli/tsconfig.json ./
+
+# Production image
+FROM oven/bun:1.2-alpine
+
+# Install runtime dependencies
 RUN apk add --no-cache curl bash && \
     curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl" && \
     chmod +x kubectl && \
@@ -8,15 +26,10 @@ RUN apk add --no-cache curl bash && \
 
 WORKDIR /app
 
-# Copy package files first for better caching
-COPY cli/package.json cli/bun.lock* ./
-
-# Install dependencies
-RUN bun install --production --frozen-lockfile || bun install --production
-
-# Copy source code
-COPY cli/src ./src
-COPY cli/tsconfig.json ./
+# Copy built node_modules and source from builder
+COPY --from=builder /app/node_modules ./node_modules
+COPY --from=builder /app/src ./src
+COPY --from=builder /app/tsconfig.json ./
 
 # Create data directory
 RUN mkdir -p /data

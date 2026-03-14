@@ -25,7 +25,7 @@ export class DaemonInitService {
     @Inject(ConfigService)
     private readonly configService: ConfigService,
   ) {
-    this.daemonDir = join(homedir(), '.selfhost', 'daemon');
+    this.daemonDir = join(homedir(), '.selfhosted', 'daemon');
     this.composeFile = join(this.daemonDir, 'docker-compose.yaml');
   }
 
@@ -201,7 +201,7 @@ export class DaemonInitService {
    */
   private async generateDockerCompose(config: DaemonConfig): Promise<void> {
     const kubeconfig = process.env.KUBECONFIG || join(homedir(), '.kube', 'config');
-    const dataDir = join(homedir(), '.selfhost');
+    const dataDir = join(homedir(), '.selfhosted');
 
     // Find repo root for building the image
     let repoRoot: string;

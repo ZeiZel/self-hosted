@@ -19,6 +19,7 @@ import { HealthCheckerService } from './health-checker.service';
 import { DaemonClientService } from './daemon-client.service';
 import { DaemonInitService } from './daemon-init.service';
 import { DEFAULT_DAEMON_CONFIG } from './interfaces/daemon.interface';
+import { TelegramBotService } from '../telegram/telegram-bot.service';
 
 /**
  * Minimal module for daemon runner
@@ -28,12 +29,12 @@ import { DEFAULT_DAEMON_CONFIG } from './interfaces/daemon.interface';
     CoreModule.forRoot({ verbose: false, noColor: false }),
     SharedModule,
     ConfigModule.forRoot({
-      baseDir: process.env.DATA_DIR || join(homedir(), '.selfhost'),
+      baseDir: process.env.DATA_DIR || join(homedir(), '.selfhosted'),
       repoRoot: undefined,
     }),
     DatabaseModule.forRootAsync({
       useFactory: () => ({
-        filename: join(process.env.DATA_DIR || join(homedir(), '.selfhost'), 'selfhost.db'),
+        filename: join(process.env.DATA_DIR || join(homedir(), '.selfhosted'), 'selfhosted.db'),
       }),
     }),
     MonitorModule,
@@ -49,7 +50,7 @@ class DaemonRunnerModule {}
 function getConfig() {
   return {
     checkInterval: parseInt(process.env.CHECK_INTERVAL || '60', 10),
-    dataDir: process.env.DATA_DIR || join(homedir(), '.selfhost'),
+    dataDir: process.env.DATA_DIR || join(homedir(), '.selfhosted'),
     retentionDays: parseInt(process.env.RETENTION_DAYS || '7', 10),
     kubeconfig: process.env.KUBECONFIG,
   };
@@ -78,6 +79,10 @@ async function main() {
 
     // Get daemon service
     const daemonService = app.get(DaemonService);
+
+    // Start Telegram bot for receiving commands
+    const telegramBot = app.get(TelegramBotService);
+    await telegramBot.start();
 
     // Handle shutdown signals
     const shutdown = async () => {

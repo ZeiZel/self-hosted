@@ -8,8 +8,8 @@ import { join } from 'path';
 import { homedir } from 'os';
 
 async function healthcheck() {
-  const dataDir = process.env.DATA_DIR || join(homedir(), '.selfhost');
-  const dbPath = join(dataDir, 'selfhost.db');
+  const dataDir = process.env.DATA_DIR || join(homedir(), '.selfhosted');
+  const dbPath = join(dataDir, 'selfhosted.db');
 
   try {
     // Check database connectivity

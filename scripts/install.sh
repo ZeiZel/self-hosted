@@ -119,7 +119,7 @@ install_binary() {
 
     # Create wrapper script
     local wrapper_script="$INSTALL_DIR/cli/selfhost-wrapper.sh"
-    cat > "$wrapper_script" << 'WRAPPER'
+    cat > "$wrapper_script" << WRAPPER
 #!/usr/bin/env bash
 # Self-Hosted CLI Wrapper
 # Ensures Bun is available and runs the CLI
@@ -127,22 +127,16 @@ install_binary() {
 set -euo pipefail
 
 # Ensure Bun is in PATH
-export BUN_INSTALL="${BUN_INSTALL:-$HOME/.bun}"
-if [[ -d "$BUN_INSTALL/bin" ]]; then
-    export PATH="$BUN_INSTALL/bin:$PATH"
+export BUN_INSTALL="\${BUN_INSTALL:-\$HOME/.bun}"
+if [[ -d "\$BUN_INSTALL/bin" ]]; then
+    export PATH="\$BUN_INSTALL/bin:\$PATH"
 fi
 
-# Resolve symlinks to get the actual script directory
-SOURCE="${BASH_SOURCE[0]}"
-while [[ -L "$SOURCE" ]]; do
-    DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
-    SOURCE="$(readlink "$SOURCE")"
-    [[ "$SOURCE" != /* ]] && SOURCE="$DIR/$SOURCE"
-done
-SCRIPT_DIR="$(cd -P "$(dirname "$SOURCE")" && pwd)"
+# CLI directory (hardcoded for cross-shell compatibility)
+CLI_DIR="$INSTALL_DIR/cli"
 
-# Run the CLI with Bun
-exec bun run "$SCRIPT_DIR/src/main.ts" "$@"
+# Run the CLI with Bun from CLI directory
+cd "\$CLI_DIR" && exec bun run src/main.ts "\$@"
 WRAPPER
 
     chmod +x "$wrapper_script"

@@ -11,12 +11,8 @@ global:
 entryPoints:
   web:
     address: ":{{ traefik_http_port }}"
-    http:
-      redirections:
-        entryPoint:
-          to: websecure
-          scheme: https
-          permanent: true
+    # Note: No global redirect - ACME HTTP-01 challenges require port 80
+    # HTTPS redirect is handled per-route in dynamic config
 
   websecure:
     address: ":{{ traefik_https_port }}"
