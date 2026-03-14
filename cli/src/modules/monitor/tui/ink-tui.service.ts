@@ -46,7 +46,9 @@ export class InkTuiService {
     this.subscription = this.metricsStream
       .startStreaming(options.refreshInterval || 5)
       .subscribe((state) => {
-        this.handleMetricsUpdate(state);
+        if (state && state.nodes) {
+          this.handleMetricsUpdate(state);
+        }
       });
 
     // Render the React app
@@ -75,6 +77,10 @@ export class InkTuiService {
    * Handle metrics update
    */
   private handleMetricsUpdate(state: ClusterState): void {
+    if (!state || !state.nodes || !state.summary) {
+      return;
+    }
+
     this.clusterState = state;
 
     // Record metrics history

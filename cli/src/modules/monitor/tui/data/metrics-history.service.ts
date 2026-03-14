@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, Optional, Inject } from '@nestjs/common';
 import type { NodeMetrics, ClusterSummary } from '../../../../interfaces/monitor.interface';
 
 /**
@@ -124,8 +124,8 @@ export class MetricsHistoryService {
 
   private capacity: number;
 
-  constructor(capacity: number = MetricsHistoryService.DEFAULT_CAPACITY) {
-    this.capacity = capacity;
+  constructor(@Optional() @Inject('METRICS_HISTORY_CAPACITY') capacity?: number) {
+    this.capacity = capacity ?? MetricsHistoryService.DEFAULT_CAPACITY;
     this.clusterHistory = {
       cpu: new CircularBuffer(capacity),
       memory: new CircularBuffer(capacity),
