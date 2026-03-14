@@ -69,7 +69,7 @@ export interface DaemonConfig {
  */
 export const DEFAULT_DAEMON_CONFIG: DaemonConfig = {
   checkInterval: 60,
-  dataDir: '~/.selfhost',
+  dataDir: '~/.selfhosted',
   retentionDays: 7,
 };
 
@@ -142,7 +142,7 @@ export interface DockerComposeVars {
  */
 export const daemonConfigSchema = z.object({
   checkInterval: z.number().int().min(10).max(3600).default(60),
-  dataDir: z.string().default('~/.selfhost'),
+  dataDir: z.string().default('~/.selfhosted'),
   kubeconfig: z.string().optional(),
   retentionDays: z.number().int().min(1).max(365).default(7),
 });

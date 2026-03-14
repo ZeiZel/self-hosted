@@ -3,7 +3,42 @@
 # Routes traffic from gateway to Kubernetes cluster via VPN tunnel
 
 http:
+  middlewares:
+    # HTTPS redirect middleware
+    https-redirect:
+      redirectScheme:
+        scheme: https
+        permanent: true
+
   routers:
+    # ACME challenge router - forwards HTTP-01 challenges to cluster without redirect
+    acme-challenge-router:
+      rule: "PathPrefix(`/.well-known/acme-challenge/`)"
+      entryPoints:
+        - web
+      service: cluster-service
+      priority: 1000
+
+    # HTTP to HTTPS redirect for subdomains
+    http-redirect-router:
+      rule: "HostRegexp(`{subdomain:[a-z0-9-]+}.{{ domain.public }}`)"
+      entryPoints:
+        - web
+      middlewares:
+        - https-redirect
+      service: cluster-service
+      priority: 1
+
+    # HTTP to HTTPS redirect for root domain
+    http-redirect-root-router:
+      rule: "Host(`{{ domain.public }}`)"
+      entryPoints:
+        - web
+      middlewares:
+        - https-redirect
+      service: cluster-service
+      priority: 2
+
     # Catch-all router for cluster services
     cluster-router:
       rule: "HostRegexp(`{subdomain:[a-z0-9-]+}.{{ domain.public }}`)"

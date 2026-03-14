@@ -1,0 +1,16 @@
+---
+# Playbook to configure WireGuard VPN client on macOS
+# Usage: ansible-playbook -i localhost, vpn-client.yml --connection=local
+
+- name: Configure WireGuard VPN client
+  hosts: all
+  connection: local
+  gather_facts: true
+
+  vars:
+    wireguard_gateway_host: "80.90.178.207"
+    wireguard_client_ip: "10.99.0.2"
+    kubernetes_api_ip: "10.99.0.10"
+
+  roles:
+    - wireguard-client

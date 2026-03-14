@@ -1,0 +1,24 @@
+---
+# Cert-Manager Configuration Playbook
+# Configures Let's Encrypt ClusterIssuer for automatic TLS certificates
+#
+# Usage:
+#   ansible-playbook -i inventory/hosts.ini cert-manager.yml
+#   selfhost certs setup
+#
+# This playbook:
+#   1. Waits for cert-manager deployment to be ready
+#   2. Creates letsencrypt-prod ClusterIssuer with HTTP-01 solver
+#   3. Creates selfsigned-issuer for internal certificates
+#   4. Verifies the issuer is registered with ACME
+
+- name: Configure cert-manager ClusterIssuers
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    ansible_python_interpreter: "{{ ansible_playbook_python }}"
+
+  roles:
+    - cert-manager

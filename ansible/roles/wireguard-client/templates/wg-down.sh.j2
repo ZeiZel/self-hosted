@@ -1,0 +1,12 @@
+#!/bin/bash
+# WireGuard down script for selfhosted CLI
+
+set -e
+
+CONFIG_FILE="{{ wireguard_config_dir }}/wg0.conf"
+WG_QUICK=$(which wg-quick)
+
+# Stop WireGuard using Homebrew bash
+{{ homebrew_bash_path }} "$WG_QUICK" down "$CONFIG_FILE" 2>/dev/null || true
+
+echo "WireGuard tunnel stopped"

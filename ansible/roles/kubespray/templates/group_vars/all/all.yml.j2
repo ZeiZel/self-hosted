@@ -66,7 +66,9 @@ kubernetes_audit: false
 # Additional Configuration
 # -----------------------------------------------------------------------------
 ## Enable supplementary addresses in SSL cert
-supplementary_addresses_in_ssl_keys: []
+## VPN IP for remote CLI access
+supplementary_addresses_in_ssl_keys:
+  - "10.99.0.10"
 
 ## Cert expiration (default 1 year)
 # kube_cert_validity_duration: 365

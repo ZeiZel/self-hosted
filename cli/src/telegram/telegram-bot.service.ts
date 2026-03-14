@@ -82,6 +82,7 @@ export class TelegramBotService implements OnModuleDestroy {
    * Stop the bot polling loop
    */
   stop(): void {
+    const wasRunning = this.running;
     this.running = false;
 
     if (this.pollingAbortController) {
@@ -94,7 +95,10 @@ export class TelegramBotService implements OnModuleDestroy {
       this.cleanupInterval = null;
     }
 
-    console.log('[Telegram] Bot stopped');
+    // Only log if bot was actually running
+    if (wasRunning) {
+      console.log('[Telegram] Bot stopped');
+    }
   }
 
   /**

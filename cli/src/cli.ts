@@ -13,6 +13,9 @@ import { createMonitorCommand } from './commands/monitor.command';
 import { createDaemonCommand } from './commands/daemon.command';
 import { createTestCommand } from './commands/test.command';
 import { createBotCommand } from './commands/bot.command';
+import { createVpnCommand } from './commands/vpn.command';
+import { createCertsCommand } from './commands/certs.command';
+import { createGatewayCommand } from './commands/gateway.command';
 import { createUpdateCommand } from './commands/update.command';
 import { getVersion } from './utils/version';
 import chalk from 'chalk';
@@ -57,6 +60,9 @@ export function createCli(app: INestApplicationContext): Command {
   program.addCommand(createDaemonCommand(app));
   program.addCommand(createTestCommand(app));
   program.addCommand(createBotCommand(app));
+  program.addCommand(createVpnCommand(app));
+  program.addCommand(createCertsCommand(app));
+  program.addCommand(createGatewayCommand(app));
   program.addCommand(createUpdateCommand());
 
   // Default action (no command)

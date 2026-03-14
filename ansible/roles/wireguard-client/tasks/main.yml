@@ -1,0 +1,153 @@
+---
+# WireGuard client setup for macOS
+
+- name: Check if running on macOS
+  ansible.builtin.assert:
+    that:
+      - ansible_os_family == "Darwin"
+    fail_msg: "This role is designed for macOS only"
+
+- name: Check if WireGuard is installed
+  ansible.builtin.command: which wg
+  register: wg_installed
+  changed_when: false
+  failed_when: false
+
+- name: Install WireGuard via Homebrew
+  community.general.homebrew:
+    name: wireguard-tools
+    state: present
+  when: wg_installed.rc != 0
+
+- name: Create WireGuard config directory
+  ansible.builtin.file:
+    path: "{{ wireguard_config_dir }}"
+    state: directory
+    mode: "0700"
+
+- name: Check if private key exists
+  ansible.builtin.stat:
+    path: "{{ wireguard_config_dir }}/privatekey"
+  register: privatekey_stat
+
+- name: Generate WireGuard keys
+  when: not privatekey_stat.stat.exists
+  block:
+    - name: Generate private key
+      ansible.builtin.shell: wg genkey
+      register: wg_private_key
+      changed_when: true
+
+    - name: Generate public key
+      ansible.builtin.shell: echo "{{ wg_private_key.stdout }}" | wg pubkey
+      register: wg_public_key
+      changed_when: false
+
+    - name: Save private key
+      ansible.builtin.copy:
+        content: "{{ wg_private_key.stdout }}"
+        dest: "{{ wireguard_config_dir }}/privatekey"
+        mode: "0600"
+
+    - name: Save public key
+      ansible.builtin.copy:
+        content: "{{ wg_public_key.stdout }}"
+        dest: "{{ wireguard_config_dir }}/publickey"
+        mode: "0644"
+
+- name: Read existing private key
+  ansible.builtin.slurp:
+    src: "{{ wireguard_config_dir }}/privatekey"
+  register: existing_private_key
+  when: privatekey_stat.stat.exists
+
+- name: Read existing public key
+  ansible.builtin.slurp:
+    src: "{{ wireguard_config_dir }}/publickey"
+  register: existing_public_key
+  when: privatekey_stat.stat.exists
+
+- name: Set key facts
+  ansible.builtin.set_fact:
+    client_private_key: "{{ existing_private_key.content | b64decode | trim if privatekey_stat.stat.exists else wg_private_key.stdout }}"
+    client_public_key: "{{ existing_public_key.content | b64decode | trim if privatekey_stat.stat.exists else wg_public_key.stdout }}"
+
+- name: Get gateway public key
+  ansible.builtin.shell: |
+    ssh {{ wireguard_gateway_host }} "wg show wg0 public-key"
+  register: gateway_pubkey
+  changed_when: false
+  when: wireguard_gateway_public_key == ""
+
+- name: Set gateway public key fact
+  ansible.builtin.set_fact:
+    gateway_public_key: "{{ wireguard_gateway_public_key if wireguard_gateway_public_key != '' else gateway_pubkey.stdout | trim }}"
+
+- name: Add peer to gateway
+  ansible.builtin.shell: |
+    ssh {{ wireguard_gateway_host }} "
+    grep -q '{{ client_public_key }}' /etc/wireguard/wg0.conf || (
+      echo '' >> /etc/wireguard/wg0.conf
+      echo '[Peer]' >> /etc/wireguard/wg0.conf
+      echo '# {{ inventory_hostname }}' >> /etc/wireguard/wg0.conf
+      echo 'PublicKey = {{ client_public_key }}' >> /etc/wireguard/wg0.conf
+      echo 'AllowedIPs = {{ wireguard_client_ip }}/32' >> /etc/wireguard/wg0.conf
+      wg syncconf wg0 <(wg-quick strip wg0)
+    )"
+  changed_when: true
+
+- name: Generate WireGuard config
+  ansible.builtin.template:
+    src: wg0.conf.j2
+    dest: "{{ wireguard_config_dir }}/wg0.conf"
+    mode: "0600"
+  notify: Restart WireGuard
+
+- name: Generate launchd plist
+  ansible.builtin.template:
+    src: wireguard.plist.j2
+    dest: "{{ ansible_env.HOME }}/Library/LaunchAgents/{{ wireguard_launchd_label }}.plist"
+    mode: "0644"
+  notify: Load launchd service
+
+- name: Create WireGuard wrapper script
+  ansible.builtin.template:
+    src: wg-up.sh.j2
+    dest: "{{ wireguard_config_dir }}/wg-up.sh"
+    mode: "0755"
+
+- name: Create WireGuard down script
+  ansible.builtin.template:
+    src: wg-down.sh.j2
+    dest: "{{ wireguard_config_dir }}/wg-down.sh"
+    mode: "0755"
+
+- name: Update kubeconfig server address
+  ansible.builtin.command: |
+    kubectl config set-cluster k8s-cluster --server=https://{{ kubernetes_api_ip }}:{{ kubernetes_api_port }}
+  changed_when: true
+
+- name: Fetch cluster CA certificate
+  ansible.builtin.shell: |
+    ssh {{ hostvars[groups['master'][0]]['ansible_host'] | default('k8s-master1') }} "sudo cat /etc/kubernetes/ssl/ca.crt"
+  register: cluster_ca_cert
+  changed_when: false
+
+- name: Save CA certificate locally
+  ansible.builtin.copy:
+    content: "{{ cluster_ca_cert.stdout }}"
+    dest: "{{ wireguard_config_dir }}/k8s-ca.crt"
+    mode: "0644"
+
+- name: Update kubeconfig with CA certificate
+  ansible.builtin.command: |
+    kubectl config set-cluster k8s-cluster --certificate-authority={{ wireguard_config_dir }}/k8s-ca.crt --embed-certs=true
+  changed_when: true
+
+- name: Open firewall on master for VPN
+  ansible.builtin.shell: |
+    ssh {{ hostvars[groups['master'][0]]['ansible_host'] | default('k8s-master1') }} "
+    sudo ufw allow from 10.99.0.0/24 to any port 6443 proto tcp comment 'Kubernetes API from VPN' 2>/dev/null || true
+    "
+  changed_when: false
+  failed_when: false

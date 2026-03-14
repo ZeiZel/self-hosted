@@ -211,6 +211,28 @@ export enum TuiPanel {
   ALERTS = 'alerts',
   MIGRATION = 'migration',
   SETTINGS = 'settings',
+  SERVICE_STATS = 'service_stats',
+  GRAPHS = 'graphs',
+}
+
+/**
+ * Panel focus mode for btop-style expand/collapse
+ */
+export enum PanelFocusMode {
+  COMPACT = 'compact',
+  EXPANDED = 'expanded',
+}
+
+/**
+ * Panel configuration for responsive layout
+ */
+export interface PanelConfig {
+  id: string;
+  minWidth: number;
+  minHeight: number;
+  priority: number;       // Lower = higher priority, shown first in compact mode
+  canExpand: boolean;
+  defaultVisible: boolean;
 }
 
 /**
@@ -229,19 +251,20 @@ export interface TuiState {
  * Keyboard shortcuts
  */
 export const KEYBOARD_SHORTCUTS: Record<string, string> = {
-  q: 'Quit',
-  r: 'Refresh',
-  h: 'Toggle help',
-  Tab: 'Switch panel',
-  'Up/Down': 'Navigate',
-  Enter: 'Select/Migrate',
-  Esc: 'Cancel',
-  '1-5': 'Quick select node',
-  n: 'Nodes panel',
-  s: 'Services panel',
-  a: 'Alerts panel',
-  m: 'Migration panel',
-  g: 'Settings panel',
+  'q, Ctrl+C': 'Quit',
+  'r': 'Refresh metrics',
+  '?': 'Toggle help',
+  'Tab': 'Cycle panel focus',
+  '1-6': 'Quick select panel',
+  'h/j/k/l': 'Navigate between panels',
+  'Enter': 'Expand focused panel',
+  'Esc': 'Collapse / cancel',
+  '↑/↓ or j/k': 'Navigate within panel',
+  '/': 'Activate search (services)',
+  'g': 'Cycle grouping mode',
+  'c': 'Toggle group collapse',
+  'gg': 'Jump to top',
+  'G': 'Jump to bottom',
 };
 
 /**

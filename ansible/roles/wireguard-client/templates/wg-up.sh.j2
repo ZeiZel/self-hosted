@@ -1,0 +1,19 @@
+#!/bin/bash
+# WireGuard up script for selfhosted CLI
+# Uses Homebrew bash to avoid macOS bash 3 issues
+
+set -e
+
+CONFIG_FILE="{{ wireguard_config_dir }}/wg0.conf"
+WG_QUICK=$(which wg-quick)
+
+# Check if already running
+if /usr/sbin/netstat -rn | grep -q "{{ wireguard_network | regex_replace('/.*', '') }}"; then
+    echo "WireGuard tunnel already active"
+    exit 0
+fi
+
+# Start WireGuard using Homebrew bash
+{{ homebrew_bash_path }} "$WG_QUICK" up "$CONFIG_FILE"
+
+echo "WireGuard tunnel started"

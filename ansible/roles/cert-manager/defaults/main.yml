@@ -1,0 +1,16 @@
+---
+# cert-manager role defaults
+
+# Cert-manager namespace
+cert_manager_namespace: service
+
+# ClusterIssuer configuration
+cert_manager_issuer_name: letsencrypt-prod
+cert_manager_issuer_email: admin@zeizel.ru
+cert_manager_acme_server: https://acme-v02.api.letsencrypt.org/directory
+
+# Ingress class for HTTP-01 solver
+cert_manager_ingress_class: traefik
+
+# Optional: Staging server for testing (uncomment for testing)
+# cert_manager_acme_server: https://acme-staging-v02.api.letsencrypt.org/directory

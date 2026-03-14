@@ -83,7 +83,8 @@
       "Bash(~/kubespray/venv/bin/ansible-playbook:*)",
       "Bash(grep:*)",
       "Bash(kubectl get:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(bun:*)"
     ]
   },
   "outputStyle": "default"

@@ -1,0 +1,52 @@
+---
+# Pangolin Gateway Configuration Playbook
+# Updates Traefik configuration on the VPS gateway
+#
+# Usage:
+#   ansible-playbook -i inventory/gateway.ini pangolin-gateway.yml
+#   selfhost gateway setup
+#
+# This playbook:
+#   1. Updates Traefik configuration for ACME challenge passthrough
+#   2. Configures HTTP->HTTPS redirect middleware
+#   3. Restarts Traefik to apply changes
+
+- name: Configure Pangolin Gateway
+  hosts: gateway
+  become: true
+  gather_facts: true
+
+  vars:
+    traefik_config_dir: /etc/traefik
+    traefik_http_port: 80
+    traefik_https_port: 443
+    traefik_dashboard_port: 8080
+    cluster_nodeport_http: 30080
+    cluster_nodeport_https: 30443
+
+  tasks:
+    - name: Ensure Traefik config directory exists
+      file:
+        path: "{{ traefik_config_dir }}/dynamic"
+        state: directory
+        mode: '0755'
+
+    - name: Deploy Traefik static configuration
+      template:
+        src: roles/pangolin/templates/traefik-gateway.yml.j2
+        dest: "{{ traefik_config_dir }}/traefik.yml"
+        mode: '0644'
+      notify: Restart Traefik
+
+    - name: Deploy cluster routing configuration
+      template:
+        src: roles/pangolin/templates/cluster-routing.yml.j2
+        dest: "{{ traefik_config_dir }}/dynamic/cluster.yml"
+        mode: '0644'
+      notify: Restart Traefik
+
+  handlers:
+    - name: Restart Traefik
+      systemd:
+        name: traefik
+        state: restarted

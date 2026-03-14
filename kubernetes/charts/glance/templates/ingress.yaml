@@ -8,7 +8,7 @@ metadata:
     {{- include "glance.labels" . | nindent 4 }}
   annotations:
     {{- if .Values.ingress.tls.enabled }}
-    cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer | default "letsencrypt" | quote }}
+    cert-manager.io/cluster-issuer: {{ .Values.ingress.tls.clusterIssuer | default "letsencrypt-prod" | quote }}
     {{- end }}
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
     {{- if .Values.authentik.enabled }}
