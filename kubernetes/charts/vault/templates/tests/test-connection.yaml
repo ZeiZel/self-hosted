@@ -13,4 +13,4 @@ spec:
     - name: wget
       image: busybox:1.28
       command: ['wget']
-      args: ['{{ include "vault.fullname" . }}:{{ .Values.service.port }}']
+      args: ['--spider', '-q', 'http://{{ include "vault.fullname" . }}:{{ .Values.server.service.port }}']

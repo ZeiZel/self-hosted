@@ -13,4 +13,4 @@ spec:
     - name: curl
       image: curlimages/curl:8.5.0
       command: ['curl']
-      args: ['-sf', 'http://{{ include "coder.fullname" . }}:{{ .Values.service.port }}/healthz']
+      args: ['-sf', 'http://{{ include "coder.fullname" . }}:{{ .Values.coder.service.port }}/healthz']

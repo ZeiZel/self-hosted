@@ -100,6 +100,13 @@ ingress:
 networkPolicy:
   enabled: true
   allowNodePort: true
+  egressRules:
+    allowDatabases: false
+    allowConsul: true
+    allowVault: true
+    allowAuthentik: false
+  ingress: []
+  egress: []
 
 # Consul интеграция
 consul:

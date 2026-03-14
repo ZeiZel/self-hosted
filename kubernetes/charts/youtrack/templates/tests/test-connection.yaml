@@ -13,4 +13,4 @@ spec:
     - name: curl
       image: curlimages/curl:8.5.0
       command: ['curl']
-      args: ['-sf', 'http://{{ include "youtrack.fullname" . }}:{{ .Values.service.port }}/api/admin/healthcheck']
+      args: ['-sf', 'http://{{ include "youtrack.fullname" . }}:{{ .Values.youtrack.service.port }}/api/admin/healthcheck']

@@ -51,3 +51,11 @@ ingress:
 serviceAccount:
   create: true
   name: consul
+
+# Metrics
+metrics:
+  enabled: true
+  port: "http"
+  path: "/v1/agent/metrics"
+  interval: "30s"
+  scrapeTimeout: "10s"

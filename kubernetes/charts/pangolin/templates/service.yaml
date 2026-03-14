@@ -1,13 +1,13 @@
 apiVersion: v1
 kind: Service
 metadata:
-  name: {{ include "pangolin-client.fullname" . }}
+  name: {{ include "pangolin.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "pangolin-client.labels" . | nindent 4 }}
+    {{- include "pangolin.labels" . | nindent 4 }}
   {{- if .Values.consul.enabled }}
   annotations:
-    consul.hashicorp.com/service-name: {{ include "pangolin-client.fullname" . }}
+    consul.hashicorp.com/service-name: {{ include "pangolin.fullname" . }}
     consul.hashicorp.com/service-port: "{{ .Values.pangolin.port }}"
     consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
   {{- end }}
@@ -19,7 +19,7 @@ spec:
       protocol: TCP
       name: http
   selector:
-    {{- include "pangolin-client.selectorLabels" . | nindent 4 }}
+    {{- include "pangolin.selectorLabels" . | nindent 4 }}
 
 
 

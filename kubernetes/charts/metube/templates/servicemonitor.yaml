@@ -1,4 +1,4 @@
-{{- if .Values.metrics.enabled -}}
+{{- if .Values.serviceMonitor.enabled -}}
 apiVersion: monitoring.coreos.com/v1
 kind: ServiceMonitor
 metadata:
@@ -11,12 +11,8 @@ spec:
     matchLabels:
       {{- include "metube.selectorLabels" . | nindent 6 }}
   endpoints:
-    - port: {{ .Values.metrics.port | default "http" }}
-      path: {{ .Values.metrics.path | default "/metrics" }}
-      interval: {{ .Values.metrics.interval | default "30s" }}
-      scrapeTimeout: {{ .Values.metrics.scrapeTimeout | default "10s" }}
-  {{- with .Values.metrics.namespaceSelector }}
-  namespaceSelector:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
+    - port: http
+      path: /metrics
+      interval: {{ .Values.serviceMonitor.interval | default "30s" }}
+      scrapeTimeout: {{ .Values.serviceMonitor.scrapeTimeout | default "10s" }}
 {{- end }}

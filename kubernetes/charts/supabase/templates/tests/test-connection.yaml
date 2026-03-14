@@ -13,4 +13,4 @@ spec:
     - name: wget
       image: busybox:1.28
       command: ['wget']
-      args: ['{{ include "supabase.fullname" . }}:{{ .Values.service.port }}']
+      args: ['{{ include "supabase.fullname" . }}-kong:{{ .Values.kong.service.port }}']
