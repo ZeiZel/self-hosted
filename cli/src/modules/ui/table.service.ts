@@ -25,8 +25,11 @@ export class TableService {
     for (const machine of machines) {
       const roles = machine.roles.map((r) => this.formatRole(r)).join(', ');
       const status = this.formatStatus(machine.status);
-      const resources = machine.facts
-        ? `${machine.facts.cpuCores} CPU / ${formatBytes(machine.facts.memoryTotal)}`
+      const facts = machine.facts;
+      const cpuCores = facts && typeof facts.cpuCores === 'number' ? facts.cpuCores : null;
+      const memoryTotal = facts && typeof facts.memoryTotal === 'number' ? facts.memoryTotal : null;
+      const resources = cpuCores && memoryTotal
+        ? `${cpuCores} CPU / ${formatBytes(memoryTotal)}`
         : chalk.gray('Unknown');
 
       table.push([machine.label, machine.ip, roles, status, resources]);

@@ -213,7 +213,7 @@ export class ServiceConfigRepository {
     const stmt = this.db.prepare(`
       UPDATE service_configs SET ${updates.join(', ')} WHERE id = ?
     `);
-    stmt.run(...values);
+    stmt.run(...(values as (string | number | null)[]));
 
     return this.findById(id);
   }
@@ -250,8 +250,8 @@ export class ServiceConfigRepository {
    */
   delete(id: string): boolean {
     const stmt = this.db.prepare('DELETE FROM service_configs WHERE id = ?');
-    stmt.run(id);
-    return this.db.getConnection().changes > 0;
+    const result = stmt.run(id);
+    return result.changes > 0;
   }
 
   /**
@@ -259,8 +259,8 @@ export class ServiceConfigRepository {
    */
   deleteByName(name: string): boolean {
     const stmt = this.db.prepare('DELETE FROM service_configs WHERE name = ?');
-    stmt.run(name);
-    return this.db.getConnection().changes > 0;
+    const result = stmt.run(name);
+    return result.changes > 0;
   }
 
   /**

@@ -228,7 +228,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
    */
   query<T = unknown>(sql: string, params: unknown[] = []): T[] {
     const stmt = this.getConnection().prepare(sql);
-    return stmt.all(...params) as T[];
+    return stmt.all(...(params as (string | number | null)[])) as T[];
   }
 
   /**
@@ -236,7 +236,7 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
    */
   queryOne<T = unknown>(sql: string, params: unknown[] = []): T | null {
     const stmt = this.getConnection().prepare(sql);
-    return (stmt.get(...params) as T) ?? null;
+    return (stmt.get(...(params as (string | number | null)[])) as T) ?? null;
   }
 
   /**
@@ -263,8 +263,8 @@ export class DatabaseService implements OnModuleInit, OnModuleDestroy {
     cutoff.setDate(cutoff.getDate() - retentionDays);
 
     const stmt = this.prepare('DELETE FROM metrics WHERE timestamp < ?');
-    stmt.run(cutoff.toISOString());
-    return this.getConnection().changes;
+    const result = stmt.run(cutoff.toISOString());
+    return result.changes;
   }
 
   /**

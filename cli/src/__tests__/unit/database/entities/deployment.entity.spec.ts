@@ -13,11 +13,11 @@ import {
 describe('deployment entity', () => {
   describe('enums', () => {
     test('DeploymentStatus has expected values', () => {
-      expect(DeploymentStatus.PENDING).toBe('pending');
-      expect(DeploymentStatus.RUNNING).toBe('running');
-      expect(DeploymentStatus.SUCCESS).toBe('success');
-      expect(DeploymentStatus.FAILED).toBe('failed');
-      expect(DeploymentStatus.CANCELLED).toBe('cancelled');
+      expect(DeploymentStatus.PENDING).toBe('pending' as DeploymentStatus);
+      expect(DeploymentStatus.RUNNING).toBe('running' as DeploymentStatus);
+      expect(DeploymentStatus.SUCCESS).toBe('success' as DeploymentStatus);
+      expect(DeploymentStatus.FAILED).toBe('failed' as DeploymentStatus);
+      expect(DeploymentStatus.CANCELLED).toBe('cancelled' as DeploymentStatus);
     });
 
     test('DeploymentPhase has expected values', () => {

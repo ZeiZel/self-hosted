@@ -68,12 +68,11 @@ export class TuiService {
     this.setupTerminal();
 
     // Start metrics streaming
-    this.subscription = this.metricsStream
-      .startStreaming(options.refreshInterval || 5)
-      .subscribe((state) => {
-        this.clusterState = state;
-        this.render();
-      });
+    const stream$ = await this.metricsStream.startStreaming(options.refreshInterval || 5);
+    this.subscription = stream$.subscribe((state: ClusterState) => {
+      this.clusterState = state;
+      this.render();
+    });
 
     // Setup keyboard handling
     this.setupKeyboard();

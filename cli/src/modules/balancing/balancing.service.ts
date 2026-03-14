@@ -10,7 +10,7 @@ import {
   MigrationPlan,
   getUtilization,
 } from '../../interfaces/placement.interface';
-import { Machine } from '../../interfaces/machine.interface';
+import { Machine, MachineFacts } from '../../interfaces/machine.interface';
 import { InventoryService } from '../inventory/inventory.service';
 import { ServicesService } from '../services/services.service';
 import { ConstraintsService } from './constraints.service';
@@ -196,16 +196,23 @@ export class BalancingService {
     return machines
       .filter((m) => !options.excludeNodes?.includes(m.label))
       .filter((m) => m.status === 'online' || m.status === 'unknown')
-      .map((m) => ({
-        label: m.label,
-        ip: m.ip,
-        roles: m.roles,
-        totalCpu: m.facts?.cpuCores ? m.facts.cpuCores * 1000 : 4000,
-        totalMemory: m.facts?.memoryTotal ?? 8 * 1024 * 1024 * 1024,
-        allocatedCpu: 0,
-        allocatedMemory: 0,
-        services: [],
-      }));
+      .map((m) => {
+        // Safely extract facts with proper typing
+        const facts = m.facts as MachineFacts | undefined;
+        const cpuCores = typeof facts?.cpuCores === 'number' ? facts.cpuCores : 4;
+        const memoryTotal = typeof facts?.memoryTotal === 'number' ? facts.memoryTotal : 8 * 1024 * 1024 * 1024;
+
+        return {
+          label: m.label,
+          ip: m.ip,
+          roles: m.roles,
+          totalCpu: cpuCores * 1000,
+          totalMemory: memoryTotal,
+          allocatedCpu: 0,
+          allocatedMemory: 0,
+          services: [] as string[],
+        };
+      });
   }
 
   /**

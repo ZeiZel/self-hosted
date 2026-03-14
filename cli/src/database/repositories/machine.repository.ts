@@ -188,7 +188,7 @@ export class MachineRepository {
     const stmt = this.db.prepare(`
       UPDATE machines SET ${updates.join(', ')} WHERE id = ?
     `);
-    stmt.run(...values);
+    stmt.run(...(values as (string | number | null)[]));
 
     return this.findById(id);
   }
@@ -198,8 +198,8 @@ export class MachineRepository {
    */
   delete(id: string): boolean {
     const stmt = this.db.prepare('DELETE FROM machines WHERE id = ?');
-    stmt.run(id);
-    return this.db.getConnection().changes > 0;
+    const result = stmt.run(id);
+    return result.changes > 0;
   }
 
   /**
@@ -207,8 +207,8 @@ export class MachineRepository {
    */
   deleteAll(): number {
     const stmt = this.db.prepare('DELETE FROM machines');
-    stmt.run();
-    return this.db.getConnection().changes;
+    const result = stmt.run();
+    return result.changes;
   }
 
   /**

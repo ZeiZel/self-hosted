@@ -13,18 +13,18 @@ import {
 describe('machine entity', () => {
   describe('enums', () => {
     test('MachineRole has expected values', () => {
-      expect(MachineRole.MASTER).toBe('master');
-      expect(MachineRole.WORKER).toBe('worker');
-      expect(MachineRole.GATEWAY).toBe('gateway');
-      expect(MachineRole.STORAGE).toBe('storage');
-      expect(MachineRole.BACKUPS).toBe('backups');
+      expect(MachineRole.MASTER).toBe('master' as MachineRole);
+      expect(MachineRole.WORKER).toBe('worker' as MachineRole);
+      expect(MachineRole.GATEWAY).toBe('gateway' as MachineRole);
+      expect(MachineRole.STORAGE).toBe('storage' as MachineRole);
+      expect(MachineRole.BACKUPS).toBe('backups' as MachineRole);
     });
 
     test('MachineStatus has expected values', () => {
-      expect(MachineStatus.ONLINE).toBe('online');
-      expect(MachineStatus.OFFLINE).toBe('offline');
-      expect(MachineStatus.ERROR).toBe('error');
-      expect(MachineStatus.UNKNOWN).toBe('unknown');
+      expect(MachineStatus.ONLINE).toBe('online' as MachineStatus);
+      expect(MachineStatus.OFFLINE).toBe('offline' as MachineStatus);
+      expect(MachineStatus.ERROR).toBe('error' as MachineStatus);
+      expect(MachineStatus.UNKNOWN).toBe('unknown' as MachineStatus);
     });
   });
 

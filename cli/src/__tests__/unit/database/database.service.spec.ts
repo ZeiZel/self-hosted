@@ -64,7 +64,7 @@ describe('DatabaseService', () => {
       // In-memory databases use 'memory' journal mode
       const result = dbService.queryOne<{ journal_mode: string }>('PRAGMA journal_mode');
       // WAL mode is set but in-memory databases report 'memory'
-      expect(['wal', 'memory']).toContain(result?.journal_mode);
+      expect(['wal', 'memory']).toContain(result?.journal_mode ?? 'unknown');
     });
 
     test('enables foreign keys', () => {

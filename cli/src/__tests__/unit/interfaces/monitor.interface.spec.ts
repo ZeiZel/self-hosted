@@ -20,36 +20,36 @@ import {
 describe('monitor interface', () => {
   describe('enums', () => {
     test('NodeHealth has expected values', () => {
-      expect(NodeHealth.HEALTHY).toBe('healthy');
-      expect(NodeHealth.WARNING).toBe('warning');
-      expect(NodeHealth.CRITICAL).toBe('critical');
-      expect(NodeHealth.UNKNOWN).toBe('unknown');
+      expect(NodeHealth.HEALTHY).toBe('healthy' as NodeHealth);
+      expect(NodeHealth.WARNING).toBe('warning' as NodeHealth);
+      expect(NodeHealth.CRITICAL).toBe('critical' as NodeHealth);
+      expect(NodeHealth.UNKNOWN).toBe('unknown' as NodeHealth);
     });
 
     test('PodStatus has expected values', () => {
-      expect(PodStatus.RUNNING).toBe('Running');
-      expect(PodStatus.PENDING).toBe('Pending');
-      expect(PodStatus.FAILED).toBe('Failed');
-      expect(PodStatus.CRASH_LOOP).toBe('CrashLoopBackOff');
-      expect(PodStatus.IMAGE_PULL).toBe('ImagePullBackOff');
+      expect(PodStatus.RUNNING).toBe('Running' as PodStatus);
+      expect(PodStatus.PENDING).toBe('Pending' as PodStatus);
+      expect(PodStatus.FAILED).toBe('Failed' as PodStatus);
+      expect(PodStatus.CRASH_LOOP).toBe('CrashLoopBackOff' as PodStatus);
+      expect(PodStatus.IMAGE_PULL).toBe('ImagePullBackOff' as PodStatus);
     });
 
     test('AlertSeverity has expected values', () => {
-      expect(AlertSeverity.INFO).toBe('info');
-      expect(AlertSeverity.WARNING).toBe('warning');
-      expect(AlertSeverity.CRITICAL).toBe('critical');
+      expect(AlertSeverity.INFO).toBe('info' as AlertSeverity);
+      expect(AlertSeverity.WARNING).toBe('warning' as AlertSeverity);
+      expect(AlertSeverity.CRITICAL).toBe('critical' as AlertSeverity);
     });
 
     test('TuiPanel has expected values', () => {
-      expect(TuiPanel.NODES).toBe('nodes');
-      expect(TuiPanel.SERVICES).toBe('services');
-      expect(TuiPanel.SUMMARY).toBe('summary');
-      expect(TuiPanel.ALERTS).toBe('alerts');
+      expect(TuiPanel.NODES).toBe('nodes' as TuiPanel);
+      expect(TuiPanel.SERVICES).toBe('services' as TuiPanel);
+      expect(TuiPanel.SUMMARY).toBe('summary' as TuiPanel);
+      expect(TuiPanel.ALERTS).toBe('alerts' as TuiPanel);
     });
 
     test('PanelFocusMode has expected values', () => {
-      expect(PanelFocusMode.COMPACT).toBe('compact');
-      expect(PanelFocusMode.EXPANDED).toBe('expanded');
+      expect(PanelFocusMode.COMPACT).toBe('compact' as PanelFocusMode);
+      expect(PanelFocusMode.EXPANDED).toBe('expanded' as PanelFocusMode);
     });
   });
 
