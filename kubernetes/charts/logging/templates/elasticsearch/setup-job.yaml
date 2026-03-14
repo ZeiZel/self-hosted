@@ -19,7 +19,7 @@ spec:
       {{- if .Values.elasticsearch.security.enabled }}
       containers:
         - name: setup
-          image: curlimages/curl:latest
+          image: curlimages/curl:8.11.1  # Pinned version - do not use :latest
           command: ["/bin/sh", "/config/setup-ilm.sh"]
           env:
             - name: ELASTIC_PASSWORD
@@ -33,7 +33,7 @@ spec:
       {{- else }}
       containers:
         - name: setup
-          image: curlimages/curl:latest
+          image: curlimages/curl:8.11.1  # Pinned version - do not use :latest
           command: ["/bin/sh", "/config/setup-ilm.sh"]
           volumeMounts:
             - name: config

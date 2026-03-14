@@ -7,7 +7,7 @@ create:
 # Stalwart Image
 image:
   repository: stalwartlabs/stalwart
-  tag: "latest"
+  tag: "v0.10.8"  # Pinned version - do not use :latest
   pullPolicy: IfNotPresent
 
 # Stalwart Server конфигурация
@@ -110,7 +110,7 @@ postgresql:
   host: "postgresql.db.svc.cluster.local"
   port: 5432
   username: "stalwart"
-  password: "changeme"
+  password: ""  # Injected via Vault - see vault.hashicorp.com annotations
   database: "stalwart"
 
 # Redis/ValKey (для кэширования и сессий)
@@ -126,7 +126,7 @@ ldap:
   host: "authentik.service.svc.cluster.local"  # Authentik LDAP interface
   port: 389
   bindDN: "cn=admin,dc=authentik,dc=local"
-  bindPassword: "changeme"
+  bindPassword: ""  # Injected via Vault - see vault.hashicorp.com annotations
   baseDN: "ou=users,dc=authentik,dc=local"
   # User search filter
   userFilter: "(&(objectClass=user)(uid={username}))"

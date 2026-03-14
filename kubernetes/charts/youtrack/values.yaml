@@ -80,7 +80,7 @@ gitlab:
   port: 80
 
   # Personal Access Token для GitLab
-  token: "changeme"
+  token: ""  # Injected via Vault - see vault.hashicorp.com annotations
 
   # Integration settings
   integration:

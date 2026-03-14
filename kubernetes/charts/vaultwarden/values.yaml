@@ -55,7 +55,7 @@ vaultwarden:
       from: "noreply@mail.local"
       fromName: "Vaultwarden"
       username: "noreply@mail.local"  # User email in Stalwart
-      password: "changeme"  # User password in Stalwart
+      password: ""  # Injected via Vault - see vault.hashicorp.com annotations
       useTls: true
       useSsl: false
 
@@ -89,7 +89,7 @@ postgresql:
   host: "postgresql.db.svc.cluster.local"
   port: 5432
   username: "vaultwarden"
-  password: "changeme"
+  password: ""  # Injected via Vault - see vault.hashicorp.com annotations
   database: "vaultwarden"
   ssl: false
 

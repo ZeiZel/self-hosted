@@ -106,7 +106,7 @@ spec:
         # Ожидание Hub
         {{- if .Values.hub.enabled }}
         - name: wait-for-hub
-          image: curlimages/curl:latest
+          image: curlimages/curl:8.11.1  # Pinned version - do not use :latest
           command:
             - sh
             - -c
@@ -121,7 +121,7 @@ spec:
         # Ожидание GitLab
         {{- if .Values.gitlab.enabled }}
         - name: wait-for-gitlab
-          image: curlimages/curl:latest
+          image: curlimages/curl:8.11.1  # Pinned version - do not use :latest
           command:
             - sh
             - -c

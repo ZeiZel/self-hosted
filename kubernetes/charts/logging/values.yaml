@@ -39,7 +39,7 @@ elasticsearch:
   # X-Pack security (basic, free tier)
   security:
     enabled: true
-    password: "changeme"
+    password: ""  # Injected via Vault - see vault.hashicorp.com annotations
     transportSsl: false
     httpSsl: false
 
@@ -116,9 +116,9 @@ kibana:
       memory: 512Mi
 
   # Encryption keys
-  encryptionKey: "changeme-32-char-encryption-key!"
-  savedObjectsEncryptionKey: "changeme-32-char-saved-objects!!"
-  reportingEncryptionKey: "changeme-32-char-reporting-key!!"
+  encryptionKey: ""  # Injected via Vault - see vault.hashicorp.com annotations
+  savedObjectsEncryptionKey: ""  # Injected via Vault - see vault.hashicorp.com annotations
+  reportingEncryptionKey: ""  # Injected via Vault - see vault.hashicorp.com annotations
 
 # Filebeat config (DaemonSet log collector)
 filebeat:

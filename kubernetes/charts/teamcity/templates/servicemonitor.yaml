@@ -1,0 +1,22 @@
+{{- if .Values.metrics.enabled -}}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "teamcity.fullname" . }}
+  labels:
+    {{- include "teamcity.labels" . | nindent 4 }}
+    prometheus: kube-prometheus
+spec:
+  selector:
+    matchLabels:
+      {{- include "teamcity.selectorLabels" . | nindent 6 }}
+  endpoints:
+    - port: {{ .Values.metrics.port | default "metrics" }}
+      path: {{ .Values.metrics.path | default "/metrics" }}
+      interval: {{ .Values.metrics.interval | default "30s" }}
+      scrapeTimeout: {{ .Values.metrics.scrapeTimeout | default "10s" }}
+  {{- with .Values.metrics.namespaceSelector }}
+  namespaceSelector:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- end }}
