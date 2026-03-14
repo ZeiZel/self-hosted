@@ -43,13 +43,12 @@ export class InkTuiService {
     this.onMigrate = options.onMigrate;
 
     // Start metrics streaming
-    this.subscription = this.metricsStream
-      .startStreaming(options.refreshInterval || 5)
-      .subscribe((state) => {
-        if (state && state.nodes) {
-          this.handleMetricsUpdate(state);
-        }
-      });
+    const stream$ = await this.metricsStream.startStreaming(options.refreshInterval || 5);
+    this.subscription = stream$.subscribe((state: ClusterState) => {
+      if (state && state.nodes) {
+        this.handleMetricsUpdate(state);
+      }
+    });
 
     // Render the React app
     this.inkInstance = render(

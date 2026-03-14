@@ -4,7 +4,21 @@ import * as http from 'http';
 import * as dns from 'dns';
 import * as tls from 'tls';
 import { promisify } from 'util';
-import type { EndpointHealth } from '../tui/blessed-panels/service-stats.panel';
+
+/**
+ * Endpoint health status
+ */
+export interface EndpointHealth {
+  url: string;
+  status: 'up' | 'down' | 'degraded' | 'unknown';
+  responseTime: number;
+  statusCode?: number;
+  tlsValid?: boolean;
+  tlsExpiry?: Date;
+  resolvedIp?: string;
+  lastChecked: Date;
+  error?: string;
+}
 
 const dnsLookup = promisify(dns.lookup);
 

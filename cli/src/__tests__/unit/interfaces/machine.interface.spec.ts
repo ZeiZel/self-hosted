@@ -4,11 +4,11 @@ import { MachineRole, areRolesCompatible, machineSchema } from '../../../interfa
 describe('machine interface', () => {
   describe('MachineRole enum', () => {
     test('has correct values', () => {
-      expect(MachineRole.MASTER).toBe('master');
-      expect(MachineRole.WORKER).toBe('worker');
-      expect(MachineRole.GATEWAY).toBe('gateway');
-      expect(MachineRole.STORAGE).toBe('storage');
-      expect(MachineRole.BACKUPS).toBe('backups');
+      expect(MachineRole.MASTER).toBe('master' as MachineRole);
+      expect(MachineRole.WORKER).toBe('worker' as MachineRole);
+      expect(MachineRole.GATEWAY).toBe('gateway' as MachineRole);
+      expect(MachineRole.STORAGE).toBe('storage' as MachineRole);
+      expect(MachineRole.BACKUPS).toBe('backups' as MachineRole);
     });
   });
 

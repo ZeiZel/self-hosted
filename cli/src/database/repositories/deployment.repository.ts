@@ -46,8 +46,8 @@ export class DeploymentRepository {
     if (limit) {
       sql += ` LIMIT ${limit}`;
     }
-    const stmt = this.db.prepare<DeploymentRow>(sql);
-    const rows = stmt.all();
+    const stmt = this.db.prepare(sql);
+    const rows = stmt.all() as DeploymentRow[];
     return rows.map((row) => this.rowToDeployment(row));
   }
 
@@ -55,8 +55,8 @@ export class DeploymentRepository {
    * Find deployment by ID
    */
   findById(id: string): Deployment | null {
-    const stmt = this.db.prepare<DeploymentRow>('SELECT * FROM deployments WHERE id = ?');
-    const row = stmt.get(id);
+    const stmt = this.db.prepare('SELECT * FROM deployments WHERE id = ?');
+    const row = stmt.get(id) as DeploymentRow | null;
     return row ? this.rowToDeployment(row) : null;
   }
 
@@ -64,10 +64,10 @@ export class DeploymentRepository {
    * Find active deployment (running or pending)
    */
   findActive(): Deployment | null {
-    const stmt = this.db.prepare<DeploymentRow>(
+    const stmt = this.db.prepare(
       "SELECT * FROM deployments WHERE status IN ('pending', 'running') ORDER BY started_at DESC LIMIT 1",
     );
-    const row = stmt.get();
+    const row = stmt.get() as DeploymentRow | null;
     return row ? this.rowToDeployment(row) : null;
   }
 
@@ -75,10 +75,10 @@ export class DeploymentRepository {
    * Find deployments by status
    */
   findByStatus(status: DeploymentStatus): Deployment[] {
-    const stmt = this.db.prepare<DeploymentRow>(
+    const stmt = this.db.prepare(
       'SELECT * FROM deployments WHERE status = ? ORDER BY started_at DESC',
     );
-    const rows = stmt.all(status);
+    const rows = stmt.all(status) as DeploymentRow[];
     return rows.map((row) => this.rowToDeployment(row));
   }
 

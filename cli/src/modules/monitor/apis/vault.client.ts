@@ -103,16 +103,16 @@ export class VaultClient extends BaseApiClient {
         signal: AbortSignal.timeout(this.options.timeout),
       });
 
-      const data = await response.json();
+      const data = (await response.json()) as Record<string, unknown>;
 
       return {
-        initialized: data.initialized ?? false,
-        sealed: data.sealed ?? true,
-        version: data.version ?? 'unknown',
-        clusterName: data.cluster_name,
-        clusterLeader: data.leader_cluster_address,
+        initialized: (data.initialized as boolean) ?? false,
+        sealed: (data.sealed as boolean) ?? true,
+        version: (data.version as string) ?? 'unknown',
+        clusterName: data.cluster_name as string | undefined,
+        clusterLeader: data.leader_cluster_address as string | undefined,
         haEnabled: data.replication_dr_mode !== 'disabled',
-        standby: data.standby ?? false,
+        standby: (data.standby as boolean) ?? false,
       };
     } catch {
       return null;

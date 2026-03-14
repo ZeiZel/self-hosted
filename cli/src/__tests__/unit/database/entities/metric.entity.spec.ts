@@ -10,14 +10,14 @@ import {
 describe('metric entity', () => {
   describe('enums', () => {
     test('MetricType has expected values', () => {
-      expect(MetricType.CPU_USAGE).toBe('cpu_usage');
-      expect(MetricType.MEMORY_USAGE).toBe('memory_usage');
-      expect(MetricType.DISK_USAGE).toBe('disk_usage');
-      expect(MetricType.NETWORK_IN).toBe('network_in');
-      expect(MetricType.NETWORK_OUT).toBe('network_out');
-      expect(MetricType.POD_COUNT).toBe('pod_count');
-      expect(MetricType.SERVICE_STATUS).toBe('service_status');
-      expect(MetricType.NODE_STATUS).toBe('node_status');
+      expect(MetricType.CPU_USAGE).toBe('cpu_usage' as MetricType);
+      expect(MetricType.MEMORY_USAGE).toBe('memory_usage' as MetricType);
+      expect(MetricType.DISK_USAGE).toBe('disk_usage' as MetricType);
+      expect(MetricType.NETWORK_IN).toBe('network_in' as MetricType);
+      expect(MetricType.NETWORK_OUT).toBe('network_out' as MetricType);
+      expect(MetricType.POD_COUNT).toBe('pod_count' as MetricType);
+      expect(MetricType.SERVICE_STATUS).toBe('service_status' as MetricType);
+      expect(MetricType.NODE_STATUS).toBe('node_status' as MetricType);
     });
   });
 

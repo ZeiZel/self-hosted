@@ -102,7 +102,7 @@ export class PrometheusClient extends BaseApiClient {
   async getMetricValue(metric: string): Promise<number | null> {
     const results = await this.query(metric);
 
-    if (results.length === 0) {
+    if (results.length === 0 || !results[0].value) {
       return null;
     }
 
@@ -150,7 +150,7 @@ export class PrometheusClient extends BaseApiClient {
     for (const result of cpuResults) {
       const node = result.metric.instance || result.metric.node || 'unknown';
       nodeMap.set(node, {
-        cpuUsage: parseFloat(result.value[1]) || 0,
+        cpuUsage: result.value ? parseFloat(result.value[1]) || 0 : 0,
         memoryUsage: 0,
         diskUsage: 0,
       });
@@ -159,14 +159,14 @@ export class PrometheusClient extends BaseApiClient {
     for (const result of memResults) {
       const node = result.metric.instance || result.metric.node || 'unknown';
       const existing = nodeMap.get(node) || { cpuUsage: 0, memoryUsage: 0, diskUsage: 0 };
-      existing.memoryUsage = parseFloat(result.value[1]) || 0;
+      existing.memoryUsage = result.value ? parseFloat(result.value[1]) || 0 : 0;
       nodeMap.set(node, existing);
     }
 
     for (const result of diskResults) {
       const node = result.metric.instance || result.metric.node || 'unknown';
       const existing = nodeMap.get(node) || { cpuUsage: 0, memoryUsage: 0, diskUsage: 0 };
-      existing.diskUsage = parseFloat(result.value[1]) || 0;
+      existing.diskUsage = result.value ? parseFloat(result.value[1]) || 0 : 0;
       nodeMap.set(node, existing);
     }
 
@@ -240,7 +240,7 @@ export class PrometheusClient extends BaseApiClient {
       pod: result.metric.pod || 'unknown',
       namespace: result.metric.namespace || 'unknown',
       container: result.metric.container || 'unknown',
-      cpuUsage: parseFloat(result.value[1]) || 0, // millicores
+      cpuUsage: result.value ? parseFloat(result.value[1]) || 0 : 0, // millicores
     }));
   }
 
@@ -261,7 +261,7 @@ export class PrometheusClient extends BaseApiClient {
       pod: result.metric.pod || 'unknown',
       namespace: result.metric.namespace || 'unknown',
       container: result.metric.container || 'unknown',
-      memoryUsage: parseFloat(result.value[1]) || 0, // bytes
+      memoryUsage: result.value ? parseFloat(result.value[1]) || 0 : 0, // bytes
     }));
   }
 
@@ -280,7 +280,7 @@ export class PrometheusClient extends BaseApiClient {
     return results.map(result => ({
       pod: result.metric.pod || 'unknown',
       namespace: result.metric.namespace || 'unknown',
-      restarts: parseInt(result.value[1], 10) || 0,
+      restarts: result.value ? parseInt(result.value[1], 10) || 0 : 0,
     }));
   }
 
@@ -296,7 +296,7 @@ export class PrometheusClient extends BaseApiClient {
 
     return results.map(result => ({
       node: this.extractNodeName(result.metric.instance || ''),
-      cpuUsagePercent: parseFloat(result.value[1]) || 0,
+      cpuUsagePercent: result.value ? parseFloat(result.value[1]) || 0 : 0,
     }));
   }
 
@@ -320,7 +320,7 @@ export class PrometheusClient extends BaseApiClient {
       const node = this.extractNodeName(result.metric.instance || '');
       nodeMap.set(node, {
         used: 0,
-        total: parseFloat(result.value[1]) || 0,
+        total: result.value ? parseFloat(result.value[1]) || 0 : 0,
       });
     }
 
@@ -328,7 +328,7 @@ export class PrometheusClient extends BaseApiClient {
       const node = this.extractNodeName(result.metric.instance || '');
       const existing = nodeMap.get(node);
       if (existing) {
-        existing.used = parseFloat(result.value[1]) || 0;
+        existing.used = result.value ? parseFloat(result.value[1]) || 0 : 0;
       }
     }
 

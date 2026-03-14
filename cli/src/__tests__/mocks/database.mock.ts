@@ -198,11 +198,11 @@ export function createMockDatabaseService(db?: Database) {
     prepare: (sql: string) => database.prepare(sql),
     query: <T>(sql: string, params: unknown[] = []): T[] => {
       const stmt = database.prepare(sql);
-      return stmt.all(...params) as T[];
+      return stmt.all(...(params as (string | number | null)[])) as T[];
     },
     queryOne: <T>(sql: string, params: unknown[] = []): T | null => {
       const stmt = database.prepare(sql);
-      return (stmt.get(...params) as T) ?? null;
+      return (stmt.get(...(params as (string | number | null)[])) as T) ?? null;
     },
     transaction: <T>(fn: () => T): T => {
       database.exec('BEGIN TRANSACTION');

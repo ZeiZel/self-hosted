@@ -11,23 +11,23 @@ import {
 describe('service-config entity', () => {
   describe('enums', () => {
     test('ServiceTier has expected values', () => {
-      expect(ServiceTier.HEAVY).toBe('heavy');
-      expect(ServiceTier.MEDIUM).toBe('medium');
-      expect(ServiceTier.LIGHT).toBe('light');
+      expect(ServiceTier.HEAVY).toBe('heavy' as ServiceTier);
+      expect(ServiceTier.MEDIUM).toBe('medium' as ServiceTier);
+      expect(ServiceTier.LIGHT).toBe('light' as ServiceTier);
     });
 
     test('ServiceNamespace has expected values', () => {
-      expect(ServiceNamespace.INGRESS).toBe('ingress');
-      expect(ServiceNamespace.SERVICE).toBe('service');
-      expect(ServiceNamespace.DB).toBe('db');
-      expect(ServiceNamespace.CODE).toBe('code');
-      expect(ServiceNamespace.PRODUCTIVITY).toBe('productivity');
-      expect(ServiceNamespace.SOCIAL).toBe('social');
-      expect(ServiceNamespace.DATA).toBe('data');
-      expect(ServiceNamespace.INFRASTRUCTURE).toBe('infrastructure');
-      expect(ServiceNamespace.AUTOMATION).toBe('automation');
-      expect(ServiceNamespace.CONTENT).toBe('content');
-      expect(ServiceNamespace.UTILITIES).toBe('utilities');
+      expect(ServiceNamespace.INGRESS).toBe('ingress' as ServiceNamespace);
+      expect(ServiceNamespace.SERVICE).toBe('service' as ServiceNamespace);
+      expect(ServiceNamespace.DB).toBe('db' as ServiceNamespace);
+      expect(ServiceNamespace.CODE).toBe('code' as ServiceNamespace);
+      expect(ServiceNamespace.PRODUCTIVITY).toBe('productivity' as ServiceNamespace);
+      expect(ServiceNamespace.SOCIAL).toBe('social' as ServiceNamespace);
+      expect(ServiceNamespace.DATA).toBe('data' as ServiceNamespace);
+      expect(ServiceNamespace.INFRASTRUCTURE).toBe('infrastructure' as ServiceNamespace);
+      expect(ServiceNamespace.AUTOMATION).toBe('automation' as ServiceNamespace);
+      expect(ServiceNamespace.CONTENT).toBe('content' as ServiceNamespace);
+      expect(ServiceNamespace.UTILITIES).toBe('utilities' as ServiceNamespace);
     });
   });
 

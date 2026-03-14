@@ -85,8 +85,8 @@ export class MetricRepository {
    * Find metric by ID
    */
   findById(id: number): Metric | null {
-    const stmt = this.db.prepare<MetricRow>('SELECT * FROM metrics WHERE id = ?');
-    const row = stmt.get(id);
+    const stmt = this.db.prepare('SELECT * FROM metrics WHERE id = ?');
+    const row = stmt.get(id) as MetricRow | null;
     return row ? this.rowToMetric(row) : null;
   }
 
@@ -133,8 +133,8 @@ export class MetricRepository {
       sql += ` LIMIT ${options.limit}`;
     }
 
-    const stmt = this.db.prepare<MetricRow>(sql);
-    const rows = stmt.all(...params);
+    const stmt = this.db.prepare(sql);
+    const rows = stmt.all(...(params as (string | number | null)[])) as MetricRow[];
     return rows.map((row) => this.rowToMetric(row));
   }
 
@@ -142,7 +142,7 @@ export class MetricRepository {
    * Get latest metrics for a target
    */
   getLatest(targetId: string, targetType: 'machine' | 'service'): Metric[] {
-    const stmt = this.db.prepare<MetricRow>(`
+    const stmt = this.db.prepare(`
       SELECT m1.*
       FROM metrics m1
       INNER JOIN (
@@ -154,7 +154,7 @@ export class MetricRepository {
       WHERE m1.target_id = ? AND m1.target_type = ?
     `);
 
-    const rows = stmt.all(targetId, targetType, targetId, targetType);
+    const rows = stmt.all(targetId, targetType, targetId, targetType) as MetricRow[];
     return rows.map((row) => this.rowToMetric(row));
   }
 
@@ -179,13 +179,15 @@ export class MetricRepository {
         break;
     }
 
-    const stmt = this.db.prepare<{
+    interface AggRow {
       type: string;
       avg_value: number;
       min_value: number;
       max_value: number;
       count: number;
-    }>(`
+    }
+
+    const stmt = this.db.prepare(`
       SELECT
         type,
         AVG(value) as avg_value,
@@ -197,7 +199,7 @@ export class MetricRepository {
       GROUP BY type
     `);
 
-    const rows = stmt.all(targetId, targetType, cutoff.toISOString());
+    const rows = stmt.all(targetId, targetType, cutoff.toISOString()) as AggRow[];
 
     return rows.map((row) => ({
       type: row.type as MetricType,
@@ -219,14 +221,14 @@ export class MetricRepository {
     from: string,
     to: string,
   ): Array<{ timestamp: string; value: number }> {
-    const stmt = this.db.prepare<{ timestamp: string; value: number }>(`
+    const stmt = this.db.prepare(`
       SELECT timestamp, value
       FROM metrics
       WHERE target_id = ? AND type = ? AND timestamp >= ? AND timestamp <= ?
       ORDER BY timestamp ASC
     `);
 
-    return stmt.all(targetId, type, from, to);
+    return stmt.all(targetId, type, from, to) as Array<{ timestamp: string; value: number }>;
   }
 
   /**
@@ -254,8 +256,8 @@ export class MetricRepository {
    * Get count of metrics
    */
   count(): number {
-    const stmt = this.db.prepare<{ count: number }>('SELECT COUNT(*) as count FROM metrics');
-    const row = stmt.get();
+    const stmt = this.db.prepare('SELECT COUNT(*) as count FROM metrics');
+    const row = stmt.get() as { count: number } | null;
     return row?.count ?? 0;
   }
 
