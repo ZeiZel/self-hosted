@@ -2,7 +2,7 @@ import { describe, it, expect, beforeAll, afterAll } from 'bun:test';
 import { spawn } from 'child_process';
 import { join } from 'path';
 
-const CLI_PATH = join(__dirname, '../../../../main.ts');
+const CLI_PATH = join(__dirname, '../../../main.ts');
 
 /**
  * Helper to run CLI command
@@ -14,7 +14,7 @@ function runCli(args: string[]): Promise<{
 }> {
   return new Promise((resolve) => {
     const proc = spawn('bun', ['run', CLI_PATH, ...args], {
-      cwd: join(__dirname, '../../../../..'),
+      cwd: join(__dirname, '../../../..'),
     });
 
     let stdout = '';

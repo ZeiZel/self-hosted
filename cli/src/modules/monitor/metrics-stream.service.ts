@@ -1,6 +1,6 @@
 import { Injectable, Inject } from '@nestjs/common';
 import { Subject, Observable, interval, BehaviorSubject } from 'rxjs';
-import { switchMap, takeUntil, catchError } from 'rxjs/operators';
+import { switchMap, takeUntil, catchError, filter } from 'rxjs/operators';
 import { ClusterClientService } from './cluster-client.service';
 import {
   ClusterState,
@@ -31,7 +31,9 @@ export class MetricsStreamService {
    */
   startStreaming(intervalSeconds: number = 5): Observable<ClusterState> {
     if (this.isStreaming) {
-      return this.state$.asObservable() as Observable<ClusterState>;
+      return this.state$.asObservable().pipe(
+        filter((state): state is ClusterState => state !== null)
+      );
     }
 
     this.refreshInterval = intervalSeconds * 1000;
@@ -56,7 +58,9 @@ export class MetricsStreamService {
         }
       });
 
-    return this.state$.asObservable() as Observable<ClusterState>;
+    return this.state$.asObservable().pipe(
+      filter((state): state is ClusterState => state !== null)
+    );
   }
 
   /**

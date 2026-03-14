@@ -84,8 +84,8 @@ tags:
 
     test('handles malformed YAML gracefully', () => {
       const filePath = join(testDir, 'invalid.yaml');
-      // Use truly invalid YAML that can't be parsed
-      writeFileSync(filePath, ': invalid\n  - broken\nindentation:');
+      // Use YAML with tabs as indentation which is invalid and throws
+      writeFileSync(filePath, 'key: value\n\tindented: wrong');
 
       const result = loadYaml(filePath);
       // loadYaml catches errors and returns null

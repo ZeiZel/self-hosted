@@ -41,7 +41,18 @@ export class ClusterClientService {
     return new Promise((resolve) => {
       const fullArgs = this.kubeconfig ? ['--kubeconfig', this.kubeconfig, ...args] : args;
 
-      const proc = spawn('kubectl', fullArgs);
+      // Disable proxy for internal cluster IPs to avoid connection issues
+      const env = {
+        ...process.env,
+        HTTP_PROXY: '',
+        HTTPS_PROXY: '',
+        http_proxy: '',
+        https_proxy: '',
+        NO_PROXY: '*',
+        no_proxy: '*',
+      };
+
+      const proc = spawn('kubectl', fullArgs, { env });
       let stdout = '';
       let stderr = '';
 

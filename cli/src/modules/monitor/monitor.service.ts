@@ -2,7 +2,7 @@ import { Injectable, Inject } from '@nestjs/common';
 import { ClusterClientService } from './cluster-client.service';
 import { MetricsStreamService } from './metrics-stream.service';
 import { AlertsService } from './alerts.service';
-import { TuiService } from './tui/tui.service';
+import { InkTuiService } from './tui/ink-tui.service';
 import {
   MonitorOptions,
   ClusterState,
@@ -22,7 +22,7 @@ export class MonitorService {
     @Inject(ClusterClientService) private clusterClient: ClusterClientService,
     @Inject(MetricsStreamService) private metricsStream: MetricsStreamService,
     @Inject(AlertsService) private alertsService: AlertsService,
-    @Inject(TuiService) private tuiService: TuiService,
+    @Inject(InkTuiService) private tuiService: InkTuiService,
     @Inject(MigratorService) private migratorService: MigratorService,
   ) {}
 
