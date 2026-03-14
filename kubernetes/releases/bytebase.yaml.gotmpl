@@ -4,7 +4,7 @@ bytebase:
   # Bytebase's own PostgreSQL database for storing metadata
   postgres:
     external: true
-    host: "postgresql.db.svc.cluster.local"
+    host: "postgres-postgresql.db.svc.cluster.local"
     port: 5432
     database: "bytebase"
     user: "bytebase"
@@ -108,7 +108,7 @@ networkPolicy:
 # After deploying Bytebase, add managed databases via the UI:
 #
 # PostgreSQL (all services using PostgreSQL):
-#   Host: postgresql.db.svc.cluster.local
+#   Host: postgres-postgresql.db.svc.cluster.local
 #   Port: 5432
 #   Databases: authentik, gitlab, hub, teamcity, youtrack, coder, vaultwarden,
 #              affine, penpot, nextcloud, stalwart, remnawave, rybbit

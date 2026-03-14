@@ -2,6 +2,7 @@
 infra:
   name: self-hosted
   host: zeizel.ru
+  pangolinServerEndpoint: "vpn.zeizel.ru:51820"
 
 ingressRoute:
   dashboard:
@@ -71,6 +72,9 @@ secrets:
   stoatVapidPrivateKey: ""
   stoatVapidPublicKey: ""
   stoatEncryptionKey: ""
+
+  # Stalwart
+  stalwartPostgresPassword: "stalwart"
 
   # Backup/Restic
   resticPassword: "backup-secure-password"

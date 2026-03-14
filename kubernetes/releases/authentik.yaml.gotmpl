@@ -1,51 +1,55 @@
 namespace: service
 
 authentik:
-  secretKey: "{{ .Values.secrets.authentikSecret }}"
-  bootstrapPassword: "{{ .Values.secrets.authentikBootstrapPassword }}"
-  bootstrapToken: "{{ .Values.secrets.authentikBootstrapToken }}"
-  email:
-    host: smtp.gmail.com
-    port: 587
-    username: "your-email@gmail.com"
-    password: "{{ .Values.secrets.smtpPassword }}"
-    from: "authentik@{{ .Values.infra.host }}"
+  secret_key: "c12728eb3ee9b240c97c88d09b7a157d950b48fe9465f5f83e8d1e04bc450b839a6ccbe0cae4c8db7bc74770f271d26ddf48"
+  error_reporting:
+    enabled: false
 
 # ========== Connect to external PostgreSQL ==========
 postgresql:
-  external: true
-  host: "postgresql.db.svc.cluster.local"
-  port: 5432
-  username: "authentik"
-  password: "{{ .Values.secrets.postgresPassword }}"
-  database: "authentik"
-  ssl: false
+  enabled: false
 
-# ========== Connect to external ValKey ==========
-valkey:
-  enabled: true
-  host: "valkey-primary.code.svc.cluster.local"  # or just valkey
-  port: 6379
-  password: ""
-  database: 0
+global:
+  env:
+    - name: AUTHENTIK_POSTGRESQL__HOST
+      value: "postgres-postgresql.db.svc.cluster.local"
+    - name: AUTHENTIK_POSTGRESQL__PORT
+      value: "5432"
+    - name: AUTHENTIK_POSTGRESQL__USER
+      value: "authentik"
+    - name: AUTHENTIK_POSTGRESQL__PASSWORD
+      value: "authentik"
+    - name: AUTHENTIK_POSTGRESQL__NAME
+      value: "authentik"
+    - name: AUTHENTIK_REDIS__HOST
+      value: "valkey-primary.db.svc.cluster.local"
+    - name: AUTHENTIK_REDIS__PORT
+      value: "6379"
 
-# Persistent Storage only for media/templates/certs
-persistence:
-  enabled: true
-  storageClass: local-path
-  media:
-    size: 1Gi
-  templates:
-    size: 5Gi
-  certs:
-    size: 2Gi
+# Server configuration
+server:
+  replicas: 1
 
-ingress:
-  enabled: true
-  hosts:
-    - host: authentik.{{ .Values.infra.host }}
-      paths:
-        - path: /
-          pathType: Prefix
-        - path: /outpost.goauthentik.io/
-          pathType: Prefix
+  ingress:
+    enabled: true
+    ingressClassName: traefik
+    annotations:
+      cert-manager.io/cluster-issuer: "letsencrypt"
+      traefik.ingress.kubernetes.io/router.entrypoints: websecure
+    hosts:
+      - authentik.{{ .Values.infra.host }}
+    paths:
+      - /
+    pathType: Prefix
+    tls:
+      - secretName: authentik-tls
+        hosts:
+          - authentik.{{ .Values.infra.host }}
+
+# Worker configuration
+worker:
+  replicas: 1
+
+# Disable embedded redis
+redis:
+  enabled: false

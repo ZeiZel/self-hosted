@@ -25,7 +25,7 @@ ingress:
 postgresql:
   enabled: false
   external:
-    host: postgresql.db.svc.cluster.local
+    host: postgres-postgresql.db.svc.cluster.local
     port: 5432
     username: affine
     password: "{{ .Values.secrets.affinePostgresPassword }}"

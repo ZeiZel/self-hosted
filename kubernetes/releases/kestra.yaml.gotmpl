@@ -51,7 +51,7 @@ configurations:
       url: "https://kestra.{{ .Values.infra.host }}"
     datasources:
       postgres:
-        url: jdbc:postgresql://postgresql.db.svc.cluster.local:5432/kestra
+        url: jdbc:postgresql://postgres-postgresql.db.svc.cluster.local:5432/kestra
         username: kestra
         password: "{{ .Values.secrets.kestraPostgresPassword }}"
         driverClassName: org.postgresql.Driver

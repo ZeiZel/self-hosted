@@ -38,8 +38,8 @@ spec:
     # Allow DNS
     - to:
         - namespaceSelector:
-          matchLabels:
-            name: kube-system
+            matchLabels:
+              name: kube-system
       ports:
         - protocol: UDP
           port: 53
@@ -57,6 +57,15 @@ spec:
       ports:
         - protocol: TCP
           port: 80
+
+    # Allow communication within same namespace (Hub, GitLab, etc.)
+    - to:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: 8080  # Hub, YouTrack
+        - protocol: TCP
+          port: 80    # GitLab
 
     # Allow database connections
     {{- if .Values.networkPolicy.egressRules.allowDatabases }}

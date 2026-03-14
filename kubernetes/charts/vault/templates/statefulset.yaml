@@ -44,16 +44,22 @@ spec:
 
       serviceAccountName: vault
       securityContext:
-        {{- toYaml .Values.securityContext | nindent 8 }}
+        fsGroup: 1000
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 1000
 
       containers:
         - name: vault
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
 
+          command:
+            - "/bin/sh"
+            - "-ec"
           args:
-            - "server"
-            - "-config=/vault/config/vault.hcl"
+            - |
+              vault server -config=/vault/config/vault.hcl
 
           ports:
             - containerPort: 8200
@@ -61,7 +67,17 @@ spec:
             - containerPort: 8201
               name: cluster
 
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+
           env:
+            - name: SKIP_CHOWN
+              value: "true"
+            - name: SKIP_SETCAP
+              value: "true"
             - name: VAULT_LOG_LEVEL
               value: "info"
             - name: VAULT_ADDR
@@ -91,7 +107,7 @@ spec:
           {{- if .Values.probes.liveness.enabled }}
           livenessProbe:
             httpGet:
-              path: /v1/sys/health
+              path: /v1/sys/health?standbyok=true&uninitcode=200&sealedcode=200
               port: 8200
               scheme: HTTP
             initialDelaySeconds: {{ .Values.probes.liveness.initialDelaySeconds }}
@@ -101,7 +117,7 @@ spec:
           {{- if .Values.probes.readiness.enabled }}
           readinessProbe:
             httpGet:
-              path: /v1/sys/health
+              path: /v1/sys/health?standbyok=true&uninitcode=200&sealedcode=200
               port: 8200
               scheme: HTTP
             initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}

@@ -6,7 +6,7 @@ create:
 
 # Vault Image
 image:
-  repository: vault
+  repository: hashicorp/vault
   tag: "1.17.0"
   pullPolicy: IfNotPresent
 

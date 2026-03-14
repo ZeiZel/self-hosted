@@ -73,6 +73,10 @@ spec:
               mountPath: {{ .Values.persistence.config.mountPath }}
             - name: logs
               mountPath: {{ .Values.persistence.logs.mountPath }}
+            - name: temp
+              mountPath: /opt/hub/temp
+            - name: backups
+              mountPath: /opt/hub/backups
 
           {{- if .Values.probes.liveness.enabled }}
           livenessProbe:
@@ -118,3 +122,7 @@ spec:
         - name: logs
           persistentVolumeClaim:
             claimName: hub-logs
+        - name: temp
+          emptyDir: {}
+        - name: backups
+          emptyDir: {}
