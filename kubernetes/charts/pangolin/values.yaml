@@ -8,6 +8,10 @@ image:
   tag: "latest"
   pullPolicy: IfNotPresent
 
+service:
+  type: ClusterIP
+  port: 3001
+
 pangolin:
   serverEndpoint: "yourdomain.com"
   clientName: "k8s-cluster"

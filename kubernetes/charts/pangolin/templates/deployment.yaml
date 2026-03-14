@@ -1,23 +1,23 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "pangolin-client.fullname" . }}
+  name: {{ include "pangolin.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    {{- include "pangolin-client.labels" . | nindent 4 }}
+    {{- include "pangolin.labels" . | nindent 4 }}
 spec:
   replicas: 1
   selector:
     matchLabels:
-      {{- include "pangolin-client.selectorLabels" . | nindent 6 }}
+      {{- include "pangolin.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "pangolin-client.selectorLabels" . | nindent 8 }}
+        {{- include "pangolin.selectorLabels" . | nindent 8 }}
       annotations:
         {{- if .Values.consul.enabled }}
         consul.hashicorp.com/connect-inject: "true"
-        consul.hashicorp.com/connect-service: {{ include "pangolin-client.fullname" . }}
+        consul.hashicorp.com/connect-service: {{ include "pangolin.fullname" . }}
         consul.hashicorp.com/connect-service-port: "{{ .Values.pangolin.port }}"
         consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
         {{- end }}
@@ -71,6 +71,6 @@ spec:
       volumes:
         - name: certificates
           persistentVolumeClaim:
-            claimName: {{ include "pangolin-client.fullname" . }}-pvc
+            claimName: {{ include "pangolin.fullname" . }}-pvc
       {{- end }}
 

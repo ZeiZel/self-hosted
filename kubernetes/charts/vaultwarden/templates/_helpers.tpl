@@ -1,14 +1,14 @@
 {{/*
 Expand the name of the chart.
 */}}
-{{- define "pangolin.name" -}}
+{{- define "vaultwarden.name" -}}
 {{- default .Chart.Name .Values.nameOverride | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Create a default fully qualified app name.
 */}}
-{{- define "pangolin.fullname" -}}
+{{- define "vaultwarden.fullname" -}}
 {{- if .Values.fullnameOverride }}
 {{- .Values.fullnameOverride | trunc 63 | trimSuffix "-" }}
 {{- else }}
@@ -24,16 +24,16 @@ Create a default fully qualified app name.
 {{/*
 Create chart name and version as used by the chart label.
 */}}
-{{- define "pangolin.chart" -}}
+{{- define "vaultwarden.chart" -}}
 {{- printf "%s-%s" .Chart.Name .Chart.Version | replace "+" "_" | trunc 63 | trimSuffix "-" }}
 {{- end }}
 
 {{/*
 Common labels
 */}}
-{{- define "pangolin.labels" -}}
-helm.sh/chart: {{ include "pangolin.chart" . }}
-{{ include "pangolin.selectorLabels" . }}
+{{- define "vaultwarden.labels" -}}
+helm.sh/chart: {{ include "vaultwarden.chart" . }}
+{{ include "vaultwarden.selectorLabels" . }}
 {{- if .Chart.AppVersion }}
 app.kubernetes.io/version: {{ .Chart.AppVersion | quote }}
 {{- end }}
@@ -43,23 +43,18 @@ app.kubernetes.io/managed-by: {{ .Release.Service }}
 {{/*
 Selector labels
 */}}
-{{- define "pangolin.selectorLabels" -}}
-app.kubernetes.io/name: {{ include "pangolin.name" . }}
+{{- define "vaultwarden.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "vaultwarden.name" . }}
 app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
 Create the name of the service account to use
 */}}
-{{- define "pangolin.serviceAccountName" -}}
+{{- define "vaultwarden.serviceAccountName" -}}
 {{- if .Values.serviceAccount.create }}
-{{- default (include "pangolin.fullname" .) .Values.serviceAccount.name }}
+{{- default (include "vaultwarden.fullname" .) .Values.serviceAccount.name }}
 {{- else }}
 {{- default "default" .Values.serviceAccount.name }}
 {{- end }}
 {{- end }}
-
-
-
-
-
