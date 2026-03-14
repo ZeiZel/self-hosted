@@ -1,5 +1,13 @@
 ---
 repositories:
+  # Storage
+  - name: openebs
+    url: https://openebs.github.io/openebs
+
+  # Container Registry
+  - name: harbor
+    url: https://helm.goharbor.io
+
   # Ingress & Networking
   - name: traefik
     url: https://traefik.github.io/charts

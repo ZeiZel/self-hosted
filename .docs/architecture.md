@@ -307,6 +307,38 @@ Internet → Gateway VPS (TLS termination)
 
 ## Deployment Architecture
 
+### Domain Responsibility Separation
+
+The platform uses three tools with distinct responsibilities:
+
+| Tool | Responsibility | Entry Point |
+|------|----------------|-------------|
+| **CLI** | User interface, interactive prompts, monitoring daemon | `selfhost deploy` |
+| **Ansible** | Server provisioning, orchestration, secret management | `ansible-playbook all.yml` |
+| **Helmfile** | Kubernetes/Helm chart deployment | `helmfile apply` (called by Ansible) |
+
+**Deployment Flow:**
+```
+User → CLI (selfhost deploy) → Ansible (all.yml) → Helmfile → Kubernetes
+```
+
+### CLI Commands
+
+```bash
+# Full deployment through phased execution
+selfhost deploy
+
+# Direct Ansible tag execution
+selfhost deploy --tags infrastructure,databases
+
+# Dry run (Ansible --check mode)
+selfhost deploy --dry-run
+
+# Monitoring daemon
+selfhost monitor start
+selfhost monitor stop
+```
+
 ### Deployment Pipeline
 
 ```
@@ -314,6 +346,24 @@ Internet → Gateway VPS (TLS termination)
 2. Infrastructure: prerequisites → base → apps → verify
 3. Post-deployment: monitoring → backup
 ```
+
+### Ansible Tags
+
+| Tag | Description | Phase |
+|-----|-------------|-------|
+| `server` | Server preparation | Infrastructure Setup |
+| `docker` | Docker installation | Infrastructure Setup |
+| `kubespray` | Kubernetes deployment | Kubernetes Bootstrap |
+| `storage` | OpenEBS storage | Storage Layer |
+| `openebs` | OpenEBS operators | Storage Layer |
+| `backup` | Backup configuration | Backup Setup |
+| `zerobyte` | Zerobyte UI | Backup Setup |
+| `infrastructure` | All Helmfile services | Core/DB/Apps |
+| `base` | Core infrastructure | Core Services |
+| `databases` | All databases | Databases |
+| `apps` | All applications | Application Services |
+| `pangolin` | VPN configuration | Network Gateway |
+| `validate` | Verification tests | Verification |
 
 ### Helmfile Deployment
 
@@ -323,13 +373,13 @@ Internet → Gateway VPS (TLS termination)
 ansible-playbook -i inventory/hosts.ini all.yml
 
 # Base infrastructure only
-ansible-playbook -i inventory/hosts.ini all.yml --tags base
+ansible-playbook -i inventory/hosts.ini all.yml --tags infrastructure,base
 
-# Specific service
-ansible-playbook -i inventory/hosts.ini all.yml --tags vault
+# Databases
+ansible-playbook -i inventory/hosts.ini all.yml --tags infrastructure,databases
 
 # Applications
-ansible-playbook -i inventory/hosts.ini all.yml --tags apps
+ansible-playbook -i inventory/hosts.ini all.yml --tags infrastructure,apps
 ```
 
 ### Dependency Chain

@@ -1,5 +1,6 @@
 import { Command } from 'commander';
 import { INestApplicationContext } from '@nestjs/common';
+import { spawn } from 'child_process';
 import chalk from 'chalk';
 import { ConfigService, DeploymentStateData } from '../modules/config/config.service';
 import { InventoryService } from '../modules/inventory/inventory.service';
@@ -7,6 +8,93 @@ import { ServicesService } from '../modules/services/services.service';
 import { PromptsService } from '../modules/ui/prompts.service';
 import { DeploymentPhase, getPhaseName } from '../interfaces/deployment.interface';
 import { logger } from '../utils/logger';
+import { findRepoRoot, getRepoPaths } from '../utils/paths';
+
+/**
+ * Map deployment phases to Ansible tags
+ */
+const PHASE_TO_ANSIBLE_TAGS: Record<DeploymentPhase, string[]> = {
+  [DeploymentPhase.INFRASTRUCTURE_SETUP]: ['server', 'docker'],
+  [DeploymentPhase.KUBERNETES_BOOTSTRAP]: ['kubespray', 'kubernetes'],
+  [DeploymentPhase.STORAGE_LAYER]: ['storage', 'openebs'],
+  [DeploymentPhase.BACKUP_SETUP]: ['backup', 'backup-node', 'zerobyte'],
+  [DeploymentPhase.CORE_SERVICES]: ['infrastructure', 'base'],
+  [DeploymentPhase.DATABASES]: ['infrastructure', 'databases'],
+  [DeploymentPhase.APPLICATION_SERVICES]: ['infrastructure', 'apps'],
+  [DeploymentPhase.NETWORK_GATEWAY]: ['pangolin'],
+  [DeploymentPhase.VERIFICATION]: ['validate', 'verify'],
+};
+
+/**
+ * Execute Ansible playbook with given tags
+ */
+async function executeAnsible(
+  ansiblePath: string,
+  tags: string[],
+  inventoryFile: string,
+  dryRun: boolean = false,
+): Promise<{ success: boolean; output: string; error: string }> {
+  return new Promise((resolve) => {
+    const args = [
+      '-i',
+      `inventory/${inventoryFile}`,
+      'all.yml',
+      '--tags',
+      tags.join(','),
+    ];
+
+    if (dryRun) {
+      args.push('--check');
+    }
+
+    // Check for vault password file
+    const vaultPasswordFile = `${process.env.HOME}/.ansible_vault_password`;
+    args.push('--vault-password-file', vaultPasswordFile);
+
+    logger.log(chalk.gray(`  ansible-playbook ${args.join(' ')}`));
+
+    const proc = spawn('ansible-playbook', args, {
+      cwd: ansiblePath,
+      env: {
+        ...process.env,
+        ANSIBLE_FORCE_COLOR: 'true',
+        ANSIBLE_STDOUT_CALLBACK: 'yaml',
+      },
+    });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (data) => {
+      const line = data.toString();
+      stdout += line;
+      // Stream output for visibility
+      process.stdout.write(chalk.gray(line));
+    });
+
+    proc.stderr.on('data', (data) => {
+      const line = data.toString();
+      stderr += line;
+      process.stderr.write(chalk.yellow(line));
+    });
+
+    proc.on('close', (code) => {
+      resolve({
+        success: code === 0,
+        output: stdout,
+        error: stderr,
+      });
+    });
+
+    proc.on('error', (err) => {
+      resolve({
+        success: false,
+        output: stdout,
+        error: err.message,
+      });
+    });
+  });
+}
 
 export function createDeployCommand(app: INestApplicationContext): Command {
   const command = new Command('deploy');
@@ -20,6 +108,8 @@ export function createDeployCommand(app: INestApplicationContext): Command {
     .option('--dry-run', 'Show what would be executed without making changes')
     .option('--resume', 'Resume last incomplete deployment')
     .option('--fresh', 'Start fresh deployment (ignore any incomplete)')
+    .option('--tags <tags>', 'Run specific Ansible tags directly (bypasses phase system)')
+    .option('--inventory <file>', 'Inventory file to use (default: hosts.ini)', 'hosts.ini')
     .option(
       '--enable-local-access',
       'Configure local machine to access services via <app>.zeizel.local',
@@ -32,6 +122,41 @@ export function createDeployCommand(app: INestApplicationContext): Command {
     .addCommand(createHistoryCommand(app))
     .addCommand(createCleanCommand(app))
     .action(async (options) => {
+      // Direct Ansible tag execution mode
+      if (options.tags) {
+        const repoRoot = findRepoRoot();
+        if (!repoRoot) {
+          logger.error('Could not find repository root. Are you in the self-hosted directory?');
+          process.exit(1);
+        }
+        const paths = getRepoPaths(repoRoot);
+
+        logger.header('Direct Ansible Execution');
+        logger.keyValue({
+          Tags: options.tags,
+          Inventory: options.inventory,
+          'Dry run': options.dryRun ? 'Yes' : 'No',
+        });
+
+        const tags = options.tags.split(',').map((t: string) => t.trim());
+
+        logger.newLine();
+        const result = await executeAnsible(
+          paths.ansible,
+          tags,
+          options.inventory,
+          options.dryRun,
+        );
+
+        if (result.success) {
+          logger.success('Ansible execution completed successfully');
+        } else {
+          logger.error('Ansible execution failed');
+          process.exit(1);
+        }
+        return;
+      }
+
       const configService = app.get(ConfigService);
       const inventoryService = app.get(InventoryService);
       const servicesService = app.get(ServicesService);
@@ -187,14 +312,39 @@ export function createDeployCommand(app: INestApplicationContext): Command {
         const spinner = logger.spinner(`Executing ${getPhaseName(phase)}...`).start();
 
         try {
-          // TODO: Implement actual phase execution
-          // For now, simulate with delay
-          await new Promise((resolve) => setTimeout(resolve, 1000));
+          // Get repository paths
+          const repoRoot = findRepoRoot();
+          if (!repoRoot) {
+            throw new Error('Could not find repository root. Are you in the self-hosted directory?');
+          }
+          const paths = getRepoPaths(repoRoot);
 
-          spinner.succeed(`Phase ${phase} completed`);
-          configService.markPhaseCompleted(deploymentState!.id, phase);
+          // Get Ansible tags for this phase
+          const tags = PHASE_TO_ANSIBLE_TAGS[phase];
+          if (!tags || tags.length === 0) {
+            throw new Error(`No Ansible tags defined for phase ${phase}`);
+          }
+
+          spinner.stop();
+          logger.info(`Running: ansible-playbook --tags ${tags.join(',')}`);
+
+          // Execute Ansible with the appropriate tags
+          const result = await executeAnsible(
+            paths.ansible,
+            tags,
+            'hosts.ini',
+            options.dryRun,
+          );
+
+          if (result.success) {
+            logger.success(`Phase ${phase} completed`);
+            configService.markPhaseCompleted(deploymentState!.id, phase);
+            configService.addDeploymentLog(deploymentState!.id, phase, 'info', 'Phase completed successfully');
+          } else {
+            throw new Error(result.error || 'Ansible execution failed');
+          }
         } catch (error) {
-          spinner.fail(`Phase ${phase} failed`);
+          logger.error(`Phase ${phase} failed`);
           const errorMsg = error instanceof Error ? error.message : String(error);
           configService.markPhaseFailed(deploymentState!.id, phase, errorMsg);
 

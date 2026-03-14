@@ -33,6 +33,77 @@
 - **ARCH-004.3**: Debugging in production MUST be possible without SSH access to containers
 - **ARCH-004.4**: SLOs (Service Level Objectives) MUST be defined for critical services
 
+### ARCH-005: Domain Responsibility Separation (CRITICAL)
+
+This platform has three distinct tools with clear, non-overlapping responsibilities:
+
+#### ARCH-005.1: Helmfile - Kubernetes Deployment Orchestration
+- **ARCH-005.1.1**: Helmfile is the SINGLE ENTRY POINT for ALL Helm chart deployments
+- **ARCH-005.1.2**: `kubernetes/helmfile.yaml` orchestrates multi-chart deployments
+- **ARCH-005.1.3**: `kubernetes/apps/_others.yaml` defines service registry with dependencies
+- **ARCH-005.1.4**: Service dependencies use `needs:` field for deployment ordering
+- **ARCH-005.1.5**: ALL services deploy via `helmfile -e k8s apply --selector name=<service>`
+- **ARCH-005.1.6**: Helmfile MUST NOT be called directly in production; use Ansible
+
+```yaml
+# Deployment chain defined in apps/_others.yaml
+namespaces -> traefik -> consul -> vault -> cert-manager -> authentik -> databases -> applications
+```
+
+#### ARCH-005.2: Ansible - Infrastructure Provisioning and Orchestration
+- **ARCH-005.2.1**: Ansible is the ONLY tool for server provisioning and configuration
+- **ARCH-005.2.2**: ALL deployments run through `ansible-playbook -i inventory/hosts.ini all.yml`
+- **ARCH-005.2.3**: Tags enable selective execution: `prepare`, `kubespray`, `storage`, `infrastructure`, `pangolin`
+- **ARCH-005.2.4**: The `infrastructure` role calls Helmfile with appropriate selectors
+- **ARCH-005.2.5**: Ansible Vault encrypts all secrets in `group_vars/all/vault.yml`
+- **ARCH-005.2.6**: SOPS encrypts Kubernetes secrets in `kubernetes/envs/k8s/secrets/`
+- **ARCH-005.2.7**: Full installation = single Ansible run with all tags
+
+```bash
+# Full deployment (single command)
+ansible-playbook -i inventory/hosts.ini all.yml --vault-password-file ~/.ansible_vault_password
+
+# Selective deployment
+ansible-playbook -i inventory/hosts.ini all.yml --tags infrastructure,databases
+```
+
+#### ARCH-005.3: CLI - Wrapper and Monitoring
+- **ARCH-005.3.1**: CLI is a wrapper around Ansible playbook execution
+- **ARCH-005.3.2**: CLI provides interactive prompts and phase management
+- **ARCH-005.3.3**: CLI manages monitoring daemon for Telegram alerts
+- **ARCH-005.3.4**: CLI does NOT directly interact with Kubernetes or Helm
+- **ARCH-005.3.5**: `selfhost deploy` = runs Ansible with appropriate tags
+- **ARCH-005.3.6**: `selfhost monitor` = manages TUI monitoring and alerts
+
+```bash
+# CLI deployment (calls Ansible internally)
+selfhost deploy                    # Full deployment via Ansible
+selfhost deploy --tags databases   # Selective via Ansible tags
+selfhost monitor start             # Start monitoring daemon
+```
+
+#### ARCH-005.4: Responsibility Matrix
+
+| Action | CLI | Ansible | Helmfile |
+|--------|-----|---------|----------|
+| Server provisioning | - | PRIMARY | - |
+| Kubernetes bootstrap | - | PRIMARY | - |
+| Storage setup | - | PRIMARY | - |
+| VPN configuration | - | PRIMARY | - |
+| Service deployment | Wrapper | Orchestrator | Executor |
+| Secret management | - | PRIMARY (Vault) | - |
+| Monitoring daemon | PRIMARY | - | - |
+| Telegram alerts | PRIMARY | - | - |
+| Interactive prompts | PRIMARY | - | - |
+| Deployment phases | PRIMARY | - | - |
+
+#### ARCH-005.5: Anti-Patterns (PROHIBITED)
+- **NEVER** call `helmfile apply` directly in production (use Ansible)
+- **NEVER** create Kubernetes resources with `kubectl apply` (use Helm charts)
+- **NEVER** store secrets in plain text (use Vault or SOPS)
+- **NEVER** bypass Ansible for server configuration
+- **NEVER** hardcode IPs or hostnames (use inventory and DNS)
+
 ***
 
 ## 2. Kubernetes Helm Chart Architecture
