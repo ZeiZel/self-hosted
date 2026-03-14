@@ -11,3 +11,9 @@ export * from './charts';
 // Ink-based TUI (React components)
 export * from './components';
 export * from './ink-tui.service';
+
+// Hooks
+export * from './hooks';
+
+// Utilities
+export * from './utils';

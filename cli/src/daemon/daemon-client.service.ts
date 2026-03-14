@@ -272,8 +272,8 @@ export class DaemonClientService {
     cutoff.setDate(cutoff.getDate() - retentionDays);
 
     const stmt = this.db.prepare('DELETE FROM daemon_health_logs WHERE timestamp < ?');
-    stmt.run(cutoff.toISOString());
-    return this.db.getConnection().changes;
+    const result = stmt.run(cutoff.toISOString());
+    return result.changes;
   }
 
   /**

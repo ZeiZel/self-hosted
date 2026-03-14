@@ -91,6 +91,10 @@ export interface ServiceMetrics {
   restarts: number;
   age: string;
   lastUpdated: string;
+  // Helm release info (optional, for grouping)
+  helmChart?: string;
+  helmRelease?: string;
+  helmVersion?: string;
 }
 
 /**

@@ -1,16 +1,19 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { Box, Text, useInput } from 'ink';
 import type { NodeMetrics, NodeHealth } from '../../../../interfaces/monitor.interface';
 import type { MetricsHistoryService } from '../data/metrics-history.service';
 import { Sparkline } from './Sparkline';
 import { ProgressBar } from './ProgressBar';
 import { Panel } from './Panel';
+import { calculateVisibleItems, calculateScrollOffset } from '../hooks/useTerminalSize';
+import { truncate } from '../utils/text-truncate';
 
 interface NodesPanelProps {
   nodes: NodeMetrics[];
   metricsHistory: MetricsHistoryService;
   focused: boolean;
   expanded: boolean;
+  maxHeight?: number;
 }
 
 export const NodesPanel: React.FC<NodesPanelProps> = ({
@@ -18,25 +21,46 @@ export const NodesPanel: React.FC<NodesPanelProps> = ({
   metricsHistory,
   focused,
   expanded,
+  maxHeight,
 }) => {
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const [scrollOffset, setScrollOffset] = useState(0);
+
+  // Calculate visible items based on height
+  const itemHeight = expanded ? 8 : 1; // Expanded view takes more lines per node
+  const visibleCount = useMemo(() => {
+    if (!maxHeight) return nodes.length;
+    return calculateVisibleItems(maxHeight, itemHeight, 0);
+  }, [maxHeight, itemHeight, nodes.length]);
 
   useInput((input, key) => {
     if (!focused) return;
 
     if (key.downArrow || input === 'j') {
-      setSelectedIndex(i => Math.min(i + 1, nodes.length - 1));
+      const newIndex = Math.min(selectedIndex + 1, nodes.length - 1);
+      setSelectedIndex(newIndex);
+      setScrollOffset(calculateScrollOffset(newIndex, visibleCount, nodes.length, scrollOffset));
     }
     if (key.upArrow || input === 'k') {
-      setSelectedIndex(i => Math.max(i - 1, 0));
+      const newIndex = Math.max(selectedIndex - 1, 0);
+      setSelectedIndex(newIndex);
+      setScrollOffset(calculateScrollOffset(newIndex, visibleCount, nodes.length, scrollOffset));
     }
     if (input === 'g') {
       setSelectedIndex(0);
+      setScrollOffset(0);
     }
     if (input === 'G') {
-      setSelectedIndex(nodes.length - 1);
+      const newIndex = nodes.length - 1;
+      setSelectedIndex(newIndex);
+      setScrollOffset(calculateScrollOffset(newIndex, visibleCount, nodes.length, scrollOffset));
     }
   });
+
+  // Get visible nodes based on scroll offset
+  const visibleNodes = useMemo(() => {
+    return nodes.slice(scrollOffset, scrollOffset + visibleCount);
+  }, [nodes, scrollOffset, visibleCount]);
 
   const getHealthColor = (health: NodeHealth): string => {
     switch (health) {
@@ -56,6 +80,13 @@ export const NodesPanel: React.FC<NodesPanelProps> = ({
     }
   };
 
+  // Calculate scroll indicator
+  const hasScrollUp = scrollOffset > 0;
+  const hasScrollDown = scrollOffset + visibleCount < nodes.length;
+  const scrollIndicator = hasScrollUp || hasScrollDown
+    ? ` ${scrollOffset + 1}-${Math.min(scrollOffset + visibleCount, nodes.length)}/${nodes.length}`
+    : '';
+
   if (nodes.length === 0) {
     return (
       <Panel title="NODES [1]" focused={focused}>
@@ -65,9 +96,11 @@ export const NodesPanel: React.FC<NodesPanelProps> = ({
   }
 
   return (
-    <Panel title="NODES [1]" focused={focused}>
-      {nodes.map((node, idx) => {
-        const isSelected = idx === selectedIndex;
+    <Panel title={`NODES [1]${scrollIndicator}`} focused={focused}>
+      {hasScrollUp && <Text color="gray">  ↑ more</Text>}
+      {visibleNodes.map((node, idx) => {
+        const actualIndex = scrollOffset + idx;
+        const isSelected = actualIndex === selectedIndex;
         const cpuHistory = metricsHistory.getNodeCpuValues(node.name);
         const memHistory = metricsHistory.getNodeMemoryValues(node.name);
 
@@ -110,7 +143,7 @@ export const NodesPanel: React.FC<NodesPanelProps> = ({
           );
         }
 
-        // Compact view
+        // Compact view - use truncate for node name
         return (
           <Box key={node.name} flexDirection="column" marginBottom={0}>
             <Box>
@@ -120,7 +153,7 @@ export const NodesPanel: React.FC<NodesPanelProps> = ({
               <Text color={getHealthColor(node.health)}>
                 {getHealthIcon(node.health)}
               </Text>
-              <Text bold={isSelected}> {node.name.slice(0, 12).padEnd(12)}</Text>
+              <Text bold={isSelected}> {truncate(node.name, 12).padEnd(12)}</Text>
               <ProgressBar value={node.cpu.percent} width={8} label="C" />
               <ProgressBar value={node.memory.percent} width={8} label="M" />
               <Sparkline data={cpuHistory} width={10} height={1} inline />
@@ -128,6 +161,7 @@ export const NodesPanel: React.FC<NodesPanelProps> = ({
           </Box>
         );
       })}
+      {hasScrollDown && <Text color="gray">  ↓ more</Text>}
     </Panel>
   );
 };

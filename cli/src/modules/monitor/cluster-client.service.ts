@@ -219,6 +219,12 @@ export class ClusterClientService {
 
         const status = this.mapPodStatus(pod.status?.phase, pod.status?.containerStatuses);
 
+        // Extract Helm labels
+        const labels = pod.metadata?.labels || {};
+        const helmChart = labels['helm.sh/chart'] || labels['chart'] || undefined;
+        const helmRelease = labels['app.kubernetes.io/instance'] || labels['release'] || undefined;
+        const helmVersion = labels['app.kubernetes.io/version'] || undefined;
+
         services.push({
           name,
           namespace: pod.metadata?.namespace || 'default',
@@ -247,6 +253,9 @@ export class ClusterClientService {
           restarts: pod.status?.containerStatuses?.[0]?.restartCount || 0,
           age: this.calculateAge(pod.metadata?.creationTimestamp),
           lastUpdated: new Date().toISOString(),
+          helmChart,
+          helmRelease,
+          helmVersion,
         });
       }
 

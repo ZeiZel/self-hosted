@@ -3,6 +3,7 @@ export { NodesPanel } from './NodesPanel';
 export { ServicesPanel } from './ServicesPanel';
 export { SummaryPanel } from './SummaryPanel';
 export { AlertsPanel } from './AlertsPanel';
+export { PodDetailPanel } from './PodDetailPanel';
 export { Panel } from './Panel';
 export { ProgressBar } from './ProgressBar';
 export { Sparkline } from './Sparkline';
