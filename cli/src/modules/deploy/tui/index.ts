@@ -27,21 +27,22 @@
 // Module
 export { DeployModule } from './deploy.module';
 
-// Services
+// Services - runtime values
 export {
   DeployTuiService,
-  TUIDeployOptions,
-  DeployTuiEvent,
   DAGManagerService,
   TaskExecutorService,
   TaskBuilderService,
 } from './services';
 
-// Interfaces
+// Services - type-only exports
+export type { TUIDeployOptions, DeployTuiEvent } from './services';
+
+// Interfaces - uses export type internally
 export * from './interfaces';
 
-// Components
+// Components - all runtime values
 export * from './components';
 
-// Hooks
+// Hooks - all runtime values
 export * from './hooks';

@@ -6,17 +6,17 @@
  */
 
 import { Observable } from 'rxjs';
-import {
+import type {
   DeployTask,
   TaskResult,
   LogLine,
-  TaskType,
   AnsibleTaskConfig,
   HelmfileTaskConfig,
   KubectlTaskConfig,
   ShellTaskConfig,
   ValidationTaskConfig,
 } from './task.interface';
+import { TaskType } from './task.interface';
 
 /**
  * Events emitted during task execution

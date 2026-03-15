@@ -5,6 +5,10 @@
  * including DAG management, task execution, and state handling.
  */
 
+// ============================================================================
+// Service Classes (runtime values)
+// ============================================================================
+
 // DAG Manager - Core orchestration service
 export { DAGManagerService } from './dag-manager.service';
 
@@ -15,7 +19,18 @@ export { TaskExecutorService } from './task-executor.service';
 export { TaskBuilderService } from './task-builder.service';
 
 // Deploy TUI Service - Main orchestration service
-export { DeployTuiService, TUIDeployOptions, DeployTuiEvent } from './deploy-tui.service';
+export { DeployTuiService } from './deploy-tui.service';
+
+// ============================================================================
+// Type-only exports
+// ============================================================================
+
+// Deploy TUI types
+export type { TUIDeployOptions, DeployTuiEvent } from './deploy-tui.service';
+
+// ============================================================================
+// Utility Functions (runtime values)
+// ============================================================================
 
 // Ansible Error Parser - Structured error parsing from Ansible output
 export {
