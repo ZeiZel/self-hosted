@@ -12,6 +12,7 @@ import { PromptsService } from '../modules/ui/prompts.service';
 import { DeploymentPhase, getPhaseName } from '../interfaces/deployment.interface';
 import { logger } from '../utils/logger';
 import { findRepoRoot, getRepoPaths } from '../utils/paths';
+import { DeployTuiService } from '../modules/deploy/tui';
 
 /**
  * Map deployment phases to Ansible tags
@@ -204,6 +205,13 @@ export function createDeployCommand(app: INestApplicationContext): Command {
       'Local domain suffix (default: zeizel.local)',
       'zeizel.local',
     )
+    .option('--tui', 'Use fullscreen TUI for deployment visualization')
+    .option('--no-tui', 'Disable TUI even in interactive mode')
+    .option(
+      '--max-parallel <n>',
+      'Maximum parallel task execution (default: 3)',
+      '3',
+    )
     .addCommand(createHistoryCommand(app))
     .addCommand(createCleanCommand(app))
     .action(async (options) => {
@@ -235,6 +243,43 @@ export function createDeployCommand(app: INestApplicationContext): Command {
           process.exit(1);
         }
         return;
+      }
+
+      // Determine if TUI mode should be used
+      // Use TUI if:
+      // - --tui flag is explicitly set
+      // - OR: terminal is TTY and --no-tui is not set and --tags is not specified
+      const useTui =
+        options.tui === true ||
+        (process.stdout.isTTY && options.tui !== false && !options.config);
+
+      if (useTui) {
+        try {
+          const deployTui = app.get(DeployTuiService);
+
+          // Parse skip phases if provided
+          const skipPhases = options.skipPhase
+            ? options.skipPhase.split(',').map(Number)
+            : [];
+
+          await deployTui.start({
+            dryRun: options.dryRun || false,
+            bypassPermissions: options.bypassPermissions || false,
+            enableLocalAccess: options.enableLocalAccess || false,
+            localDomain: options.localDomain,
+            maxParallel: parseInt(options.maxParallel, 10),
+            skipPhases,
+            inventoryFile: options.inventory,
+          });
+
+          return;
+        } catch (error) {
+          // If TUI fails to initialize (e.g., DeployTuiService not available),
+          // fall back to sequential mode
+          const errorMsg = error instanceof Error ? error.message : String(error);
+          logger.warn(`TUI mode unavailable: ${errorMsg}`);
+          logger.info('Falling back to sequential execution mode');
+        }
       }
 
       const configService = app.get(ConfigService);

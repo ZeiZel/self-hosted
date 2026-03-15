@@ -34,6 +34,24 @@ export {
   TaskStatistics,
 } from './task.interface';
 
+// Error interfaces - structured error handling
+export {
+  // Types
+  ErrorSource,
+  AnsibleErrorType,
+  // Core interfaces
+  AnsibleError,
+  AnsibleErrorContext,
+  StructuredError,
+  StructuredErrorDetails,
+  LogLineWithError,
+  // Utility functions
+  ansibleErrorToStructured,
+  createShellError,
+  createHelmfileError,
+  createKubectlError,
+} from './error.interface';
+
 // DAG interfaces - dependency graph management
 export {
   // Types

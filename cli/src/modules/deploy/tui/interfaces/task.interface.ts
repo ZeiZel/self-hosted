@@ -7,6 +7,7 @@
  */
 
 import { DeploymentPhase } from '../../../../interfaces/deployment.interface';
+import { StructuredError } from './error.interface';
 
 /**
  * Status of a deployment task in the DAG
@@ -72,6 +73,8 @@ export interface LogLine {
   source: 'stdout' | 'stderr' | 'system';
   /** Task ID this log belongs to */
   taskId: string;
+  /** Structured error if this log represents one */
+  structuredError?: StructuredError;
 }
 
 /**
@@ -108,6 +111,8 @@ export interface TaskResult {
   output?: Record<string, unknown>;
   /** Changed resources (for Ansible/Helmfile) */
   changes?: TaskChange[];
+  /** Structured error with actionable suggestions */
+  structuredError?: StructuredError;
 }
 
 /**

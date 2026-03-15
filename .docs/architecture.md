@@ -352,18 +352,62 @@ User → CLI (selfhost deploy) → Ansible (all.yml) → Helmfile → Kubernetes
 ### CLI Commands
 
 ```bash
-# Full deployment through phased execution
+# Full deployment with TUI dashboard (default in TTY)
 selfhost deploy
 
-# Direct Ansible tag execution
+# Full deployment with TUI (explicit)
+selfhost deploy --tui
+
+# Sequential deployment (no TUI)
+selfhost deploy --no-tui
+
+# Direct Ansible tag execution (bypasses TUI)
 selfhost deploy --tags infrastructure,databases
 
 # Dry run (Ansible --check mode)
 selfhost deploy --dry-run
 
+# Parallel execution control
+selfhost deploy --max-parallel 5
+
 # Monitoring daemon
 selfhost monitor start
 selfhost monitor stop
+```
+
+### Deployment TUI Dashboard
+
+The CLI includes a fullscreen TUI (Terminal User Interface) for deployment visualization:
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│ [████████████░░░░░░░░] 60% | Phase 5: Core Services | ETA: 5m 30s           │
+├──────────────────────────────────────┬──────────────────────────────────────┤
+│  LOG PANEL (60%)                     │  TASK PANEL (40%)                    │
+│  Real-time Ansible/Helmfile output   │  Phase 4: Backup ✓                   │
+│  Color-coded log levels              │  Phase 5: Core Services ●            │
+│  Scrollable history                  │    ● deploy-namespaces ✓             │
+│                                      │    ◐ deploy-vault (running)          │
+│                                      │    ◌ deploy-authentik (blocked)      │
+├──────────────────────────────────────┴──────────────────────────────────────┤
+│ [Tab] Switch | [j/k] Scroll | [p] Pause | [q] Quit | Elapsed: 12m 30s       │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**Key Features:**
+- **DAG-based task orchestration** — tasks execute based on dependency graph
+- **Parallel execution** — independent tasks run simultaneously (configurable max)
+- **Real-time progress** — percentage, phase, and ETA tracking
+- **Interactive controls** — pause/resume, skip, retry, abort
+- **Failure isolation** — failed task blocks only dependent tasks, not entire deployment
+
+**Architecture:**
+```
+cli/src/modules/deploy/tui/
+├── components/        # React (Ink) UI components
+├── services/          # DAGManager, TaskExecutor, TaskBuilder
+├── interfaces/        # TypeScript types
+└── hooks/             # Terminal size, state management
 ```
 
 ### Deployment Pipeline

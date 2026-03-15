@@ -14,6 +14,7 @@ import { BalancingModule } from './modules/balancing';
 import { MonitorModule } from './modules/monitor';
 import { DaemonModule } from './daemon';
 import { TelegramModule } from './telegram';
+import { DeployModule } from './modules/deploy/tui';
 import { findRepoRoot } from './utils/paths';
 
 /**
@@ -68,6 +69,9 @@ export class AppModule {
         MonitorModule,
         DaemonModule,
         TelegramModule,
+
+        // Deploy TUI module
+        DeployModule,
       ],
     };
   }
