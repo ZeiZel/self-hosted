@@ -17,6 +17,7 @@ ingress:
   tls:
     enabled: true
     secretName: bytebase-tls
+    clusterIssuer: selfsigned-ca-issuer
 
 consul:
   enabled: true

@@ -1,0 +1,179 @@
+version: "2.0"
+project:
+  name: "self-hosted"
+  description: "Enterprise-grade self-hosted infrastructure platform with 42+ services on Kubernetes"
+  type: "monorepo"
+  license: "MIT"
+
+tech_stack:
+  primary_languages:
+    - TypeScript  # CLI
+    - YAML        # Kubernetes, Ansible, Helmfile
+    - Jinja2      # Ansible templates, Helm templates
+  secondary_languages:
+    - Bash        # Scripts
+    - Go          # Helm templating
+  frameworks:
+    - NestJS      # CLI framework
+    - Helm        # Kubernetes package manager
+    - Ansible     # Infrastructure automation
+    - Helmfile    # Helm deployment orchestration
+  runtime: "node"
+  package_manager: "npm"
+  databases:
+    - PostgreSQL  # Primary relational (shared instance)
+    - MongoDB     # Document store
+    - Valkey      # Redis-compatible cache
+    - MinIO       # S3-compatible object storage
+    - ClickHouse  # OLAP analytics
+    - MySQL       # Ghost CMS
+    - RabbitMQ    # Message queue
+
+architecture:
+  style: "microservices"
+  patterns:
+    - "Infrastructure as Code"
+    - "GitOps"
+    - "Zero Trust Networking"
+    - "Secrets Management (Vault)"
+    - "Service Mesh (Consul)"
+
+# Domain responsibility separation
+domains:
+  - name: "CLI"
+    description: "User interface for deployment orchestration"
+    path: "cli/"
+    entities: ["DeployCommand", "ServicesService", "InventoryService", "MonitorService"]
+    bounded_context: "deployment-orchestration"
+
+  - name: "Ansible"
+    description: "Infrastructure provisioning and configuration"
+    path: "ansible/"
+    entities: ["Playbooks", "Roles", "Inventory", "Vault"]
+    bounded_context: "infrastructure-provisioning"
+
+  - name: "Kubernetes"
+    description: "Service deployment and management"
+    path: "kubernetes/"
+    entities: ["HelmCharts", "Releases", "Helmfile", "Namespaces"]
+    bounded_context: "service-deployment"
+
+# Service tiers for deployment ordering
+service_tiers:
+  tier_0_core:
+    description: "Foundational infrastructure - always deployed"
+    services:
+      - namespaces
+      - traefik
+      - consul
+      - vault
+      - cert-manager
+      - pangolin
+      - authentik
+    user_selectable: false
+
+  tier_1_infrastructure:
+    description: "Observability and tooling"
+    services:
+      - monitoring
+      - logging
+      - glance
+      - openebs
+    user_selectable: true
+    recommended: true
+
+  tier_2_databases:
+    description: "Data persistence layer"
+    services:
+      - postgresql
+      - mongodb
+      - valkey
+      - minio
+      - clickhouse
+      - mysql
+      - rabbitmq
+    user_selectable: true
+
+  tier_3_applications:
+    description: "User-facing services"
+    namespaces:
+      code: [gitlab, hub, youtrack, teamcity, coder]
+      productivity: [affine, notesnook, excalidraw, penpot]
+      social: [stoat, stalwart]
+      data: [vaultwarden, syncthing, nextcloud, rybbit]
+      automation: [kestra, n8n]
+      content: [ghost]
+      utilities: [vert, metube]
+      infrastructure: [bytebase, harbor, remnawave]
+    user_selectable: true
+
+# Namespace organization
+namespaces:
+  ingress: "Edge routing and load balancing"
+  service: "Platform services (Vault, Authentik, Monitoring)"
+  db: "Data layer (PostgreSQL, MongoDB, Valkey, MinIO, ClickHouse)"
+  code: "Development tools (GitLab, CI/CD)"
+  productivity: "Collaboration tools"
+  social: "Communication services"
+  data: "Personal data management"
+  infrastructure: "Operations tools"
+  automation: "Workflow automation"
+  content: "Publishing"
+  utilities: "Miscellaneous tools"
+
+# Tooling configuration
+tooling:
+  package_manager: "npm"
+  beads:
+    enabled: true
+    workspace: ".beads"
+  repomix:
+    enabled: true
+  validation:
+    helm_lint: true
+    kubeval: true
+    ansible_lint: true
+    secret_scan: true
+
+# Quality gates
+quality_gates:
+  planning:
+    threshold: 95
+    validators:
+      - requirements_coverage
+      - architecture_completeness
+  development:
+    threshold: 85
+    validators:
+      - helm_lint
+      - kubeval
+      - ansible_lint
+      - security_scan
+  validation:
+    threshold: 95
+    validators:
+      - all_tests_pass
+      - documentation_complete
+      - architecture_updated
+
+# Agent preferences
+agent_preferences:
+  code_style: "concise"
+  review_strictness: "strict"
+  auto_fix: true
+  documentation_required: true
+  always_update_architecture: true
+
+# Critical paths
+critical_paths:
+  documentation:
+    - ".docs/requirements.md"     # WHAT to build
+    - ".docs/arch-rules.md"       # HOW to build
+    - ".docs/architecture.md"     # Current state (update after changes)
+  deployment:
+    - "ansible/all.yml"           # Main playbook
+    - "kubernetes/helmfile.yaml"  # Helmfile entry point
+    - "kubernetes/apps/_others.yaml"  # Service registry
+  cli:
+    - "cli/src/commands/deploy.command.ts"
+    - "cli/src/modules/services/services.service.ts"

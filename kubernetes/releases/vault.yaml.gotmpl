@@ -18,6 +18,8 @@ ui:
 ingress:
   enabled: true
   host: vault.{{ .Values.infra.host }}
+  tls:
+    clusterIssuer: selfsigned-ca-issuer
 
 consul:
   enabled: true

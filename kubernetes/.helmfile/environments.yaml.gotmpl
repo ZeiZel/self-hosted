@@ -9,6 +9,8 @@ templates:
       - envs/{{ .Environment.Name }}/*.*
       # Values - get val per env (mid priority)
       - envs/{{ .Environment.Name }}/values/*.*
+      # Inventory values - generated from Ansible (dynamic IPs)
+      - envs/{{ .Environment.Name }}/values/inventory-values.yaml
       # Plain secrets (temporary - use for initial setup)
       - envs/{{ .Environment.Name }}/secrets/_all_plain.yaml
 

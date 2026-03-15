@@ -1,0 +1,128 @@
+#!/bin/bash
+#
+# Mock ansible-playbook for E2E testing
+# This script simulates ansible-playbook behavior without requiring real hosts
+#
+
+# Output header for identification
+echo "MOCK: ansible-playbook $@"
+
+# Parse arguments for realistic output
+PLAYBOOK=""
+TAGS=""
+INVENTORY=""
+CHECK_MODE=false
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -i)
+      INVENTORY="$2"
+      shift 2
+      ;;
+    --tags)
+      TAGS="$2"
+      shift 2
+      ;;
+    --check)
+      CHECK_MODE=true
+      shift
+      ;;
+    --vault-password-file)
+      shift 2
+      ;;
+    *.yml|*.yaml)
+      PLAYBOOK="$1"
+      shift
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+# Simulate output based on tags
+if [[ "$CHECK_MODE" == "true" ]]; then
+  echo ""
+  echo "PLAY [Check mode - no changes will be made] ******************"
+  echo ""
+fi
+
+echo ""
+echo "PLAY [all] ***********************************************************"
+echo ""
+
+# Simulate task execution based on tags
+if [[ "$TAGS" == *"validate"* ]]; then
+  echo "TASK [validate : Check cluster connectivity] ***********************"
+  echo "ok: [mock-master]"
+  echo ""
+  echo "TASK [validate : Verify Kubernetes API] ****************************"
+  echo "ok: [mock-master]"
+  echo ""
+fi
+
+if [[ "$TAGS" == *"server"* ]] || [[ "$TAGS" == *"docker"* ]]; then
+  echo "TASK [infrastructure : Install Docker] *****************************"
+  echo "ok: [mock-master]"
+  echo "ok: [mock-worker-01]"
+  echo ""
+fi
+
+if [[ "$TAGS" == *"kubernetes"* ]] || [[ "$TAGS" == *"kubespray"* ]]; then
+  echo "TASK [kubespray : Deploy Kubernetes cluster] ***********************"
+  echo "ok: [mock-master]"
+  echo ""
+fi
+
+if [[ "$TAGS" == *"infrastructure"* ]] || [[ "$TAGS" == *"base"* ]]; then
+  echo "TASK [infrastructure : Deploy base services] ***********************"
+  echo "ok: [mock-master]"
+  echo ""
+  echo "TASK [infrastructure : Deploy Traefik] *****************************"
+  echo "ok: [mock-master]"
+  echo ""
+  echo "TASK [infrastructure : Deploy Vault] *******************************"
+  echo "ok: [mock-master]"
+  echo ""
+fi
+
+if [[ "$TAGS" == *"databases"* ]]; then
+  echo "TASK [infrastructure : Deploy PostgreSQL] **************************"
+  echo "ok: [mock-master]"
+  echo ""
+  echo "TASK [infrastructure : Deploy Valkey] ******************************"
+  echo "ok: [mock-master]"
+  echo ""
+fi
+
+if [[ "$TAGS" == *"apps"* ]]; then
+  echo "TASK [infrastructure : Deploy applications] ************************"
+  echo "ok: [mock-master]"
+  echo ""
+fi
+
+if [[ "$TAGS" == *"pangolin"* ]]; then
+  echo "TASK [pangolin : Configure VPN tunnel] *****************************"
+  echo "ok: [mock-gateway]"
+  echo ""
+fi
+
+if [[ "$TAGS" == *"storage"* ]]; then
+  echo "TASK [storage : Setup OpenEBS] *************************************"
+  echo "ok: [mock-storage]"
+  echo ""
+fi
+
+if [[ "$TAGS" == *"backup"* ]]; then
+  echo "TASK [backup : Configure Restic] ***********************************"
+  echo "ok: [mock-backup]"
+  echo ""
+fi
+
+echo "PLAY RECAP ***********************************************************"
+echo "mock-master                : ok=5    changed=0    unreachable=0    failed=0    skipped=0"
+echo "mock-worker-01             : ok=3    changed=0    unreachable=0    failed=0    skipped=0"
+echo ""
+
+# Exit successfully
+exit 0

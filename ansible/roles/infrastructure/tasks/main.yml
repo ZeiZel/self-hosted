@@ -20,12 +20,17 @@
       - "Kubeconfig: {{ kubeconfig_path }}"
   tags: [infrastructure, always]
 
+# Generate Helmfile values from Ansible inventory (dynamic IPs)
+- name: Include generate Helmfile values tasks
+  include_tasks: generate_helmfile_values.yml
+  tags: [infrastructure, generate-values]
+
 # Prerequisites: helmfile, helm, helm-diff, SOPS, GPG keys
 - name: Include prerequisites tasks
   include_tasks: prerequisites.yml
   tags: [infrastructure, prerequisites]
 
-# Base infrastructure: namespace → traefik → consul → vault → cert-manager → authentik
+# Base infrastructure: namespace → openebs → traefik → consul → vault → cert-manager → databases → pangolin → authentik
 - name: Include base infrastructure tasks
   include_tasks: base.yml
   tags: [infrastructure, base]
@@ -34,6 +39,11 @@
 - name: Include database services tasks
   include_tasks: databases.yml
   tags: [infrastructure, databases]
+
+# Observability: monitoring + logging (separate from apps)
+- name: Include observability tasks
+  include_tasks: observability.yml
+  tags: [infrastructure, observability]
 
 # Application services: stoat, stalwart, youtrack, hub, teamcity, vaultwarden
 - name: Include application services tasks
@@ -45,6 +55,11 @@
   include_tasks: verify.yml
   when: verify_deployment | default(true)
   tags: [infrastructure, verify]
+
+# Post-deployment: credential extraction and deployment report
+- name: Include post-deployment tasks
+  include_tasks: post_deploy.yml
+  tags: [infrastructure, post-deploy]
 
 - name: Infrastructure deployment complete
   debug:

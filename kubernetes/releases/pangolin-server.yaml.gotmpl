@@ -1,0 +1,67 @@
+namespace: infrastructure
+
+# Pangolin Server Configuration (VPS Gateway)
+pangolin:
+  config:
+    domain: {{ .Values.domain.public | quote }}
+    acmeEmail: {{ .Values.infra.acmeEmail | default "ssl@example.com" | quote }}
+    logLevel: "info"
+  dashboard:
+    enabled: true
+
+# Gerbil WireGuard Configuration
+gerbil:
+  enabled: true
+  wireguard:
+    network: {{ .Values.infra.wireguardNetwork | default "10.99.0.0/24" | quote }}
+    serverIp: {{ .Values.infra.wireguardServerIp | default "10.99.0.1" | quote }}
+
+# Traefik Edge Router
+traefik:
+  enabled: true
+  acme:
+    enabled: true
+    email: {{ .Values.infra.acmeEmail | default "ssl@example.com" | quote }}
+    staging: {{ .Values.infra.acmeStaging | default false }}
+
+# Host networking required for VPS gateway
+hostNetwork: true
+dnsPolicy: ClusterFirstWithHostNet
+
+# Node selector for gateway
+nodeSelector:
+  node-role.kubernetes.io/gateway: "true"
+
+# Tolerations for gateway taint
+tolerations:
+  - key: "node-role.kubernetes.io/gateway"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+# Vault integration
+vault:
+  enabled: true
+  role: "pangolin-server-role"
+  secrets:
+    - name: wireguard-keys
+      path: "secret/data/vpn/wireguard"
+
+# Consul service discovery
+consul:
+  enabled: true
+  tags:
+    - pangolin-server
+    - gateway
+    - vpn-endpoint
+
+# Persistence
+persistence:
+  enabled: true
+  storageClass: local-path
+  size: 5Gi
+
+# Metrics
+metrics:
+  enabled: true
+  interval: "30s"

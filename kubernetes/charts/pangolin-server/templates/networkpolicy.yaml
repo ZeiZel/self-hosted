@@ -1,0 +1,125 @@
+{{- if .Values.networkPolicy.enabled -}}
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ include "pangolin-server.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pangolin-server.labels" . | nindent 4 }}
+spec:
+  podSelector:
+    matchLabels:
+      {{- include "pangolin-server.selectorLabels" . | nindent 6 }}
+  policyTypes:
+    - Ingress
+    - Egress
+
+  ingress:
+    {{- if .Values.networkPolicy.allowAllIngress }}
+    # Gateway server - accept traffic from internet
+    - {}
+    {{- else }}
+    # Allow ingress from Traefik (if behind another ingress)
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              name: ingress
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - protocol: TCP
+          port: {{ .Values.traefik.ports.http }}
+        - protocol: TCP
+          port: {{ .Values.traefik.ports.https }}
+
+    # Allow WireGuard from any source (for VPN clients)
+    - ports:
+        - protocol: UDP
+          port: {{ .Values.gerbil.port }}
+
+    # Allow Pangolin management from same namespace
+    - from:
+        - podSelector: {}
+      ports:
+        - protocol: TCP
+          port: {{ .Values.pangolin.port }}
+    {{- end }}
+
+  egress:
+    # Allow DNS
+    {{- if .Values.networkPolicy.egressRules.allowDNS }}
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: kube-system
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    # Also allow external DNS
+    - to: []
+      ports:
+        - protocol: UDP
+          port: 53
+        - protocol: TCP
+          port: 53
+    {{- end }}
+
+    # Allow HTTPS to external (for Let's Encrypt, APIs)
+    {{- if .Values.networkPolicy.egressRules.allowHTTPS }}
+    - to: []
+      ports:
+        - protocol: TCP
+          port: 443
+        - protocol: TCP
+          port: 80
+    {{- end }}
+
+    # Allow WireGuard to cluster nodes via tunnel
+    {{- if .Values.networkPolicy.egressRules.allowWireGuard }}
+    - to: []
+      ports:
+        - protocol: UDP
+          port: {{ .Values.gerbil.port }}
+    {{- end }}
+
+    # Allow traffic to internal cluster (via WireGuard tunnel)
+    {{- if .Values.networkPolicy.egressRules.allowCluster }}
+    - to:
+        - ipBlock:
+            cidr: {{ .Values.gerbil.wireguard.network }}
+      ports:
+        - protocol: TCP
+          port: 30080  # Cluster Traefik HTTP NodePort
+        - protocol: TCP
+          port: 30443  # Cluster Traefik HTTPS NodePort
+        - protocol: TCP
+          port: 6443   # Kubernetes API
+    {{- end }}
+
+    # Allow Vault access
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: service
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: vault
+      ports:
+        - protocol: TCP
+          port: 8200
+
+    # Allow Consul access
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              name: service
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: consul
+      ports:
+        - protocol: TCP
+          port: 8500
+{{- end }}

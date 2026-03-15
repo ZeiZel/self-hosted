@@ -11,7 +11,7 @@ spec:
     matchLabels:
       {{- include "zerobyte.selectorLabels" . | nindent 6 }}
   endpoints:
-    - port: {{ .Values.metrics.port | default "http" }}
+    - port: "metrics"
       path: {{ .Values.metrics.path | default "/metrics" }}
       interval: {{ .Values.metrics.interval | default "30s" }}
       scrapeTimeout: {{ .Values.metrics.scrapeTimeout | default "10s" }}

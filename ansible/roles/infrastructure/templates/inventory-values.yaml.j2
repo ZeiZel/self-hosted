@@ -1,0 +1,72 @@
+# Auto-generated inventory values from Ansible
+# Generated: {{ ansible_date_time.iso8601 }}
+# DO NOT EDIT MANUALLY - regenerate with: ansible-playbook --tags generate-values
+
+# Infrastructure configuration from Ansible inventory
+infra:
+  # Gateway VPS (public entry point for Pangolin VPN)
+  gatewayIp: "{{ hostvars[groups['gateway'][0]]['ansible_host'] }}"
+  gatewayHostname: "{{ groups['gateway'][0] }}"
+
+  # Kubernetes master nodes
+  masterIps:
+{% for host in groups['masters'] %}
+    - "{{ hostvars[host]['ansible_host'] }}"
+{% endfor %}
+
+  # Kubernetes worker nodes
+  workerIps:
+{% for host in groups['workers'] %}
+{% if host != 'vps' %}
+    - "{{ hostvars[host]['ansible_host'] }}"
+{% endif %}
+{% endfor %}
+
+  # All cluster nodes (masters + workers)
+  clusterIps:
+{% for host in groups['k8s_cluster'] %}
+{% if hostvars[host]['ansible_host'] is defined %}
+    - "{{ hostvars[host]['ansible_host'] }}"
+{% endif %}
+{% endfor %}
+
+# Domain configuration
+domain:
+  # Primary local domain (*.zeizel.local)
+  local: "{{ domain.local | default('zeizel.local') }}"
+  # Public domain (*.zeizel.ru)
+  public: "{{ domain.public | default('zeizel.ru') }}"
+  # Internal cluster domain
+  cluster: "svc.cluster.local"
+
+# Traefik ingress configuration
+traefik:
+  # Node IP where Traefik is exposed (first master by default)
+  nodeIp: "{{ hostvars[groups['masters'][0]]['ansible_host'] }}"
+  # Entrypoint ports
+  webPort: 80
+  websecurePort: 443
+
+# Pangolin VPN configuration
+pangolin:
+  # Server runs on gateway VPS
+  serverIp: "{{ hostvars[groups['gateway'][0]]['ansible_host'] }}"
+  # WireGuard port
+  wgPort: 51820
+  # HTTPS port for admin
+  httpsPort: 443
+
+# Vault configuration
+vault:
+  # Vault service endpoint
+  address: "http://vault.service.svc.cluster.local:8200"
+
+# Database connection strings (all in db namespace)
+databases:
+  postgresql: "postgresql.db.svc.cluster.local:5432"
+  mongodb: "mongodb.db.svc.cluster.local:27017"
+  valkey: "valkey-master.db.svc.cluster.local:6379"
+  minio: "minio.db.svc.cluster.local:9000"
+  clickhouse: "clickhouse.db.svc.cluster.local:8123"
+  mysql: "mysql.db.svc.cluster.local:3306"
+  rabbitmq: "rabbitmq.db.svc.cluster.local:5672"

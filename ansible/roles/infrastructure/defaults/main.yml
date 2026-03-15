@@ -8,6 +8,11 @@ helmfile_path: "{{ kubernetes_path }}/helmfile.yaml"
 kubeconfig_path: "{{ lookup('env', 'HOME') }}/.kube/config"
 sops_key_path: "{{ lookup('env', 'HOME') }}/.gnupg"
 
+# Domain configuration
+domain:
+  local: "zeizel.local"
+  public: "zeizel.ru"
+
 # Helmfile configuration
 helmfile_environment: "k8s"
 helmfile_timeout: 600
@@ -23,10 +28,17 @@ sops_version: "3.9.3"
 sops_age_key_file: "{{ lookup('env', 'HOME') }}/.config/sops/age/keys.txt"
 
 # Base infrastructure services (deployment order is critical!)
+# Order: namespaces → openebs → traefik → consul → vault → cert-manager →
+#        postgres/valkey → pangolin-server → pangolin → authentik →
+#        monitoring → logging → glance → bytebase
 base_services:
   - name: namespaces
     namespace: default
     wait_timeout: 60
+  - name: openebs
+    namespace: openebs
+    wait_timeout: 300
+    health_check: "kubectl get pods -n openebs -l app=openebs"
   - name: traefik
     namespace: ingress
     wait_timeout: 300
@@ -44,10 +56,42 @@ base_services:
     namespace: service
     wait_timeout: 180
     health_check: "kubectl get pods -n service -l app.kubernetes.io/name=cert-manager"
+  - name: postgres
+    namespace: db
+    wait_timeout: 300
+    health_check: "kubectl get pods -n db -l app.kubernetes.io/name=postgresql"
+  - name: valkey
+    namespace: db
+    wait_timeout: 180
+    health_check: "kubectl get pods -n db -l app.kubernetes.io/name=valkey"
+  - name: pangolin-server
+    namespace: infrastructure
+    wait_timeout: 300
+    health_check: "kubectl get pods -n infrastructure -l app.kubernetes.io/name=pangolin-server"
+  - name: pangolin
+    namespace: infrastructure
+    wait_timeout: 300
+    health_check: "kubectl get pods -n infrastructure -l app.kubernetes.io/name=pangolin"
   - name: authentik
     namespace: service
     wait_timeout: 300
     health_check: "kubectl get pods -n service -l app.kubernetes.io/name=authentik"
+  - name: monitoring
+    namespace: service
+    wait_timeout: 300
+    health_check: "kubectl get pods -n service -l app.kubernetes.io/name=prometheus"
+  - name: logging
+    namespace: service
+    wait_timeout: 300
+    health_check: "kubectl get pods -n service -l app.kubernetes.io/name=loki"
+  - name: glance
+    namespace: infrastructure
+    wait_timeout: 180
+    health_check: "kubectl get pods -n infrastructure -l app.kubernetes.io/name=glance"
+  - name: bytebase
+    namespace: infrastructure
+    wait_timeout: 180
+    health_check: "kubectl get pods -n infrastructure -l app.kubernetes.io/name=bytebase"
 
 # Application services (depend on base)
 app_services:

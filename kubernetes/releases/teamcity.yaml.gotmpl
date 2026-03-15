@@ -19,6 +19,8 @@ postgresql:
 ingress:
   enabled: true
   host: teamcity.{{ .Values.infra.host }}
+  tls:
+    clusterIssuer: selfsigned-ca-issuer
 
 consul:
   enabled: true

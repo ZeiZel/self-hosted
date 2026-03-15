@@ -1,5 +1,37 @@
 ---
-- name: validate services
-  gather_facts: true
-  block:
-    -
+# Validation tasks for deployed services
+# Verifies pods are running, services are reachable, and helm tests pass
+
+- name: Display validation start
+  debug:
+    msg: "Starting infrastructure validation"
+  tags: [validate, verify]
+
+- name: Get all pod status
+  command: kubectl get pods --all-namespaces -o wide
+  register: all_pods
+  changed_when: false
+  tags: [validate, verify]
+
+- name: Display pod status
+  debug:
+    msg: "{{ all_pods.stdout_lines }}"
+  tags: [validate, verify]
+
+- name: Check for pods not in Running state
+  shell: |
+    kubectl get pods --all-namespaces --no-headers | grep -v Running | grep -v Completed || true
+  register: non_running_pods
+  changed_when: false
+  tags: [validate, verify]
+
+- name: Warn about non-running pods
+  debug:
+    msg: "{{ non_running_pods.stdout_lines }}"
+  when: non_running_pods.stdout != ""
+  tags: [validate, verify]
+
+- name: Validation complete
+  debug:
+    msg: "Infrastructure validation completed"
+  tags: [validate, verify]

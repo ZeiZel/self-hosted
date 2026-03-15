@@ -1,0 +1,15 @@
+{
+  "version": "1.0.0",
+  "initialized": true,
+  "cluster": {
+    "name": "test-cluster",
+    "domain": "test.example.com",
+    "localDomain": "test.local"
+  },
+  "lastDeployment": null,
+  "settings": {
+    "bypassPermissions": false,
+    "skipPhases": [],
+    "parallelDeploys": 3
+  }
+}

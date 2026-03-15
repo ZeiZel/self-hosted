@@ -1,0 +1,65 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pangolin-server.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pangolin-server.labels" . | nindent 4 }}
+spec:
+  type: {{ .Values.service.type }}
+  selector:
+    {{- include "pangolin-server.selectorLabels" . | nindent 4 }}
+  ports:
+    # HTTP port (redirects to HTTPS)
+    - name: http
+      port: {{ .Values.traefik.ports.http }}
+      targetPort: http
+      protocol: TCP
+      {{- if eq .Values.service.type "NodePort" }}
+      nodePort: {{ .Values.service.httpNodePort }}
+      {{- end }}
+    # HTTPS port
+    - name: https
+      port: {{ .Values.traefik.ports.https }}
+      targetPort: https
+      protocol: TCP
+      {{- if eq .Values.service.type "NodePort" }}
+      nodePort: {{ .Values.service.httpsNodePort }}
+      {{- end }}
+    # WireGuard UDP port
+    {{- if .Values.gerbil.enabled }}
+    - name: wireguard
+      port: {{ .Values.gerbil.port }}
+      targetPort: wireguard
+      protocol: UDP
+      {{- if eq .Values.service.type "NodePort" }}
+      nodePort: {{ .Values.service.wireguardNodePort }}
+      {{- end }}
+    {{- end }}
+    # Pangolin management port
+    - name: pangolin
+      port: {{ .Values.pangolin.port }}
+      targetPort: pangolin
+      protocol: TCP
+      {{- if eq .Values.service.type "NodePort" }}
+      nodePort: {{ .Values.service.pangolinNodePort }}
+      {{- end }}
+---
+# Headless service for internal discovery
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "pangolin-server.fullname" . }}-headless
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pangolin-server.labels" . | nindent 4 }}
+spec:
+  type: ClusterIP
+  clusterIP: None
+  selector:
+    {{- include "pangolin-server.selectorLabels" . | nindent 4 }}
+  ports:
+    - name: pangolin
+      port: {{ .Values.pangolin.port }}
+      targetPort: pangolin
+      protocol: TCP

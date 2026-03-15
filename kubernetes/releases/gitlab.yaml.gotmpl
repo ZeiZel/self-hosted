@@ -45,48 +45,35 @@ global:
       - 172.16.0.0/12
       - 192.168.0.0/16
 
-    # OIDC/SSO Configuration (Authentik)
+    # OIDC/SSO Configuration (Authentik) - disabled initially
     omniauth:
-      enabled: true
-      autoSignInWithProvider:
-      syncProfileFromProvider: []
-      syncProfileAttributes: ['email']
-      allowSingleSignOn: ['openid_connect']
-      blockAutoCreatedUsers: false
-      autoLinkLdapUser: false
-      autoLinkSamlUser: false
-      autoLinkUser: ['openid_connect']
-      externalProviders: []
-      providers:
-        - secret: gitlab-oidc-secret
-          key: provider
+      enabled: false
+      # Requires gitlab-oidc-secret to be created manually
+      # autoSignInWithProvider:
+      # syncProfileFromProvider: []
+      # syncProfileAttributes: ['email']
+      # allowSingleSignOn: ['openid_connect']
+      # blockAutoCreatedUsers: false
+      # autoLinkLdapUser: false
+      # autoLinkSamlUser: false
+      # autoLinkUser: ['openid_connect']
+      # externalProviders: []
+      # providers:
+      #   - secret: gitlab-oidc-secret
+      #     key: provider
 
-    # Object storage configuration
+    # Object storage - disabled, using local storage
+    # Enable once MinIO is deployed and secrets created
     lfs:
-      enabled: true
-      connection:
-        secret: gitlab-minio-secret
-        key: connection
+      enabled: false
     artifacts:
-      enabled: true
-      connection:
-        secret: gitlab-minio-secret
-        key: connection
+      enabled: false
     uploads:
-      enabled: true
-      connection:
-        secret: gitlab-minio-secret
-        key: connection
+      enabled: false
     packages:
-      enabled: true
-      connection:
-        secret: gitlab-minio-secret
-        key: connection
+      enabled: false
     backups:
       bucket: gitlab-backups
-      connection:
-        secret: gitlab-minio-secret
-        key: connection
 
   # SMTP configuration - disabled initially
   smtp:
@@ -178,15 +165,7 @@ gitlab:
         memory: 256Mi
 
   toolbox:
-    enabled: true
-    replicas: 1
-    backups:
-      cron:
-        enabled: false
-      objectStorage:
-        config:
-          secret: gitlab-minio-secret
-          key: connection
+    enabled: false
 
   kas:
     enabled: false
@@ -197,18 +176,9 @@ gitlab:
   migrations:
     enabled: true
 
-# Registry
+# Registry - disabled until MinIO secrets are configured
 registry:
-  enabled: true
-  replicaCount: 1
-  storage:
-    secret: gitlab-minio-secret
-    key: registry
-  podAnnotations:
-    prometheus.io/scrape: "true"
-    prometheus.io/port: "5001"
-    prometheus.io/path: "/metrics"
-    co.elastic.logs/enabled: "true"
+  enabled: false
 
 # GitLab Runner - disabled initially for faster deployment
 gitlab-runner:

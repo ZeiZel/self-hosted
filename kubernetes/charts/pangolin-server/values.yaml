@@ -1,0 +1,221 @@
+# Pangolin Server Helm Chart Values
+# Deploys on VPS gateway node with nodeSelector
+
+namespace: infrastructure
+
+create:
+  namespace: true
+
+# Pangolin Server (Management UI)
+pangolin:
+  image:
+    repository: fosrl/pangolin
+    tag: "1.3.0"
+    pullPolicy: IfNotPresent
+  port: 3001
+  # Dashboard configuration
+  dashboard:
+    enabled: true
+  # Server configuration
+  config:
+    domain: "vpn.example.com"
+    # Let's Encrypt email for certificate issuance
+    acmeEmail: "ssl@example.com"
+    # Log level: debug, info, warn, error
+    logLevel: "info"
+
+# Gerbil (WireGuard orchestrator)
+gerbil:
+  enabled: true
+  image:
+    repository: fosrl/gerbil
+    tag: "1.3.0"
+    pullPolicy: IfNotPresent
+  port: 51820
+  # WireGuard network configuration
+  wireguard:
+    network: "10.99.0.0/24"
+    serverIp: "10.99.0.1"
+    interface: "wg0"
+
+# Traefik Edge Router (runs on gateway)
+traefik:
+  enabled: true
+  image:
+    repository: traefik
+    tag: "v3.4.0"
+    pullPolicy: IfNotPresent
+  ports:
+    http: 80
+    https: 443
+    dashboard: 8080
+  # ACME (Let's Encrypt) configuration
+  acme:
+    enabled: true
+    email: "ssl@example.com"
+    staging: false
+    storage: "/etc/traefik/acme.json"
+  # Log level
+  logLevel: "INFO"
+
+# Service configuration
+service:
+  type: NodePort
+  # NodePort for external access on VPS
+  httpNodePort: 30080
+  httpsNodePort: 30443
+  wireguardNodePort: 30820
+  pangolinNodePort: 30001
+
+# Ingress (optional - for when accessing via another ingress)
+ingress:
+  enabled: false
+  className: traefik
+  annotations: {}
+  host: pangolin.example.com
+  tls:
+    enabled: true
+    secretName: pangolin-server-tls
+    clusterIssuer: letsencrypt
+
+# Persistence for certificates and configuration
+persistence:
+  enabled: true
+  storageClass: local-path
+  accessMode: ReadWriteOnce
+  size: 5Gi
+  # Mount paths
+  mounts:
+    traefik: /etc/traefik
+    wireguard: /etc/wireguard
+    pangolin: /app/config
+
+# Resource limits
+resources:
+  pangolin:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  gerbil:
+    limits:
+      cpu: 500m
+      memory: 256Mi
+    requests:
+      cpu: 100m
+      memory: 64Mi
+  traefik:
+    limits:
+      cpu: 1000m
+      memory: 512Mi
+    requests:
+      cpu: 200m
+      memory: 128Mi
+
+# Security Context
+securityContext:
+  runAsUser: 0  # Required for WireGuard and network operations
+  runAsGroup: 0
+  fsGroup: 0
+
+# Pod Security Context
+podSecurityContext:
+  # WireGuard needs NET_ADMIN capability and privileged mode
+  privileged: true
+
+# Node Selection - CRITICAL: Deploy on VPS gateway node only
+nodeSelector:
+  node-role.kubernetes.io/gateway: "true"
+
+# Tolerations - allow scheduling on gateway node
+tolerations:
+  - key: "node-role.kubernetes.io/gateway"
+    operator: "Equal"
+    value: "true"
+    effect: "NoSchedule"
+
+# Affinity
+affinity: {}
+
+# Health probes
+probes:
+  pangolin:
+    liveness:
+      enabled: true
+      initialDelaySeconds: 30
+      periodSeconds: 10
+    readiness:
+      enabled: true
+      initialDelaySeconds: 10
+      periodSeconds: 5
+  traefik:
+    liveness:
+      enabled: true
+      initialDelaySeconds: 10
+      periodSeconds: 10
+    readiness:
+      enabled: true
+      initialDelaySeconds: 5
+      periodSeconds: 5
+
+# Service Account
+serviceAccount:
+  create: true
+  automountServiceAccountToken: true
+  annotations: {}
+  name: ""
+
+# RBAC
+rbac:
+  create: true
+  rules: []
+
+# Network Policy
+networkPolicy:
+  enabled: true
+  # Allow all incoming traffic on gateway (public-facing)
+  allowAllIngress: true
+  # Egress rules
+  egressRules:
+    allowDNS: true
+    allowHTTPS: true
+    allowWireGuard: true
+    # Allow traffic to internal cluster via WireGuard tunnel
+    allowCluster: true
+
+# Consul integration (for service discovery)
+consul:
+  enabled: true
+  tags:
+    - pangolin-server
+    - gateway
+    - vpn
+
+# Vault integration for secrets
+vault:
+  enabled: true
+  role: "pangolin-server-role"
+  secrets:
+    - name: wireguard-keys
+      path: "secret/data/vpn/wireguard"
+
+# Metrics
+metrics:
+  enabled: true
+  port: 9100
+  path: "/metrics"
+  interval: "30s"
+  scrapeTimeout: "10s"
+
+# Pod Disruption Budget
+podDisruptionBudget:
+  enabled: false  # Single replica on VPS
+  minAvailable: 1
+
+# Host networking mode (required for VPN gateway)
+hostNetwork: true
+
+# DNS Policy when using hostNetwork
+dnsPolicy: ClusterFirstWithHostNet

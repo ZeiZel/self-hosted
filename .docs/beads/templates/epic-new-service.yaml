@@ -1,0 +1,132 @@
+# Beads Task Template: New Service Deployment
+# Use: bd create --file .docs/beads/templates/epic-new-service.yaml
+
+template: epic-new-service
+title: "[Service] Deploy {service_name}"
+type: epic
+priority: 2  # P2 = medium
+
+description: |
+  ## Overview
+  Deploy {service_name} to the self-hosted platform.
+
+  ## Service Information
+  - **Name**: {service_name}
+  - **Namespace**: {namespace}
+  - **Type**: {web-app|api|worker|database}
+  - **Image**: {image_repository}:{version}
+  - **Documentation**: {upstream_docs_url}
+
+  ## Requirements
+  Reference: .docs/requirements.md section {section_ref}
+
+  ### Dependencies
+  - [ ] PostgreSQL database
+  - [ ] MongoDB database
+  - [ ] Valkey cache
+  - [ ] MinIO storage
+  - [ ] Authentik SSO
+  - [ ] Vault secrets
+
+  ### Resources
+  - CPU: {cpu_request} / {cpu_limit}
+  - Memory: {memory_request} / {memory_limit}
+  - Storage: {storage_size}
+
+  ## Implementation Checklist
+  Based on .docs/arch-rules.md:
+
+  ### Helm Chart Creation
+  - [ ] Create kubernetes/charts/{service}/
+  - [ ] Chart.yaml with metadata
+  - [ ] values.yaml with defaults
+  - [ ] README.md
+
+  ### Mandatory Templates
+  - [ ] _helpers.tpl
+  - [ ] serviceaccount.yaml
+  - [ ] rbac.yaml (least privilege)
+  - [ ] networkpolicy.yaml (explicit rules)
+  - [ ] deployment.yaml (security context, probes)
+  - [ ] service.yaml
+  - [ ] ingress.yaml (Authentik middleware)
+  - [ ] servicemonitor.yaml
+  - [ ] pdb.yaml
+  - [ ] tests/test-connection.yaml
+
+  ### Configuration
+  - [ ] Database connection to .db namespace
+  - [ ] Vault annotations for secrets
+  - [ ] Health checks (liveness, readiness, startup)
+  - [ ] Resource requests/limits
+
+  ### Registration
+  - [ ] Add to kubernetes/apps/_others.yaml
+  - [ ] Create kubernetes/releases/{service}.yaml.gotmpl
+
+  ### Validation
+  - [ ] helm lint passes
+  - [ ] kubeval validates
+  - [ ] Deploy successful
+  - [ ] Pod Running
+  - [ ] Helm test passes
+  - [ ] .docs/architecture.md updated
+
+subtasks:
+  - title: "Research {service_name} requirements"
+    type: task
+    agent: spec-analyst
+    description: |
+      Review upstream documentation for:
+      - Required environment variables
+      - Database requirements
+      - Storage requirements
+      - Health check endpoints
+      - Metrics endpoint
+
+  - title: "Create Helm chart for {service_name}"
+    type: task
+    agent: spec-developer
+    description: |
+      1. Copy similar chart from kubernetes/charts/
+      2. Customize for {service_name}
+      3. Follow .docs/arch-rules.md HELM-* patterns
+      4. Ensure all mandatory templates
+
+  - title: "Configure {service_name} deployment"
+    type: task
+    agent: spec-developer
+    description: |
+      1. Add to kubernetes/apps/_others.yaml
+      2. Create releases/{service}.yaml.gotmpl
+      3. Configure database connections
+      4. Add Vault secret annotations
+
+  - title: "Test {service_name} deployment"
+    type: task
+    agent: spec-tester
+    description: |
+      1. helm lint kubernetes/charts/{service}
+      2. helmfile -e k8s diff --selector name={service}
+      3. Deploy and verify
+      4. Run Helm tests
+
+  - title: "Review {service_name} security"
+    type: task
+    agent: spec-reviewer
+    description: |
+      Verify:
+      - NetworkPolicy rules correct
+      - RBAC minimal permissions
+      - Security context applied
+      - No hardcoded secrets
+      - Database using .db namespace
+
+  - title: "Update documentation for {service_name}"
+    type: task
+    agent: technical-writer
+    description: |
+      Update .docs/architecture.md:
+      - Add to Component Inventory
+      - Document dependencies
+      - Add to resource allocation

@@ -1,9 +1,21 @@
 apiVersion: v2
 name: pangolin-client
-description: A Helm chart for Pangolin VPN client in Kubernetes
+description: Pangolin VPN client - connects internal cluster to Pangolin Server gateway
 type: application
-version: 0.1.0
-appVersion: "latest"
+version: 1.0.0
+appVersion: "1.3.0"
+keywords:
+  - vpn
+  - client
+  - wireguard
+  - pangolin
+home: https://github.com/ZeiZel/self-hosted
+sources:
+  - https://github.com/fosrl/pangolin
+  - https://github.com/fosrl/newt
+maintainers:
+  - name: Platform Team
+    email: platform@example.com
 
 
 

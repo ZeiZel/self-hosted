@@ -1,0 +1,104 @@
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: glance-tls
+  namespace: infrastructure
+spec:
+  secretName: glance-tls
+  issuerRef:
+    name: selfsigned-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - glance.zeizel.ru
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: bytebase-tls
+  namespace: infrastructure
+spec:
+  secretName: bytebase-tls
+  issuerRef:
+    name: selfsigned-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - bytebase.zeizel.ru
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: zerobyte-tls
+  namespace: infrastructure
+spec:
+  secretName: zerobyte-tls
+  issuerRef:
+    name: selfsigned-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - zerobyte.zeizel.ru
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: vault-tls
+  namespace: service
+spec:
+  secretName: vault-tls
+  issuerRef:
+    name: selfsigned-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - vault.zeizel.ru
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: authentik-tls
+  namespace: service
+spec:
+  secretName: authentik-tls
+  issuerRef:
+    name: selfsigned-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - authentik.zeizel.ru
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: hub-tls
+  namespace: code
+spec:
+  secretName: hub-tls
+  issuerRef:
+    name: selfsigned-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - hub.zeizel.ru
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: teamcity-tls
+  namespace: code
+spec:
+  secretName: teamcity-tls
+  issuerRef:
+    name: selfsigned-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - teamcity.zeizel.ru
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: stalwart-tls
+  namespace: social
+spec:
+  secretName: stalwart-tls
+  issuerRef:
+    name: selfsigned-ca-issuer
+    kind: ClusterIssuer
+  dnsNames:
+    - mail.zeizel.ru

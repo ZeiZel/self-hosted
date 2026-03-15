@@ -30,27 +30,49 @@ spec:
         prometheus.io/port: "{{ .Values.pangolin.port }}"
         prometheus.io/path: "/metrics"
     spec:
+      serviceAccountName: {{ include "pangolin.serviceAccountName" . }}
       securityContext:
-        {{- toYaml .Values.securityContext | nindent 8 }}
+        runAsNonRoot: true
+        runAsUser: {{ .Values.securityContext.runAsUser | default 1000 }}
+        runAsGroup: {{ .Values.securityContext.runAsGroup | default 1000 }}
+        fsGroup: {{ .Values.securityContext.fsGroup | default 1000 }}
+        seccompProfile:
+          type: RuntimeDefault
       containers:
-        - name: pangolin-client
+        - name: newt-client
           image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
           imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false  # Newt needs to write config
+            capabilities:
+              add:
+                - NET_ADMIN  # Required for tunnel creation
+              drop:
+                - ALL
           ports:
             - containerPort: {{ .Values.pangolin.port }}
               name: http
           env:
-            - name: PANGOLIN_SERVER_URL
+            - name: NEWT_SERVER_URL
               value: "https://{{ .Values.pangolin.serverEndpoint }}"
-            - name: PANGOLIN_CLIENT_NAME
+            - name: NEWT_CLIENT_ID
               value: "{{ .Values.pangolin.clientName }}"
+            - name: NEWT_CONFIG_PATH
+              value: "/app/config/config.yml"
+          workingDir: /app
           resources:
             {{- toYaml .Values.resources | nindent 12 }}
-          {{- if .Values.persistence.enabled }}
           volumeMounts:
+            - name: config-file
+              mountPath: /app/config/config.yml
+              subPath: config.yml
+            - name: runtime-config
+              mountPath: /app/runtime
+            {{- if .Values.persistence.enabled }}
             - name: certificates
               mountPath: {{ .Values.persistence.mountPath }}
-          {{- end }}
+            {{- end }}
           {{- if .Values.probes.liveness.enabled }}
           livenessProbe:
             httpGet:
@@ -67,10 +89,15 @@ spec:
             initialDelaySeconds: {{ .Values.probes.readiness.initialDelaySeconds }}
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
           {{- end }}
-      {{- if .Values.persistence.enabled }}
       volumes:
+        - name: config-file
+          configMap:
+            name: {{ include "pangolin.fullname" . }}-config
+        - name: runtime-config
+          emptyDir: {}
+        {{- if .Values.persistence.enabled }}
         - name: certificates
           persistentVolumeClaim:
             claimName: {{ include "pangolin.fullname" . }}-pvc
-      {{- end }}
+        {{- end }}
 

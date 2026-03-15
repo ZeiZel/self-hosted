@@ -1,0 +1,182 @@
+---
+# Observability stack deployment
+# Monitoring (Prometheus + Grafana) and Logging (Loki + Promtail)
+# Can be run independently with: --tags infrastructure,observability
+
+- name: Display observability deployment plan
+  debug:
+    msg:
+      - "Deploying observability stack"
+      - "Services: Monitoring (Prometheus + Grafana), Logging (Loki + Promtail)"
+  tags: [infrastructure, observability]
+
+# ============================================================
+# MONITORING (Prometheus + Grafana + Alertmanager)
+# ============================================================
+
+- name: Deploy Monitoring stack
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=monitoring
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: monitoring_deploy
+  changed_when: "'has been upgraded' in monitoring_deploy.stdout or 'installed' in monitoring_deploy.stdout"
+  tags: [infrastructure, observability, monitoring]
+
+- name: Wait for Prometheus pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n service -l app.kubernetes.io/name=prometheus
+    --timeout=300s
+  register: prometheus_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, observability, monitoring]
+
+- name: Wait for Grafana pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n service -l app.kubernetes.io/name=grafana
+    --timeout=180s
+  register: grafana_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, observability, monitoring]
+
+- name: Wait for Alertmanager pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n service -l app.kubernetes.io/name=alertmanager
+    --timeout=180s
+  register: alertmanager_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, observability, monitoring]
+
+- name: Get Prometheus service endpoint
+  command: kubectl get svc -n service prometheus-server -o jsonpath='{.spec.clusterIP}:{.spec.ports[0].port}'
+  register: prometheus_endpoint
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, observability, monitoring]
+
+- name: Get Grafana service endpoint
+  command: kubectl get svc -n service grafana -o jsonpath='{.spec.clusterIP}:{.spec.ports[0].port}'
+  register: grafana_endpoint
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, observability, monitoring]
+
+- name: Display monitoring status
+  debug:
+    msg:
+      - "Monitoring stack deployment:"
+      - "  Prometheus: {{ prometheus_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "  Grafana: {{ grafana_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "  Alertmanager: {{ alertmanager_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "Endpoints:"
+      - "  Prometheus: {{ prometheus_endpoint.stdout | default('N/A') }}"
+      - "  Grafana: {{ grafana_endpoint.stdout | default('N/A') }}"
+  tags: [infrastructure, observability, monitoring]
+
+# ============================================================
+# LOGGING (Loki + Promtail)
+# ============================================================
+
+- name: Deploy Logging stack
+  command: >
+    helmfile -e {{ helmfile_environment }}
+    apply
+    --selector name=logging
+    --suppress-secrets
+  args:
+    chdir: "{{ kubernetes_path }}"
+  environment:
+    KUBECONFIG: "{{ kubeconfig_path }}"
+  register: logging_deploy
+  changed_when: "'has been upgraded' in logging_deploy.stdout or 'installed' in logging_deploy.stdout"
+  tags: [infrastructure, observability, logging]
+
+- name: Wait for Loki pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n service -l app.kubernetes.io/name=loki
+    --timeout=300s
+  register: loki_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, observability, logging]
+
+- name: Wait for Promtail pods to be ready
+  command: >
+    kubectl wait --for=condition=Ready
+    pods -n service -l app.kubernetes.io/name=promtail
+    --timeout=180s
+  register: promtail_ready
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, observability, logging]
+
+- name: Get Loki service endpoint
+  command: kubectl get svc -n service loki -o jsonpath='{.spec.clusterIP}:{.spec.ports[0].port}'
+  register: loki_endpoint
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, observability, logging]
+
+- name: Display logging status
+  debug:
+    msg:
+      - "Logging stack deployment:"
+      - "  Loki: {{ loki_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "  Promtail: {{ promtail_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "Endpoints:"
+      - "  Loki: {{ loki_endpoint.stdout | default('N/A') }}"
+  tags: [infrastructure, observability, logging]
+
+# ============================================================
+# VERIFICATION
+# ============================================================
+
+- name: Verify Prometheus can scrape targets
+  command: >
+    kubectl exec -n service deploy/prometheus-server --
+    wget -qO- http://localhost:9090/api/v1/targets | head -100
+  register: prometheus_targets
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, observability, verify]
+
+- name: Verify Loki is receiving logs
+  command: >
+    kubectl exec -n service deploy/loki --
+    wget -qO- http://localhost:3100/ready
+  register: loki_health
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, observability, verify]
+
+- name: Observability deployment summary
+  debug:
+    msg:
+      - "========================================="
+      - "Observability Stack Deployment Complete"
+      - "========================================="
+      - "Monitoring:"
+      - "  Prometheus: {{ prometheus_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "  Grafana: {{ grafana_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "  Alertmanager: {{ alertmanager_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "Logging:"
+      - "  Loki: {{ loki_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "  Promtail: {{ promtail_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - "========================================="
+      - "Access URLs (via Traefik ingress):"
+      - "  Grafana: https://grafana.{{ domain.local | default('zeizel.local') }}"
+      - "  Prometheus: https://prometheus.{{ domain.local | default('zeizel.local') }}"
+      - "========================================="
+  tags: [infrastructure, observability]

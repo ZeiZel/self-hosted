@@ -1,23 +1,16 @@
 apps:
-  # BASE
+  # =====================================================
+  # TIER 0: CORE SERVICES (Always deployed, non-selectable)
+  # These services MUST be deployed first and cannot be disabled
+  # =====================================================
 
   namespaces:
     repo: charts
     chart: namespaces
     namespace: default
     version: v1.0.0
-
-  # STORAGE
-
-  openebs:
-    repo: openebs
-    chart: openebs
-    namespace: openebs
-    version: "4.3.0"
-    needs:
-      - default/namespaces
-
-  # INGRESS
+    tier: core
+    mandatory: true
 
   traefik:
     repo: traefik
@@ -25,109 +18,18 @@ apps:
     namespace: ingress
     version: v37.2.0
     createNamespace: true
-
-  cert-manager:
-    repo: jetstack
-    chart: cert-manager
-    version: v1.19.1
-    namespace: service
+    tier: core
+    mandatory: true
     needs:
-      - service/vault
-
-  penpot:
-    repo: penpot
-    chart: penpot
-    namespace: productivity
-    version: v0.28.0
-    needs:
-      - ingress/traefik
-      - service/vault
-
-  # DATABASES
-  # Bitnami database charts - OCI registry
-  # Latest versions as of Feb 2026
-  valkey:
-    repo: bitnami
-    chart: valkey
-    namespace: db
-    version: "5.4.3"
-    needs:
-      - ingress/traefik
-      - service/vault
-
-  postgres:
-    repo: bitnami
-    chart: postgresql
-    namespace: db
-    version: "18.5.1"
-    needs:
-      - ingress/traefik
-      - service/vault
-
-  minio:
-    repo: bitnami
-    chart: minio
-    namespace: db
-    version: "17.0.21"
-    needs:
-      - ingress/traefik
-      - service/vault
-
-  mongodb:
-    repo: bitnami
-    chart: mongodb
-    namespace: db
-    version: "18.6.1"
-    needs:
-      - ingress/traefik
-      - service/vault
-
-  rabbitmq:
-    repo: bitnami
-    chart: rabbitmq
-    namespace: db
-    version: "16.0.14"
-    needs:
-      - ingress/traefik
-      - service/vault
-
-  clickhouse:
-    repo: bitnami
-    chart: clickhouse
-    namespace: db
-    version: "9.4.4"
-    needs:
-      - ingress/traefik
-      - service/vault
-
-  mysql:
-    repo: bitnami
-    chart: mysql
-    namespace: db
-    version: "14.0.3"
-    needs:
-      - ingress/traefik
-      - service/vault
-
-  supabase:
-    repo: charts
-    chart: supabase
-    namespace: db
-    version: "v1.0.0"  # Custom chart
-    needs:
-      - db/postgres
-      - db/minio
-      - db/valkey
-      - ingress/traefik
-      - service/vault
-
-  # SERVICES
+      - default/namespaces
 
   consul:
     repo: charts
     chart: consul
     version: "1.0.0"
     namespace: service
+    tier: core
+    mandatory: true
     needs:
       - ingress/traefik
 
@@ -136,14 +38,77 @@ apps:
     chart: vault
     namespace: service
     version: v1.0.0
+    tier: core
+    mandatory: true
     needs:
       - ingress/traefik
+
+  cert-manager:
+    repo: jetstack
+    chart: cert-manager
+    version: v1.19.1
+    namespace: service
+    tier: core
+    mandatory: true
+    needs:
+      - service/vault
+
+  pangolin-server:
+    repo: charts
+    chart: pangolin-server
+    namespace: infrastructure
+    version: v1.0.0
+    tier: core
+    mandatory: true
+    needs:
+      - service/vault
+      - service/cert-manager
+
+  pangolin:
+    repo: charts
+    chart: pangolin
+    namespace: infrastructure
+    version: v1.0.0
+    tier: core
+    mandatory: true
+    needs:
+      - service/vault
+      - infrastructure/pangolin-server
+
+  authentik:
+    repo: authentik
+    chart: authentik
+    namespace: service
+    version: "2024.12.3"
+    tier: core
+    mandatory: true
+    needs:
+      - ingress/traefik
+      - db/postgres
+      - db/valkey
+      - service/vault
+
+  # =====================================================
+  # TIER 1: INFRASTRUCTURE SERVICES (Recommended)
+  # =====================================================
+
+  openebs:
+    repo: openebs
+    chart: openebs
+    namespace: openebs
+    version: "4.3.0"
+    tier: infrastructure
+    mandatory: true
+    needs:
+      - default/namespaces
 
   monitoring:
     repo: charts
     chart: monitoring
     version: v1.0.0
     namespace: service
+    tier: infrastructure
+    mandatory: true
     needs:
       - ingress/traefik
       - service/vault
@@ -153,6 +118,8 @@ apps:
     chart: logging
     version: v1.0.0
     namespace: service
+    tier: infrastructure
+    mandatory: true
     needs:
       - ingress/traefik
       - service/vault
@@ -164,15 +131,121 @@ apps:
     chart: glance
     namespace: infrastructure
     version: v1.0.0
+    tier: infrastructure
+    mandatory: true
     needs:
       - ingress/traefik
       - service/vault
 
+  # =====================================================
+  # TIER 2: DATABASES (User-selectable)
+  # postgres and valkey are mandatory (required for authentik)
+  # =====================================================
+
+  valkey:
+    repo: bitnami
+    chart: valkey
+    namespace: db
+    version: "5.4.3"
+    tier: database
+    mandatory: true
+    needs:
+      - ingress/traefik
+      - service/vault
+
+  postgres:
+    repo: bitnami
+    chart: postgresql
+    namespace: db
+    version: "18.5.1"
+    tier: database
+    mandatory: true
+    needs:
+      - ingress/traefik
+      - service/vault
+
+  minio:
+    repo: bitnami
+    chart: minio
+    namespace: db
+    version: "17.0.21"
+    tier: database
+    mandatory: false
+    needs:
+      - ingress/traefik
+      - service/vault
+
+  mongodb:
+    repo: bitnami
+    chart: mongodb
+    namespace: db
+    version: "18.6.1"
+    tier: database
+    mandatory: false
+    needs:
+      - ingress/traefik
+      - service/vault
+
+  rabbitmq:
+    repo: bitnami
+    chart: rabbitmq
+    namespace: db
+    version: "16.0.14"
+    tier: database
+    mandatory: false
+    needs:
+      - ingress/traefik
+      - service/vault
+
+  clickhouse:
+    repo: bitnami
+    chart: clickhouse
+    namespace: db
+    version: "9.4.4"
+    tier: database
+    mandatory: false
+    needs:
+      - ingress/traefik
+      - service/vault
+
+  mysql:
+    repo: bitnami
+    chart: mysql
+    namespace: db
+    version: "14.0.3"
+    tier: database
+    mandatory: false
+    needs:
+      - ingress/traefik
+      - service/vault
+
+  supabase:
+    repo: charts
+    chart: supabase
+    namespace: db
+    version: "v1.0.0"
+    tier: database
+    mandatory: false
+    needs:
+      - db/postgres
+      - db/minio
+      - db/valkey
+      - ingress/traefik
+      - service/vault
+
+  # =====================================================
+  # TIER 3: APPLICATION SERVICES (User-selectable)
+  # All tier 3 services are optional (mandatory: false)
+  # =====================================================
+
+  # INFRASTRUCTURE TOOLS
   devtron:
     repo: devtron
     chart: devtron
     namespace: devtroncd
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - db/postgres
@@ -183,6 +256,8 @@ apps:
     chart: bytebase
     namespace: infrastructure
     version: v1.0.0
+    tier: application
+    mandatory: true
     needs:
       - ingress/traefik
       - db/postgres
@@ -193,25 +268,8 @@ apps:
     chart: harbor
     namespace: infrastructure
     version: "1.16.2"
-    needs:
-      - ingress/traefik
-      - db/postgres
-      - db/valkey
-      - service/vault
-
-  pangolin:
-    repo: charts
-    chart: pangolin
-    namespace: infrastructure
-    version: v1.0.0
-    needs:
-      - service/vault
-
-  authentik:
-    repo: authentik
-    chart: authentik
-    namespace: service
-    version: "2024.12.3"  # Pinned Feb 2026
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - db/postgres
@@ -219,11 +277,24 @@ apps:
       - service/vault
 
   # PRODUCTIVITY
+  penpot:
+    repo: penpot
+    chart: penpot
+    namespace: productivity
+    version: v0.28.0
+    tier: application
+    mandatory: false
+    needs:
+      - ingress/traefik
+      - service/vault
+
   notesnook:
     repo: charts
     chart: notesnook
     namespace: productivity
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - service/vault
@@ -233,6 +304,8 @@ apps:
     chart: excalidraw
     namespace: productivity
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - service/vault
@@ -242,6 +315,8 @@ apps:
     chart: affine
     namespace: productivity
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - db/postgres
@@ -255,6 +330,8 @@ apps:
     chart: hub
     namespace: code
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - db/postgres
@@ -265,6 +342,8 @@ apps:
     chart: youtrack
     namespace: code
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - code/hub
@@ -276,6 +355,8 @@ apps:
     chart: teamcity
     namespace: code
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - db/postgres
@@ -285,7 +366,9 @@ apps:
     repo: gitlab
     chart: gitlab
     namespace: code
-    version: "8.8.2"  # Pinned Feb 2026 (GitLab 17.x)
+    version: "8.8.2"
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - db/postgres
@@ -297,6 +380,8 @@ apps:
     chart: gitlab-ingress
     namespace: code
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - code/gitlab
 
@@ -305,6 +390,8 @@ apps:
     chart: coder
     namespace: code
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - service/cert-manager
@@ -319,6 +406,8 @@ apps:
     chart: stoat
     namespace: social
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - db/valkey
@@ -334,6 +423,8 @@ apps:
     chart: stalwart
     namespace: social
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - service/authentik
@@ -345,6 +436,8 @@ apps:
     chart: vaultwarden
     namespace: data
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - db/postgres
@@ -355,6 +448,8 @@ apps:
     chart: syncthing
     namespace: data
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - service/vault
@@ -364,6 +459,8 @@ apps:
     chart: nextcloud
     namespace: data
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - db/postgres
@@ -375,18 +472,22 @@ apps:
     chart: rybbit
     namespace: data
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - db/postgres
       - db/clickhouse
       - service/vault
 
-  # INFRASTRUCTURE
+  # INFRASTRUCTURE APPS
   remnawave:
     repo: charts
     chart: remnawave
     namespace: infrastructure
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - service/cert-manager
@@ -401,6 +502,8 @@ apps:
     chart: vert
     namespace: utilities
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
 
@@ -409,6 +512,8 @@ apps:
     chart: metube
     namespace: utilities
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
 
@@ -417,7 +522,9 @@ apps:
     repo: kestra
     chart: kestra
     namespace: automation
-    version: "1.0.38"  # Updated Feb 2026
+    version: "1.0.38"
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - service/cert-manager
@@ -431,6 +538,8 @@ apps:
     chart: n8n
     namespace: automation
     version: "1.0.0"
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - service/consul
@@ -444,6 +553,8 @@ apps:
     chart: ghost
     namespace: content
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - service/cert-manager
@@ -457,6 +568,8 @@ apps:
     chart: openclaw
     namespace: automation
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - service/cert-manager
@@ -469,6 +582,8 @@ apps:
     chart: zerobyte
     namespace: infrastructure
     version: v1.0.0
+    tier: application
+    mandatory: false
     needs:
       - ingress/traefik
       - service/vault

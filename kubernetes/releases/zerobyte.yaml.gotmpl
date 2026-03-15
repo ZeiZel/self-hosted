@@ -1,9 +1,9 @@
 namespace: infrastructure
 
-# Zerobyte configuration
+# Zerobyte configuration - Restic Browser web UI
 image:
-  repository: kiwimato/zerobyte
-  tag: "latest"
+  repository: floibach/restic-browser
+  tag: "v0.1.8"
   pullPolicy: IfNotPresent
 
 replicaCount: 1
@@ -78,7 +78,7 @@ ingress:
   tls:
     enabled: true
     secretName: zerobyte-tls
-    clusterIssuer: letsencrypt
+    clusterIssuer: selfsigned-ca-issuer
 
 # Authentik protection
 authentik:

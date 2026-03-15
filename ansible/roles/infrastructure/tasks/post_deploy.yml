@@ -1,0 +1,288 @@
+---
+# Post-deployment tasks
+# Extracts credentials from deployed services and generates deployment report
+
+- name: Display post-deployment plan
+  debug:
+    msg:
+      - "Running post-deployment tasks"
+      - "1. Extract service credentials"
+      - "2. Generate deployment report"
+      - "3. Display access URLs"
+  tags: [infrastructure, post-deploy]
+
+# ============================================================
+# CREDENTIAL EXTRACTION
+# ============================================================
+
+# Vault - root token is already saved during init (vault_unseal.yml)
+- name: Check for existing Vault keys file
+  find:
+    paths: "{{ lookup('env', 'HOME') }}"
+    patterns: ".vault-keys-*.txt"
+  delegate_to: localhost
+  register: vault_keys_files
+  tags: [infrastructure, post-deploy, credentials]
+
+- name: Read latest Vault keys file
+  slurp:
+    src: "{{ (vault_keys_files.files | sort(attribute='mtime') | last).path }}"
+  delegate_to: localhost
+  register: vault_keys_content
+  when: vault_keys_files.files | length > 0
+  tags: [infrastructure, post-deploy, credentials]
+
+- name: Parse Vault root token
+  set_fact:
+    vault_root_token: "{{ (vault_keys_content.content | b64decode | regex_search('Root Token: (.+)', '\\1')) | first }}"
+  when: vault_keys_content is defined and vault_keys_content.content is defined
+  failed_when: false
+  tags: [infrastructure, post-deploy, credentials]
+
+# Authentik - extract bootstrap token from pod logs
+- name: Get Authentik server pod name
+  command: >
+    kubectl get pods -n service -l app.kubernetes.io/name=authentik,app.kubernetes.io/component=server
+    -o jsonpath='{.items[0].metadata.name}'
+  register: authentik_pod
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, post-deploy, credentials]
+
+- name: Extract Authentik bootstrap token from logs
+  command: >
+    kubectl logs -n service {{ authentik_pod.stdout }} --tail=1000
+  register: authentik_logs
+  changed_when: false
+  failed_when: false
+  when: authentik_pod.stdout != ""
+  tags: [infrastructure, post-deploy, credentials]
+
+- name: Parse Authentik bootstrap password
+  set_fact:
+    authentik_bootstrap_password: "{{ authentik_logs.stdout | regex_search('Initial admin password: ([^\\s]+)', '\\1') | default(['not-found']) | first }}"
+  when: authentik_logs is defined and authentik_logs.stdout is defined
+  failed_when: false
+  tags: [infrastructure, post-deploy, credentials]
+
+# Alternative: Extract from environment or secret
+- name: Get Authentik secret
+  command: >
+    kubectl get secret -n service authentik -o jsonpath='{.data.AUTHENTIK_BOOTSTRAP_PASSWORD}'
+  register: authentik_secret
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, post-deploy, credentials]
+
+- name: Decode Authentik bootstrap password from secret
+  set_fact:
+    authentik_bootstrap_password: "{{ authentik_secret.stdout | b64decode }}"
+  when:
+    - authentik_secret is defined
+    - authentik_secret.stdout is defined
+    - authentik_secret.stdout != ""
+    - authentik_bootstrap_password is not defined or authentik_bootstrap_password == "not-found"
+  failed_when: false
+  tags: [infrastructure, post-deploy, credentials]
+
+# Grafana - extract admin password from secret
+- name: Get Grafana admin password
+  command: >
+    kubectl get secret -n service grafana -o jsonpath='{.data.admin-password}'
+  register: grafana_secret
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, post-deploy, credentials]
+
+- name: Decode Grafana admin password
+  set_fact:
+    grafana_admin_password: "{{ grafana_secret.stdout | b64decode }}"
+  when: grafana_secret is defined and grafana_secret.stdout is defined and grafana_secret.stdout != ""
+  failed_when: false
+  tags: [infrastructure, post-deploy, credentials]
+
+# GitLab - extract root password (if deployed)
+- name: Get GitLab root password
+  command: >
+    kubectl get secret -n code gitlab-gitlab-initial-root-password -o jsonpath='{.data.password}'
+  register: gitlab_secret
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, post-deploy, credentials]
+
+- name: Decode GitLab root password
+  set_fact:
+    gitlab_root_password: "{{ gitlab_secret.stdout | b64decode }}"
+  when: gitlab_secret is defined and gitlab_secret.stdout is defined and gitlab_secret.stdout != ""
+  failed_when: false
+  tags: [infrastructure, post-deploy, credentials]
+
+# ============================================================
+# GATHER SERVICE URLS
+# ============================================================
+
+- name: Get all ingress resources
+  command: kubectl get ingress -A -o json
+  register: all_ingresses
+  changed_when: false
+  failed_when: false
+  tags: [infrastructure, post-deploy, urls]
+
+- name: Parse ingress URLs
+  set_fact:
+    service_urls: "{{ (all_ingresses.stdout | from_json).items | map(attribute='spec.rules') | flatten | map(attribute='host') | list | unique }}"
+  when: all_ingresses is defined and all_ingresses.stdout is defined
+  failed_when: false
+  tags: [infrastructure, post-deploy, urls]
+
+# ============================================================
+# GENERATE DEPLOYMENT REPORT
+# ============================================================
+
+- name: Set deployment report path
+  set_fact:
+    deployment_report_path: "{{ lookup('env', 'HOME') }}/.selfhost-deployment-report.txt"
+  tags: [infrastructure, post-deploy, report]
+
+- name: Generate deployment report
+  copy:
+    content: |
+      =========================================
+      SELF-HOSTED DEPLOYMENT REPORT
+      Generated: {{ ansible_date_time.iso8601 }}
+      =========================================
+
+      ## CREDENTIALS
+
+      VAULT
+        Status: Initialized and Unsealed
+        Root Token: {{ vault_root_token | default('See ~/.vault-keys-*.txt') }}
+        Unseal Keys: Stored in ~/.vault-keys-*.txt
+        Note: Store these keys securely! You cannot recover them later.
+
+      AUTHENTIK
+        Admin User: akadmin
+        Bootstrap Password: {{ authentik_bootstrap_password | default('Check pod logs or secret') }}
+        Note: Change password on first login at https://authentik.{{ domain.local | default('zeizel.local') }}
+
+      GRAFANA
+        Admin User: admin
+        Admin Password: {{ grafana_admin_password | default('Check grafana secret') }}
+
+      {% if gitlab_root_password is defined and gitlab_root_password != '' %}
+      GITLAB
+        Root User: root
+        Root Password: {{ gitlab_root_password }}
+        Note: Change password on first login
+      {% endif %}
+
+      ## SERVICE URLs
+
+      ### Local Access (*.{{ domain.local | default('zeizel.local') }})
+      {% for url in service_urls | default([]) | select('search', domain.local | default('zeizel.local')) | list %}
+        - https://{{ url }}
+      {% endfor %}
+      {% if service_urls | default([]) | select('search', domain.local | default('zeizel.local')) | list | length == 0 %}
+        - https://vault.{{ domain.local | default('zeizel.local') }}
+        - https://authentik.{{ domain.local | default('zeizel.local') }}
+        - https://grafana.{{ domain.local | default('zeizel.local') }}
+        - https://glance.{{ domain.local | default('zeizel.local') }}
+        - https://bytebase.{{ domain.local | default('zeizel.local') }}
+        - https://prometheus.{{ domain.local | default('zeizel.local') }}
+      {% endif %}
+
+      ### Public Access (*.{{ domain.public | default('zeizel.ru') }})
+      {% for url in service_urls | default([]) | select('search', domain.public | default('zeizel.ru')) | list %}
+        - https://{{ url }}
+      {% endfor %}
+      {% if service_urls | default([]) | select('search', domain.public | default('zeizel.ru')) | list | length == 0 %}
+        - https://vault.{{ domain.public | default('zeizel.ru') }}
+        - https://authentik.{{ domain.public | default('zeizel.ru') }}
+      {% endif %}
+
+      ## MANUAL SETUP REQUIRED
+
+      1. VAULT
+         - Status: Already unsealed, root token saved
+         - Action: Configure authentication methods and secret engines
+
+      2. AUTHENTIK
+         - Status: Running with bootstrap token
+         - Action: Login with akadmin and change password
+         - Action: Configure OAuth providers for other services
+
+      3. DNS
+         - Action: Add A records for *.{{ domain.public | default('zeizel.ru') }} -> {{ hostvars[groups['gateway'][0]]['ansible_host'] | default('VPS_IP') }}
+
+      4. LOCAL ACCESS
+         - Run: selfhost local-access
+         - Or manually add entries to /etc/hosts pointing to Traefik IP
+
+      ## INFRASTRUCTURE STATUS
+
+      Kubernetes Cluster: Running
+      Pangolin VPN: {{ pangolin_ready.rc | default(1) == 0 | ternary('Connected', 'Check manually') }}
+      Storage (OpenEBS): {{ openebs_ready.rc | default(1) == 0 | ternary('Ready', 'Check manually') }}
+
+      =========================================
+      End of Deployment Report
+      =========================================
+    dest: "{{ deployment_report_path }}"
+    mode: '0600'
+  delegate_to: localhost
+  tags: [infrastructure, post-deploy, report]
+
+- name: Display deployment report location
+  debug:
+    msg:
+      - "Deployment report saved to: {{ deployment_report_path }}"
+      - "View with: cat {{ deployment_report_path }}"
+  tags: [infrastructure, post-deploy, report]
+
+# ============================================================
+# DISPLAY SUMMARY
+# ============================================================
+
+- name: Display deployment summary
+  debug:
+    msg:
+      - "========================================="
+      - "DEPLOYMENT COMPLETED SUCCESSFULLY"
+      - "========================================="
+      - ""
+      - "## CREDENTIALS"
+      - ""
+      - "VAULT"
+      - "  root_token: {{ vault_root_token | default('See ~/.vault-keys-*.txt') }}"
+      - "  unseal_keys: Stored in ~/.vault-keys-*.txt"
+      - ""
+      - "AUTHENTIK"
+      - "  admin_user: akadmin"
+      - "  bootstrap_password: {{ authentik_bootstrap_password | default('Check pod logs') }}"
+      - "  note: Change password on first login"
+      - ""
+      - "GRAFANA"
+      - "  admin_user: admin"
+      - "  admin_password: {{ grafana_admin_password | default('Check grafana secret') }}"
+      - ""
+      - "## SERVICE URLs"
+      - ""
+      - "### Local Access (*.{{ domain.local | default('zeizel.local') }})"
+      - "  - https://vault.{{ domain.local | default('zeizel.local') }}"
+      - "  - https://authentik.{{ domain.local | default('zeizel.local') }}"
+      - "  - https://grafana.{{ domain.local | default('zeizel.local') }}"
+      - "  - https://glance.{{ domain.local | default('zeizel.local') }}"
+      - ""
+      - "### Public Access (*.{{ domain.public | default('zeizel.ru') }})"
+      - "  - https://vault.{{ domain.public | default('zeizel.ru') }}"
+      - "  - https://authentik.{{ domain.public | default('zeizel.ru') }}"
+      - ""
+      - "## MANUAL SETUP REQUIRED"
+      - ""
+      - "1. Vault: Already unsealed, root token saved"
+      - "2. Authentik: Login with bootstrap token, change password"
+      - "3. DNS: Add A records for *.{{ domain.public | default('zeizel.ru') }} -> VPS IP"
+      - ""
+      - "Run 'selfhost local-access' to configure /etc/hosts"
+      - "========================================="
+  tags: [infrastructure, post-deploy]

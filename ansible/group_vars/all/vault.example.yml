@@ -187,6 +187,8 @@ apps:
     api_key: ''
 
   # Infrastructure
+  pangolin:                   # Pangolin VPN Server
+    admin_password: ''        # Admin UI password
   bytebase:
     admin_email: ''
     admin_password: ''

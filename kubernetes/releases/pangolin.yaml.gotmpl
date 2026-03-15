@@ -1,14 +1,56 @@
 namespace: infrastructure
 
+# Pangolin Client (Newt) Configuration
 pangolin:
-  serverEndpoint: "{{ .Values.infra.pangolinServerEndpoint }}"
+  # Connect to Pangolin Server running on VPS gateway via Docker
+  # Format: https://pangolin.<domain>
+  serverEndpoint: "pangolin.{{ .Values.domain.public }}"
   clientName: "k8s-cluster"
+  mode: "newt"
+  port: 3001
 
+# Image configuration
+image:
+  repository: fosrl/newt
+  tag: "1.10.0"
+  pullPolicy: IfNotPresent
+
+# Client does not need ingress
 ingress:
   enabled: false
 
+# Consul service discovery
 consul:
   enabled: true
   tags:
-    - pangolin
-    - vpn
+    - pangolin-client
+    - vpn-client
+    - cluster-tunnel
+
+# Vault integration for client secrets
+vault:
+  enabled: true
+  role: "pangolin-client-role"
+  secrets:
+    - name: client-credentials
+      path: "secret/data/vpn/client"
+
+# NetworkPolicy
+networkPolicy:
+  enabled: true
+  egressRules:
+    allowDatabases: false
+    allowConsul: true
+    allowVault: true
+    allowAuthentik: false
+
+# Persistence for certificates
+persistence:
+  enabled: true
+  storageClass: local-path
+  size: 1Gi
+
+# Metrics
+metrics:
+  enabled: true
+  interval: "30s"

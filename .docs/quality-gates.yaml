@@ -1,0 +1,177 @@
+# Quality Gates Configuration
+# Defines validation thresholds and validators for each development phase
+
+version: "1.0"
+
+gates:
+  # Planning phase - before implementation begins
+  planning:
+    threshold: 95
+    description: "Requirements and architecture must be fully understood"
+    validators:
+      - id: requirements_coverage
+        description: "All requirements from .docs/requirements.md understood"
+        weight: 30
+      - id: architecture_review
+        description: "Architecture patterns from .docs/arch-rules.md reviewed"
+        weight: 30
+      - id: current_state_check
+        description: "Current state in .docs/architecture.md analyzed"
+        weight: 20
+      - id: dependencies_identified
+        description: "Service dependencies mapped"
+        weight: 20
+
+  # Development phase - during implementation
+  development:
+    threshold: 85
+    description: "Code quality and security standards"
+    validators:
+      - id: helm_lint
+        description: "helm lint passes without errors"
+        command: "helm lint kubernetes/charts/{service}"
+        weight: 20
+      - id: kubeval
+        description: "Kubernetes manifests validate"
+        command: "helm template kubernetes/charts/{service} | kubeval"
+        weight: 15
+      - id: ansible_lint
+        description: "Ansible playbooks pass linting"
+        command: "cd ansible && ansible-lint *.yml"
+        weight: 15
+        condition: "ansible_changed"
+      - id: security_context
+        description: "Pods run as non-root with read-only filesystem"
+        weight: 15
+      - id: network_policy
+        description: "NetworkPolicy with explicit rules exists"
+        weight: 15
+      - id: rbac
+        description: "ServiceAccount and RBAC configured"
+        weight: 10
+      - id: secret_scan
+        description: "No hardcoded secrets"
+        command: "git diff | grep -Ei 'password|secret|token|api[_-]?key'"
+        expect_empty: true
+        weight: 10
+
+  # Validation phase - before merge/deploy
+  validation:
+    threshold: 95
+    description: "Full validation before deployment"
+    validators:
+      - id: all_tests_pass
+        description: "Helm tests and integration tests pass"
+        weight: 25
+      - id: deployment_successful
+        description: "Service deploys without errors"
+        weight: 20
+      - id: pod_running
+        description: "Pod reaches Running state"
+        weight: 15
+      - id: health_checks
+        description: "Liveness, readiness, startup probes configured"
+        weight: 10
+      - id: servicemonitor
+        description: "Prometheus ServiceMonitor configured"
+        weight: 10
+      - id: documentation_complete
+        description: ".docs/architecture.md updated"
+        weight: 20
+
+# Mandatory templates for Helm charts
+helm_chart_requirements:
+  templates:
+    required:
+      - "_helpers.tpl"
+      - "serviceaccount.yaml"
+      - "rbac.yaml"
+      - "networkpolicy.yaml"
+      - "deployment.yaml"
+      - "service.yaml"
+      - "servicemonitor.yaml"
+      - "pdb.yaml"
+      - "tests/test-connection.yaml"
+    optional:
+      - "ingress.yaml"
+      - "configmap.yaml"
+      - "pvc.yaml"
+      - "hpa.yaml"
+      - "prometheusrule.yaml"
+
+  values_structure:
+    required:
+      - "image.repository"
+      - "image.tag"
+      - "replicaCount"
+      - "resources.requests"
+      - "resources.limits"
+      - "serviceAccount.create"
+      - "podSecurityContext.runAsNonRoot"
+      - "securityContext.allowPrivilegeEscalation"
+      - "networkPolicy.enabled"
+      - "monitoring.enabled"
+
+# Security requirements
+security:
+  pod_security_context:
+    runAsNonRoot: true
+    runAsUser: 1000
+    fsGroup: 1000
+    seccompProfile:
+      type: RuntimeDefault
+
+  container_security_context:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: true
+    capabilities:
+      drop:
+        - ALL
+
+  prohibited:
+    - "image.tag: latest"
+    - "securityContext.privileged: true"
+    - "hostNetwork: true"
+    - "hostPID: true"
+    - "kubernetes Secret with credentials"
+
+# Database connection patterns
+database_patterns:
+  correct:
+    postgresql: "postgresql.db.svc.cluster.local:5432"
+    mongodb: "mongodb.db.svc.cluster.local:27017"
+    valkey: "valkey-master.db.svc.cluster.local:6379"
+    minio: "minio.db.svc.cluster.local:9000"
+    clickhouse: "clickhouse.db.svc.cluster.local:8123"
+    mysql: "mysql.db.svc.cluster.local:3306"
+    rabbitmq: "rabbitmq.db.svc.cluster.local:5672"
+
+  prohibited_patterns:
+    - "*.code.svc.cluster.local"      # Wrong namespace
+    - "*.productivity.svc.cluster.local"
+    - "postgresql"                     # Missing namespace
+
+# Validation commands
+commands:
+  pre_commit:
+    - name: "Helm lint"
+      command: "helm lint kubernetes/charts/{service}"
+    - name: "Kubeval"
+      command: "helm template kubernetes/charts/{service} | kubeval"
+    - name: "Secret scan"
+      command: "git diff | grep -Ei 'password|secret|token|api[_-]?key'"
+      expect_empty: true
+
+  pre_deploy:
+    - name: "Helmfile diff"
+      command: "helmfile -e k8s diff --selector name={service}"
+    - name: "Validate inventory"
+      command: "ansible-playbook --syntax-check ansible/all.yml"
+
+  post_deploy:
+    - name: "Check pod status"
+      command: "kubectl get pods -n {namespace} -l app.kubernetes.io/name={service}"
+    - name: "Run Helm tests"
+      command: "helm test {service} -n {namespace}"
+    - name: "Verify metrics"
+      command: "kubectl get servicemonitor -n {namespace} {service}"

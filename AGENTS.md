@@ -566,3 +566,203 @@ git push                # Push to remote
 - Always `bd sync` before ending session
 
 <!-- end-bv-agent-instructions -->
+
+---
+
+## Extended Documentation for AI Agents
+
+The following files provide comprehensive context for multi-agent development:
+
+### Core Documentation (`.docs/`)
+
+| File | Purpose | When to Read |
+|------|---------|--------------|
+| `requirements.md` | Business & technical specs | **ALWAYS** - before any work |
+| `arch-rules.md` | Implementation patterns, templates | **ALWAYS** - before writing code |
+| `architecture.md` | Current system state | **ALWAYS** - check before, update after |
+| `project.yaml` | Project configuration for agents | Agent initialization |
+| `Constitution.md` | Binding principles and rules | Agent initialization |
+| `quality-gates.yaml` | Validation thresholds and commands | Before validation phase |
+
+### Context Files (`.docs/context/`)
+
+| File | Target Agent | Purpose |
+|------|--------------|---------|
+| `cli.md` | CLI developers | NestJS CLI architecture, commands |
+| `ansible.md` | Infrastructure agents | Playbooks, roles, inventory |
+| `kubernetes.md` | Kubernetes agents | Helm charts, Helmfile, namespaces |
+
+### Task Templates (`.docs/beads/templates/`)
+
+| Template | Use Case |
+|----------|----------|
+| `epic-feature.yaml` | New feature implementation |
+| `epic-bugfix.yaml` | Bug investigation and fix |
+| `epic-new-service.yaml` | New service deployment |
+
+---
+
+## Team Lead Workflow
+
+### Starting a Session
+
+```bash
+# 1. Check available work
+bd ready
+
+# 2. Claim a task
+bd update <id> --status=in_progress
+
+# 3. Read context
+# - .docs/requirements.md
+# - .docs/arch-rules.md
+# - .docs/architecture.md
+```
+
+### Orchestrating Work
+
+The team-lead agent should:
+
+1. **Break down epics** into subtasks using templates
+2. **Spawn specialist agents** for each subtask:
+   - `spec-analyst` - Requirements gathering
+   - `spec-architect` - Technical design
+   - `spec-developer` - Implementation
+   - `spec-tester` - Validation
+   - `spec-reviewer` - Security/quality review
+3. **Track progress** with Beads
+4. **Enforce quality gates** from `.docs/quality-gates.yaml`
+
+### Quality Gate Enforcement
+
+Before completing any task:
+
+```bash
+# Development phase gates
+helm lint kubernetes/charts/<service>
+helm template kubernetes/charts/<service> | kubeval
+git diff | grep -Ei "password|secret|token"  # Should be empty
+
+# Validation phase gates
+kubectl get pods -n <namespace> -l app.kubernetes.io/name=<service>
+helm test <service> -n <namespace>
+kubectl get servicemonitor -n <namespace> <service>
+```
+
+### Ending a Session
+
+```bash
+# 1. Update all tasks
+bd update <id> --status=completed  # or in_progress for partial
+
+# 2. Create follow-up tasks for remaining work
+bd create --title="[Follow-up] ..." --type=task --priority=2
+
+# 3. Commit and push
+git add .
+git commit -m "..."
+bd sync
+git push
+
+# 4. Verify push succeeded
+git status  # Must show "up to date with origin"
+```
+
+---
+
+## Agent Specialization Guide
+
+### When to Use Each Agent
+
+| Agent | Use When |
+|-------|----------|
+| `spec-analyst` | Gathering requirements, writing specs |
+| `spec-architect` | Designing architecture, making technical decisions |
+| `spec-planner` | Breaking down tasks, estimating effort |
+| `spec-developer` | Writing Helm charts, Ansible roles, CLI code |
+| `spec-tester` | Running validation, writing tests |
+| `spec-reviewer` | Code review, security audit |
+| `devops-troubleshooter` | Debugging deployment issues |
+| `database-architect` | Schema design, query optimization |
+| `security-architect` | Threat modeling, security review |
+
+### Agent Communication
+
+Agents communicate through:
+1. **Beads tasks** - Formal task assignments
+2. **Documentation** - `.docs/` files
+3. **Code** - Comments and README files
+4. **Git commits** - Commit messages describe changes
+
+### Parallel Execution
+
+Team-lead can spawn multiple agents in parallel when:
+- Tasks have no dependencies
+- Different components are being modified
+- Independent validation steps
+
+Example parallel execution:
+```
+[team-lead]
+    ├── [spec-developer] → Implement feature A
+    ├── [spec-developer] → Implement feature B (independent)
+    └── [spec-tester] → Prepare test environment
+```
+
+---
+
+## Service Tier Reference
+
+### Tier 0: Core (Always Deployed)
+`namespaces`, `traefik`, `consul`, `vault`, `cert-manager`, `pangolin`, `authentik`
+
+### Tier 1: Infrastructure (Recommended)
+`monitoring`, `logging`, `glance`, `openebs`
+
+### Tier 2: Databases (User-selectable)
+`postgresql`, `mongodb`, `valkey`, `minio`, `clickhouse`, `mysql`, `rabbitmq`
+
+### Tier 3: Applications (User-selectable)
+- **code**: gitlab, hub, youtrack, teamcity, coder
+- **productivity**: affine, notesnook, excalidraw, penpot
+- **social**: stoat, stalwart
+- **data**: vaultwarden, syncthing, nextcloud, rybbit
+- **automation**: kestra, n8n
+- **content**: ghost
+- **utilities**: vert, metube
+- **infrastructure**: bytebase, harbor, remnawave
+
+---
+
+## Quick Reference: Database Connections
+
+```yaml
+# ALWAYS use .db namespace for databases
+postgresql.db.svc.cluster.local:5432
+mongodb.db.svc.cluster.local:27017
+valkey-master.db.svc.cluster.local:6379
+minio.db.svc.cluster.local:9000
+clickhouse.db.svc.cluster.local:8123
+mysql.db.svc.cluster.local:3306
+rabbitmq.db.svc.cluster.local:5672
+```
+
+---
+
+## Quick Reference: Mandatory Helm Templates
+
+Every custom chart in `kubernetes/charts/<service>/` must have:
+
+```
+templates/
+├── _helpers.tpl           # Template functions
+├── serviceaccount.yaml    # Pod identity
+├── rbac.yaml              # Least privilege
+├── networkpolicy.yaml     # Zero-trust networking
+├── deployment.yaml        # With security context, probes
+├── service.yaml           # ClusterIP service
+├── servicemonitor.yaml    # Prometheus scraping
+├── pdb.yaml               # Disruption budget
+└── tests/
+    └── test-connection.yaml
+```

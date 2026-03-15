@@ -3,6 +3,15 @@
 
 namespace: db
 
+# Override image to use known working tags
+image:
+  registry: docker.io
+  repository: minio/minio
+  tag: "RELEASE.2024-11-07T00-52-20Z"
+
+# Disable console - using MinIO built-in console instead
+disableWebUI: true
+
 mode: standalone
 
 auth:

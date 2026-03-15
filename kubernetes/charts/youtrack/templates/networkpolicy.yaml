@@ -35,13 +35,15 @@ spec:
     {{- end }}
 
   egress:
-    # Allow DNS
+    # Allow DNS (UDP and TCP)
     - to:
         - namespaceSelector:
             matchLabels:
               name: kube-system
       ports:
         - protocol: UDP
+          port: 53
+        - protocol: TCP
           port: 53
 
     # Allow HTTPS to external

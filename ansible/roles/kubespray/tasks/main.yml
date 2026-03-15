@@ -45,6 +45,14 @@
   when: kubespray_deploy_services | default(true)
   tags: [kubespray, services]
 
+- name: Include gateway join tasks
+  include_tasks: join-gateway.yml
+  when:
+    - kubespray_join_gateway | default(false)
+    - groups['gateway'] is defined
+    - groups['gateway'] | length > 0
+  tags: [kubespray, gateway, join-gateway]
+
 - name: Kubespray deployment complete
   debug:
     msg: |

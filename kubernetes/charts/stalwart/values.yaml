@@ -7,7 +7,7 @@ create:
 # Stalwart Image
 image:
   repository: stalwartlabs/stalwart
-  tag: "v0.10.8"  # Pinned version - do not use :latest
+  tag: "v0.15.5"  # Pinned version - do not use :latest
   pullPolicy: IfNotPresent
 
 # Stalwart Server конфигурация
@@ -162,11 +162,11 @@ consul:
     - smtp
     - imap
 
-# Security
+# Security - Stalwart needs root for privileged ports
 securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
+  runAsUser: 0
+  runAsGroup: 0
+  fsGroup: 0
 
 # Health Checks
 probes:

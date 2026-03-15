@@ -558,55 +558,8 @@
   failed_when: false
   tags: [infrastructure, apps, notesnook]
 
-# Deploy Monitoring stack
-- name: Deploy Monitoring
-  command: >
-    helmfile -e {{ helmfile_environment }}
-    apply
-    --selector name=monitoring
-    --suppress-secrets
-  args:
-    chdir: "{{ kubernetes_path }}"
-  environment:
-    KUBECONFIG: "{{ kubeconfig_path }}"
-  register: monitoring_deploy
-  changed_when: "'has been upgraded' in monitoring_deploy.stdout or 'installed' in monitoring_deploy.stdout"
-  tags: [infrastructure, apps, monitoring]
-
-- name: Wait for Monitoring pods
-  command: >
-    kubectl wait --for=condition=Ready
-    pods -n service -l app.kubernetes.io/name=prometheus
-    --timeout=300s
-  register: monitoring_ready
-  changed_when: false
-  failed_when: false
-  tags: [infrastructure, apps, monitoring]
-
-# Deploy Logging stack
-- name: Deploy Logging
-  command: >
-    helmfile -e {{ helmfile_environment }}
-    apply
-    --selector name=logging
-    --suppress-secrets
-  args:
-    chdir: "{{ kubernetes_path }}"
-  environment:
-    KUBECONFIG: "{{ kubeconfig_path }}"
-  register: logging_deploy
-  changed_when: "'has been upgraded' in logging_deploy.stdout or 'installed' in logging_deploy.stdout"
-  tags: [infrastructure, apps, logging]
-
-- name: Wait for Logging pods
-  command: >
-    kubectl wait --for=condition=Ready
-    pods -n service -l app.kubernetes.io/name=loki
-    --timeout=300s
-  register: logging_ready
-  changed_when: false
-  failed_when: false
-  tags: [infrastructure, apps, logging]
+# NOTE: Monitoring and Logging are now deployed in base.yml and observability.yml
+# They are no longer deployed as part of apps.yml
 
 - name: Get all application pods status
   command: >
@@ -646,6 +599,6 @@
       - "✓ Nextcloud: {{ nextcloud_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
       - "✓ Rybbit: {{ rybbit_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
       - "✓ Notesnook: {{ notesnook_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
-      - "✓ Monitoring: {{ monitoring_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
-      - "✓ Logging: {{ logging_ready.rc | default(1) == 0 | ternary('Ready', 'Pending') }}"
+      - ""
+      - "NOTE: Monitoring and Logging are deployed in base.yml"
   tags: [infrastructure, apps]

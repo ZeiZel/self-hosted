@@ -16,6 +16,8 @@ interface AppEntry {
   namespace: string;
   version: string;
   installed?: boolean;
+  mandatory?: boolean;
+  tier?: 'core' | 'infrastructure' | 'database' | 'application';
   needs?: string[];
   createNamespace?: boolean;
 }
@@ -68,6 +70,8 @@ export class ServicesParser {
         namespace,
         version: entry.version,
         installed: entry.installed !== false,
+        mandatory: entry.mandatory ?? false,
+        tier: entry.tier ?? 'application',
         needs: entry.needs ?? [],
         description: this.getServiceDescription(name),
       });

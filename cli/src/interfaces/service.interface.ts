@@ -48,6 +48,8 @@ export interface ServiceDefinition {
   namespace: ServiceNamespace;
   version: string;
   installed: boolean;
+  mandatory: boolean;
+  tier: 'core' | 'infrastructure' | 'database' | 'application';
   needs: string[];
   description?: string;
 }
@@ -57,7 +59,7 @@ export interface ServiceDefinition {
  */
 export interface Service extends ServiceDefinition {
   config: ServiceConfig;
-  tier: 'heavy' | 'medium' | 'light';
+  resourceTier: 'heavy' | 'medium' | 'light';
 }
 
 /**
@@ -157,7 +159,43 @@ export function getServiceTier(resources: ServiceResources): 'heavy' | 'medium' 
 }
 
 /**
- * Core services that are always required
+ * Service tiers for deployment ordering
+ */
+export enum ServiceTierEnum {
+  CORE = 'core',
+  INFRASTRUCTURE = 'infrastructure',
+  DATABASE = 'database',
+  APPLICATION = 'application',
+}
+
+/**
+ * Mandatory services that must always be deployed
+ * These services are required for core infrastructure functionality
+ */
+export const MANDATORY_SERVICES = [
+  // Core services (Tier 0)
+  'namespaces',
+  'traefik',
+  'consul',
+  'vault',
+  'cert-manager',
+  'pangolin-server',
+  'pangolin',
+  'authentik',
+  // Infrastructure services (Tier 1)
+  'openebs',
+  'monitoring',
+  'logging',
+  'glance',
+  'bytebase',
+  // Required databases (needed by authentik)
+  'postgres',
+  'valkey',
+] as const;
+
+/**
+ * Core services that are always required (Tier 0)
+ * These services MUST be deployed first and cannot be disabled
  */
 export const CORE_SERVICES = [
   'namespaces',
@@ -165,7 +203,33 @@ export const CORE_SERVICES = [
   'consul',
   'vault',
   'cert-manager',
+  'pangolin-server',
+  'pangolin',
   'authentik',
+];
+
+/**
+ * Infrastructure services (Tier 1) - Recommended but can be disabled
+ */
+export const INFRASTRUCTURE_SERVICES = [
+  'monitoring',
+  'logging',
+  'glance',
+  'openebs',
+];
+
+/**
+ * Database services (Tier 2) - User selectable
+ */
+export const DATABASE_SERVICES = [
+  'postgres',
+  'valkey',
+  'mongodb',
+  'minio',
+  'clickhouse',
+  'mysql',
+  'rabbitmq',
+  'supabase',
 ];
 
 /**

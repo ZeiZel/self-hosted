@@ -1,19 +1,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: youtrack
+  name: {{ include "youtrack.fullname" . }}
   namespace: {{ .Release.Namespace }}
   labels:
-    app: youtrack
+    {{- include "youtrack.labels" . | nindent 4 }}
 spec:
   replicas: {{ .Values.youtrack.replicaCount }}
   selector:
     matchLabels:
-      app: youtrack
+      {{- include "youtrack.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        app: youtrack
+        {{- include "youtrack.selectorLabels" . | nindent 8 }}
       annotations:
         {{- if .Values.consul.enabled }}
         consul.hashicorp.com/connect-inject: "true"
@@ -81,8 +81,8 @@ spec:
               mountPath: {{ .Values.persistence.backups.mountPath }}
             - name: logs
               mountPath: {{ .Values.persistence.logs.mountPath }}
-            - name: config
-              mountPath: /opt/youtrack/config
+            - name: conf
+              mountPath: /opt/youtrack/conf
 
           {{- if .Values.probes.liveness.enabled }}
           livenessProbe:
@@ -102,31 +102,46 @@ spec:
             periodSeconds: {{ .Values.probes.readiness.periodSeconds }}
           {{- end }}
 
+      # Use kube-dns directly to avoid nodelocaldns issues
+      dnsPolicy: "None"
+      dnsConfig:
+        nameservers:
+          - "10.233.0.10"
+        searches:
+          - "{{ .Release.Namespace }}.svc.cluster.local"
+          - "svc.cluster.local"
+          - "cluster.local"
+        options:
+          - name: ndots
+            value: "5"
+
       initContainers:
-        # Ожидание Hub
+        # Wait for Hub - using busybox for better DNS compatibility
         {{- if .Values.hub.enabled }}
         - name: wait-for-hub
-          image: curlimages/curl:8.11.1  # Pinned version - do not use :latest
+          image: busybox:1.36
           command:
             - sh
             - -c
             - |
-              until curl -f http://{{ .Values.hub.host }}:{{ .Values.hub.port }}/ > /dev/null 2>&1; do
+              echo "Waiting for Hub at {{ .Values.hub.host }}:{{ .Values.hub.port }}..."
+              until wget -q --spider --timeout=5 http://{{ .Values.hub.host }}:{{ .Values.hub.port }}/ 2>/dev/null; do
                 echo "Waiting for Hub..."
                 sleep 5
               done
               echo "Hub is ready!"
         {{- end }}
 
-        # Ожидание GitLab
+        # Wait for GitLab
         {{- if .Values.gitlab.enabled }}
         - name: wait-for-gitlab
-          image: curlimages/curl:8.11.1  # Pinned version - do not use :latest
+          image: busybox:1.36
           command:
             - sh
             - -c
             - |
-              until curl -f http://{{ .Values.gitlab.host }}:{{ .Values.gitlab.port }}/ > /dev/null 2>&1; do
+              echo "Waiting for GitLab at {{ .Values.gitlab.host }}:{{ .Values.gitlab.port }}..."
+              until wget -q --spider --timeout=5 http://{{ .Values.gitlab.host }}:{{ .Values.gitlab.port }}/ 2>/dev/null; do
                 echo "Waiting for GitLab..."
                 sleep 5
               done
@@ -143,6 +158,5 @@ spec:
         - name: logs
           persistentVolumeClaim:
             claimName: youtrack-logs
-        - name: config
-          configMap:
-            name: youtrack-config
+        - name: conf
+          emptyDir: {}

@@ -1,0 +1,54 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pangolin.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pangolin.labels" . | nindent 4 }}
+data:
+  config.yml: |
+    # Newt Client Configuration (Pangolin VPN Client)
+    # See: https://docs.fossorial.io/
+
+    # Server connection
+    server:
+      # Base URL of the Pangolin server
+      url: "https://{{ .Values.pangolin.serverEndpoint }}"
+      # Enable TLS verification
+      tls_verify: true
+
+    # Client identification
+    client:
+      id: "{{ .Values.pangolin.clientName }}"
+      # Reconnect settings
+      reconnect:
+        enabled: true
+        interval: 5
+        max_retries: -1  # Infinite retries
+
+    # Tunnel configuration
+    tunnel:
+      # Mode: 'newt' (HTTP/HTTPS tunnel) or 'wireguard' (UDP tunnel)
+      mode: {{ .Values.pangolin.mode | default "newt" | quote }}
+
+      # Services to expose through tunnel to the gateway
+      services:
+        # Cluster Traefik HTTP
+        - name: traefik-http
+          local_address: "traefik.ingress.svc.cluster.local"
+          local_port: 80
+          remote_port: 80
+          protocol: tcp
+
+        # Cluster Traefik HTTPS
+        - name: traefik-https
+          local_address: "traefik.ingress.svc.cluster.local"
+          local_port: 443
+          remote_port: 443
+          protocol: tcp
+
+    # Logging
+    logging:
+      level: info
+      format: json
+      output: stdout

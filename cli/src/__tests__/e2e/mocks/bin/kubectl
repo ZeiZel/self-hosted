@@ -1,0 +1,133 @@
+#!/bin/bash
+#
+# Mock kubectl for E2E testing
+# This script simulates kubectl behavior without requiring real cluster
+#
+
+# Output header (only in verbose mode)
+if [[ "$KUBECTL_VERBOSE" == "true" ]]; then
+  echo "MOCK: kubectl $@" >&2
+fi
+
+# Parse arguments
+COMMAND=""
+RESOURCE=""
+NAMESPACE=""
+OUTPUT=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -n|--namespace)
+      NAMESPACE="$2"
+      shift 2
+      ;;
+    -o|--output)
+      OUTPUT="$2"
+      shift 2
+      ;;
+    get|describe|logs|apply|delete|exec)
+      COMMAND="$1"
+      shift
+      if [[ $# -gt 0 && ! "$1" =~ ^- ]]; then
+        RESOURCE="$1"
+        shift
+      fi
+      ;;
+    cluster-info)
+      COMMAND="cluster-info"
+      shift
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+case "$COMMAND" in
+  cluster-info)
+    echo "Kubernetes control plane is running at https://192.168.1.10:6443"
+    echo ""
+    echo "CoreDNS is running at https://192.168.1.10:6443/api/v1/namespaces/kube-system/services/kube-dns:dns/proxy"
+    echo ""
+    ;;
+  get)
+    case "$RESOURCE" in
+      nodes)
+        if [[ "$OUTPUT" == "json" ]]; then
+          cat << 'EOF'
+{
+  "items": [
+    {"metadata": {"name": "mock-master"}, "status": {"conditions": [{"type": "Ready", "status": "True"}]}},
+    {"metadata": {"name": "mock-worker-01"}, "status": {"conditions": [{"type": "Ready", "status": "True"}]}}
+  ]
+}
+EOF
+        else
+          echo "NAME            STATUS   ROLES           AGE   VERSION"
+          echo "mock-master     Ready    control-plane   10d   v1.29.0"
+          echo "mock-worker-01  Ready    worker          10d   v1.29.0"
+        fi
+        ;;
+      pods)
+        if [[ "$OUTPUT" == "json" ]]; then
+          cat << 'EOF'
+{
+  "items": [
+    {"metadata": {"name": "traefik-abc123", "namespace": "ingress"}, "status": {"phase": "Running"}},
+    {"metadata": {"name": "postgresql-0", "namespace": "db"}, "status": {"phase": "Running"}},
+    {"metadata": {"name": "vault-0", "namespace": "service"}, "status": {"phase": "Running"}}
+  ]
+}
+EOF
+        else
+          echo "NAMESPACE   NAME              READY   STATUS    RESTARTS   AGE"
+          echo "ingress     traefik-abc123    1/1     Running   0          5d"
+          echo "db          postgresql-0      1/1     Running   0          7d"
+          echo "service     vault-0           1/1     Running   0          5d"
+        fi
+        ;;
+      namespaces)
+        if [[ "$OUTPUT" == "json" ]]; then
+          cat << 'EOF'
+{
+  "items": [
+    {"metadata": {"name": "default"}},
+    {"metadata": {"name": "ingress"}},
+    {"metadata": {"name": "service"}},
+    {"metadata": {"name": "db"}},
+    {"metadata": {"name": "code"}}
+  ]
+}
+EOF
+        else
+          echo "NAME       STATUS   AGE"
+          echo "default    Active   10d"
+          echo "ingress    Active   10d"
+          echo "service    Active   10d"
+          echo "db         Active   10d"
+          echo "code       Active   10d"
+        fi
+        ;;
+      *)
+        echo "No resources found"
+        ;;
+    esac
+    ;;
+  describe)
+    echo "Name:         mock-resource"
+    echo "Namespace:    ${NAMESPACE:-default}"
+    echo "Labels:       app=mock"
+    echo "Status:       Running"
+    ;;
+  logs)
+    echo "[mock] Application started successfully"
+    echo "[mock] Listening on port 8080"
+    echo "[mock] Ready to accept connections"
+    ;;
+  *)
+    echo "Unknown command: $COMMAND"
+    exit 1
+    ;;
+esac
+
+exit 0

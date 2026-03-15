@@ -34,7 +34,7 @@ spec:
 
           env:
             - name: SERVER_URL
-              value: "http://teamcity-server:8111"
+              value: "http://teamcity-server.{{ .Release.Namespace }}.svc.cluster.local:8111"
             - name: AGENT_NAME
               valueFrom:
                 fieldRef:
@@ -51,11 +51,16 @@ spec:
             - name: docker
               mountPath: /var/run/docker.sock
 
+          # TeamCity agent doesn't expose health endpoint; check process exists
           livenessProbe:
-            tcpSocket:
-              port: 9090
-            initialDelaySeconds: 60
-            periodSeconds: 10
+            exec:
+              command:
+                - sh
+                - -c
+                - pgrep -f "jetbrains.buildServer.agent" >/dev/null
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            failureThreshold: 3
 
       volumes:
         - name: docker

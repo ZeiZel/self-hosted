@@ -1,0 +1,224 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "pangolin-server.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pangolin-server.labels" . | nindent 4 }}
+spec:
+  replicas: 1  # Single replica on gateway node
+  strategy:
+    type: Recreate  # Required for hostNetwork
+  selector:
+    matchLabels:
+      {{- include "pangolin-server.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "pangolin-server.selectorLabels" . | nindent 8 }}
+      annotations:
+        {{- if .Values.consul.enabled }}
+        consul.hashicorp.com/connect-inject: "false"
+        consul.hashicorp.com/service-tags: "{{ join "," .Values.consul.tags }}"
+        {{- end }}
+        {{- if .Values.vault.enabled }}
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: {{ .Values.vault.role | quote }}
+        vault.hashicorp.com/agent-pre-populate-only: "true"
+        {{- range .Values.vault.secrets }}
+        vault.hashicorp.com/agent-inject-secret-{{ .name }}: {{ .path | quote }}
+        {{- end }}
+        {{- end }}
+        # Prometheus annotations
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "{{ .Values.metrics.port }}"
+        prometheus.io/path: "{{ .Values.metrics.path }}"
+        # ConfigMap checksum for rolling updates
+        checksum/config: {{ include (print $.Template.BasePath "/configmap.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "pangolin-server.serviceAccountName" . }}
+      {{- if .Values.hostNetwork }}
+      hostNetwork: true
+      dnsPolicy: {{ .Values.dnsPolicy }}
+      {{- end }}
+      # Node selector for gateway node
+      nodeSelector:
+        {{- toYaml .Values.nodeSelector | nindent 8 }}
+      {{- with .Values.tolerations }}
+      tolerations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- with .Values.affinity }}
+      affinity:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+
+      # Init container to prepare directories
+      initContainers:
+        - name: init-permissions
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              mkdir -p /data/traefik/dynamic /data/wireguard /data/pangolin
+              touch /data/traefik/acme.json
+              chmod 600 /data/traefik/acme.json
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          securityContext:
+            runAsUser: 0
+
+      containers:
+        # Traefik Edge Router
+        {{- if .Values.traefik.enabled }}
+        - name: traefik
+          image: "{{ .Values.traefik.image.repository }}:{{ .Values.traefik.image.tag }}"
+          imagePullPolicy: {{ .Values.traefik.image.pullPolicy }}
+          args:
+            - --configfile=/etc/traefik/traefik.yaml
+          ports:
+            - name: http
+              containerPort: {{ .Values.traefik.ports.http }}
+              protocol: TCP
+            - name: https
+              containerPort: {{ .Values.traefik.ports.https }}
+              protocol: TCP
+            - name: dashboard
+              containerPort: {{ .Values.traefik.ports.dashboard }}
+              protocol: TCP
+          resources:
+            {{- toYaml .Values.resources.traefik | nindent 12 }}
+          volumeMounts:
+            - name: traefik-config
+              mountPath: /etc/traefik/traefik.yaml
+              subPath: traefik.yaml
+            - name: traefik-config
+              mountPath: /etc/traefik/dynamic/cluster-routing.yaml
+              subPath: cluster-routing.yaml
+            - name: data
+              mountPath: /data/traefik
+              subPath: traefik
+          {{- if .Values.probes.traefik.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: dashboard
+            initialDelaySeconds: {{ .Values.probes.traefik.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.traefik.liveness.periodSeconds }}
+          {{- end }}
+          {{- if .Values.probes.traefik.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: dashboard
+            initialDelaySeconds: {{ .Values.probes.traefik.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.traefik.readiness.periodSeconds }}
+          {{- end }}
+          securityContext:
+            runAsUser: 0
+            capabilities:
+              add:
+                - NET_BIND_SERVICE
+              drop:
+                - ALL
+        {{- end }}
+
+        # Gerbil WireGuard Orchestrator
+        {{- if .Values.gerbil.enabled }}
+        - name: gerbil
+          image: "{{ .Values.gerbil.image.repository }}:{{ .Values.gerbil.image.tag }}"
+          imagePullPolicy: {{ .Values.gerbil.image.pullPolicy }}
+          env:
+            - name: WG_INTERFACE
+              value: {{ .Values.gerbil.wireguard.interface | quote }}
+            - name: WG_NETWORK
+              value: {{ .Values.gerbil.wireguard.network | quote }}
+            - name: WG_SERVER_IP
+              value: {{ .Values.gerbil.wireguard.serverIp | quote }}
+            - name: WG_PORT
+              value: {{ .Values.gerbil.port | quote }}
+          ports:
+            - name: wireguard
+              containerPort: {{ .Values.gerbil.port }}
+              protocol: UDP
+          resources:
+            {{- toYaml .Values.resources.gerbil | nindent 12 }}
+          volumeMounts:
+            - name: data
+              mountPath: /etc/wireguard
+              subPath: wireguard
+          securityContext:
+            privileged: true
+            capabilities:
+              add:
+                - NET_ADMIN
+                - SYS_MODULE
+        {{- end }}
+
+        # Pangolin Server (Management UI)
+        - name: pangolin
+          image: "{{ .Values.pangolin.image.repository }}:{{ .Values.pangolin.image.tag }}"
+          imagePullPolicy: {{ .Values.pangolin.image.pullPolicy }}
+          ports:
+            - name: pangolin
+              containerPort: {{ .Values.pangolin.port }}
+              protocol: TCP
+          env:
+            - name: PANGOLIN_CONFIG
+              value: /app/config/pangolin-config.yaml
+          resources:
+            {{- toYaml .Values.resources.pangolin | nindent 12 }}
+          volumeMounts:
+            - name: pangolin-config
+              mountPath: /app/config/pangolin-config.yaml
+              subPath: pangolin-config.yaml
+            - name: data
+              mountPath: /app/data
+              subPath: pangolin
+          {{- if .Values.probes.pangolin.liveness.enabled }}
+          livenessProbe:
+            httpGet:
+              path: /api/v1/
+              port: pangolin
+            initialDelaySeconds: {{ .Values.probes.pangolin.liveness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.pangolin.liveness.periodSeconds }}
+          {{- end }}
+          {{- if .Values.probes.pangolin.readiness.enabled }}
+          readinessProbe:
+            httpGet:
+              path: /api/v1/
+              port: pangolin
+            initialDelaySeconds: {{ .Values.probes.pangolin.readiness.initialDelaySeconds }}
+            periodSeconds: {{ .Values.probes.pangolin.readiness.periodSeconds }}
+          {{- end }}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop:
+                - ALL
+
+      volumes:
+        - name: traefik-config
+          configMap:
+            name: {{ include "pangolin-server.fullname" . }}-config
+            items:
+              - key: traefik.yaml
+                path: traefik.yaml
+              - key: cluster-routing.yaml
+                path: cluster-routing.yaml
+        - name: pangolin-config
+          configMap:
+            name: {{ include "pangolin-server.fullname" . }}-config
+            items:
+              - key: pangolin-config.yaml
+                path: pangolin-config.yaml
+        - name: data
+          {{- if .Values.persistence.enabled }}
+          persistentVolumeClaim:
+            claimName: {{ include "pangolin-server.fullname" . }}-data
+          {{- else }}
+          emptyDir: {}
+          {{- end }}

@@ -1,0 +1,32 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: "{{ include "pangolin-server.fullname" . }}-test-connection"
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pangolin-server.labels" . | nindent 4 }}
+  annotations:
+    "helm.sh/hook": test
+    "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+spec:
+  restartPolicy: Never
+  containers:
+    - name: wget
+      image: busybox:1.36
+      command:
+        - sh
+        - -c
+        - |
+          echo "Testing Pangolin Server connection..."
+          wget --spider --timeout=10 --tries=3 http://{{ include "pangolin-server.fullname" . }}:{{ .Values.pangolin.port }}/api/v1/ && echo "Pangolin API: OK"
+          {{- if .Values.traefik.enabled }}
+          echo "Testing Traefik health..."
+          wget --spider --timeout=10 --tries=3 http://{{ include "pangolin-server.fullname" . }}:{{ .Values.traefik.ports.dashboard }}/ping && echo "Traefik: OK"
+          {{- end }}
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        allowPrivilegeEscalation: false
+        capabilities:
+          drop:
+            - ALL

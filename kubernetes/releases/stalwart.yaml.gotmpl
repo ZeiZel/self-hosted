@@ -1,9 +1,9 @@
 namespace: social
 
-# Stalwart Image
+# Stalwart Image - pinned version
 image:
-  repository: stalwartlabs/mail-server
-  tag: "latest"
+  repository: stalwartlabs/stalwart
+  tag: "v0.15.5"
   pullPolicy: IfNotPresent
 
 # Stalwart Server configuration
@@ -104,7 +104,7 @@ ingress:
   className: traefik
   annotations:
     traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    cert-manager.io/cluster-issuer: letsencrypt-prod
+    cert-manager.io/cluster-issuer: selfsigned-ca-issuer
 
   host: mail.{{ .Values.infra.host }}
   path: /
@@ -126,11 +126,12 @@ consul:
     - imap
     - jmap
 
-# Security context
+# Security context - Stalwart needs root for privileged ports
+# TODO: Consider remapping ports for non-root execution
 securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
+  runAsUser: 0
+  runAsGroup: 0
+  fsGroup: 0
 
 # Health checks
 probes:

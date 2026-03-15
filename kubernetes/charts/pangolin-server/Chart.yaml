@@ -1,0 +1,19 @@
+apiVersion: v2
+name: pangolin-server
+description: Pangolin Server - VPN gateway with Traefik edge router for NAT traversal
+type: application
+version: 1.0.0
+appVersion: "1.3.0"
+keywords:
+  - vpn
+  - gateway
+  - wireguard
+  - traefik
+  - pangolin
+home: https://github.com/ZeiZel/self-hosted
+sources:
+  - https://github.com/fosrl/pangolin
+  - https://github.com/fosrl/gerbil
+maintainers:
+  - name: Platform Team
+    email: platform@example.com

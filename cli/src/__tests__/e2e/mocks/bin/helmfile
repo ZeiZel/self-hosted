@@ -1,0 +1,91 @@
+#!/bin/bash
+#
+# Mock helmfile for E2E testing
+# This script simulates helmfile behavior without requiring real cluster
+#
+
+# Output header for identification
+echo "MOCK: helmfile $@"
+
+# Parse arguments
+COMMAND=""
+SELECTOR=""
+ENVIRONMENT=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    -e)
+      ENVIRONMENT="$2"
+      shift 2
+      ;;
+    --selector)
+      SELECTOR="$2"
+      shift 2
+      ;;
+    diff|apply|sync|template|list|status)
+      COMMAND="$1"
+      shift
+      ;;
+    *)
+      shift
+      ;;
+  esac
+done
+
+echo ""
+
+case "$COMMAND" in
+  diff)
+    echo "Comparing release=$SELECTOR"
+    echo ""
+    echo "  No changes needed."
+    echo ""
+    ;;
+  apply)
+    echo "Applying release=$SELECTOR"
+    echo ""
+    echo "Release \"$SELECTOR\" has been upgraded. Happy Helming!"
+    echo ""
+    ;;
+  sync)
+    echo "Syncing releases..."
+    echo ""
+    echo "UPDATED RELEASES:"
+    echo "NAME      CHART                   VERSION"
+    echo "traefik   traefik/traefik         26.0.0"
+    echo "vault     hashicorp/vault         0.27.0"
+    echo "postgresql bitnami/postgresql     15.0.0"
+    echo ""
+    ;;
+  template)
+    echo "Templating release=$SELECTOR"
+    echo ""
+    echo "---"
+    echo "# Source: $SELECTOR/templates/deployment.yaml"
+    echo "apiVersion: apps/v1"
+    echo "kind: Deployment"
+    echo "metadata:"
+    echo "  name: $SELECTOR"
+    echo "  namespace: service"
+    echo ""
+    ;;
+  list)
+    echo "NAME         NAMESPACE   ENABLED   INSTALLED   CHART"
+    echo "traefik      ingress     true      true        traefik/traefik:26.0.0"
+    echo "vault        service     true      true        hashicorp/vault:0.27.0"
+    echo "postgresql   db          true      true        bitnami/postgresql:15.0.0"
+    echo "gitlab       code        true      true        charts/gitlab:1.0.0"
+    echo ""
+    ;;
+  status)
+    echo "STATUS: deployed"
+    echo "REVISION: 1"
+    echo "LAST DEPLOYED: $(date)"
+    echo ""
+    ;;
+  *)
+    echo "Usage: helmfile [diff|apply|sync|template|list|status]"
+    ;;
+esac
+
+exit 0

@@ -5,6 +5,9 @@ releases:
 - name: {{ $release }}
   labels:
     app: {{ $release }}
+    {{- if $v | getOrNil "tier" }}
+    tier: {{ $v.tier }}
+    {{- end }}
   {{- if eq $v.repo "charts" }}
   chart: ./charts/{{ $v.chart }}
   {{- else }}

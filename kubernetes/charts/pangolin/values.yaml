@@ -3,19 +3,26 @@ namespace: infrastructure
 create:
   namespace: true
 
+# Newt client image (Pangolin's official client)
 image:
-  repository: fosrl/pangolin
-  tag: "latest"
+  repository: fosrl/newt
+  tag: "1.10.0"  # Pinned version - never use latest
   pullPolicy: IfNotPresent
 
 service:
   type: ClusterIP
   port: 3001
 
+# Client configuration
 pangolin:
-  serverEndpoint: "yourdomain.com"
+  # Server endpoint (Pangolin Server on VPS gateway)
+  serverEndpoint: "vpn.example.com"
+  # Client identification name
   clientName: "k8s-cluster"
+  # Client API port
   port: 3001
+  # Tunnel mode: 'newt' (recommended) or 'wireguard'
+  mode: "newt"
 
 resources:
   limits:

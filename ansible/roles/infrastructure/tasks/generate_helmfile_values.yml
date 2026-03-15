@@ -1,0 +1,48 @@
+---
+# Generate Helmfile inventory values from Ansible inventory
+# Creates kubernetes/envs/k8s/values/inventory-values.yaml with dynamic IPs
+
+- name: Display inventory value generation plan
+  debug:
+    msg:
+      - "Generating Helmfile values from Ansible inventory"
+      - "Gateway: {{ hostvars[groups['gateway'][0]]['ansible_host'] | default('not defined') }}"
+      - "Masters: {{ groups['masters'] | length }}"
+      - "Workers: {{ groups['workers'] | length }}"
+  tags: [infrastructure, generate-values]
+
+- name: Ensure values directory exists
+  file:
+    path: "{{ kubernetes_path }}/envs/k8s/values"
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+  tags: [infrastructure, generate-values]
+
+- name: Generate inventory-values.yaml
+  template:
+    src: inventory-values.yaml.j2
+    dest: "{{ kubernetes_path }}/envs/k8s/values/inventory-values.yaml"
+    mode: '0644'
+  delegate_to: localhost
+  register: inventory_values_generated
+  tags: [infrastructure, generate-values]
+
+- name: Display generated values path
+  debug:
+    msg:
+      - "Generated: {{ kubernetes_path }}/envs/k8s/values/inventory-values.yaml"
+      - "Changed: {{ inventory_values_generated.changed }}"
+  tags: [infrastructure, generate-values]
+
+- name: Verify generated values file
+  stat:
+    path: "{{ kubernetes_path }}/envs/k8s/values/inventory-values.yaml"
+  delegate_to: localhost
+  register: values_file_stat
+  tags: [infrastructure, generate-values]
+
+- name: Display values file status
+  debug:
+    msg: "Values file exists: {{ values_file_stat.stat.exists }}, size: {{ values_file_stat.stat.size | default(0) }} bytes"
+  tags: [infrastructure, generate-values]

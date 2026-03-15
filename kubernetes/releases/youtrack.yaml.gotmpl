@@ -1,5 +1,11 @@
 namespace: code
 
+# Override image to use valid tag
+image:
+  repository: jetbrains/youtrack
+  tag: "2025.3.128064"
+  pullPolicy: IfNotPresent
+
 youtrack:
   config:
     baseUrl: "http://youtrack.{{ .Values.infra.host }}"
@@ -15,8 +21,9 @@ persistence:
     size: 1Gi
 
 # Hub SSO конфигурация
+# Disabled init container wait - Hub connection configured post-deployment
 hub:
-  enabled: true
+  enabled: false
   host: "hub.code.svc.cluster.local"
   port: 8080
 
@@ -26,10 +33,11 @@ authentik:
   hubIntegration: true
 
 # GitLab интеграция
+# Disabled init container wait - GitLab integration configured after startup
 gitlab:
-  enabled: true
-  host: "gitlab.code.svc.cluster.local"
-  port: 80
+  enabled: false
+  host: "gitlab-webservice-default"
+  port: 8181
   token: "{{ .Values.secrets.gitlabToken }}"
   integration:
     cicd: true
@@ -41,7 +49,7 @@ ingress:
 
 consul:
   enabled: true
-  host: "consul.consul.svc.cluster.local"
+  host: "consul-server.service.svc"
   tags:
     - youtrack
     - issue-tracking

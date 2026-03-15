@@ -1,0 +1,129 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "pangolin-server.fullname" . }}-config
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "pangolin-server.labels" . | nindent 4 }}
+data:
+  # Pangolin server configuration
+  pangolin-config.yaml: |
+    # Pangolin Server Configuration
+    # See: https://docs.fossorial.io/
+
+    server:
+      host: "0.0.0.0"
+      port: {{ .Values.pangolin.port }}
+      log_level: {{ .Values.pangolin.config.logLevel | quote }}
+
+    # Domain configuration
+    domain: {{ .Values.pangolin.config.domain | quote }}
+
+    # Dashboard settings
+    dashboard:
+      enabled: {{ .Values.pangolin.dashboard.enabled }}
+
+    # ACME configuration for Let's Encrypt
+    acme:
+      email: {{ .Values.pangolin.config.acmeEmail | quote }}
+
+    # WireGuard tunnel configuration
+    wireguard:
+      network: {{ .Values.gerbil.wireguard.network | quote }}
+      server_ip: {{ .Values.gerbil.wireguard.serverIp | quote }}
+      interface: {{ .Values.gerbil.wireguard.interface | quote }}
+      port: {{ .Values.gerbil.port }}
+
+  # Traefik static configuration
+  traefik.yaml: |
+    # Traefik Edge Router Configuration
+    # Gateway mode - receives traffic from internet
+
+    global:
+      checkNewVersion: false
+      sendAnonymousUsage: false
+
+    log:
+      level: {{ .Values.traefik.logLevel | quote }}
+      format: json
+
+    api:
+      dashboard: true
+      insecure: false
+
+    entryPoints:
+      web:
+        address: ":{{ .Values.traefik.ports.http }}"
+        http:
+          redirections:
+            entryPoint:
+              to: websecure
+              scheme: https
+              permanent: true
+
+      websecure:
+        address: ":{{ .Values.traefik.ports.https }}"
+        http:
+          tls:
+            certResolver: letsencrypt
+
+      traefik:
+        address: ":{{ .Values.traefik.ports.dashboard }}"
+
+    {{- if .Values.traefik.acme.enabled }}
+    certificatesResolvers:
+      letsencrypt:
+        acme:
+          email: {{ .Values.traefik.acme.email | quote }}
+          storage: {{ .Values.traefik.acme.storage | quote }}
+          {{- if .Values.traefik.acme.staging }}
+          caServer: "https://acme-staging-v02.api.letsencrypt.org/directory"
+          {{- end }}
+          httpChallenge:
+            entryPoint: web
+    {{- end }}
+
+    # HTTP provider for dynamic configuration
+    providers:
+      file:
+        directory: "/etc/traefik/dynamic"
+        watch: true
+
+    # Metrics
+    {{- if .Values.metrics.enabled }}
+    metrics:
+      prometheus:
+        entryPoint: traefik
+        addEntryPointsLabels: true
+        addServicesLabels: true
+    {{- end }}
+
+  # Traefik dynamic configuration for cluster routing
+  cluster-routing.yaml: |
+    # Dynamic routing configuration
+    # Routes traffic through WireGuard tunnel to cluster services
+
+    http:
+      routers:
+        # Default router - forward to cluster Traefik
+        cluster-router:
+          rule: "HostRegexp(`{subdomain:[a-z0-9-]+}.{{ .Values.pangolin.config.domain }}`)"
+          entryPoints:
+            - websecure
+          service: cluster-traefik
+          tls:
+            certResolver: letsencrypt
+
+      services:
+        # Cluster Traefik via WireGuard tunnel
+        cluster-traefik:
+          loadBalancer:
+            servers:
+              # Master nodes via WireGuard IPs
+              - url: "http://10.99.0.10:30080"
+              - url: "http://10.99.0.11:30080"
+            passHostHeader: true
+            healthCheck:
+              path: /ping
+              interval: 10s
+              timeout: 3s

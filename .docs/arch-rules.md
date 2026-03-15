@@ -82,7 +82,32 @@ selfhost deploy --tags databases   # Selective via Ansible tags
 selfhost monitor start             # Start monitoring daemon
 ```
 
-#### ARCH-005.4: Responsibility Matrix
+#### ARCH-005.4: Service Tier Classification
+
+Services are organized into deployment tiers that determine deployment order and behavior:
+
+| Tier | Services | Deployment | User Selection |
+|------|----------|------------|----------------|
+| **Core (Tier 0)** | namespaces, traefik, consul, vault, cert-manager, pangolin, authentik | Always first | Mandatory (non-selectable) |
+| **Infrastructure (Tier 1)** | monitoring, logging, glance, openebs | After core | Recommended |
+| **Databases (Tier 2)** | postgresql, mongodb, valkey, minio, clickhouse, mysql, rabbitmq | After infrastructure | User-selectable |
+| **Applications (Tier 3)** | All other services | After databases | User-selectable |
+
+**Core Services (MUST always deploy):**
+- `namespaces` - Creates all Kubernetes namespaces
+- `traefik` - Ingress controller and routing
+- `consul` - Service discovery and mesh
+- `vault` - Secrets management
+- `cert-manager` - TLS certificate management
+- `pangolin` - VPN tunnel for external access (NAT traversal)
+- `authentik` - SSO and identity provider
+
+**Deployment Order:**
+```
+Core (Tier 0) -> Infrastructure (Tier 1) -> Databases (Tier 2) -> Applications (Tier 3)
+```
+
+#### ARCH-005.5: Responsibility Matrix
 
 | Action | CLI | Ansible | Helmfile |
 |--------|-----|---------|----------|
@@ -97,7 +122,7 @@ selfhost monitor start             # Start monitoring daemon
 | Interactive prompts | PRIMARY | - | - |
 | Deployment phases | PRIMARY | - | - |
 
-#### ARCH-005.5: Anti-Patterns (PROHIBITED)
+#### ARCH-005.6: Anti-Patterns (PROHIBITED)
 - **NEVER** call `helmfile apply` directly in production (use Ansible)
 - **NEVER** create Kubernetes resources with `kubectl apply` (use Helm charts)
 - **NEVER** store secrets in plain text (use Vault or SOPS)

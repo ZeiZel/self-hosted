@@ -95,3 +95,14 @@ valkey_password: "valkey123"
 authentik_secret_key: "changeme-secret-key-32-chars-min"
 authentik_admin_password: "admin123"
 grafana_password: "admin123"
+
+# =============================================================================
+# GATEWAY JOIN CONFIGURATION
+# =============================================================================
+
+# Enable joining gateway node to cluster
+kubespray_join_gateway: false
+
+# Taint gateway node to prevent regular workloads
+# Only pangolin-server with toleration will schedule on it
+kubespray_gateway_taint: true

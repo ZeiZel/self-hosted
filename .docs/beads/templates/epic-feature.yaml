@@ -1,0 +1,72 @@
+# Beads Task Template: New Feature
+# Use: bd create --file .docs/beads/templates/epic-feature.yaml
+
+template: epic-feature
+title: "[Feature] {feature_name}"
+type: epic
+priority: 2  # P2 = medium
+
+description: |
+  ## Overview
+  {brief_description}
+
+  ## Business Requirements
+  Reference: .docs/requirements.md section {section_ref}
+
+  ## Technical Approach
+  Reference: .docs/arch-rules.md pattern {pattern_ref}
+
+  ## Acceptance Criteria
+  - [ ] {criterion_1}
+  - [ ] {criterion_2}
+  - [ ] {criterion_3}
+
+  ## Dependencies
+  - {dependency_if_any}
+
+  ## Affected Components
+  - kubernetes/charts/{service}/
+  - kubernetes/releases/{service}.yaml.gotmpl
+  - .docs/architecture.md (update after completion)
+
+  ## Quality Gates
+  - [ ] helm lint passes
+  - [ ] kubeval validates
+  - [ ] NetworkPolicy configured
+  - [ ] ServiceMonitor enabled
+  - [ ] Health checks defined
+  - [ ] .docs/architecture.md updated
+
+subtasks:
+  - title: "Design {feature_name} architecture"
+    type: task
+    agent: spec-architect
+    description: |
+      Review .docs/arch-rules.md and design the implementation.
+      Update .docs/architecture.md with proposed changes.
+
+  - title: "Implement {feature_name}"
+    type: task
+    agent: spec-developer
+    description: |
+      Implement following patterns in .docs/arch-rules.md.
+      Ensure all mandatory templates exist.
+
+  - title: "Test {feature_name}"
+    type: task
+    agent: spec-tester
+    description: |
+      - Run helm lint
+      - Run kubeval
+      - Deploy and verify pod status
+      - Run Helm tests
+
+  - title: "Review {feature_name}"
+    type: task
+    agent: spec-reviewer
+    description: |
+      Security review:
+      - NetworkPolicy rules
+      - RBAC permissions
+      - Security context
+      - No hardcoded secrets

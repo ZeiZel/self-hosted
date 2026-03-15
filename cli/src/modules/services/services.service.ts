@@ -41,7 +41,7 @@ export class ServicesService {
           ...config,
           resources: config.resources ?? resources,
         },
-        tier: getServiceTier(config.resources ?? resources),
+        resourceTier: getServiceTier(config.resources ?? resources),
       };
     });
   }
@@ -328,7 +328,7 @@ export class ServicesService {
     }
 
     // Warnings for heavy services
-    const heavy = enabled.filter((s) => s.tier === 'heavy');
+    const heavy = enabled.filter((s) => s.resourceTier === 'heavy');
     if (heavy.length > 5) {
       warnings.push(`${heavy.length} heavy services selected. Ensure sufficient resources.`);
     }
@@ -352,7 +352,7 @@ export class ServicesService {
     const byNamespace: Record<LegacyNamespace, number> = {} as Record<LegacyNamespace, number>;
 
     for (const service of enabled) {
-      byTier[service.tier]++;
+      byTier[service.resourceTier]++;
       byNamespace[service.namespace] = (byNamespace[service.namespace] ?? 0) + 1;
     }
 

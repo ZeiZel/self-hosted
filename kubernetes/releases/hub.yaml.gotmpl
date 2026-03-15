@@ -21,6 +21,8 @@ postgresql:
 ingress:
   enabled: true
   host: hub.{{ .Values.infra.host }}
+  tls:
+    clusterIssuer: selfsigned-ca-issuer
 
 consul:
   enabled: true

@@ -122,6 +122,33 @@ Internet
 
 ---
 
+## Service Tier Classification
+
+### Deployment Tiers
+
+| Tier | Name | Description | User Selection |
+|------|------|-------------|----------------|
+| 0 | Core | Foundational infrastructure | Mandatory |
+| 1 | Infrastructure | Observability and tooling | Recommended |
+| 2 | Databases | Data persistence layer | Selectable |
+| 3 | Applications | User-facing services | Selectable |
+
+### Core Services (Tier 0) - Always Deployed
+
+| Service | Namespace | Purpose | Memory |
+|---------|-----------|---------|--------|
+| namespaces | default | Creates all Kubernetes namespaces | 0 |
+| traefik | ingress | Ingress controller and routing | 128Mi |
+| consul | service | Service discovery and mesh | 256Mi |
+| vault | service | Secrets management | 256Mi |
+| cert-manager | service | TLS certificate management | 128Mi |
+| pangolin | infrastructure | VPN tunnel for NAT traversal | 128Mi |
+| authentik | service | SSO and identity provider | 512Mi |
+
+**Total Core Memory**: ~1.4GB
+
+---
+
 ## Component Inventory
 
 ### Base Infrastructure (namespace: ingress, service)

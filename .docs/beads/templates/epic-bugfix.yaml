@@ -1,0 +1,64 @@
+# Beads Task Template: Bug Fix
+# Use: bd create --file .docs/beads/templates/epic-bugfix.yaml
+
+template: epic-bugfix
+title: "[Bug] {issue_title}"
+type: bug
+priority: 1  # P1 = high
+
+description: |
+  ## Problem
+  {describe_the_issue}
+
+  ## Expected Behavior
+  {what_should_happen}
+
+  ## Actual Behavior
+  {what_actually_happens}
+
+  ## Steps to Reproduce
+  1. {step_1}
+  2. {step_2}
+  3. {step_3}
+
+  ## Environment
+  - Service: {service_name}
+  - Namespace: {namespace}
+  - Chart version: {version}
+
+  ## Investigation Notes
+  {any_findings_so_far}
+
+  ## Root Cause (to be filled)
+  TBD
+
+  ## Fix Approach (to be filled)
+  TBD
+
+subtasks:
+  - title: "Investigate {issue_title}"
+    type: task
+    agent: devops-troubleshooter
+    description: |
+      Debug commands:
+      ```bash
+      kubectl logs -n {namespace} -l app.kubernetes.io/name={service} --tail=100
+      kubectl describe pod -n {namespace} <pod>
+      kubectl exec -n {namespace} <pod> -- nc -zv postgresql.db.svc.cluster.local 5432
+      ```
+
+  - title: "Fix {issue_title}"
+    type: task
+    agent: spec-developer
+    description: |
+      Apply fix following patterns in .docs/arch-rules.md.
+      Update tests if behavior changed.
+
+  - title: "Verify fix for {issue_title}"
+    type: task
+    agent: spec-tester
+    description: |
+      - Deploy fixed version
+      - Verify issue resolved
+      - Run regression tests
+      - Confirm no side effects

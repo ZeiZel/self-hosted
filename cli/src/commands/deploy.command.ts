@@ -1,6 +1,9 @@
 import { Command } from 'commander';
 import { INestApplicationContext } from '@nestjs/common';
 import { spawn } from 'child_process';
+import * as fs from 'fs';
+import * as path from 'path';
+import * as os from 'os';
 import chalk from 'chalk';
 import { ConfigService, DeploymentStateData } from '../modules/config/config.service';
 import { InventoryService } from '../modules/inventory/inventory.service';
@@ -35,13 +38,7 @@ async function executeAnsible(
   dryRun: boolean = false,
 ): Promise<{ success: boolean; output: string; error: string }> {
   return new Promise((resolve) => {
-    const args = [
-      '-i',
-      `inventory/${inventoryFile}`,
-      'all.yml',
-      '--tags',
-      tags.join(','),
-    ];
+    const args = ['-i', `inventory/${inventoryFile}`, 'all.yml', '--tags', tags.join(',')];
 
     if (dryRun) {
       args.push('--check');
@@ -96,6 +93,94 @@ async function executeAnsible(
   });
 }
 
+/**
+ * Display deployment report from file
+ */
+async function displayDeploymentReport(): Promise<void> {
+  const reportPath = path.join(os.homedir(), '.selfhost-deployment-report.txt');
+
+  if (!fs.existsSync(reportPath)) {
+    logger.warn('Deployment report not found. Credentials may not have been extracted.');
+    return;
+  }
+
+  const content = fs.readFileSync(reportPath, 'utf-8');
+  const lines = content.split('\n');
+
+  logger.newLine();
+  logger.header('Deployment Report');
+
+  let currentSection = '';
+  for (const line of lines) {
+    // Parse section headers
+    if (line.startsWith('## ')) {
+      currentSection = line.substring(3);
+      logger.newLine();
+      logger.subHeader(currentSection);
+      continue;
+    }
+
+    // Parse subsection headers
+    if (line.startsWith('### ')) {
+      logger.log(chalk.cyan(`  ${line.substring(4)}`));
+      continue;
+    }
+
+    // Skip separator lines
+    if (line.startsWith('===')) {
+      continue;
+    }
+
+    // Handle credential blocks
+    if (line.match(/^[A-Z]+$/)) {
+      logger.newLine();
+      logger.log(chalk.bold.yellow(line));
+      continue;
+    }
+
+    // Handle key-value pairs in credentials
+    if (line.match(/^\s+\w+:/)) {
+      const [key, ...valueParts] = line.split(':');
+      const value = valueParts.join(':').trim();
+      const trimmedKey = key.trim();
+
+      // Color code sensitive values
+      if (trimmedKey === 'root_token' || trimmedKey === 'bootstrap_password' || trimmedKey === 'admin_password') {
+        logger.log(`  ${chalk.gray(trimmedKey + ':')} ${chalk.green(value)}`);
+      } else {
+        logger.log(`  ${chalk.gray(trimmedKey + ':')} ${value}`);
+      }
+      continue;
+    }
+
+    // Handle URLs
+    if (line.includes('https://')) {
+      logger.log(chalk.blue(line));
+      continue;
+    }
+
+    // Handle numbered steps
+    if (line.match(/^\d+\./)) {
+      logger.log(chalk.white(line));
+      continue;
+    }
+
+    // Handle notes
+    if (line.includes('note:') || line.includes('Note:') || line.includes('Action:')) {
+      logger.log(chalk.gray(line));
+      continue;
+    }
+
+    // Default output
+    if (line.trim()) {
+      logger.log(line);
+    }
+  }
+
+  logger.newLine();
+  logger.info(`Full report saved to: ${chalk.underline(reportPath)}`);
+}
+
 export function createDeployCommand(app: INestApplicationContext): Command {
   const command = new Command('deploy');
 
@@ -141,12 +226,7 @@ export function createDeployCommand(app: INestApplicationContext): Command {
         const tags = options.tags.split(',').map((t: string) => t.trim());
 
         logger.newLine();
-        const result = await executeAnsible(
-          paths.ansible,
-          tags,
-          options.inventory,
-          options.dryRun,
-        );
+        const result = await executeAnsible(paths.ansible, tags, options.inventory, options.dryRun);
 
         if (result.success) {
           logger.success('Ansible execution completed successfully');
@@ -315,7 +395,9 @@ export function createDeployCommand(app: INestApplicationContext): Command {
           // Get repository paths
           const repoRoot = findRepoRoot();
           if (!repoRoot) {
-            throw new Error('Could not find repository root. Are you in the self-hosted directory?');
+            throw new Error(
+              'Could not find repository root. Are you in the self-hosted directory?',
+            );
           }
           const paths = getRepoPaths(repoRoot);
 
@@ -329,17 +411,17 @@ export function createDeployCommand(app: INestApplicationContext): Command {
           logger.info(`Running: ansible-playbook --tags ${tags.join(',')}`);
 
           // Execute Ansible with the appropriate tags
-          const result = await executeAnsible(
-            paths.ansible,
-            tags,
-            'hosts.ini',
-            options.dryRun,
-          );
+          const result = await executeAnsible(paths.ansible, tags, 'hosts.ini', options.dryRun);
 
           if (result.success) {
             logger.success(`Phase ${phase} completed`);
             configService.markPhaseCompleted(deploymentState!.id, phase);
-            configService.addDeploymentLog(deploymentState!.id, phase, 'info', 'Phase completed successfully');
+            configService.addDeploymentLog(
+              deploymentState!.id,
+              phase,
+              'info',
+              'Phase completed successfully',
+            );
           } else {
             throw new Error(result.error || 'Ansible execution failed');
           }
@@ -376,6 +458,9 @@ export function createDeployCommand(app: INestApplicationContext): Command {
 
       // Complete deployment
       configService.completeDeployment(deploymentState!.id, 'success');
+
+      // Display deployment report with credentials and URLs
+      await displayDeploymentReport();
     });
 
   return command;
@@ -470,12 +555,13 @@ async function showPhaseTasks(phase: DeploymentPhase): Promise<void> {
       'Verify backup infrastructure',
     ],
     [DeploymentPhase.CORE_SERVICES]: [
-      'Deploy namespaces',
-      'Deploy Traefik (ingress)',
-      'Deploy Consul (service mesh)',
-      'Deploy Vault (secrets)',
-      'Deploy cert-manager',
-      'Deploy Authentik (SSO)',
+      'Deploy namespaces (mandatory)',
+      'Deploy Traefik (ingress, mandatory)',
+      'Deploy Consul (service mesh, mandatory)',
+      'Deploy Vault (secrets, mandatory)',
+      'Deploy cert-manager (TLS, mandatory)',
+      'Deploy Pangolin (VPN tunnel, mandatory)',
+      'Deploy Authentik (SSO, mandatory)',
     ],
     [DeploymentPhase.DATABASES]: [
       'Deploy PostgreSQL',

@@ -1,0 +1,159 @@
+# Mock services registry for E2E testing
+# Simplified version of kubernetes/apps/_others.yaml
+
+# Infrastructure services
+traefik:
+  repo: traefik
+  chart: traefik
+  namespace: ingress
+  version: "26.0.0"
+  installed: true
+  needs: []
+
+consul:
+  repo: hashicorp
+  chart: consul
+  namespace: service
+  version: "1.4.0"
+  installed: true
+  needs:
+    - ingress/traefik
+
+vault:
+  repo: hashicorp
+  chart: vault
+  namespace: service
+  version: "0.27.0"
+  installed: true
+  needs:
+    - ingress/traefik
+    - service/consul
+
+authentik:
+  repo: charts
+  chart: authentik
+  namespace: service
+  version: "2024.2.0"
+  installed: true
+  needs:
+    - ingress/traefik
+    - service/vault
+    - db/postgresql
+    - db/valkey
+
+cert-manager:
+  repo: jetstack
+  chart: cert-manager
+  namespace: service
+  version: "1.14.0"
+  installed: true
+  needs:
+    - ingress/traefik
+
+# Databases
+postgresql:
+  repo: bitnami
+  chart: postgresql
+  namespace: db
+  version: "15.0.0"
+  installed: true
+  needs:
+    - service/vault
+
+valkey:
+  repo: bitnami
+  chart: valkey
+  namespace: db
+  version: "0.3.0"
+  installed: true
+  needs:
+    - service/vault
+
+mongodb:
+  repo: bitnami
+  chart: mongodb
+  namespace: db
+  version: "15.0.0"
+  installed: false
+  needs:
+    - service/vault
+
+minio:
+  repo: bitnami
+  chart: minio
+  namespace: db
+  version: "14.0.0"
+  installed: true
+  needs:
+    - service/vault
+
+# Code namespace
+gitlab:
+  repo: charts
+  chart: gitlab
+  namespace: code
+  version: "1.0.0"
+  installed: false
+  needs:
+    - ingress/traefik
+    - service/vault
+    - service/authentik
+    - db/postgresql
+    - db/valkey
+    - db/minio
+
+teamcity:
+  repo: charts
+  chart: teamcity
+  namespace: code
+  version: "1.0.0"
+  installed: false
+  needs:
+    - ingress/traefik
+    - service/vault
+    - service/authentik
+    - db/postgresql
+
+youtrack:
+  repo: charts
+  chart: youtrack
+  namespace: code
+  version: "1.0.0"
+  installed: false
+  needs:
+    - ingress/traefik
+    - service/vault
+    - service/authentik
+
+# Productivity namespace
+affine:
+  repo: charts
+  chart: affine
+  namespace: productivity
+  version: "1.0.0"
+  installed: false
+  needs:
+    - ingress/traefik
+    - service/vault
+    - db/postgresql
+
+# Data namespace
+vaultwarden:
+  repo: charts
+  chart: vaultwarden
+  namespace: data
+  version: "1.0.0"
+  installed: false
+  needs:
+    - ingress/traefik
+    - service/vault
+
+# Infrastructure namespace
+glance:
+  repo: charts
+  chart: glance
+  namespace: infrastructure
+  version: "1.0.0"
+  installed: false
+  needs:
+    - ingress/traefik
