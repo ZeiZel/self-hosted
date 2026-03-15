@@ -1,0 +1,30 @@
+---
+# Pangolin VPS Docker Handlers
+
+- name: restart pangolin-docker
+  command: docker compose restart
+  args:
+    chdir: "{{ pangolin_base_dir }}"
+  listen: restart pangolin-docker
+
+- name: stop pangolin-docker
+  command: docker compose down
+  args:
+    chdir: "{{ pangolin_base_dir }}"
+  listen: stop pangolin-docker
+
+- name: start pangolin-docker
+  command: docker compose up -d
+  args:
+    chdir: "{{ pangolin_base_dir }}"
+  listen: start pangolin-docker
+
+- name: reload systemd
+  systemd:
+    daemon_reload: yes
+  listen: reload systemd
+
+- name: reload ufw
+  ufw:
+    state: reloaded
+  listen: reload ufw

@@ -1,0 +1,322 @@
+---
+# Pangolin VPS Docker Deployment
+# Deploys Pangolin Server stack on VPS via Docker Compose
+#
+# Architecture:
+#   Internet -> VPS (Docker: Pangolin + Gerbil + Traefik)
+#                 |
+#                 | WireGuard/Newt tunnel
+#                 v
+#            K8s Cluster: Newt Client Pod -> Cluster Traefik -> Services
+
+- name: Display deployment info
+  debug:
+    msg:
+      - "Deploying Pangolin VPN Server via Docker"
+      - "VPS IP: {{ pangolin_gateway_public_ip }}"
+      - "Domain: {{ domain.public }}"
+      - "WireGuard Port: {{ wireguard_port }}"
+  tags: [pangolin-vps, always]
+
+# =============================================================================
+# PREREQUISITES
+# =============================================================================
+
+- name: Ensure Docker is installed
+  command: docker --version
+  register: docker_check
+  changed_when: false
+  failed_when: docker_check.rc != 0
+  tags: [pangolin-vps, prereq]
+
+- name: Ensure Docker Compose plugin is available
+  command: docker compose version
+  register: compose_check
+  changed_when: false
+  failed_when: compose_check.rc != 0
+  tags: [pangolin-vps, prereq]
+
+- name: Install required packages
+  apt:
+    name:
+      - wireguard-tools
+      - iptables
+      - curl
+    state: present
+    update_cache: yes
+  tags: [pangolin-vps, prereq]
+
+# =============================================================================
+# SYSTEM CONFIGURATION
+# =============================================================================
+
+- name: Configure sysctl for VPN
+  sysctl:
+    name: "{{ item.key }}"
+    value: "{{ item.value }}"
+    state: present
+    reload: yes
+    sysctl_file: /etc/sysctl.d/99-pangolin.conf
+  loop: "{{ sysctl_config | dict2items }}"
+  tags: [pangolin-vps, sysctl]
+
+# =============================================================================
+# DIRECTORY STRUCTURE
+# =============================================================================
+
+- name: Create Pangolin directory structure
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: root
+    group: root
+  loop:
+    - "{{ pangolin_base_dir }}"
+    - "{{ pangolin_config_dir }}"
+    - "{{ pangolin_data_dir }}"
+    - "{{ traefik_config_dir }}"
+    - "{{ traefik_config_dir }}/dynamic"
+    - "{{ letsencrypt_dir }}"
+  tags: [pangolin-vps, dirs]
+
+# =============================================================================
+# SECRETS HANDLING
+# =============================================================================
+
+- name: Check if WireGuard keys exist
+  stat:
+    path: "{{ pangolin_config_dir }}/wg_private.key"
+  register: wg_key_file
+  tags: [pangolin-vps, secrets]
+
+- name: Generate WireGuard keys if not exist
+  shell: |
+    wg genkey > {{ pangolin_config_dir }}/wg_private.key
+    wg pubkey < {{ pangolin_config_dir }}/wg_private.key > {{ pangolin_config_dir }}/wg_public.key
+    chmod 600 {{ pangolin_config_dir }}/wg_private.key
+    chmod 644 {{ pangolin_config_dir }}/wg_public.key
+  args:
+    creates: "{{ pangolin_config_dir }}/wg_private.key"
+  when: not wg_key_file.stat.exists
+  tags: [pangolin-vps, secrets]
+
+- name: Read WireGuard private key
+  slurp:
+    src: "{{ pangolin_config_dir }}/wg_private.key"
+  register: wg_private_key_file
+  tags: [pangolin-vps, secrets]
+
+- name: Read WireGuard public key
+  slurp:
+    src: "{{ pangolin_config_dir }}/wg_public.key"
+  register: wg_public_key_file
+  tags: [pangolin-vps, secrets]
+
+- name: Set WireGuard keys
+  set_fact:
+    wireguard_server_private_key: "{{ wg_private_key_file.content | b64decode | trim }}"
+    wireguard_server_public_key: "{{ wg_public_key_file.content | b64decode | trim }}"
+  no_log: true
+  tags: [pangolin-vps, secrets]
+
+- name: Generate Pangolin secret
+  set_fact:
+    pangolin_secret: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=64') }}"
+  no_log: true
+  tags: [pangolin-vps, secrets]
+
+# =============================================================================
+# CONFIGURATION FILES
+# =============================================================================
+
+- name: Deploy Pangolin configuration
+  template:
+    src: config.yml.j2
+    dest: "{{ pangolin_data_dir }}/config.yml"
+    mode: '0600'
+    owner: root
+    group: root
+  notify: restart pangolin-docker
+  tags: [pangolin-vps, config]
+
+- name: Deploy Traefik static configuration
+  template:
+    src: traefik.yml.j2
+    dest: "{{ traefik_config_dir }}/traefik.yml"
+    mode: '0644'
+    owner: root
+    group: root
+  notify: restart pangolin-docker
+  tags: [pangolin-vps, config]
+
+- name: Deploy Traefik dynamic configuration
+  template:
+    src: dynamic.yml.j2
+    dest: "{{ traefik_config_dir }}/dynamic/cluster.yml"
+    mode: '0644'
+    owner: root
+    group: root
+  notify: restart pangolin-docker
+  tags: [pangolin-vps, config]
+
+- name: Create ACME storage file with correct permissions
+  file:
+    path: "{{ letsencrypt_dir }}/acme.json"
+    state: touch
+    mode: '0600'
+    owner: root
+    group: root
+  changed_when: false
+  tags: [pangolin-vps, config]
+
+- name: Deploy Docker Compose file
+  template:
+    src: docker-compose.yml.j2
+    dest: "{{ pangolin_base_dir }}/docker-compose.yml"
+    mode: '0644'
+    owner: root
+    group: root
+  notify: restart pangolin-docker
+  tags: [pangolin-vps, config]
+
+- name: Deploy environment file
+  template:
+    src: env.j2
+    dest: "{{ pangolin_base_dir }}/.env"
+    mode: '0600'
+    owner: root
+    group: root
+  notify: restart pangolin-docker
+  tags: [pangolin-vps, config]
+
+# =============================================================================
+# FIREWALL
+# =============================================================================
+
+- name: Configure UFW - allow SSH
+  ufw:
+    rule: allow
+    port: "{{ ssh.port | default(22) }}"
+    proto: tcp
+  when: ansible_os_family | default('Debian') == "Debian"
+  tags: [pangolin-vps, firewall]
+
+- name: Configure UFW - allow HTTP
+  ufw:
+    rule: allow
+    port: "{{ traefik_http_port }}"
+    proto: tcp
+  when: ansible_os_family | default('Debian') == "Debian"
+  tags: [pangolin-vps, firewall]
+
+- name: Configure UFW - allow HTTPS
+  ufw:
+    rule: allow
+    port: "{{ traefik_https_port }}"
+    proto: tcp
+  when: ansible_os_family | default('Debian') == "Debian"
+  tags: [pangolin-vps, firewall]
+
+- name: Configure UFW - allow WireGuard
+  ufw:
+    rule: allow
+    port: "{{ wireguard_port }}"
+    proto: udp
+  when: ansible_os_family | default('Debian') == "Debian"
+  tags: [pangolin-vps, firewall]
+
+- name: Enable UFW
+  ufw:
+    state: enabled
+    policy: deny
+    direction: incoming
+  when: ansible_os_family | default('Debian') == "Debian"
+  tags: [pangolin-vps, firewall]
+
+# =============================================================================
+# DOCKER NETWORK
+# =============================================================================
+
+- name: Create Docker network for Pangolin
+  docker_network:
+    name: "{{ docker_network_name }}"
+    state: present
+  tags: [pangolin-vps, docker]
+
+# =============================================================================
+# DEPLOYMENT
+# =============================================================================
+
+- name: Pull Docker images
+  command: docker compose pull
+  args:
+    chdir: "{{ pangolin_base_dir }}"
+  register: pull_result
+  changed_when: "'Pulling' in pull_result.stdout or 'Downloaded' in pull_result.stdout"
+  tags: [pangolin-vps, deploy]
+
+- name: Start Pangolin stack
+  command: docker compose up -d
+  args:
+    chdir: "{{ pangolin_base_dir }}"
+  register: compose_up
+  changed_when: "'Creating' in compose_up.stdout or 'Starting' in compose_up.stdout or 'Recreating' in compose_up.stdout"
+  tags: [pangolin-vps, deploy]
+
+# =============================================================================
+# SYSTEMD SERVICE
+# =============================================================================
+
+- name: Deploy systemd service for Pangolin stack
+  template:
+    src: pangolin-docker.service.j2
+    dest: /etc/systemd/system/pangolin-docker.service
+    mode: '0644'
+  notify: reload systemd
+  tags: [pangolin-vps, systemd]
+
+- name: Enable Pangolin Docker service
+  systemd:
+    name: pangolin-docker
+    enabled: yes
+    daemon_reload: yes
+  tags: [pangolin-vps, systemd]
+
+# =============================================================================
+# VERIFICATION
+# =============================================================================
+
+- name: Wait for Traefik to be healthy
+  uri:
+    url: "http://localhost:{{ traefik_http_port }}/ping"
+    status_code: 200
+    timeout: 5
+  register: traefik_health
+  retries: 30
+  delay: 5
+  until: traefik_health.status == 200
+  ignore_errors: yes
+  tags: [pangolin-vps, verify]
+
+- name: Check Docker containers status
+  command: docker compose ps
+  args:
+    chdir: "{{ pangolin_base_dir }}"
+  register: compose_status
+  changed_when: false
+  tags: [pangolin-vps, verify]
+
+- name: Display container status
+  debug:
+    msg: "{{ compose_status.stdout_lines }}"
+  tags: [pangolin-vps, verify]
+
+- name: Display deployment summary
+  debug:
+    msg:
+      - "Pangolin VPS deployment completed"
+      - "Admin UI: https://pangolin.{{ domain.public }}"
+      - "WireGuard Endpoint: {{ pangolin_gateway_endpoint }}"
+      - "Traefik Health: {{ 'OK' if (traefik_health.status | default(0)) == 200 else 'PENDING' }}"
+  tags: [pangolin-vps, always]

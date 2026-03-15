@@ -63,10 +63,10 @@
       tags: [docker]
     - role: apps
       tags: [apps]
-    - role: pangolin
-      tags: [pangolin]
-      vars:
-        pangolin_mode: gateway
+    # Use Docker-based Pangolin deployment for VPS gateway
+    # This deploys Pangolin Server via Docker Compose instead of binary installation
+    - role: pangolin_vps
+      tags: [pangolin, pangolin-vps]
 
 - name: Storage Nodes Configuration
   hosts: storages

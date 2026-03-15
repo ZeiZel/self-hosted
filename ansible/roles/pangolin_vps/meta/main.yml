@@ -1,0 +1,29 @@
+---
+# Role metadata for pangolin_vps
+
+galaxy_info:
+  role_name: pangolin_vps
+  author: Self-Hosted Infrastructure
+  description: Deploy Pangolin VPN Server via Docker Compose on VPS gateway
+  company: Self-Hosted
+  license: MIT
+  min_ansible_version: "2.14"
+  platforms:
+    - name: Ubuntu
+      versions:
+        - all
+    - name: Debian
+      versions:
+        - all
+  galaxy_tags:
+    - vpn
+    - wireguard
+    - pangolin
+    - docker
+    - gateway
+    - traefik
+
+dependencies:
+  - role: docker
+    vars:
+      docker_edition: ce

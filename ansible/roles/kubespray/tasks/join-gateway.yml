@@ -1,0 +1,169 @@
+---
+# =============================================================================
+# KUBESPRAY JOIN GATEWAY TASKS
+# =============================================================================
+# Add VPS gateway node to existing Kubernetes cluster and label it
+
+# -----------------------------------------------------------------------------
+# Pre-Join Checks
+# -----------------------------------------------------------------------------
+- name: Verify kubespray scale.yml exists
+  stat:
+    path: "{{ kubespray_dir }}/scale.yml"
+  register: scale_yml_stat
+  failed_when: not scale_yml_stat.stat.exists
+  tags: [kubespray, gateway, join]
+
+- name: Verify inventory includes gateway node
+  assert:
+    that:
+      - groups['gateway'] is defined
+      - groups['gateway'] | length > 0
+    fail_msg: "Gateway group must be defined in inventory with at least one host"
+  tags: [kubespray, gateway, join]
+
+- name: Verify VPS is reachable
+  wait_for:
+    host: "{{ hostvars[groups['gateway'][0]]['ansible_host'] }}"
+    port: "{{ hostvars[groups['gateway'][0]]['ansible_port'] | default(22) }}"
+    timeout: 30
+  tags: [kubespray, gateway, join]
+
+# -----------------------------------------------------------------------------
+# Regenerate Inventory with Gateway
+# -----------------------------------------------------------------------------
+- name: Regenerate kubespray inventory to include gateway
+  template:
+    src: inventory.yaml.j2
+    dest: "{{ kubespray_inventory_dir }}/hosts.yaml"
+    mode: '0644'
+  tags: [kubespray, gateway, inventory]
+
+- name: Display gateway join message
+  debug:
+    msg: |
+      Joining VPS gateway node to Kubernetes cluster...
+
+      Gateway node: {{ groups['gateway'][0] }}
+      Gateway IP: {{ hostvars[groups['gateway'][0]]['ansible_host'] }}
+
+      This will use kubespray scale.yml to add the node.
+      The node will be labeled as a gateway node.
+  tags: [kubespray, gateway, join]
+
+# -----------------------------------------------------------------------------
+# Join Gateway Node
+# -----------------------------------------------------------------------------
+- name: Run kubespray scale.yml to join gateway node
+  shell: |
+    source {{ kubespray_venv_dir }}/bin/activate
+    cd {{ kubespray_dir }}
+    ansible-playbook -i {{ kubespray_inventory_dir }}/hosts.yaml \
+      scale.yml \
+      --become \
+      --become-user={{ kubespray_become_user }} \
+      -v
+  args:
+    executable: /bin/bash
+  environment:
+    ANSIBLE_HOST_KEY_CHECKING: "False"
+    ANSIBLE_DEPRECATION_WARNINGS: "False"
+    ANSIBLE_CALLBACKS_ENABLED: ""
+  register: kubespray_scale_gateway
+  async: "{{ kubespray_deploy_timeout }}"
+  poll: "{{ kubespray_poll_interval }}"
+  tags: [kubespray, gateway, join]
+
+- name: Display scale output
+  debug:
+    msg: "{{ kubespray_scale_gateway.stdout_lines[-50:] }}"
+  when: kubespray_scale_gateway.stdout_lines is defined
+  tags: [kubespray, gateway, join]
+
+- name: Check scale result
+  fail:
+    msg: |
+      Failed to join gateway node to cluster!
+
+      Error: {{ kubespray_scale_gateway.stderr | default('Unknown error') }}
+
+      Check the full output above for details.
+  when: kubespray_scale_gateway.rc != 0
+  tags: [kubespray, gateway, join]
+
+# -----------------------------------------------------------------------------
+# Wait for Node to be Ready
+# -----------------------------------------------------------------------------
+- name: Wait for gateway node to appear in cluster
+  command: >
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
+    get node {{ groups['gateway'][0] }} -o jsonpath='{.status.conditions[?(@.type=="Ready")].status}'
+  register: gateway_node_status
+  changed_when: false
+  retries: 60
+  delay: 10
+  until: gateway_node_status.stdout == "True"
+  tags: [kubespray, gateway, verify]
+
+# -----------------------------------------------------------------------------
+# Label Gateway Node
+# -----------------------------------------------------------------------------
+- name: Label gateway node with gateway role
+  command: >
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
+    label node {{ groups['gateway'][0] }}
+    node-role.kubernetes.io/gateway=true
+    --overwrite
+  register: label_gateway
+  changed_when: "'labeled' in label_gateway.stdout or 'not labeled' not in label_gateway.stdout"
+  tags: [kubespray, gateway, label]
+
+- name: Taint gateway node to prevent regular workloads
+  command: >
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
+    taint node {{ groups['gateway'][0] }}
+    node-role.kubernetes.io/gateway=true:NoSchedule
+    --overwrite
+  register: taint_gateway
+  changed_when: "'tainted' in taint_gateway.stdout"
+  failed_when: false
+  tags: [kubespray, gateway, taint]
+  when: kubespray_gateway_taint | default(true)
+
+# -----------------------------------------------------------------------------
+# Verify Gateway Node
+# -----------------------------------------------------------------------------
+- name: Get gateway node info
+  command: >
+    kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
+    get node {{ groups['gateway'][0] }} -o wide
+  register: gateway_node_info
+  changed_when: false
+  tags: [kubespray, gateway, verify]
+
+- name: Display gateway node status
+  debug:
+    msg: |
+      =====================================================
+      Gateway Node Joined Successfully!
+      =====================================================
+
+      Node: {{ groups['gateway'][0] }}
+      {{ gateway_node_info.stdout }}
+
+      Labels applied:
+        - node-role.kubernetes.io/gateway=true
+
+      {% if kubespray_gateway_taint | default(true) %}
+      Taints applied:
+        - node-role.kubernetes.io/gateway=true:NoSchedule
+      {% endif %}
+
+      Next steps:
+        1. Deploy pangolin-server chart to this node
+        2. Configure VPN tunnel
+
+      Command to verify:
+        kubectl get nodes -l node-role.kubernetes.io/gateway=true
+      =====================================================
+  tags: [kubespray, gateway, summary]
