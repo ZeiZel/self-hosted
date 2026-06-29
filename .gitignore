@@ -40,3 +40,9 @@ ansible/.credentials/
 
 # Ansible inventory with real credentials (use hosts.example.ini as template)
 ansible/inventory/hosts.ini
+
+# Beads / Dolt files (added by bd init)
+.dolt/
+*.db
+.beads-credential-key
+.beads/proxieddb/

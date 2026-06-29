@@ -2,3 +2,5 @@ repos:
   primary: "."
   additional:
     - "/Users/zeizel/.beads-planning"
+
+sync.remote: "git+https://github.com/ZeiZel/self-hosted.git"
