@@ -455,12 +455,31 @@ Namespaces → Traefik → Consul → Vault (unsealed) → cert-manager → Auth
 | Infrastructure | ✅ Production | 100% |
 | Networking | ✅ Production | 100% |
 | Storage | ✅ Production | 100% |
-| Security | ✅ Production | 100% |
+| Security | ⛔ Blockers | see review |
 | Monitoring | ✅ Production | 100% |
 | Backup | ✅ Production | 100% |
 | Documentation | ✅ Complete | 100% |
 
-**Platform Status**: Production-Ready ✅
+**Platform Status**: ⛔ **NOT production-ready** — the production-readiness review
+returned a **NO-GO** verdict (5 blockers). See
+[`production-readiness-review.md`](./production-readiness-review.md) for the full
+findings and remediation checklist (plaintext secrets file, mutable image tags,
+consul missing NetworkPolicy/RBAC/PDB, workloads without securityContext, charts
+creating K8s Secrets from values).
 
-**Last Review**: February 2026
-**Next Review**: Monthly
+**Last Review**: June 2026 (production-readiness gate)
+**Next Review**: After blockers remediated
+
+---
+
+## Operator Tooling
+
+- **`cli/`** — original operator CLI (Bun + NestJS + Commander + Ink).
+- **`cli-go/`** — Go rewrite (Charm stack: cobra + bubbletea + lipgloss + bubbles
+  + ntcharts + huh). Single static binary `selfhost` with full command parity;
+  the monitoring daemon is now a **native binary** supervised by launchd/systemd
+  (replacing the Bun-in-Docker `docker/selfhost-daemon`). Both share the same
+  `~/.selfhosted` config/DB layout. The Bun CLI and `docker/selfhost-daemon`
+  remain until the Go binary is verified on real infrastructure.
+- **`docker/qdrant/`** — local QDrant + qdrant MCP server for agent semantic
+  memory / token optimisation (developer tooling; not part of the platform).

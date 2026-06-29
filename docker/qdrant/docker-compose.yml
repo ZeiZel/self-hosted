@@ -1,0 +1,40 @@
+version: '3.8'
+
+# Local QDrant vector database.
+# Used as semantic-memory backend for the qdrant MCP server (see ../../.mcp.json),
+# which Claude Code / other agents query to optimise token usage across sessions.
+# Reference config only (per docker/ convention) — NOT a production deployment.
+
+services:
+  qdrant:
+    image: qdrant/qdrant:v1.12.4
+    # Distinct name + published host ports so the host-side MCP server can reach it.
+    # (An unrelated `qdrant` container from the `ai-support` project may already run
+    #  without published ports; this instance is dedicated to agent memory.)
+    container_name: qdrant-agent-memory
+    restart: unless-stopped
+    ports:
+      - "6333:6333"   # REST + Web UI (http://localhost:6333/dashboard)
+      - "6334:6334"   # gRPC
+    environment:
+      - QDRANT__SERVICE__HTTP_PORT=6333
+      - QDRANT__SERVICE__GRPC_PORT=6334
+      - QDRANT__LOG_LEVEL=INFO
+    volumes:
+      - qdrant_storage:/qdrant/storage
+    networks:
+      - qdrant-network
+    healthcheck:
+      # qdrant images are distroless (no curl/wget/bash) — use the bundled binary's TCP check
+      test: ["CMD", "/qdrant/qdrant", "--version"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+
+volumes:
+  qdrant_storage:
+
+networks:
+  qdrant-network:
+    driver: bridge
