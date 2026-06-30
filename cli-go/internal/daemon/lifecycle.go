@@ -5,6 +5,7 @@
 package daemon
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -12,11 +13,21 @@ import (
 	"runtime"
 	"strconv"
 	"text/template"
+	"time"
 
 	"github.com/ZeiZel/self-hosted/cli-go/internal/core"
 	"github.com/ZeiZel/self-hosted/cli-go/internal/db"
 	"github.com/ZeiZel/self-hosted/cli-go/internal/ui"
 )
+
+func jsonEncode(v any) error {
+	out, err := json.MarshalIndent(v, "", "  ")
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(out))
+	return nil
+}
 
 const launchdLabel = "com.selfhost.daemon"
 
@@ -232,27 +243,71 @@ func Status() (State, error) {
 	return st, nil
 }
 
-// Logs prints recent health-check logs.
-func Logs(tail int, status string) error {
+// LogOptions configure the logs command.
+type LogOptions struct {
+	Tail   int
+	Status string
+	JSON   bool
+	Follow bool
+}
+
+// Logs prints recent health-check logs, optionally as JSON or following.
+func Logs(opts LogOptions) error {
 	d, err := db.Open(core.DatabasePath())
 	if err != nil {
 		return err
 	}
 	defer d.Close()
-	logs, err := d.RecentHealthLogs(tail, status)
+
+	print := func(logs []db.HealthLog) {
+		if opts.JSON {
+			_ = jsonEncode(logs)
+			return
+		}
+		rows := make([][]string, 0, len(logs))
+		for _, l := range logs {
+			rows = append(rows, []string{l.Timestamp, l.CheckType, l.Target, l.Status, l.Message})
+		}
+		fmt.Println(ui.Table([]string{"Time", "Type", "Target", "Status", "Message"}, rows))
+	}
+
+	logs, err := d.RecentHealthLogs(opts.Tail, opts.Status)
 	if err != nil {
 		return err
 	}
-	if len(logs) == 0 {
-		ui.Info("no health logs yet")
+	if !opts.Follow {
+		if len(logs) == 0 {
+			ui.Info("no health logs yet")
+			return nil
+		}
+		print(logs)
 		return nil
 	}
-	rows := make([][]string, 0, len(logs))
+	// Follow mode: poll for new rows by max id.
+	print(logs)
+	var lastID int64
 	for _, l := range logs {
-		rows = append(rows, []string{l.Timestamp, l.CheckType, l.Target, l.Status, l.Message})
+		if l.ID > lastID {
+			lastID = l.ID
+		}
 	}
-	fmt.Println(ui.Table([]string{"Time", "Type", "Target", "Status", "Message"}, rows))
-	return nil
+	for {
+		time.Sleep(2 * time.Second)
+		recent, err := d.RecentHealthLogs(opts.Tail, opts.Status)
+		if err != nil {
+			return err
+		}
+		var fresh []db.HealthLog
+		for _, l := range recent {
+			if l.ID > lastID {
+				fresh = append(fresh, l)
+				lastID = l.ID
+			}
+		}
+		if len(fresh) > 0 {
+			print(fresh)
+		}
+	}
 }
 
 func run(name string, args ...string) error {

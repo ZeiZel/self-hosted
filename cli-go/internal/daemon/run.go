@@ -87,9 +87,10 @@ func RunForeground() error {
 	}
 
 	snap := &snapshot{}
+	pred := newPredictor()
 
 	// HTTP long-poll API (parity with daemon-server.ts).
-	srv := startHTTP(httpHost, httpPort, snap)
+	srv := startHTTP(httpHost, httpPort, snap, pred)
 	defer srv.Close()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
@@ -110,6 +111,12 @@ func RunForeground() error {
 		svcs, _ := cl.ServiceMetricsList("")
 		if errS == nil {
 			snap.set(sum, nodes, svcs)
+			for _, n := range nodes {
+				pred.record("node_cpu:"+n.Name, float64(n.CPU.Percent))
+				pred.record("node_memory:"+n.Name, float64(n.Memory.Percent))
+			}
+			pred.record("cluster_cpu:cluster", float64(sum.CPU.Percent))
+			pred.record("cluster_memory:cluster", float64(sum.Memory.Percent))
 		}
 	}
 	collect()
@@ -179,18 +186,37 @@ func maybeAlert(d *db.DB, target string, health cluster.NodeHealth, msg string) 
 		"node", target, string(health), time.Now().UTC().Format(time.RFC3339))
 }
 
-func startHTTP(host string, port int, snap *snapshot) *http.Server {
+func startHTTP(host string, port int, snap *snapshot, pred *predictor) *http.Server {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/v1/health", func(w http.ResponseWriter, r *http.Request) {
 		writeJSON(w, map[string]any{"status": "ok", "time": time.Now().UTC()})
 	})
-	mux.HandleFunc("/api/v1/metrics/current", func(w http.ResponseWriter, r *http.Request) {
+	current := func(w http.ResponseWriter, r *http.Request) {
 		sum, nodes, svcs := snap.read()
 		writeJSON(w, map[string]any{"summary": sum, "nodes": nodes, "services": svcs})
+	}
+	mux.HandleFunc("/api/v1/metrics/current", current)
+	mux.HandleFunc("/api/v1/metrics/poll", current)
+	mux.HandleFunc("/api/v1/metrics/history", func(w http.ResponseWriter, r *http.Request) {
+		pred.mu.Lock()
+		out := map[string][]map[string]any{}
+		for k, s := range pred.series {
+			pts := make([]map[string]any, len(s))
+			for i, p := range s {
+				pts[i] = map[string]any{"t": p.t.UTC().Format(time.RFC3339), "v": p.v}
+			}
+			out[k] = pts
+		}
+		pred.mu.Unlock()
+		writeJSON(w, out)
 	})
-	mux.HandleFunc("/api/v1/metrics/poll", func(w http.ResponseWriter, r *http.Request) {
-		sum, nodes, svcs := snap.read()
-		writeJSON(w, map[string]any{"summary": sum, "nodes": nodes, "services": svcs})
+	mux.HandleFunc("/api/v1/predictions", func(w http.ResponseWriter, r *http.Request) {
+		writeJSON(w, pred.forecast(30*time.Minute))
+	})
+	mux.HandleFunc("/api/v1/pods/", func(w http.ResponseWriter, r *http.Request) {
+		// /api/v1/pods/{ns}/{name}/details
+		_, nodes, svcs := snap.read()
+		writeJSON(w, map[string]any{"nodes": nodes, "services": svcs, "path": r.URL.Path})
 	})
 	srv := &http.Server{Addr: fmt.Sprintf("%s:%d", host, port), Handler: mux}
 	go func() {

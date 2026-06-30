@@ -46,11 +46,17 @@ func newDaemonCmd(g *Global) *cobra.Command {
 	status.Flags().BoolVar(&asJSON, "json", false, "Output as JSON")
 
 	var tail int
-	var statusFilter string
+	var statusFilter, container string
+	var follow, logsJSON bool
 	logs := &cobra.Command{Use: "logs", Short: "Show recent health-check logs",
-		RunE: func(c *cobra.Command, _ []string) error { return daemon.Logs(tail, statusFilter) }}
+		RunE: func(c *cobra.Command, _ []string) error {
+			return daemon.Logs(daemon.LogOptions{Tail: tail, Status: statusFilter, JSON: logsJSON, Follow: follow})
+		}}
 	logs.Flags().IntVar(&tail, "tail", 50, "Number of log entries")
 	logs.Flags().StringVar(&statusFilter, "status", "", "Filter by status (degraded/critical/...)")
+	logs.Flags().BoolVarP(&follow, "follow", "f", false, "Stream new log entries")
+	logs.Flags().StringVar(&container, "container", "", "Container filter (accepted for parity; native daemon has none)")
+	logs.Flags().BoolVar(&logsJSON, "json", false, "Output as JSON")
 
 	// Hidden foreground entrypoint invoked by the service unit.
 	run := &cobra.Command{Use: "run", Hidden: true, Short: "Run the daemon in the foreground",

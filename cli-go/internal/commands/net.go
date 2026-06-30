@@ -87,18 +87,27 @@ func newCertsCmd(g *Global) *cobra.Command {
 	setup.Flags().StringVar(&email, "email", "", "ACME contact email")
 	setup.Flags().BoolVar(&staging, "staging", false, "Use Let's Encrypt staging")
 
+	var listNS, statusNS string
+	nsArgs := func(ns string) []string {
+		if ns != "" {
+			return []string{"-n", ns}
+		}
+		return []string{"-A"}
+	}
 	list := &cobra.Command{Use: "list", Short: "List certificates",
 		RunE: func(c *cobra.Command, _ []string) error {
-			return kubectlPassthrough("get", "certificates", "-A")
+			return kubectlPassthrough(append([]string{"get", "certificates"}, nsArgs(listNS)...)...)
 		}}
+	list.Flags().StringVarP(&listNS, "namespace", "n", "", "Namespace (default: all)")
 	status := &cobra.Command{Use: "status [name]", Short: "Show certificate status", Args: cobra.MaximumNArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
-			a := []string{"describe", "certificate", "-A"}
+			a := []string{"describe", "certificate"}
 			if len(args) == 1 {
-				a = []string{"describe", "certificate", args[0], "-A"}
+				a = append(a, args[0])
 			}
-			return kubectlPassthrough(a...)
+			return kubectlPassthrough(append(a, nsArgs(statusNS)...)...)
 		}}
+	status.Flags().StringVarP(&statusNS, "namespace", "n", "", "Namespace (default: all)")
 	cmd.AddCommand(setup, list, status)
 	return cmd
 }

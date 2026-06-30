@@ -194,6 +194,34 @@ func newTestCmd(g *Global) *cobra.Command {
 	cmd.Flags().StringVarP(&service, "service", "s", "", "Release to test")
 	cmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Namespace")
 	cmd.Flags().IntVar(&timeout, "timeout", 300, "Timeout seconds")
+
+	var listJSON bool
+	list := &cobra.Command{
+		Use: "list", Short: "List Helm releases that can be tested",
+		RunE: func(c *cobra.Command, _ []string) error {
+			out, err := exec.Command("helm", "list", "-A", "-o", "json").Output()
+			if err != nil {
+				return err
+			}
+			if listJSON {
+				fmt.Println(string(out))
+				return nil
+			}
+			var rels []struct{ Name, Namespace, Status string }
+			if err := json.Unmarshal(out, &rels); err != nil {
+				return err
+			}
+			rows := make([][]string, 0, len(rels))
+			for _, r := range rels {
+				rows = append(rows, []string{r.Name, r.Namespace, r.Status})
+			}
+			ui.Header("Helm Releases")
+			fmt.Println(ui.Table([]string{"Release", "Namespace", "Status"}, rows))
+			return nil
+		},
+	}
+	list.Flags().BoolVar(&listJSON, "json", false, "Output as JSON")
+	cmd.AddCommand(list)
 	return cmd
 }
 

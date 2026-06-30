@@ -34,8 +34,21 @@ func invAddCmd() *cobra.Command {
 		Use:   "add",
 		Short: "Add a machine to the inventory",
 		RunE: func(c *cobra.Command, _ []string) error {
+			// Interactive wizard fallback when required flags are omitted.
+			if label == "" {
+				var err error
+				if label, err = askString("Machine label", ""); err != nil {
+					return err
+				}
+			}
+			if ip == "" {
+				var err error
+				if ip, err = askString("Machine IP", ""); err != nil {
+					return err
+				}
+			}
 			if ip == "" || label == "" {
-				return fmt.Errorf("--ip and --label are required")
+				return fmt.Errorf("label and IP are required")
 			}
 			d, err := openDB()
 			if err != nil {
@@ -106,9 +119,20 @@ func invListCmd() *cobra.Command {
 }
 
 func invRemoveCmd() *cobra.Command {
+	var force bool
 	cmd := &cobra.Command{
 		Use: "remove <label>", Aliases: []string{"rm"}, Short: "Remove a machine", Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
+			if !force {
+				ok, err := confirm(fmt.Sprintf("Remove machine %q?", args[0]))
+				if err != nil {
+					return err
+				}
+				if !ok {
+					ui.Info("cancelled")
+					return nil
+				}
+			}
 			d, err := openDB()
 			if err != nil {
 				return err
@@ -125,6 +149,7 @@ func invRemoveCmd() *cobra.Command {
 			return nil
 		},
 	}
+	cmd.Flags().BoolVar(&force, "force", false, "Skip confirmation")
 	return cmd
 }
 
