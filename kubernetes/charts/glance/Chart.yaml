@@ -1,14 +1,13 @@
 apiVersion: v2
 name: glance
-description: A Helm chart for Glance - Modern dashboard
+description: A Helm chart for Glance - Modern dashboard (rendered by chart-base)
 type: application
 version: 0.1.0
-appVersion: "latest"
+appVersion: "v0.7.12"
 home: https://github.com/zurdi15/glance
 sources:
   - https://github.com/zurdi15/glance
-
-
-
-
-
+dependencies:
+  - name: chart-base
+    version: 0.1.0
+    repository: file://../chart-base

@@ -1,0 +1,4 @@
+
+# Vendored subchart deps (built by helm dependency build at apply time)
+charts/*/charts/
+charts/*/Chart.lock

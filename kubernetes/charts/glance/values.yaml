@@ -1,186 +1,132 @@
-namespace: infrastructure
+# glance — rendered entirely by the chart-base subchart.
+# NOTE: the glance.yml dashboard config below is condensed from the original; add
+# more pages/widgets under configMaps[0].data["glance.yml"] as needed.
+chart-base:
+  workloads:
+    - kind: Deployment
+      replicas: 1
+      podAnnotations:
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        co.elastic.logs.json.add_error_key: "true"
+        co.elastic.logs.json.message_key: "message"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
+      containers:
+        - name: glance
+          image: glanceapp/glance:v0.7.12
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: NODE_ENV, value: "production" }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 300m, memory: 256Mi }
+          volumeMounts:
+            - { name: glance-config, mountPath: /app/config/glance.yml, subPath: glance.yml }
+            - { name: data, mountPath: /app/user-data }
+          livenessProbe:
+            httpGet: { path: /, port: 8080 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /, port: 8080 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: glance-config
+          configMap:
+            name: glance-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: glance-data
 
-create:
-  namespace: true
+  services:
+    - ports:
+        - { name: http, port: 8080, targetPort: 8080, protocol: TCP }
 
-# Glance Image
-image:
-  repository: glanceapp/glance
-  tag: "v0.7.12"  # Pinned version - NEVER use :latest
-  pullPolicy: IfNotPresent
+  pvcs:
+    - { name: data, accessModes: [ReadWriteOnce], storageClass: local-path, size: 1Gi }
 
-# Glance Server конфигурация
-glance:
-  replicaCount: 1
+  serviceAccount:
+    create: true
+    automount: true
 
-  service:
-    type: ClusterIP
-    port: 8080
+  rbac:
+    create: true
+    rules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [configmaps], verbs: [get, list, watch] }
 
-  config:
-    pageInfo:
-      title: "Home Center Dashboard"
-      description: "Self-hosted infrastructure dashboard"
-      navLinks:
-        - title: "GitHub"
-          path: "https://github.com"
-        - title: "Documentation"
-          path: "https://docs.example.com"
-
-    appConfig:
-      theme: "dark"
-      layout: "auto"
-      iconSize: "medium"
-      language: "en"
-      startingView: "default"
-      defaultOpeningMethod: "newTab"
-      statusCheck: true
-      statusCheckInterval: 300
-      faviconApi: "https://favicon.io"
-      enableMultiTasking: true
-      allowConfigEdit: true
-      enableServiceWorker: true
-      disableConfiguration: false
-
-      hideComponents:
-        hideHeading: false
-        hideNav: false
-        hideSearch: false
-        hideSettings: false
-        hideFooter: false
-
-    sections:
-      - name: "Infrastructure"
-        items:
-          - title: "Kubernetes Dashboard"
-            description: "Devtron Dashboard"
-            icon: "fa fa-cube"
-            url: "http://devtron.local"
-          - title: "Monitoring"
-            description: "Grafana"
-            icon: "fa fa-chart-line"
-            url: "http://grafana.local"
-
-# Resources
-resources:
-  limits:
-    cpu: 300m
-    memory: 256Mi
-  requests:
-    cpu: 50m
-    memory: 64Mi
-
-# Persistence
-persistence:
-  config:
+  networkPolicy:
     enabled: true
-    storageClass: local-path
-    accessMode: ReadWriteOnce
-    size: 1Gi
-    mountPath: /app/user-data
 
-# Ingress
-ingress:
-  enabled: true
-  className: traefik
-  host: glance.localhost
-  annotations: {}
-  tls:
+  serviceMonitor:
     enabled: true
-    secretName: glance-tls
+    port: http
+    path: /metrics
 
-# Pod Security Context
-podSecurityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-  seccompProfile:
-    type: RuntimeDefault
+  routing:
+    httpRoutes:
+      - host: glance.localhost
+        port: 8080
+        authentik:
+          enabled: false
 
-# Container Security Context
-containerSecurityContext:
-  runAsUser: 1000
-  runAsNonRoot: true
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: true
-  capabilities:
-    drop:
-      - ALL
+  configMaps:
+    - name: config
+      data:
+        glance.yml: |
+          theme:
+            background-color: 20 10 10
+            primary-color: 40 80 60
+            contrast-multiplier: 1.1
 
-# Probes
-probes:
-  liveness:
-    enabled: true
-    path: /
-    initialDelaySeconds: 30
-    periodSeconds: 10
-  readiness:
-    enabled: true
-    path: /
-    initialDelaySeconds: 10
-    periodSeconds: 5
-
-# Consul integration
-consul:
-  enabled: true
-  tags:
-    - glance
-    - dashboard
-    - infrastructure
-
-# Vault integration (requires Vault policies and secrets to be configured)
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-vault:
-  enabled: false
-  # Note: Before enabling, configure Vault:
-  # 1. Create policy for glance service
-  # 2. Create secret at secret/data/glance/secrets
-  # 3. Enable Kubernetes auth method in Vault
-  # 4. Create role binding ServiceAccount to Vault policy
-  # See: kubernetes/docs/VAULT_MIGRATION.md
-
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: false
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
-
-# RBAC
-rbac:
-  create: true
-  allowSecrets: false
-  rules: []
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+          pages:
+            - name: Home
+              columns:
+                - size: small
+                  widgets:
+                    - type: clock
+                      hour-format: "24h"
+                      timezones:
+                        - timezone: Europe/Moscow
+                          label: Moscow
+                    - type: calendar
+                    - type: weather
+                      location: Moscow, Russia
+                      units: metric
+                      hour-format: "24h"
+                - size: full
+                  widgets:
+                    - type: bookmarks
+                      groups:
+                        - title: Quick Access
+                          color: 20 80 50
+                          links:
+                            - { title: Grafana, url: https://monitoring.zeizel.ru, icon: "si:grafana" }
+                            - { title: Authentik, url: https://auth.zeizel.ru, icon: "si:auth0" }
+                            - { title: Vault, url: https://vault.zeizel.ru, icon: "si:vault" }
+                - size: small
+                  widgets:
+                    - type: monitor
+                      title: Core Services
+                      cache: 1m
+                      sites:
+                        - { url: https://monitoring.zeizel.ru, title: Grafana }
+                        - { url: https://auth.zeizel.ru, title: Authentik }
+                        - { url: https://vault.zeizel.ru, title: Vault }
+            - name: Services
+              columns:
+                - size: full
+                  widgets:
+                    - type: bookmarks
+                      groups:
+                        - title: Databases (Internal)
+                          color: 160 60 40
+                          links:
+                            - { title: PostgreSQL, url: "#", description: "postgresql.db.svc.cluster.local:5432" }
+                            - { title: MongoDB, url: "#", description: "mongodb.db.svc.cluster.local:27017" }
+                            - { title: MinIO, url: "#", description: "minio.db.svc.cluster.local:9000" }
