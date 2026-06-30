@@ -1,0 +1,31 @@
+{{- range $svc := .Values.services }}
+{{- $top := $ }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "chart-base.childname" (list $top $svc.name) }}
+  namespace: {{ $top.Release.Namespace }}
+  labels:
+    {{- include "chart-base.labels" $top | nindent 4 }}
+  {{- with $svc.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ $svc.type | default "ClusterIP" }}
+  {{- with $svc.clusterIP }}
+  clusterIP: {{ . }}
+  {{- end }}
+  selector:
+    {{- if $svc.selector }}
+    {{- toYaml $svc.selector | nindent 4 }}
+    {{- else }}
+    {{- include "chart-base.selectorLabels" $top | nindent 4 }}
+    {{- if $svc.component }}
+    app.kubernetes.io/component: {{ $svc.component }}
+    {{- end }}
+    {{- end }}
+  ports:
+    {{- toYaml $svc.ports | nindent 4 }}
+{{- end }}

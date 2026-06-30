@@ -1,0 +1,10 @@
+{{- $top := . }}
+{{/* Raw escape hatch: each item is a full manifest (string or object), tpl-rendered. */}}
+{{- range $m := .Values.extraManifests }}
+---
+{{- if typeIs "string" $m }}
+{{ tpl $m $top }}
+{{- else }}
+{{ tpl (toYaml $m) $top }}
+{{- end }}
+{{- end }}

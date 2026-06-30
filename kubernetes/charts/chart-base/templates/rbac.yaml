@@ -1,0 +1,96 @@
+{{- $top := . }}
+{{- if .Values.serviceAccount.create }}
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "chart-base.serviceAccountName" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chart-base.labels" . | nindent 4 }}
+  {{- with .Values.serviceAccount.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+automountServiceAccountToken: {{ .Values.serviceAccount.automount | default false }}
+{{- end }}
+
+{{/* Additional service accounts */}}
+{{- range $sa := .Values.serviceAccounts }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "chart-base.childname" (list $top $sa.name) }}
+  namespace: {{ $top.Release.Namespace }}
+  labels:
+    {{- include "chart-base.labels" $top | nindent 4 }}
+  {{- with $sa.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+automountServiceAccountToken: {{ $sa.automount | default false }}
+{{- end }}
+
+{{/* Namespaced Role + RoleBinding */}}
+{{- if and .Values.rbac.create .Values.rbac.rules }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: {{ include "chart-base.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chart-base.labels" . | nindent 4 }}
+rules:
+  {{- toYaml .Values.rbac.rules | nindent 2 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ include "chart-base.fullname" . }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "chart-base.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: {{ include "chart-base.fullname" . }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "chart-base.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+
+{{/* Cluster Role + ClusterRoleBinding */}}
+{{- if and .Values.rbac.create .Values.rbac.clusterRules }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: {{ include "chart-base.fullname" . }}-{{ .Release.Namespace }}
+  labels:
+    {{- include "chart-base.labels" . | nindent 4 }}
+rules:
+  {{- toYaml .Values.rbac.clusterRules | nindent 2 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "chart-base.fullname" . }}-{{ .Release.Namespace }}
+  labels:
+    {{- include "chart-base.labels" . | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "chart-base.fullname" . }}-{{ .Release.Namespace }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ include "chart-base.serviceAccountName" . }}
+    namespace: {{ .Release.Namespace }}
+{{- end }}
+
+{{/* Arbitrary extra RBAC objects (multi-SA cluster roles etc.) via raw list */}}
+{{- range $r := .Values.rbac.extra }}
+---
+{{ tpl (toYaml $r) $top }}
+{{- end }}

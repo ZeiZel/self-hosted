@@ -1,0 +1,26 @@
+{{- range $cm := .Values.configMaps }}
+{{- $top := $ }}
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "chart-base.childname" (list $top $cm.name) }}
+  namespace: {{ $top.Release.Namespace }}
+  labels:
+    {{- include "chart-base.labels" $top | nindent 4 }}
+  {{- with $cm.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+{{- with $cm.data }}
+data:
+  {{- range $k, $v := . }}
+  {{ $k }}: |
+    {{- $v | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- with $cm.binaryData }}
+binaryData:
+  {{- toYaml . | nindent 2 }}
+{{- end }}
+{{- end }}

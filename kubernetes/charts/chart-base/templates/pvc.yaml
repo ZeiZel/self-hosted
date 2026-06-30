@@ -1,0 +1,24 @@
+{{- range $pvc := .Values.pvcs }}
+{{- $top := $ }}
+---
+apiVersion: v1
+kind: PersistentVolumeClaim
+metadata:
+  name: {{ include "chart-base.childname" (list $top $pvc.name) }}
+  namespace: {{ $top.Release.Namespace }}
+  labels:
+    {{- include "chart-base.labels" $top | nindent 4 }}
+  {{- with $pvc.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  accessModes:
+    {{- toYaml ($pvc.accessModes | default (list "ReadWriteOnce")) | nindent 4 }}
+  {{- if $pvc.storageClass }}
+  storageClassName: {{ $pvc.storageClass }}
+  {{- end }}
+  resources:
+    requests:
+      storage: {{ $pvc.size | default "1Gi" }}
+{{- end }}

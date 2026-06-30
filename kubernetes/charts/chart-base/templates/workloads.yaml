@@ -1,0 +1,82 @@
+{{- range $w := .Values.workloads }}
+{{- $top := $ }}
+{{- $name := include "chart-base.childname" (list $top $w.name) }}
+{{- $kind := $w.kind | default "Deployment" }}
+---
+apiVersion: {{ if eq $kind "CronJob" }}batch/v1{{ else if eq $kind "Job" }}batch/v1{{ else if eq $kind "DaemonSet" }}apps/v1{{ else }}apps/v1{{ end }}
+kind: {{ $kind }}
+metadata:
+  name: {{ $name }}
+  namespace: {{ $top.Release.Namespace }}
+  labels:
+    {{- include "chart-base.labels" $top | nindent 4 }}
+    {{- if $w.name }}
+    app.kubernetes.io/component: {{ $w.name }}
+    {{- end }}
+  {{- with $w.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+{{- if eq $kind "CronJob" }}
+  schedule: {{ $w.schedule | quote }}
+  concurrencyPolicy: {{ $w.concurrencyPolicy | default "Forbid" }}
+  jobTemplate:
+    spec:
+      template:
+        metadata:
+          labels:
+            {{- include "chart-base.workloadSelectorLabels" (dict "top" $top "w" $w) | nindent 12 }}
+          {{- with $w.podAnnotations }}
+          annotations:
+            {{- toYaml . | nindent 12 }}
+          {{- end }}
+        spec:
+          {{- include "chart-base.podSpec" (dict "top" $top "w" (merge (dict "restartPolicy" ($w.restartPolicy | default "OnFailure")) $w)) | nindent 10 }}
+{{- else if eq $kind "Job" }}
+  {{- with $w.backoffLimit }}
+  backoffLimit: {{ . }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "chart-base.workloadSelectorLabels" (dict "top" $top "w" $w) | nindent 8 }}
+      {{- with $w.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- include "chart-base.podSpec" (dict "top" $top "w" (merge (dict "restartPolicy" ($w.restartPolicy | default "OnFailure")) $w)) | nindent 6 }}
+{{- else }}
+  {{- if eq $kind "Deployment" }}
+  replicas: {{ $w.replicas | default 1 }}
+  {{- else if eq $kind "StatefulSet" }}
+  replicas: {{ $w.replicas | default 1 }}
+  serviceName: {{ $w.serviceName | default $name }}
+  {{- end }}
+  selector:
+    matchLabels:
+      {{- include "chart-base.workloadSelectorLabels" (dict "top" $top "w" $w) | nindent 6 }}
+  {{- with $w.strategy }}
+  strategy:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  template:
+    metadata:
+      labels:
+        {{- include "chart-base.workloadSelectorLabels" (dict "top" $top "w" $w) | nindent 8 }}
+        {{- with $w.podLabels }}
+        {{- toYaml . | nindent 8 }}
+        {{- end }}
+      {{- with $w.podAnnotations }}
+      annotations:
+        {{- toYaml . | nindent 8 }}
+      {{- end }}
+    spec:
+      {{- include "chart-base.podSpec" (dict "top" $top "w" $w) | nindent 6 }}
+  {{- if and (eq $kind "StatefulSet") $w.volumeClaimTemplates }}
+  volumeClaimTemplates:
+    {{- toYaml $w.volumeClaimTemplates | nindent 4 }}
+  {{- end }}
+{{- end }}
+{{- end }}

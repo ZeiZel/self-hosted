@@ -1,11 +1,17 @@
 apiVersion: v2
 name: chart-base
 description: >-
-  Reusable Helm library of named templates for self-hosted services. Provides a
-  compliant Deployment/StatefulSet, Service, HTTPRoute (Gateway API),
-  ServiceAccount, RBAC, NetworkPolicy, ServiceMonitor, PDB, ConfigMap and Helm
-  test — with security context, standard labels and Traefik/cert-manager/Authentik
-  wiring baked in. Consuming charts add this as a dependency and render components
-  via `{{ include "chart-base.<component>" . }}`.
-type: library
+  Generic application chart used as a subchart by every self-hosted service. App
+  charts keep an EMPTY templates/ dir and a `dependencies: [chart-base]` entry;
+  chart-base renders all their resources from values nested under `chart-base:`.
+  Supports a `workloads[]` list (Deployment/StatefulSet/DaemonSet/Job/CronJob with
+  init containers and volumeClaimTemplates), multiple Services, inline ConfigMaps
+  and Secrets, PVCs, namespaced + cluster RBAC with multiple ServiceAccounts,
+  NetworkPolicy, ServiceMonitor, PDB, HPA, Gateway-API HTTPRoute / Ingress /
+  Traefik routing, a helm test, and an `extraManifests[]` raw escape hatch.
+  Security context (runAsNonRoot, readOnlyRootFilesystem, drop ALL, seccomp),
+  standard labels and the `prometheus: kube-prometheus` ServiceMonitor label are
+  baked in.
+type: application
 version: 0.1.0
+appVersion: "1.0.0"

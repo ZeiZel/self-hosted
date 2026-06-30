@@ -1,54 +1,129 @@
-# chart-base is a LIBRARY chart — these values are NOT applied directly. They
-# document the contract a consuming chart's values.yaml must satisfy. Copy the
-# keys you need into the consumer chart.
+# chart-base default values. Used as a SUBCHART: an app chart sets these under a
+# top-level `chart-base:` key. Everything is empty/disabled by default so an app
+# only declares what it needs. Resource names derive from the Helm release name
+# (= the helmfile service name); override with fullnameOverride/nameOverride.
 
-nameOverride: ""
 fullnameOverride: ""
-replicaCount: 1
+nameOverride: ""
+commonLabels: {}
 
-image:
-  repository: nginx
-  tag: ""          # defaults to .Chart.AppVersion
-  pullPolicy: IfNotPresent
+# Mandatory security contexts (merged with any override below).
+podSecurityContext:
+  runAsNonRoot: true
+  runAsUser: 1000
+  fsGroup: 1000
+  seccompProfile:
+    type: RuntimeDefault
+securityContext:
+  allowPrivilegeEscalation: false
+  readOnlyRootFilesystem: true
+  capabilities:
+    drop: [ALL]
 
-service:
-  type: ClusterIP
+# Workloads: each item → Deployment | StatefulSet | DaemonSet | Job | CronJob.
+# - name: ""                 # component suffix (omit for the single main workload)
+#   kind: Deployment
+#   replicas: 1
+#   serviceName: ""          # StatefulSet headless service
+#   schedule: "*/5 * * * *"  # CronJob
+#   podAnnotations: {}
+#   podLabels: {}
+#   nodeSelector: {}
+#   affinity: {}
+#   tolerations: []
+#   serviceAccountName: ""   # defaults to the chart SA
+#   podSecurityContext: {}   # override
+#   initContainers: []       # same shape as containers
+#   containers:
+#     - name: app
+#       image: repo:tag
+#       imagePullPolicy: IfNotPresent
+#       command: []; args: []; env: []; envFrom: []; ports: []
+#       resources: {}
+#       securityContext: {}  # override
+#       volumeMounts: []
+#       livenessProbe: {}; readinessProbe: {}; startupProbe: {}
+#   volumes: []
+#   volumeClaimTemplates: [] # StatefulSet only
+workloads: []
+
+# Standalone Services (each may select a workload component via `component`).
+# - name: ""                 # suffix (omit for the main service)
+#   type: ClusterIP
+#   component: ""            # selector app.kubernetes.io/component
+#   selector: {}            # full override
+#   ports: [{name: http, port: 80, targetPort: http, protocol: TCP}]
+services: []
+
+# ConfigMaps with inline file data (key → multiline string).
+# - name: config
+#   data:
+#     app.yml: |
+#       ...
+configMaps: []
+
+# Secrets (stringData/data).
+secrets: []
+
+# Standalone PVCs.
+# - name: data
+#   accessModes: [ReadWriteOnce]
+#   storageClass: local-path
+#   size: 1Gi
+pvcs: []
+
+serviceAccount:
+  create: true
+  name: ""
+  automount: false
+  annotations: {}
+serviceAccounts: []         # additional SAs: [{name, automount, annotations}]
+
+rbac:
+  create: false
+  rules: []                 # namespaced Role rules
+  clusterRules: []          # if set → ClusterRole + binding
+  extra: []                 # raw extra RBAC manifests (tpl-rendered)
+
+networkPolicy:
+  enabled: false
+  allowDB: false
+  extraIngress: []
+  extraEgress: []
+
+serviceMonitor:
+  enabled: false
+  port: http
+  path: /metrics
+  interval: 30s
+
+pdb:
+  enabled: false
+  minAvailable: ""
+  maxUnavailable: 1
+
+hpa:
+  enabled: false
+  kind: Deployment
+  targetName: ""
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPU: 80
+  targetMemory: ""
+
+routing:
+  # Gateway API (default). - {name, host|hostnames, port, service, authentik: {enabled, middleware}, gateway: {name, namespace, sectionName}}
+  httpRoutes: []
+  # Plain Ingress (opt-in). - {name, className, annotations, tls, rules}
+  ingresses: []
+  # Traefik CRDs (raw manifests). traefik: {ingressRoutes: [], middlewares: []}
+  traefik: {}
+
+# Raw escape hatch — full manifests (string or object), tpl-rendered.
+extraManifests: []
+
+tests:
+  enabled: false
+  image: busybox:1.36
   port: 80
-  targetPort: 80
-
-# Gateway API routing (replaces Ingress).
-route:
-  enabled: true
-  host: app.example.com
-  hostnames: []
-  gateway:
-    name: shared-gateway
-    namespace: ingress
-    sectionName: websecure
-  authentik:
-    enabled: false
-    middleware: authentik-forward-auth
-
-resources:
-  requests: { cpu: 100m, memory: 128Mi }
-  limits: { cpu: 500m, memory: 512Mi }
-
-podSecurityContext: { runAsUser: 1000, fsGroup: 1000 }
-securityContext: { readOnlyRootFilesystem: true }
-
-serviceAccount: { create: true, name: "", automount: false }
-rbac: { create: true, rules: [] }
-networkPolicy: { enabled: true, allowDB: false, extraIngress: [], extraEgress: [] }
-serviceMonitor: { enabled: false, path: /metrics, interval: 30s }
-pdb: { enabled: false, minAvailable: "", maxUnavailable: 1 }
-configMap: { enabled: false, data: {} }
-
-env: []
-envFrom: []
-volumes: []
-volumeMounts: []
-podAnnotations: {}
-probes:
-  liveness: {}
-  readiness: {}
-  startup: {}
+  url: ""

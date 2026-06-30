@@ -1,0 +1,78 @@
+{{- $top := . }}
+{{/* Gateway API HTTPRoutes (default routing) */}}
+{{- range $r := .Values.routing.httpRoutes }}
+{{- $gw := $r.gateway | default dict }}
+{{- $authentik := $r.authentik | default dict }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ include "chart-base.childname" (list $top $r.name) }}
+  namespace: {{ $top.Release.Namespace }}
+  labels:
+    {{- include "chart-base.labels" $top | nindent 4 }}
+spec:
+  parentRefs:
+    - name: {{ $gw.name | default "shared-gateway" }}
+      namespace: {{ $gw.namespace | default "ingress" }}
+      {{- with $gw.sectionName }}
+      sectionName: {{ . }}
+      {{- end }}
+  hostnames:
+    {{- range ($r.hostnames | default (list $r.host)) }}
+    - {{ . | quote }}
+    {{- end }}
+  rules:
+    - matches:
+        - path:
+            type: {{ $r.pathType | default "PathPrefix" }}
+            value: {{ $r.path | default "/" }}
+      {{- if $authentik.enabled }}
+      filters:
+        - type: ExtensionRef
+          extensionRef:
+            group: traefik.io
+            kind: Middleware
+            name: {{ $authentik.middleware | default "authentik-forward-auth" }}
+      {{- end }}
+      backendRefs:
+        - name: {{ $r.service | default (include "chart-base.fullname" $top) }}
+          port: {{ $r.port }}
+{{- end }}
+
+{{/* Plain Kubernetes Ingress (opt-in) */}}
+{{- range $ing := .Values.routing.ingresses }}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ include "chart-base.childname" (list $top $ing.name) }}
+  namespace: {{ $top.Release.Namespace }}
+  labels:
+    {{- include "chart-base.labels" $top | nindent 4 }}
+  {{- with $ing.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- with $ing.className }}
+  ingressClassName: {{ . }}
+  {{- end }}
+  {{- with $ing.tls }}
+  tls:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+  rules:
+    {{- toYaml $ing.rules | nindent 4 }}
+{{- end }}
+
+{{/* Traefik IngressRoutes + Middlewares (raw, tpl-rendered) */}}
+{{- $traefik := .Values.routing.traefik | default dict }}
+{{- range $ir := $traefik.ingressRoutes }}
+---
+{{ tpl (toYaml $ir) $top }}
+{{- end }}
+{{- range $mw := $traefik.middlewares }}
+---
+{{ tpl (toYaml $mw) $top }}
+{{- end }}
