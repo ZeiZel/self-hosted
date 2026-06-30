@@ -2,12 +2,23 @@ package commands
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/ZeiZel/self-hosted/cli/internal/config"
 	"github.com/ZeiZel/self-hosted/cli/internal/ui"
 	"github.com/spf13/cobra"
 )
+
+// validConfigKeys lists the keys accepted by `config set`, in display order.
+var validConfigKeys = []string{
+	"cluster.name",
+	"cluster.domain",
+	"cluster.localDomain",
+	"version",
+	"initialized",
+	"activeDeploymentId",
+}
 
 func newConfigCmd(g *Global) *cobra.Command {
 	cmd := &cobra.Command{Use: "config", Short: "Manage CLI configuration"}
@@ -83,8 +94,16 @@ func setConfigKey(cfg *config.AppConfig, key, value string) error {
 		cfg.Cluster.LocalDomain = value
 	case "version":
 		cfg.Version = value
+	case "initialized":
+		b, err := strconv.ParseBool(value)
+		if err != nil {
+			return fmt.Errorf("invalid boolean for %q: %q (use true/false)", key, value)
+		}
+		cfg.Initialized = b
+	case "activedeploymentid":
+		cfg.ActiveDeploymentID = value
 	default:
-		return fmt.Errorf("unknown config key %q (try cluster.name, cluster.domain, cluster.localDomain)", key)
+		return fmt.Errorf("unknown config key %q (valid keys: %s)", key, strings.Join(validConfigKeys, ", "))
 	}
 	return nil
 }

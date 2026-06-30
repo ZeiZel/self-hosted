@@ -5,6 +5,7 @@ import (
 
 	"github.com/ZeiZel/self-hosted/cli/internal/balance"
 	"github.com/ZeiZel/self-hosted/cli/internal/ui"
+	"github.com/google/uuid"
 	"github.com/spf13/cobra"
 )
 
@@ -170,6 +171,7 @@ func newBalanceCmd(g *Global) *cobra.Command {
 		},
 	}
 
+	var applyDryRun bool
 	apply := &cobra.Command{
 		Use: "apply <plan-id>", Short: "Apply a saved plan's migrations", Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
@@ -177,21 +179,64 @@ func newBalanceCmd(g *Global) *cobra.Command {
 			if err != nil {
 				return err
 			}
+			// If the plan carries no precomputed migrations, derive them from
+			// the live cluster's current placements vs. the plan's targets.
+			if len(plan.Migrations) == 0 {
+				if cur := balance.CurrentPlacements(); cur != nil {
+					plan.Migrations = balance.CreateMigrations(plan.Placements, cur)
+				}
+			}
 			if len(plan.Migrations) == 0 {
 				ui.Info("no migrations required for plan %s", plan.ID)
 				return nil
 			}
-			for i := range plan.Migrations {
-				plan.Migrations[i].Status = "completed"
+
+			ui.Info("plan %s has %d migration(s):", plan.ID, len(plan.Migrations))
+			for _, m := range plan.Migrations {
+				ui.Info("  %s (%s): %s → %s", m.Service, m.Namespace, m.SourceNode, m.TargetNode)
 			}
-			if err := balance.SaveMigrationHistory(plan.Migrations); err != nil {
+
+			if !applyDryRun {
+				ok, err := confirm(fmt.Sprintf("Apply %d migration(s) for plan %s?", len(plan.Migrations), plan.ID))
+				if err != nil {
+					return err
+				}
+				if !ok {
+					ui.Info("aborted")
+					return nil
+				}
+			}
+
+			results := balance.ExecuteMigrations(plan.Migrations, applyDryRun)
+			if applyDryRun {
+				ui.Info("dry-run complete — no changes made and no history recorded")
+				return nil
+			}
+
+			if err := balance.SaveMigrationHistory(results); err != nil {
 				return err
 			}
-			ui.OK("recorded %d migrations for plan %s", len(plan.Migrations), plan.ID)
+
+			var completed, failed int
+			for _, m := range results {
+				if m.Status == "completed" {
+					completed++
+					ui.OK("%s: %s → %s", m.Service, m.SourceNode, m.TargetNode)
+				} else {
+					failed++
+					ui.Fail("%s: %s → %s: %s", m.Service, m.SourceNode, m.TargetNode, m.Error)
+				}
+			}
+			ui.Info("recorded %d migrations for plan %s (%d completed, %d failed)", len(results), plan.ID, completed, failed)
+			if failed > 0 {
+				return fmt.Errorf("%d migration(s) failed", failed)
+			}
 			return nil
 		},
 	}
+	apply.Flags().BoolVar(&applyDryRun, "dry-run", false, "Print kubectl commands without executing or recording")
 
+	var rollbackDryRun bool
 	rollback := &cobra.Command{
 		Use: "rollback <migration-id>", Short: "Roll back a recorded migration", Args: cobra.ExactArgs(1),
 		RunE: func(c *cobra.Command, args []string) error {
@@ -199,15 +244,58 @@ func newBalanceCmd(g *Global) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			for _, m := range hist {
-				if m.ID == args[0] {
-					ui.OK("rollback %s: %s → %s", m.Service, m.TargetNode, m.SourceNode)
+			var orig *balance.Migration
+			for i := range hist {
+				if hist[i].ID == args[0] {
+					orig = &hist[i]
+					break
+				}
+			}
+			if orig == nil {
+				return fmt.Errorf("migration %q not found in history", args[0])
+			}
+
+			// Reverse the move: pin the workload back to its source node.
+			rev := balance.Migration{
+				ID:         uuid.NewString(),
+				Service:    orig.Service,
+				Namespace:  orig.Namespace,
+				SourceNode: orig.TargetNode,
+				TargetNode: orig.SourceNode,
+				Status:     "pending",
+			}
+
+			ui.Info("rollback %s (%s): %s → %s", rev.Service, rev.Namespace, rev.SourceNode, rev.TargetNode)
+			if !rollbackDryRun {
+				ok, err := confirm(fmt.Sprintf("Roll back migration %s?", orig.ID))
+				if err != nil {
+					return err
+				}
+				if !ok {
+					ui.Info("aborted")
 					return nil
 				}
 			}
-			return fmt.Errorf("migration %q not found in history", args[0])
+
+			results := balance.ExecuteMigrations([]balance.Migration{rev}, rollbackDryRun)
+			if rollbackDryRun {
+				ui.Info("dry-run complete — no changes made and no history recorded")
+				return nil
+			}
+
+			if err := balance.SaveMigrationHistory(results); err != nil {
+				return err
+			}
+			res := results[0]
+			if res.Status == "completed" {
+				ui.OK("rolled back %s: %s → %s", res.Service, res.SourceNode, res.TargetNode)
+				return nil
+			}
+			ui.Fail("rollback failed: %s", res.Error)
+			return fmt.Errorf("rollback of %q failed", orig.ID)
 		},
 	}
+	rollback.Flags().BoolVar(&rollbackDryRun, "dry-run", false, "Print kubectl commands without executing or recording")
 
 	cmd.AddCommand(auto, preview, manual, apply, rollback, balancePresetsCmd(g))
 	return cmd

@@ -46,13 +46,18 @@ func newInitCmd(g *Global) *cobra.Command {
 				ui.Info("already initialised (use --force to re-run the wizard)")
 				return nil
 			}
-			name, _ := askString("Cluster name", cfg.Cluster.Name)
+			name, domain, localDomain, err := clusterWizard(cfg.Cluster)
+			if err != nil {
+				return err
+			}
 			if name != "" {
 				cfg.Cluster.Name = name
 			}
-			domain, _ := askString("Cluster domain", cfg.Cluster.Domain)
 			if domain != "" {
 				cfg.Cluster.Domain = domain
+			}
+			if localDomain != "" {
+				cfg.Cluster.LocalDomain = localDomain
 			}
 			cfg.Initialized = true
 			if err := config.Save(cfg); err != nil {

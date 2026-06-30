@@ -46,11 +46,36 @@ type PredictionAlert struct {
 	Severity            string  `json:"severity"`
 	MetricType          string  `json:"metricType"`
 	TargetID            string  `json:"targetId"`
+	Horizon             string  `json:"horizon"`
 	Message             string  `json:"message"`
 	CurrentValue        float64 `json:"currentValue"`
 	PredictedValue      float64 `json:"predictedValue"`
 	EstimatedBreachTime string  `json:"estimatedBreachTime,omitempty"`
 	Confidence          float64 `json:"confidence"`
+}
+
+// predHorizons are the forecast horizons emitted by forecastAll, each labelled.
+var predHorizons = []struct {
+	label string
+	d     time.Duration
+}{
+	{"5m", 5 * time.Minute},
+	{"30m", 30 * time.Minute},
+	{"60m", 60 * time.Minute},
+}
+
+// forecastAll runs forecast at every configured horizon (5m/30m/60m) and labels
+// each alert with its horizon.
+func (p *predictor) forecastAll() []PredictionAlert {
+	out := []PredictionAlert{}
+	for _, h := range predHorizons {
+		alerts := p.forecast(h.d)
+		for i := range alerts {
+			alerts[i].Horizon = h.label
+		}
+		out = append(out, alerts...)
+	}
+	return out
 }
 
 // forecast runs linear regression over each series and emits alerts for series

@@ -35,17 +35,12 @@ func invAddCmd() *cobra.Command {
 		Short: "Add a machine to the inventory",
 		RunE: func(c *cobra.Command, _ []string) error {
 			// Interactive wizard fallback when required flags are omitted.
-			if label == "" {
-				var err error
-				if label, err = askString("Machine label", ""); err != nil {
+			if label == "" || ip == "" {
+				wLabel, wIP, wRoles, wUser, wPort, err := machineWizard()
+				if err != nil {
 					return err
 				}
-			}
-			if ip == "" {
-				var err error
-				if ip, err = askString("Machine IP", ""); err != nil {
-					return err
-				}
+				label, ip, roles, sshUser, sshPort = wLabel, wIP, wRoles, wUser, wPort
 			}
 			if ip == "" || label == "" {
 				return fmt.Errorf("label and IP are required")

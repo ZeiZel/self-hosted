@@ -57,6 +57,7 @@ func NewRoot() *cobra.Command {
 		newConfigCmd(g),
 		newBalanceCmd(g),
 		newMonitorCmd(g),
+		newNodeCmd(g),
 		newDaemonCmd(g),
 		newTestCmd(g),
 		newBotCmd(g),

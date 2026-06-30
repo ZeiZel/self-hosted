@@ -81,12 +81,25 @@ func (c *Client) SendText(chatID, text string) error {
 
 // SendAlert formats and sends an alert message (HTML).
 func (c *Client) SendAlert(chatID, title, body, severity string) error {
+	_, err := c.SendAlertID(chatID, title, body, severity)
+	return err
+}
+
+// SendAlertID formats and sends an alert message (HTML), returning the Telegram
+// message id of the sent message (used for alert-log bookkeeping).
+func (c *Client) SendAlertID(chatID, title, body, severity string) (int, error) {
 	icon := map[string]string{"critical": "🔴", "warning": "🟡", "info": "🔵"}[severity]
 	if icon == "" {
 		icon = "ℹ️"
 	}
 	msg := fmt.Sprintf("%s <b>%s</b>\n%s", icon, EscapeHTML(title), EscapeHTML(body))
-	return c.SendText(chatID, msg)
+	var res struct {
+		MessageID int `json:"message_id"`
+	}
+	err := c.call("sendMessage", map[string]any{
+		"chat_id": chatID, "text": msg, "parse_mode": "HTML",
+	}, &res)
+	return res.MessageID, err
 }
 
 // EscapeHTML escapes the characters Telegram's HTML parse mode requires.

@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -111,12 +113,24 @@ func RunForeground() error {
 		svcs, _ := cl.ServiceMetricsList("")
 		if errS == nil {
 			snap.set(sum, nodes, svcs)
+			ms := make([]db.Metric, 0, len(nodes)*2+2)
 			for _, n := range nodes {
 				pred.record("node_cpu:"+n.Name, float64(n.CPU.Percent))
 				pred.record("node_memory:"+n.Name, float64(n.Memory.Percent))
+				ms = append(ms,
+					db.Metric{Type: "cpu", TargetID: n.Name, TargetType: "node", Value: float64(n.CPU.Percent), Unit: "%"},
+					db.Metric{Type: "memory", TargetID: n.Name, TargetType: "node", Value: float64(n.Memory.Percent), Unit: "%"},
+				)
 			}
 			pred.record("cluster_cpu:cluster", float64(sum.CPU.Percent))
 			pred.record("cluster_memory:cluster", float64(sum.Memory.Percent))
+			ms = append(ms,
+				db.Metric{Type: "cpu", TargetID: "cluster", TargetType: "cluster", Value: float64(sum.CPU.Percent), Unit: "%"},
+				db.Metric{Type: "memory", TargetID: "cluster", TargetType: "cluster", Value: float64(sum.Memory.Percent), Unit: "%"},
+			)
+			if err := d.InsertMetrics(ms); err != nil {
+				_ = d.SetState("last_error", err.Error())
+			}
 		}
 	}
 	collect()
@@ -146,6 +160,9 @@ func RunForeground() error {
 		}
 		if removed, _ := d.PurgeOldHealthLogs(retentionDays); removed > 0 {
 			fmt.Printf("purged %d old health logs\n", removed)
+		}
+		if removed, _ := d.PurgeOldMetrics(retentionDays); removed > 0 {
+			fmt.Printf("purged %d old metrics\n", removed)
 		}
 	}
 	healthCheck()
@@ -179,11 +196,12 @@ func maybeAlert(d *db.DB, target string, health cluster.NodeHealth, msg string) 
 	if health == cluster.HealthCritical {
 		sev = "critical"
 	}
-	c := telegram.NewClient(cfg.Token)
-	_ = c.SendAlert(cfg.ChatID, fmt.Sprintf("Node %s %s", target, health), msg, sev)
-	_, _ = d.Conn().Exec(
-		`INSERT INTO telegram_alert_log (check_type, target, status, sent_at) VALUES (?,?,?,?)`,
-		"node", target, string(health), time.Now().UTC().Format(time.RFC3339))
+	title := fmt.Sprintf("Node %s %s", target, health)
+	// ThrottledAlert applies dedup (same target+status within 5m) and the
+	// configured rate limit, and records the alert in telegram_alert_log.
+	if _, err := telegram.ThrottledAlert(d, target, string(health), title, msg, sev); err != nil {
+		_ = d.SetState("last_error", err.Error())
+	}
 }
 
 func startHTTP(host string, port int, snap *snapshot, pred *predictor) *http.Server {
@@ -211,13 +229,10 @@ func startHTTP(host string, port int, snap *snapshot, pred *predictor) *http.Ser
 		writeJSON(w, out)
 	})
 	mux.HandleFunc("/api/v1/predictions", func(w http.ResponseWriter, r *http.Request) {
-		writeJSON(w, pred.forecast(30*time.Minute))
+		// All horizons (5m/30m/60m), each alert labelled with its horizon.
+		writeJSON(w, pred.forecastAll())
 	})
-	mux.HandleFunc("/api/v1/pods/", func(w http.ResponseWriter, r *http.Request) {
-		// /api/v1/pods/{ns}/{name}/details
-		_, nodes, svcs := snap.read()
-		writeJSON(w, map[string]any{"nodes": nodes, "services": svcs, "path": r.URL.Path})
-	})
+	mux.HandleFunc("/api/v1/pods/", podDetailsHandler)
 	srv := &http.Server{Addr: fmt.Sprintf("%s:%d", host, port), Handler: mux}
 	go func() {
 		if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
@@ -225,6 +240,52 @@ func startHTTP(host string, port int, snap *snapshot, pred *predictor) *http.Ser
 		}
 	}()
 	return srv
+}
+
+// podDetailsHandler serves /api/v1/pods/{ns}/{name}/details by shelling out to
+// kubectl (honouring KUBECONFIG, as the rest of the daemon does). It returns the
+// pod spec/status, recent events for the object and the last 100 log lines.
+func podDetailsHandler(w http.ResponseWriter, r *http.Request) {
+	rest := strings.Trim(strings.TrimPrefix(r.URL.Path, "/api/v1/pods/"), "/")
+	parts := strings.Split(rest, "/")
+	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
+		w.WriteHeader(http.StatusBadRequest)
+		writeJSON(w, map[string]any{"error": "expected /api/v1/pods/{ns}/{name}/details"})
+		return
+	}
+	ns, name := parts[0], parts[1]
+
+	podRaw, podErr := kubectlOutput("get", "pod", "-n", ns, name, "-o", "json")
+	evRaw, _ := kubectlOutput("get", "events", "-n", ns,
+		"--field-selector", "involvedObject.name="+name, "-o", "json")
+	logsRaw, _ := kubectlOutput("logs", "-n", ns, name, "--tail=100")
+
+	resp := map[string]any{
+		"pod":    rawJSON(podRaw),
+		"events": rawJSON(evRaw),
+		"logs":   string(logsRaw),
+	}
+	if podErr != nil {
+		resp["error"] = podErr.Error()
+	}
+	writeJSON(w, resp)
+}
+
+// kubectlOutput runs kubectl with the given args, prepending --kubeconfig when
+// KUBECONFIG is set so it matches the cluster client's behaviour.
+func kubectlOutput(args ...string) ([]byte, error) {
+	if kc := os.Getenv("KUBECONFIG"); kc != "" {
+		args = append([]string{"--kubeconfig", kc}, args...)
+	}
+	return exec.Command("kubectl", args...).Output()
+}
+
+// rawJSON returns b as embeddable JSON when it parses, otherwise nil.
+func rawJSON(b []byte) json.RawMessage {
+	if len(b) == 0 || !json.Valid(b) {
+		return nil
+	}
+	return json.RawMessage(b)
 }
 
 func writeJSON(w http.ResponseWriter, v any) {

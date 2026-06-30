@@ -15,6 +15,7 @@ import (
 
 	"github.com/NimbleMarkets/ntcharts/sparkline"
 	"github.com/ZeiZel/self-hosted/cli/internal/cluster"
+	"github.com/charmbracelet/bubbles/viewport"
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 )
@@ -136,6 +137,15 @@ type model struct {
 	showHelp bool
 	showDet  bool
 
+	// pod-detail overlay tabs (overview / events / logs)
+	detTab    int
+	evVP      viewport.Model
+	logVP     viewport.Model
+	evText    string
+	logText   string
+	evLoaded  bool
+	logLoaded bool
+
 	searching bool
 	query     string
 	grouping  int // 0 none, 1 namespace, 2 node, 3 status
@@ -151,6 +161,8 @@ func newModel(cl *cluster.Client, opts Options) *model {
 		cpuSpark: sparkline.New(28, 4),
 		memSpark: sparkline.New(28, 4),
 		cpuHist:  map[string][]float64{},
+		evVP:     viewport.New(0, 0),
+		logVP:    viewport.New(0, 0),
 	}
 }
 
@@ -194,6 +206,8 @@ func (m *model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			}
 			m.clampSelections()
 		}
+	case detailDataMsg:
+		m.applyDetailData(msg)
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	}
@@ -218,6 +232,11 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 			}
 		}
 		return m, nil
+	}
+
+	// pod-detail overlay owns all key input while open (tabs + scrolling)
+	if m.showDet {
+		return m.detailKey(msg)
 	}
 
 	switch msg.String() {
@@ -255,7 +274,7 @@ func (m *model) handleKey(msg tea.KeyMsg) (tea.Model, tea.Cmd) {
 		m.expanded = !m.expanded
 	case "d":
 		if m.focus == panelServices && len(m.filteredServices()) > 0 {
-			m.showDet = true
+			m.openDetail()
 		}
 	case "/":
 		if m.focus == panelServices {
@@ -403,31 +422,15 @@ func (m *model) alertsBody() string {
 	return b.String()
 }
 
-func (m *model) detailView() string {
-	svcs := m.filteredServices()
-	if len(svcs) == 0 {
-		return "no service selected"
-	}
-	i := m.sel[panelServices]
-	if i >= len(svcs) {
-		i = len(svcs) - 1
-	}
-	s := svcs[i]
-	return focusBorder.Width(m.w - 6).Render(fmt.Sprintf(
-		"%s\n\nNamespace: %s\nNode:      %s\nStatus:    %s\nHealth:    %s\nReplicas:  %d/%d ready\nRestarts:  %d\nAge:       %s\nCPU req:   %s\nMem req:   %s\n\n%s",
-		titleSty.Render("Pod detail: "+s.Name),
-		s.Namespace, s.Node, healthStyle(s.Health).Render(string(s.Status)), s.Health,
-		s.Replicas.Ready, s.Replicas.Desired, s.Restarts, s.Age,
-		cluster.FormatCPU(s.CPU.Requested), cluster.FormatBytes(s.Memory.Requested),
-		dimSty.Render("[esc] close")))
-}
-
 func (m *model) helpView() string {
 	rows := [][2]string{
 		{"q / ctrl+c", "quit"}, {"r", "refresh"}, {"?", "toggle help"},
 		{"tab / 1-4", "focus panel"}, {"↑↓ / j k", "select in panel"},
 		{"enter", "expand / collapse panel"}, {"esc", "collapse / close overlay"},
 		{"/", "search services"}, {"g", "cycle services grouping"}, {"d", "pod detail"},
+		{"1/2/3 / tab", "detail: overview / events / logs tabs"},
+		{"↑↓ / j k", "detail: scroll events / logs"},
+		{"r", "detail: reload events / logs"},
 	}
 	var b strings.Builder
 	b.WriteString(titleSty.Render("Keyboard shortcuts") + "\n\n")
