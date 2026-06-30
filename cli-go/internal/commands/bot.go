@@ -21,12 +21,6 @@ func newBotCmd(g *Global) *cobra.Command {
 					return err
 				}
 			}
-			if chatID == "" {
-				var err error
-				if chatID, err = askString("Telegram chat ID", ""); err != nil {
-					return err
-				}
-			}
 			if !telegram.ValidToken(token) {
 				return fmt.Errorf("token does not look like a valid bot token")
 			}
@@ -39,9 +33,30 @@ func newBotCmd(g *Global) *cobra.Command {
 			if err := tc.TestConnection(); err != nil {
 				return fmt.Errorf("token rejected by Telegram: %w", err)
 			}
+			// Auto-discover chat id if not supplied.
+			if chatID == "" {
+				ui.Info("send any message to the bot, then press enter to auto-detect the chat id…")
+				if discovered, derr := tc.DiscoverChatID(); derr == nil {
+					chatID = discovered
+					ui.OK("detected chat id: %s", chatID)
+				} else {
+					if chatID, err = askString("Telegram chat ID", ""); err != nil {
+						return err
+					}
+				}
+			}
 			if err := telegram.SaveConfig(d, token, chatID, force); err != nil {
 				return err
 			}
+			// Register command list + send a confirmation message.
+			_ = tc.SetMyCommands([]telegram.BotCommandInfo{
+				{Command: "status", Description: "Cluster health summary"},
+				{Command: "resources", Description: "Resource usage by node"},
+				{Command: "restart", Description: "Restart a service"},
+				{Command: "settings", Description: "View alert settings"},
+				{Command: "help", Description: "Show help"},
+			})
+			_ = tc.SendText(chatID, "✅ <b>selfhost</b> bot configured. Send /help for commands.")
 			ui.OK("telegram bot configured")
 			return nil
 		}}

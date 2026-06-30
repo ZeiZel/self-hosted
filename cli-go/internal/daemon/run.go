@@ -78,6 +78,14 @@ func RunForeground() error {
 	_ = d.SetState("started_at", time.Now().UTC().Format(time.RFC3339))
 	defer d.SetState("running", "false")
 
+	// Inbound Telegram command bot (if configured + enabled).
+	botStop := make(chan struct{})
+	defer close(botStop)
+	if bot, err := telegram.NewBot(d, cl); err == nil {
+		go bot.Run(botStop)
+		fmt.Println("telegram command bot started")
+	}
+
 	snap := &snapshot{}
 
 	// HTTP long-poll API (parity with daemon-server.ts).
