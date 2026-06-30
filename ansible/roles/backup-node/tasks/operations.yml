@@ -7,9 +7,11 @@
 # Usage: ansible-playbook -i inventory/hosts.ini all.yml --tags backup-now
 # =============================================================================
 - name: Run manual full backup
+  when: "'backup-now' in ansible_run_tags"
+  tags: [backup-now, never]
   block:
     - name: Trigger all backup CronJobs in Kubernetes
-      shell: |
+      ansible.builtin.shell: |
         for job in $(kubectl get cronjobs -n infrastructure -l app.kubernetes.io/name=zerobyte -o jsonpath='{.items[*].metadata.name}'); do
           echo "Triggering backup job: $job"
           kubectl create job --from=cronjob/$job "${job}-manual-$(date +%Y%m%d%H%M%S)" -n infrastructure
@@ -19,49 +21,49 @@
       changed_when: "'created' in backup_trigger.stdout"
 
     - name: Display triggered backups
-      debug:
+      ansible.builtin.debug:
         msg: "{{ backup_trigger.stdout_lines }}"
-  when: "'backup-now' in ansible_run_tags"
-  tags: [backup-now, never]
 
 # =============================================================================
 # LIST BACKUPS: Show all available backups
 # Usage: ansible-playbook -i inventory/hosts.ini all.yml --tags backup-list
 # =============================================================================
 - name: List all Restic backups
+  when: "'backup-list' in ansible_run_tags"
+  tags: [backup-list, never]
   block:
     - name: Get Restic snapshots
-      shell: |
+      ansible.builtin.shell: |
         export RESTIC_REPOSITORY="{{ nfs_restic_dir }}"
         export RESTIC_PASSWORD="{{ restic_password }}"
         restic snapshots --json | jq -r '.[] | "\(.time) | \(.tags | join(",")) | \(.short_id)"'
-      become: yes
+      become: true
       become_user: "{{ backup_user }}"
       register: restic_snapshots
       no_log: true
       changed_when: false
 
     - name: Display available backups
-      debug:
+      ansible.builtin.debug:
         msg: |
           Available Restic Backups:
           ========================
           {{ restic_snapshots.stdout }}
-  when: "'backup-list' in ansible_run_tags"
-  tags: [backup-list, never]
 
 # =============================================================================
 # BACKUP STATUS: Check backup health
 # Usage: ansible-playbook -i inventory/hosts.ini all.yml --tags backup-status
 # =============================================================================
 - name: Check backup status
+  when: "'backup-status' in ansible_run_tags"
+  tags: [backup-status, never]
   block:
     - name: Check Restic repository health
-      shell: |
+      ansible.builtin.shell: |
         export RESTIC_REPOSITORY="{{ nfs_restic_dir }}"
         export RESTIC_PASSWORD="{{ restic_password }}"
         restic check 2>&1
-      become: yes
+      become: true
       become_user: "{{ backup_user }}"
       register: restic_health
       no_log: true
@@ -69,24 +71,24 @@
       failed_when: false
 
     - name: Get backup disk usage
-      shell: du -sh {{ nfs_restic_dir }} {{ nfs_dumps_dir }}
-      become: yes
+      ansible.builtin.command: du -sh {{ nfs_restic_dir }} {{ nfs_dumps_dir }}
+      become: true
       register: disk_usage
       changed_when: false
 
     - name: Get latest backup timestamp
-      shell: |
+      ansible.builtin.shell: |
         export RESTIC_REPOSITORY="{{ nfs_restic_dir }}"
         export RESTIC_PASSWORD="{{ restic_password }}"
         restic snapshots --latest 1 --json | jq -r '.[0].time // "No backups found"'
-      become: yes
+      become: true
       become_user: "{{ backup_user }}"
       register: latest_backup
       no_log: true
       changed_when: false
 
     - name: Display backup status
-      debug:
+      ansible.builtin.debug:
         msg: |
           Backup System Status
           ====================
@@ -94,57 +96,57 @@
           Latest Backup: {{ latest_backup.stdout }}
           Disk Usage:
           {{ disk_usage.stdout }}
-  when: "'backup-status' in ansible_run_tags"
-  tags: [backup-status, never]
 
 # =============================================================================
 # RESTORE BACKUP: Restore from backup
 # Usage: ansible-playbook -i inventory/hosts.ini all.yml --tags backup-restore -e "snapshot_id=abc123 restore_target=/restore"
 # =============================================================================
 - name: Restore from backup
+  when: "'backup-restore' in ansible_run_tags"
+  tags: [backup-restore, never]
   block:
     - name: Validate restore parameters
-      assert:
+      ansible.builtin.assert:
         that:
           - snapshot_id is defined
           - restore_target is defined
         fail_msg: "Must specify snapshot_id and restore_target variables"
 
     - name: Create restore target directory
-      file:
+      ansible.builtin.file:
         path: "{{ restore_target }}"
         state: directory
-        mode: '0755'
-      become: yes
+        mode: "0755"
+      become: true
 
     - name: Restore from Restic snapshot
-      shell: |
+      ansible.builtin.shell: |
         export RESTIC_REPOSITORY="{{ nfs_restic_dir }}"
         export RESTIC_PASSWORD="{{ restic_password }}"
         restic restore {{ snapshot_id }} --target {{ restore_target }} --verbose
-      become: yes
+      become: true
       become_user: "{{ backup_user }}"
       register: restore_result
       no_log: true
 
     - name: Display restore result
-      debug:
+      ansible.builtin.debug:
         msg: |
           Restore completed!
           Snapshot: {{ snapshot_id }}
           Target: {{ restore_target }}
           {{ restore_result.stdout }}
-  when: "'backup-restore' in ansible_run_tags"
-  tags: [backup-restore, never]
 
 # =============================================================================
 # PRUNE BACKUPS: Clean up old backups
 # Usage: ansible-playbook -i inventory/hosts.ini all.yml --tags backup-prune
 # =============================================================================
 - name: Prune old backups
+  when: "'backup-prune' in ansible_run_tags"
+  tags: [backup-prune, never]
   block:
     - name: Run Restic prune with retention policy
-      shell: |
+      ansible.builtin.shell: |
         export RESTIC_REPOSITORY="{{ nfs_restic_dir }}"
         export RESTIC_PASSWORD="{{ restic_password }}"
         restic forget \
@@ -155,50 +157,50 @@
           --keep-yearly 2 \
           --prune \
           --verbose
-      become: yes
+      become: true
       become_user: "{{ backup_user }}"
       register: prune_result
       no_log: true
 
     - name: Display prune result
-      debug:
+      ansible.builtin.debug:
         msg: "{{ prune_result.stdout_lines }}"
-  when: "'backup-prune' in ansible_run_tags"
-  tags: [backup-prune, never]
 
 # =============================================================================
 # VERIFY BACKUPS: Verify backup integrity
 # Usage: ansible-playbook -i inventory/hosts.ini all.yml --tags backup-verify
 # =============================================================================
 - name: Verify backup integrity
+  when: "'backup-verify' in ansible_run_tags"
+  tags: [backup-verify, never]
   block:
     - name: Run Restic check with data verification
-      shell: |
+      ansible.builtin.shell: |
         export RESTIC_REPOSITORY="{{ nfs_restic_dir }}"
         export RESTIC_PASSWORD="{{ restic_password }}"
         restic check --read-data-subset=10% --verbose
-      become: yes
+      become: true
       become_user: "{{ backup_user }}"
       register: verify_result
       no_log: true
 
     - name: Display verification result
-      debug:
+      ansible.builtin.debug:
         msg: |
           Backup Verification Complete
           =============================
           {{ verify_result.stdout }}
-  when: "'backup-verify' in ansible_run_tags"
-  tags: [backup-verify, never]
 
 # =============================================================================
 # DATABASE DUMP: Create database dumps
 # Usage: ansible-playbook -i inventory/hosts.ini all.yml --tags backup-databases
 # =============================================================================
 - name: Create database dumps
+  when: "'backup-databases' in ansible_run_tags"
+  tags: [backup-databases, never]
   block:
     - name: Dump PostgreSQL databases
-      shell: |
+      ansible.builtin.shell: |
         kubectl exec -n db postgresql-0 -- bash -c \
           "PGPASSWORD=\$POSTGRES_PASSWORD pg_dumpall -U postgres" \
           | gzip > {{ nfs_dumps_dir }}/postgres/postgres_$(date +%Y%m%d_%H%M%S).sql.gz
@@ -207,7 +209,7 @@
       changed_when: true
 
     - name: Dump MongoDB databases
-      shell: |
+      ansible.builtin.shell: |
         kubectl exec -n db mongodb-0 -- mongodump --archive --gzip \
           -u root -p "$MONGODB_ROOT_PASSWORD" --authenticationDatabase admin \
           > {{ nfs_dumps_dir }}/mongodb/mongodb_$(date +%Y%m%d_%H%M%S).archive.gz
@@ -217,11 +219,9 @@
       failed_when: false
 
     - name: Display dump results
-      debug:
+      ansible.builtin.debug:
         msg: |
           Database Dumps Created
           ======================
           PostgreSQL: {{ 'SUCCESS' if pg_dump.rc == 0 else 'FAILED' }}
           MongoDB: {{ 'SUCCESS' if mongo_dump.rc == 0 else 'SKIPPED/FAILED' }}
-  when: "'backup-databases' in ansible_run_tags"
-  tags: [backup-databases, never]

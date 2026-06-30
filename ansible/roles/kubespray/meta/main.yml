@@ -1,3 +1,4 @@
+---
 galaxy_info:
   role_name: kubespray
   description: setup kubespray on server

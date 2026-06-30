@@ -6,7 +6,7 @@
 # - Configure Kubernetes auth
 
 - name: Check if Vault pod is running
-  command: >
+  ansible.builtin.command: >
     kubectl get pods -n service -l app.kubernetes.io/name=vault
     -o jsonpath='{.items[0].status.phase}'
   register: vault_pod_status
@@ -14,7 +14,7 @@
   failed_when: false
 
 - name: Wait for Vault pod to be running
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n service -l app.kubernetes.io/name=vault
     --timeout={{ vault_wait_timeout }}s
@@ -22,7 +22,7 @@
   changed_when: false
 
 - name: Check Vault initialization status
-  command: >
+  ansible.builtin.command: >
     kubectl exec -n service vault-0 --
     vault status -format=json
   register: vault_status_raw
@@ -30,7 +30,7 @@
   failed_when: false
 
 - name: Parse Vault status
-  set_fact:
+  ansible.builtin.set_fact:
     vault_status: "{{ vault_status_raw.stdout | from_json }}"
   when: vault_status_raw.rc == 0 or vault_status_raw.rc == 2
 
@@ -40,7 +40,7 @@
     - not vault_status.initialized | default(false)
   block:
     - name: Initialize Vault with key shares
-      command: >
+      ansible.builtin.command: >
         kubectl exec -n service vault-0 --
         vault operator init
         -key-shares={{ vault_key_shares }}
@@ -49,14 +49,14 @@
       register: vault_init_output
 
     - name: Save Vault init keys locally
-      copy:
+      ansible.builtin.copy:
         content: "{{ vault_init_output.stdout }}"
         dest: "{{ vault_keys_file }}"
-        mode: '0600'
+        mode: "0600"
       delegate_to: localhost
 
     - name: Display CRITICAL warning about Vault keys
-      debug:
+      ansible.builtin.debug:
         msg: |
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
           CRITICAL: Vault has been initialized!
@@ -70,7 +70,7 @@
           !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
 - name: Load Vault keys from file
-  slurp:
+  ansible.builtin.slurp:
     src: "{{ vault_keys_file }}"
   register: vault_keys_raw
   delegate_to: localhost
@@ -78,7 +78,7 @@
   failed_when: false
 
 - name: Parse Vault keys
-  set_fact:
+  ansible.builtin.set_fact:
     vault_keys: "{{ vault_keys_raw.content | b64decode | from_json }}"
   when:
     - vault_keys_raw is defined
@@ -91,28 +91,28 @@
     - vault_keys is defined
   block:
     - name: Unseal Vault with key 1
-      command: >
+      ansible.builtin.command: >
         kubectl exec -n service vault-0 --
         vault operator unseal {{ vault_keys.unseal_keys_b64[0] }}
       changed_when: true
       no_log: true
 
     - name: Unseal Vault with key 2
-      command: >
+      ansible.builtin.command: >
         kubectl exec -n service vault-0 --
         vault operator unseal {{ vault_keys.unseal_keys_b64[1] }}
       changed_when: true
       no_log: true
 
     - name: Unseal Vault with key 3
-      command: >
+      ansible.builtin.command: >
         kubectl exec -n service vault-0 --
         vault operator unseal {{ vault_keys.unseal_keys_b64[2] }}
       changed_when: true
       no_log: true
 
     - name: Verify Vault is unsealed
-      command: >
+      ansible.builtin.command: >
         kubectl exec -n service vault-0 --
         vault status -format=json
       register: vault_unsealed_status
@@ -129,7 +129,7 @@
     VAULT_TOKEN: "{{ vault_keys.root_token }}"
   block:
     - name: Enable KV secrets engine v2
-      command: >
+      ansible.builtin.command: >
         kubectl exec -n service vault-0 --
         vault secrets enable -path=secret -version=2 kv
       register: kv_enable
@@ -137,7 +137,7 @@
       failed_when: false
 
     - name: Enable Kubernetes auth method
-      command: >
+      ansible.builtin.command: >
         kubectl exec -n service vault-0 --
         vault auth enable kubernetes
       register: k8s_auth_enable
@@ -145,14 +145,14 @@
       failed_when: false
 
     - name: Configure Kubernetes auth
-      command: >
+      ansible.builtin.command: >
         kubectl exec -n service vault-0 --
         vault write auth/kubernetes/config
         kubernetes_host="https://$KUBERNETES_PORT_443_TCP_ADDR:443"
       changed_when: true
 
 - name: Display Vault status
-  debug:
+  ansible.builtin.debug:
     msg: |
       Vault Configuration Complete
       ============================

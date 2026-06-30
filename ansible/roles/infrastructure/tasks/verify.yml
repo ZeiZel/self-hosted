@@ -3,13 +3,13 @@
 # Checks all pods are Running and services are accessible
 
 - name: Verify all namespaces exist
-  command: kubectl get namespaces -o name
+  ansible.builtin.command: kubectl get namespaces -o name
   register: namespaces_list
   changed_when: false
   tags: [infrastructure, verify, namespaces]
 
 - name: Check required namespaces
-  assert:
+  ansible.builtin.assert:
     that:
       - "'namespace/ingress' in namespaces_list.stdout"
       - "'namespace/service' in namespaces_list.stdout"
@@ -22,18 +22,18 @@
   tags: [infrastructure, verify, namespaces]
 
 - name: Get all pods across infrastructure
-  command: kubectl get pods -A -o wide
+  ansible.builtin.command: kubectl get pods -A -o wide
   register: all_pods
   changed_when: false
   tags: [infrastructure, verify, pods]
 
 - name: Display all pods
-  debug:
+  ansible.builtin.debug:
     msg: "{{ all_pods.stdout_lines }}"
   tags: [infrastructure, verify, pods]
 
 - name: Check for pods not in Running state
-  command: >
+  ansible.builtin.command: >
     kubectl get pods -A
     --field-selector=status.phase!=Running,status.phase!=Succeeded
     -o json
@@ -42,12 +42,12 @@
   tags: [infrastructure, verify, pods]
 
 - name: Parse not running pods
-  set_fact:
+  ansible.builtin.set_fact:
     not_running_list: "{{ (not_running_pods.stdout | from_json).items | map(attribute='metadata.name') | list }}"
   tags: [infrastructure, verify, pods]
 
 - name: Display warning for non-running pods
-  debug:
+  ansible.builtin.debug:
     msg:
       - "⚠️  Warning: The following pods are not Running:"
       - "{{ not_running_list | join(', ') }}"
@@ -55,44 +55,44 @@
   tags: [infrastructure, verify, pods]
 
 - name: Verify Traefik ingress is accessible
-  command: kubectl get svc -n ingress traefik -o jsonpath='{.status.loadBalancer}'
+  ansible.builtin.command: kubectl get svc -n ingress traefik -o jsonpath='{.status.loadBalancer}'
   register: traefik_lb
   changed_when: false
   tags: [infrastructure, verify, traefik]
 
 - name: Display Traefik service status
-  debug:
+  ansible.builtin.debug:
     msg: "Traefik LoadBalancer: {{ traefik_lb.stdout }}"
   tags: [infrastructure, verify, traefik]
 
 - name: Verify Consul cluster health
-  command: kubectl exec -n service consul-server-0 -- consul members
+  ansible.builtin.command: kubectl exec -n service consul-server-0 -- consul members
   register: consul_health
   changed_when: false
   failed_when: false
   tags: [infrastructure, verify, consul]
 
 - name: Display Consul cluster status
-  debug:
+  ansible.builtin.debug:
     msg: "{{ consul_health.stdout_lines }}"
   when: consul_health.rc == 0
   tags: [infrastructure, verify, consul]
 
 - name: Verify Vault status
-  command: kubectl exec -n service -l app.kubernetes.io/name=vault -- vault status -format=json
+  ansible.builtin.command: kubectl exec -n service -l app.kubernetes.io/name=vault -- vault status -format=json
   register: vault_verify
   changed_when: false
   failed_when: false
   tags: [infrastructure, verify, vault]
 
 - name: Parse Vault status
-  set_fact:
+  ansible.builtin.set_fact:
     vault_verify_json: "{{ vault_verify.stdout | from_json }}"
   when: vault_verify.rc == 0
   tags: [infrastructure, verify, vault]
 
 - name: Check Vault is unsealed
-  assert:
+  ansible.builtin.assert:
     that:
       - vault_verify_json is defined
       - vault_verify_json.initialized
@@ -103,13 +103,13 @@
   tags: [infrastructure, verify, vault]
 
 - name: Verify cert-manager is ready
-  command: kubectl get pods -n service -l app.kubernetes.io/name=cert-manager -o jsonpath='{.items[*].status.phase}'
+  ansible.builtin.command: kubectl get pods -n service -l app.kubernetes.io/name=cert-manager -o jsonpath='{.items[*].status.phase}'
   register: certmanager_verify
   changed_when: false
   tags: [infrastructure, verify, cert-manager]
 
 - name: Check cert-manager pods
-  assert:
+  ansible.builtin.assert:
     that:
       - "'Running' in certmanager_verify.stdout"
     fail_msg: "cert-manager pods are not Running"
@@ -117,19 +117,19 @@
   tags: [infrastructure, verify, cert-manager]
 
 - name: Verify Authentik is ready
-  command: kubectl get pods -n service -l app.kubernetes.io/name=authentik -o jsonpath='{.items[*].status.phase}'
+  ansible.builtin.command: kubectl get pods -n service -l app.kubernetes.io/name=authentik -o jsonpath='{.items[*].status.phase}'
   register: authentik_verify
   changed_when: false
   failed_when: false
   tags: [infrastructure, verify, authentik]
 
 - name: Display Authentik status
-  debug:
+  ansible.builtin.debug:
     msg: "Authentik status: {{ authentik_verify.stdout }}"
   tags: [infrastructure, verify, authentik]
 
 - name: Check for CrashLoopBackOff pods
-  command: >
+  ansible.builtin.command: >
     kubectl get pods -A
     -o jsonpath='{range .items[?(@.status.containerStatuses[*].state.waiting.reason=="CrashLoopBackOff")]}{.metadata.namespace}{"/"}{.metadata.name}{"\n"}{end}'
   register: crashloop_pods
@@ -137,7 +137,7 @@
   tags: [infrastructure, verify, pods]
 
 - name: Display CrashLoopBackOff warning
-  debug:
+  ansible.builtin.debug:
     msg:
       - "⚠️  WARNING: Pods in CrashLoopBackOff state:"
       - "{{ crashloop_pods.stdout_lines }}"
@@ -145,29 +145,29 @@
   tags: [infrastructure, verify, pods]
 
 - name: Get Helm releases status
-  command: helm list -A -o json
+  ansible.builtin.command: helm list -A -o json
   register: helm_releases
   changed_when: false
   tags: [infrastructure, verify, helm]
 
 - name: Parse Helm releases
-  set_fact:
+  ansible.builtin.set_fact:
     helm_releases_list: "{{ helm_releases.stdout | from_json }}"
   tags: [infrastructure, verify, helm]
 
 - name: Display Helm releases
-  debug:
+  ansible.builtin.debug:
     msg: "{{ helm_releases_list | map(attribute='name') | list | join(', ') }}"
   tags: [infrastructure, verify, helm]
 
 - name: Count deployed releases
-  set_fact:
+  ansible.builtin.set_fact:
     deployed_count: "{{ helm_releases_list | selectattr('status', 'equalto', 'deployed') | list | length }}"
     failed_count: "{{ helm_releases_list | selectattr('status', 'equalto', 'failed') | list | length }}"
   tags: [infrastructure, verify, helm]
 
 - name: Helm releases summary
-  debug:
+  ansible.builtin.debug:
     msg:
       - "Helm releases: {{ helm_releases_list | length }} total"
       - "✓ Deployed: {{ deployed_count }}"
@@ -175,37 +175,37 @@
   tags: [infrastructure, verify, helm]
 
 - name: Check for failed Helm releases
-  fail:
+  ansible.builtin.fail:
     msg: "{{ failed_count }} Helm releases failed. Check helm list -A for details."
   when: failed_count | int > 0
   tags: [infrastructure, verify, helm]
 
 - name: Get persistent volumes status
-  command: kubectl get pv
+  ansible.builtin.command: kubectl get pv
   register: pv_status
   changed_when: false
   failed_when: false
   tags: [infrastructure, verify, storage]
 
 - name: Display PV status
-  debug:
+  ansible.builtin.debug:
     msg: "{{ pv_status.stdout_lines }}"
   when: pv_status.rc == 0
   tags: [infrastructure, verify, storage]
 
 - name: Get persistent volume claims status
-  command: kubectl get pvc -A
+  ansible.builtin.command: kubectl get pvc -A
   register: pvc_status
   changed_when: false
   tags: [infrastructure, verify, storage]
 
 - name: Display PVC status
-  debug:
+  ansible.builtin.debug:
     msg: "{{ pvc_status.stdout_lines }}"
   tags: [infrastructure, verify, storage]
 
 - name: Final verification summary
-  debug:
+  ansible.builtin.debug:
     msg:
       - "========================================="
       - "Infrastructure Verification Complete"
@@ -222,6 +222,6 @@
   tags: [infrastructure, verify]
 
 - name: Verification complete
-  debug:
+  ansible.builtin.debug:
     msg: "Infrastructure deployment verification finished"
   tags: [infrastructure, verify]

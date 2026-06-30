@@ -2,7 +2,7 @@
 # Unattended upgrades configuration for VPS
 
 - name: Configure unattended-upgrades
-  copy:
+  ansible.builtin.copy:
     dest: /etc/apt/apt.conf.d/50unattended-upgrades
     content: |
       Unattended-Upgrade::Allowed-Origins {

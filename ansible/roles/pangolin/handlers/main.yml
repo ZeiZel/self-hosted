@@ -1,46 +1,46 @@
 ---
 # Pangolin VPN handlers
 
-- name: restart pangolin
-  systemd:
+- name: Restart pangolin
+  ansible.builtin.systemd:
     name: pangolin
     state: restarted
-    daemon_reload: yes
+    daemon_reload: true
   listen: restart pangolin
 
-- name: restart gerbil
-  systemd:
+- name: Restart gerbil
+  ansible.builtin.systemd:
     name: gerbil
     state: restarted
-    daemon_reload: yes
+    daemon_reload: true
   listen: restart gerbil
 
-- name: restart traefik
-  systemd:
+- name: Restart traefik
+  ansible.builtin.systemd:
     name: traefik
     state: restarted
-    daemon_reload: yes
+    daemon_reload: true
   listen: restart traefik
 
-- name: restart wireguard
-  systemd:
+- name: Restart wireguard
+  ansible.builtin.systemd:
     name: "wg-quick@wg0"
     state: restarted
-    daemon_reload: yes
+    daemon_reload: true
   listen: restart wireguard
 
-- name: restart wireguard-server
-  systemd:
+- name: Restart wireguard-server
+  ansible.builtin.systemd:
     name: "wg-quick@wg0"
     state: restarted
-    daemon_reload: yes
+    daemon_reload: true
   listen: restart wireguard-server
 
-- name: reload ufw
-  ufw:
+- name: Reload ufw
+  community.general.ufw:
     state: reloaded
   listen: reload ufw
 
-- name: reload sysctl
-  command: sysctl --system
+- name: Reload sysctl
+  ansible.builtin.command: sysctl --system
   listen: reload sysctl

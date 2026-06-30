@@ -4,7 +4,7 @@
 # - Configure plugins and integrations
 
 - name: Wait for Kestra pod to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n automation -l app.kubernetes.io/name=kestra
     --timeout={{ kestra_wait_timeout }}s
@@ -12,7 +12,7 @@
   failed_when: false
 
 - name: Check Kestra health
-  uri:
+  ansible.builtin.uri:
     url: "{{ kestra_url }}/api/v1/health"
     method: GET
     status_code: [200]
@@ -24,7 +24,7 @@
   failed_when: false
 
 - name: Save Kestra setup information
-  copy:
+  ansible.builtin.copy:
     content: |
       Kestra Setup Information
       =========================
@@ -45,11 +45,11 @@
       4. Set up secrets for integrations
       5. Import flow templates
     dest: "{{ kestra_credentials_file }}"
-    mode: '0600'
+    mode: "0600"
   delegate_to: localhost
 
 - name: Display Kestra configuration status
-  debug:
+  ansible.builtin.debug:
     msg: |
       Kestra Configuration
       =====================

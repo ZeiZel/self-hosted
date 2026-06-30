@@ -1,11 +1,11 @@
 ---
 - name: Check if Homebrew is installed
-  stat:
+  ansible.builtin.stat:
     path: "{{ homebrew_install_path }}/bin/brew"
   register: homebrew_check
 
 - name: Install Homebrew on macOS
-  shell: |
+  ansible.builtin.shell: |
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   when:
     - not homebrew_check.stat.exists
@@ -14,7 +14,7 @@
     NONINTERACTIVE: "1"
 
 - name: Install Homebrew on Linux
-  shell: |
+  ansible.builtin.shell: |
     /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
   when:
     - not homebrew_check.stat.exists
@@ -23,40 +23,40 @@
     NONINTERACTIVE: "1"
 
 - name: Add Homebrew to PATH for Linux (current session)
-  set_fact:
+  ansible.builtin.set_fact:
     ansible_env: "{{ ansible_env | combine({'PATH': homebrew_install_path + '/bin:' + ansible_env.PATH}) }}"
   when:
     - ansible_facts['os_family'] != "Darwin"
     - not homebrew_check.stat.exists
 
 - name: Add Homebrew to shell profile (macOS)
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: "{{ user_home }}/.zprofile"
     line: 'eval "$({{ homebrew_install_path }}/bin/brew shellenv)"'
-    create: yes
-    mode: '0644'
+    create: true
+    mode: "0644"
   when: ansible_facts['os_family'] == "Darwin"
 
 - name: Add Homebrew to shell profile (Linux bash)
-  blockinfile:
+  ansible.builtin.blockinfile:
     path: "{{ user_home }}/.bashrc"
     block: |
       eval "$({{ homebrew_install_path }}/bin/brew shellenv)"
     marker: "# {mark} ANSIBLE MANAGED BLOCK - Homebrew"
-    create: yes
-    mode: '0644'
+    create: true
+    mode: "0644"
   when: ansible_facts['os_family'] != "Darwin"
 
 - name: Add Homebrew to shell profile (Linux zsh)
-  blockinfile:
+  ansible.builtin.blockinfile:
     path: "{{ user_home }}/.zshrc"
     block: |
       eval "$({{ homebrew_install_path }}/bin/brew shellenv)"
     marker: "# {mark} ANSIBLE MANAGED BLOCK - Homebrew"
-    create: yes
-    mode: '0644'
+    create: true
+    mode: "0644"
   when: ansible_facts['os_family'] != "Darwin"
 
 - name: Update Homebrew
-  command: "{{ homebrew_install_path }}/bin/brew update"
+  ansible.builtin.command: "{{ homebrew_install_path }}/bin/brew update"
   changed_when: false

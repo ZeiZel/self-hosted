@@ -2,15 +2,15 @@
 # User management tasks
 
 - name: Install required packages for user management
-  apt:
+  ansible.builtin.apt:
     name:
       - openssl
       - sudo
     state: present
-    update_cache: yes
+    update_cache: true
 
 - name: Check if user already exists
-  getent:
+  ansible.builtin.getent:
     database: passwd
     key: "{{ user.name | default('admin') }}"
   register: user_exists
@@ -18,11 +18,11 @@
   failed_when: false
 
 - name: Create new user
-  user:
+  ansible.builtin.user:
     name: "{{ user.name | default('admin') }}"
     groups: sudo
     shell: /bin/bash
-    create_home: yes
+    create_home: true
     password: "{{ user.password }}"
   no_log: true
   when:
@@ -31,7 +31,7 @@
     - user.name | length > 0
 
 - name: Add SSH public key for new user
-  authorized_key:
+  ansible.posix.authorized_key:
     user: "{{ user.name | default('admin') }}"
     state: present
     key: "{{ item }}"
@@ -44,12 +44,12 @@
   no_log: false
 
 - name: Ensure new user has sudo access without password
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/sudoers.d/{{ user.name | default('admin') }}
     line: "{{ user.name | default('admin') }} ALL=(ALL) NOPASSWD: ALL"
-    create: yes
-    mode: '0440'
-    validate: 'visudo -cf %s'
+    create: true
+    mode: "0440"
+    validate: "visudo -cf %s"
   when:
     - user.name is defined
     - user.name | length > 0

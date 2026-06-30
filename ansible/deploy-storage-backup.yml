@@ -38,7 +38,7 @@
   tags: [zerobyte]
   tasks:
     - name: Deploy Zerobyte
-      command: helmfile -e k8s apply --selector name=zerobyte
+      ansible.builtin.command: helmfile -e k8s apply --selector name=zerobyte
       args:
         chdir: "{{ playbook_dir }}/../kubernetes"
       register: zerobyte_deploy

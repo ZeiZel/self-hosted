@@ -4,7 +4,7 @@
 # - Configure integrations
 
 - name: Wait for N8n pod to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n automation -l app.kubernetes.io/name=n8n
     --timeout={{ n8n_wait_timeout }}s
@@ -12,7 +12,7 @@
   failed_when: false
 
 - name: Check N8n health
-  uri:
+  ansible.builtin.uri:
     url: "{{ n8n_url }}/healthz"
     method: GET
     status_code: [200]
@@ -24,7 +24,7 @@
   failed_when: false
 
 - name: Save N8n setup information
-  copy:
+  ansible.builtin.copy:
     content: |
       N8n Setup Information
       ======================
@@ -44,11 +44,11 @@
       4. Import workflow templates
       5. Configure execution settings
     dest: "{{ n8n_credentials_file }}"
-    mode: '0600'
+    mode: "0600"
   delegate_to: localhost
 
 - name: Display N8n configuration status
-  debug:
+  ansible.builtin.debug:
     msg: |
       N8n Configuration
       ==================

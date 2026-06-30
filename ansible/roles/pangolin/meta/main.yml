@@ -1,3 +1,4 @@
+---
 galaxy_info:
   role_name: pangolin
   description: Pangolin WireGuard VPN deployment for gateway and cluster nodes

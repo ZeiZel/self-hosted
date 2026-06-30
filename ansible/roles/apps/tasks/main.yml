@@ -18,7 +18,7 @@
 #   Infrastructure:     --tags apps,authentik,gitlab,coder
 
 - name: Display apps configuration role information
-  debug:
+  ansible.builtin.debug:
     msg: |
       Apps Post-Installation Configuration
       =====================================
@@ -38,14 +38,14 @@
 # =============================================================================
 
 - name: Configure Vault (unseal and initialize)
-  include_tasks: databases/vault.yml
+  ansible.builtin.include_tasks: databases/vault.yml
   tags:
     - apps
     - vault
     - core
 
 - name: Configure Authentik (SSO provider)
-  include_tasks: infrastructure/authentik.yml
+  ansible.builtin.include_tasks: infrastructure/authentik.yml
   tags:
     - apps
     - authentik
@@ -53,7 +53,7 @@
     - sso
 
 - name: Configure GitLab
-  include_tasks: infrastructure/gitlab.yml
+  ansible.builtin.include_tasks: infrastructure/gitlab.yml
   tags:
     - apps
     - gitlab
@@ -65,21 +65,21 @@
 # =============================================================================
 
 - name: Configure JetBrains Hub
-  include_tasks: jetbrains/hub.yml
+  ansible.builtin.include_tasks: jetbrains/hub.yml
   tags:
     - apps
     - jetbrains
     - hub
 
 - name: Configure JetBrains YouTrack
-  include_tasks: jetbrains/youtrack.yml
+  ansible.builtin.include_tasks: jetbrains/youtrack.yml
   tags:
     - apps
     - jetbrains
     - youtrack
 
 - name: Configure JetBrains TeamCity
-  include_tasks: jetbrains/teamcity.yml
+  ansible.builtin.include_tasks: jetbrains/teamcity.yml
   tags:
     - apps
     - jetbrains
@@ -90,21 +90,21 @@
 # =============================================================================
 
 - name: Configure Coder
-  include_tasks: infrastructure/coder.yml
+  ansible.builtin.include_tasks: infrastructure/coder.yml
   tags:
     - apps
     - coder
     - code
 
 - name: Configure Bytebase
-  include_tasks: infrastructure/bytebase.yml
+  ansible.builtin.include_tasks: infrastructure/bytebase.yml
   tags:
     - apps
     - bytebase
     - databases
 
 - name: Configure Harbor
-  include_tasks: infrastructure/harbor.yml
+  ansible.builtin.include_tasks: infrastructure/harbor.yml
   tags:
     - apps
     - harbor
@@ -115,14 +115,14 @@
 # =============================================================================
 
 - name: Configure Affine
-  include_tasks: productivity/affine.yml
+  ansible.builtin.include_tasks: productivity/affine.yml
   tags:
     - apps
     - affine
     - productivity
 
 - name: Configure Nextcloud
-  include_tasks: productivity/nextcloud.yml
+  ansible.builtin.include_tasks: productivity/nextcloud.yml
   tags:
     - apps
     - nextcloud
@@ -133,14 +133,14 @@
 # =============================================================================
 
 - name: Configure N8n
-  include_tasks: automation/n8n.yml
+  ansible.builtin.include_tasks: automation/n8n.yml
   tags:
     - apps
     - n8n
     - automation
 
 - name: Configure Kestra
-  include_tasks: automation/kestra.yml
+  ansible.builtin.include_tasks: automation/kestra.yml
   tags:
     - apps
     - kestra
@@ -151,14 +151,14 @@
 # =============================================================================
 
 - name: Configure Stoat (Revolt)
-  include_tasks: social/stoat.yml
+  ansible.builtin.include_tasks: social/stoat.yml
   tags:
     - apps
     - stoat
     - social
 
 - name: Configure Stalwart (Mail)
-  include_tasks: social/stalwart.yml
+  ansible.builtin.include_tasks: social/stalwart.yml
   tags:
     - apps
     - stalwart
@@ -170,21 +170,21 @@
 # =============================================================================
 
 - name: Configure Vaultwarden
-  include_tasks: data/vaultwarden.yml
+  ansible.builtin.include_tasks: data/vaultwarden.yml
   tags:
     - apps
     - vaultwarden
     - data
 
 - name: Configure Rybbit
-  include_tasks: data/rybbit.yml
+  ansible.builtin.include_tasks: data/rybbit.yml
   tags:
     - apps
     - rybbit
     - data
 
 - name: Display apps configuration completion
-  debug:
+  ansible.builtin.debug:
     msg: |
       Apps Post-Installation Configuration Complete
       ==============================================

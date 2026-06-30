@@ -11,7 +11,7 @@
 # Namespaces
 # -----------------------------------------------------------------------------
 - name: Create required namespaces
-  command: >
+  ansible.builtin.command: >
     kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
     create namespace {{ item }} --dry-run=client -o yaml | kubectl apply -f -
   loop:
@@ -33,7 +33,7 @@
 # Storage: local-path-provisioner
 # -----------------------------------------------------------------------------
 - name: Deploy local-path-provisioner
-  command: >
+  ansible.builtin.command: >
     kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
     apply -f https://raw.githubusercontent.com/rancher/local-path-provisioner/v{{ local_path_provisioner_version }}/deploy/local-path-storage.yaml
   register: storage_deploy
@@ -41,7 +41,7 @@
   tags: [kubespray, post-install, storage]
 
 - name: Wait for local-path-provisioner to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
     get pods -n local-path-storage -l app=local-path-provisioner
     -o jsonpath='{.items[*].status.phase}'
@@ -53,7 +53,7 @@
   tags: [kubespray, post-install, storage]
 
 - name: Set local-path as default StorageClass
-  shell: |
+  ansible.builtin.shell: |
     kubectl --kubeconfig={{ kubespray_local_kubeconfig }} patch storageclass local-path \
       -p '{"metadata": {"annotations":{"storageclass.kubernetes.io/is-default-class":"true"}}}'
   changed_when: false
@@ -63,7 +63,7 @@
 # Ingress: Traefik
 # -----------------------------------------------------------------------------
 - name: Add Traefik Helm repository
-  command: >
+  ansible.builtin.command: >
     helm repo add traefik https://traefik.github.io/charts
   register: helm_repo_add
   changed_when: "'has been added' in helm_repo_add.stdout"
@@ -71,12 +71,12 @@
   tags: [kubespray, post-install, traefik]
 
 - name: Update Helm repositories
-  command: helm repo update
+  ansible.builtin.command: helm repo update
   changed_when: false
   tags: [kubespray, post-install, traefik]
 
 - name: Deploy Traefik with NodePort
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install traefik traefik/traefik
     --namespace ingress
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -97,7 +97,7 @@
   tags: [kubespray, post-install, traefik]
 
 - name: Wait for Traefik to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
     get pods -n ingress -l app.kubernetes.io/name=traefik
     -o jsonpath='{.items[*].status.phase}'
@@ -109,7 +109,7 @@
   tags: [kubespray, post-install, traefik]
 
 - name: Get Traefik NodePort info
-  command: >
+  ansible.builtin.command: >
     kubectl --kubeconfig={{ kubespray_local_kubeconfig }}
     get svc traefik -n ingress -o jsonpath='{.spec.ports[*].nodePort}'
   register: traefik_ports
@@ -120,7 +120,7 @@
 # Summary
 # -----------------------------------------------------------------------------
 - name: Post-install Summary
-  debug:
+  ansible.builtin.debug:
     msg: |
       =====================================================
       Kubernetes Post-Install Complete!

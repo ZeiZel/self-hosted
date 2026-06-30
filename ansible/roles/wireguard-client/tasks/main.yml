@@ -34,7 +34,7 @@
   when: not privatekey_stat.stat.exists
   block:
     - name: Generate private key
-      ansible.builtin.shell: wg genkey
+      ansible.builtin.command: wg genkey
       register: wg_private_key
       changed_when: true
 

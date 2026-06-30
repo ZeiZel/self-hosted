@@ -1,3 +1,4 @@
+---
 galaxy_info:
   role_name: monitoring
   description: Prometheus/Grafana monitoring stack verification and configuration

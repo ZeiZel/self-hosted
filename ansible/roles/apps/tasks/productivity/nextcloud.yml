@@ -5,7 +5,7 @@
 # - Configure apps and integrations
 
 - name: Wait for Nextcloud pod to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n data -l app.kubernetes.io/name=nextcloud
     --timeout={{ nextcloud_wait_timeout }}s
@@ -13,7 +13,7 @@
   failed_when: false
 
 - name: Get Nextcloud admin password from secret
-  command: >
+  ansible.builtin.command: >
     kubectl get secret -n data nextcloud
     -o jsonpath='{.data.nextcloud-password}'
   register: nextcloud_admin_password_b64
@@ -22,13 +22,13 @@
   no_log: true
 
 - name: Decode admin password
-  set_fact:
+  ansible.builtin.set_fact:
     nextcloud_admin_password: "{{ nextcloud_admin_password_b64.stdout | b64decode }}"
   when: nextcloud_admin_password_b64.stdout | length > 0
   no_log: true
 
 - name: Check Nextcloud status
-  uri:
+  ansible.builtin.uri:
     url: "{{ nextcloud_url }}/status.php"
     method: GET
     status_code: [200]
@@ -40,7 +40,7 @@
   failed_when: false
 
 - name: Run Nextcloud OCC maintenance commands
-  command: >
+  ansible.builtin.command: >
     kubectl exec -n data deployment/nextcloud --
     php occ {{ item }}
   loop:
@@ -52,7 +52,7 @@
   failed_when: false
 
 - name: Enable recommended apps
-  command: >
+  ansible.builtin.command: >
     kubectl exec -n data deployment/nextcloud --
     php occ app:enable {{ item }}
   loop:
@@ -64,7 +64,7 @@
   failed_when: false
 
 - name: Save Nextcloud credentials
-  copy:
+  ansible.builtin.copy:
     content: |
       Nextcloud Setup Information
       ============================
@@ -86,12 +86,12 @@
       5. Set up background jobs (cron)
       6. Configure trusted domains
     dest: "{{ nextcloud_credentials_file }}"
-    mode: '0600'
+    mode: "0600"
   delegate_to: localhost
   no_log: true
 
 - name: Display Nextcloud configuration status
-  debug:
+  ansible.builtin.debug:
     msg: |
       Nextcloud Configuration
       ========================

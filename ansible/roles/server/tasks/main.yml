@@ -9,7 +9,7 @@
 #   - vps: VPS-specific optimizations (swap, sysctl, services)
 
 - name: Display server role information
-  debug:
+  ansible.builtin.debug:
     msg: |
       Server Role Starting...
       Available operations (use tags to select):
@@ -23,7 +23,7 @@
 # BASE SETUP - Basic server configuration
 # =============================================================================
 - name: Include base setup tasks
-  include_tasks: base/main.yml
+  ansible.builtin.include_tasks: base/main.yml
   tags:
     - server
     - base
@@ -33,7 +33,7 @@
 # SECURITY - Hardening and access control
 # =============================================================================
 - name: Include security tasks
-  include_tasks: security/main.yml
+  ansible.builtin.include_tasks: security/main.yml
   tags:
     - server
     - security
@@ -42,7 +42,7 @@
 # VPS - VPS-specific optimizations (only for gateway/VPS hosts)
 # =============================================================================
 - name: Include VPS-specific tasks
-  include_tasks: vps/main.yml
+  ansible.builtin.include_tasks: vps/main.yml
   when: server_type | default('node') == 'vps'
   tags:
     - server

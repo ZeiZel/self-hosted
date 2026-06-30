@@ -3,7 +3,7 @@
 # Tag: base
 
 - name: Display base setup information
-  debug:
+  ansible.builtin.debug:
     msg: |
       Base Server Setup Starting...
       Timezone: {{ server_timezone }}
@@ -12,13 +12,13 @@
     - base
 
 - name: Include package installation tasks
-  include_tasks: packages.yml
+  ansible.builtin.include_tasks: packages.yml
   tags:
     - base
     - packages
 
 - name: Display base setup completion
-  debug:
+  ansible.builtin.debug:
     msg: "Base server setup completed successfully!"
   tags:
     - base

@@ -26,27 +26,27 @@
 
   tasks:
     - name: Ensure Traefik config directory exists
-      file:
+      ansible.builtin.file:
         path: "{{ traefik_config_dir }}/dynamic"
         state: directory
-        mode: '0755'
+        mode: "0755"
 
     - name: Deploy Traefik static configuration
-      template:
+      ansible.builtin.template:
         src: roles/pangolin/templates/traefik-gateway.yml.j2
         dest: "{{ traefik_config_dir }}/traefik.yml"
-        mode: '0644'
+        mode: "0644"
       notify: Restart Traefik
 
     - name: Deploy cluster routing configuration
-      template:
+      ansible.builtin.template:
         src: roles/pangolin/templates/cluster-routing.yml.j2
         dest: "{{ traefik_config_dir }}/dynamic/cluster.yml"
-        mode: '0644'
+        mode: "0644"
       notify: Restart Traefik
 
   handlers:
     - name: Restart Traefik
-      systemd:
+      ansible.builtin.systemd:
         name: traefik
         state: restarted

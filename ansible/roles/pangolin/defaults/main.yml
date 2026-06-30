@@ -42,7 +42,7 @@ traefik_https_port: 443
 traefik_dashboard_port: 8080
 
 # Node-specific (cluster clients)
-pangolin_node_ip_prefix: "10.99.0"  # Node IPs will be 10.99.0.10, 10.99.0.11, etc.
+pangolin_node_ip_prefix: "10.99.0" # Node IPs will be 10.99.0.10, 10.99.0.11, etc.
 
 # Firewall configuration
 firewall_allowed_tcp_ports:
@@ -51,7 +51,7 @@ firewall_allowed_tcp_ports:
   - "{{ traefik_https_port }}"
 firewall_allowed_udp_ports:
   - "{{ wireguard_port }}"
-  - 21820  # WireGuard alt port
+  - 21820 # WireGuard alt port
 
 # System configuration
 sysctl_config:

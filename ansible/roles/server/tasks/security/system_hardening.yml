@@ -2,22 +2,22 @@
 # System hardening tasks
 
 - name: Install security packages
-  apt:
+  ansible.builtin.apt:
     name:
       - unattended-upgrades
       - apt-listchanges
     state: present
-    update_cache: yes
+    update_cache: true
 
 - name: Disable unnecessary services
-  systemd:
+  ansible.builtin.systemd:
     name: "{{ item }}"
-    enabled: no
+    enabled: false
     state: stopped
   loop: "{{ unnecessary_services | default(['bluetooth', 'cups', 'cups-browsed']) }}"
-  ignore_errors: yes
+  ignore_errors: true
 
 - name: Configure automatic security updates
-  apt:
+  ansible.builtin.apt:
     name: unattended-upgrades
     state: present

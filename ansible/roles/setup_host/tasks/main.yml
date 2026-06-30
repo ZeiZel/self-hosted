@@ -1,39 +1,39 @@
 ---
 - name: Set user home directory
-  set_fact:
+  ansible.builtin.set_fact:
     user_home: "{{ lookup('env', 'HOME') }}"
 
 - name: Setup Host Role
   block:
     - name: Display setup_host role start message
-      debug:
+      ansible.builtin.debug:
         msg: "Starting host machine setup for {{ ansible_facts['os_family'] }} on {{ ansible_facts['hostname'] }}"
 
     - name: Include Homebrew installation tasks
-      include_tasks: ./operations/homebrew.yml
+      ansible.builtin.include_tasks: ./operations/homebrew.yml
       tags:
         - setup_host
         - homebrew
 
     - name: Include dependencies installation tasks
-      include_tasks: ./operations/dependencies.yml
+      ansible.builtin.include_tasks: ./operations/dependencies.yml
       tags:
         - setup_host
         - dependencies
 
     - name: Include SSH configuration tasks
-      include_tasks: ./operations/ssh.yml
+      ansible.builtin.include_tasks: ./operations/ssh.yml
       tags:
         - setup_host
         - ssh
 
     - name: Include verification tasks
-      include_tasks: ./operations/verify.yml
+      ansible.builtin.include_tasks: ./operations/verify.yml
       when: setup_host_verify_installation
       tags:
         - setup_host
         - verify
 
     - name: Display setup_host role completion message
-      debug:
+      ansible.builtin.debug:
         msg: "Host machine setup completed successfully! You can now proceed with infrastructure deployment."

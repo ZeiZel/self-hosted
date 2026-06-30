@@ -1,16 +1,16 @@
 ---
 # Handlers for server role
 
-- name: restart sshd
-  systemd:
+- name: Restart sshd
+  ansible.builtin.systemd:
     name: sshd
     state: restarted
 
-- name: restart fail2ban
-  systemd:
+- name: Restart fail2ban
+  ansible.builtin.systemd:
     name: fail2ban
     state: restarted
 
-- name: reload ufw
-  ufw:
+- name: Reload ufw
+  community.general.ufw:
     state: reloaded

@@ -1,3 +1,4 @@
+---
 galaxy_info:
   role_name: storage
   description: OpenEBS storage provisioner deployment and configuration

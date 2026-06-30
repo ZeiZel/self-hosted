@@ -5,7 +5,7 @@
 # - Configure projects
 
 - name: Wait for Harbor core pod to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n infrastructure -l app=harbor,component=core
     --timeout={{ harbor_wait_timeout }}s
@@ -13,7 +13,7 @@
   failed_when: false
 
 - name: Get Harbor admin password from secret
-  command: >
+  ansible.builtin.command: >
     kubectl get secret -n infrastructure harbor-core
     -o jsonpath='{.data.HARBOR_ADMIN_PASSWORD}'
   register: harbor_admin_password_b64
@@ -22,13 +22,13 @@
   no_log: true
 
 - name: Decode admin password
-  set_fact:
+  ansible.builtin.set_fact:
     harbor_admin_password: "{{ harbor_admin_password_b64.stdout | b64decode }}"
   when: harbor_admin_password_b64.stdout | length > 0
   no_log: true
 
 - name: Check Harbor health
-  uri:
+  ansible.builtin.uri:
     url: "{{ harbor_url }}/api/v2.0/health"
     method: GET
     status_code: [200]
@@ -40,7 +40,7 @@
   failed_when: false
 
 - name: Create library project (if not exists)
-  uri:
+  ansible.builtin.uri:
     url: "{{ harbor_url }}/api/v2.0/projects"
     method: POST
     body_format: json
@@ -55,7 +55,7 @@
   failed_when: false
 
 - name: Create private project
-  uri:
+  ansible.builtin.uri:
     url: "{{ harbor_url }}/api/v2.0/projects"
     method: POST
     body_format: json
@@ -70,7 +70,7 @@
   failed_when: false
 
 - name: Save Harbor credentials
-  copy:
+  ansible.builtin.copy:
     content: |
       Harbor Container Registry
       ==========================
@@ -88,12 +88,12 @@
       4. Configure vulnerability scanning
       5. Create robot accounts for CI/CD
     dest: "{{ harbor_credentials_file }}"
-    mode: '0600'
+    mode: "0600"
   delegate_to: localhost
   no_log: true
 
 - name: Display Harbor configuration status
-  debug:
+  ansible.builtin.debug:
     msg: |
       Harbor Configuration
       =====================

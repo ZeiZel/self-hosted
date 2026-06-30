@@ -5,14 +5,14 @@
 # - Set up templates
 
 - name: Wait for Coder pod to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n code -l app.kubernetes.io/name=coder
     --timeout={{ coder_wait_timeout }}s
   changed_when: false
 
 - name: Check Coder health
-  uri:
+  ansible.builtin.uri:
     url: "{{ coder_url }}/api/v2/buildinfo"
     method: GET
     status_code: [200]
@@ -24,12 +24,12 @@
   failed_when: false
 
 - name: Get Coder version info
-  set_fact:
+  ansible.builtin.set_fact:
     coder_version: "{{ coder_health.json.version | default('unknown') }}"
   when: coder_health.status == 200
 
 - name: Check if first user needs to be created
-  uri:
+  ansible.builtin.uri:
     url: "{{ coder_url }}/api/v2/users/first"
     method: GET
     status_code: [200, 404]
@@ -38,7 +38,7 @@
   failed_when: false
 
 - name: Create first admin user (if needed)
-  uri:
+  ansible.builtin.uri:
     url: "{{ coder_url }}/api/v2/users/first"
     method: POST
     body_format: json
@@ -56,7 +56,7 @@
   no_log: true
 
 - name: Login to get session token
-  uri:
+  ansible.builtin.uri:
     url: "{{ coder_url }}/api/v2/users/login"
     method: POST
     body_format: json
@@ -73,7 +73,7 @@
   failed_when: false
 
 - name: Set session token
-  set_fact:
+  ansible.builtin.set_fact:
     coder_session_token: "{{ coder_login.json.session_token }}"
   when:
     - coder_login is defined
@@ -82,7 +82,7 @@
   no_log: true
 
 - name: Save Coder setup information
-  copy:
+  ansible.builtin.copy:
     content: |
       Coder Setup Information
       ========================
@@ -112,11 +112,11 @@
 
       Documentation: https://coder.com/docs
     dest: "{{ coder_credentials_file }}"
-    mode: '0600'
+    mode: "0600"
   delegate_to: localhost
 
 - name: Display Coder configuration status
-  debug:
+  ansible.builtin.debug:
     msg: |
       Coder Configuration
       ====================

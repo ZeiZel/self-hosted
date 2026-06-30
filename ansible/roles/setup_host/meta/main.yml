@@ -1,3 +1,4 @@
+---
 galaxy_info:
   role_name: setup_host
   description: setup host before deploy services

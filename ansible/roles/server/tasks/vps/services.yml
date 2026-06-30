@@ -2,9 +2,9 @@
 # Service management for VPS
 
 - name: Disable unnecessary services
-  systemd:
+  ansible.builtin.systemd:
     name: "{{ item }}"
-    enabled: no
+    enabled: false
     state: stopped
   loop: "{{ vps_disabled_services }}"
   failed_when: false

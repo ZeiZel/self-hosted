@@ -8,33 +8,33 @@
 # Usage: ansible-playbook -i inventory/hosts.ini remove-node.yml -e node=<name>
 
 - name: Verify a node was specified
-  fail:
+  ansible.builtin.fail:
     msg: |
       You must specify which node to remove:
         ansible-playbook -i inventory/hosts.ini remove-node.yml -e node=<inventory_hostname>
   when: node is not defined or node | length == 0
 
 - name: Verify kubespray remove-node.yml exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ kubespray_dir }}/remove-node.yml"
   register: remove_node_stat
   failed_when: not remove_node_stat.stat.exists
 
 - name: Verify kubespray inventory exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ kubespray_inventory_dir }}/hosts.yaml"
   register: inventory_stat
   failed_when: not inventory_stat.stat.exists
 
 - name: Display remove-node start message
-  debug:
+  ansible.builtin.debug:
     msg: |
       Removing node "{{ node }}" from the cluster...
       This cordons, drains and resets that node only.
       Playbook: {{ kubespray_dir }}/remove-node.yml
 
 - name: Run kubespray remove-node.yml
-  shell: |
+  ansible.builtin.shell: |
     source {{ kubespray_venv_dir }}/bin/activate
     cd {{ kubespray_dir }}
     ansible-playbook -i {{ kubespray_inventory_dir }}/hosts.yaml \
@@ -56,27 +56,27 @@
   poll: "{{ kubespray_poll_interval | default(30) }}"
 
 - name: Display remove-node output
-  debug:
+  ansible.builtin.debug:
     msg: "{{ kubespray_remove.stdout_lines[-40:] }}"
   when: kubespray_remove.stdout_lines is defined
 
 - name: Check remove-node result
-  fail:
+  ansible.builtin.fail:
     msg: |
       Kubespray remove-node failed for "{{ node }}"!
       Error: {{ kubespray_remove.stderr | default('see output above') }}
   when: kubespray_remove.rc is defined and kubespray_remove.rc != 0
 
 - name: Verify node left the cluster
-  shell: kubectl get nodes -o wide
+  ansible.builtin.command: kubectl get nodes -o wide
   register: nodes_after_remove
   changed_when: false
   failed_when: false
 
 - name: Display cluster nodes after removal
-  debug:
+  ansible.builtin.debug:
     msg: "{{ nodes_after_remove.stdout_lines | default(['(kubectl unavailable)']) }}"
 
 - name: Remove-node complete
-  debug:
+  ansible.builtin.debug:
     msg: 'Node "{{ node }}" removed. Verify with: kubectl get nodes'

@@ -4,7 +4,7 @@
 # - Configure database connections
 
 - name: Wait for Rybbit pod to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n data -l app.kubernetes.io/name=rybbit
     --timeout={{ rybbit_wait_timeout }}s
@@ -12,7 +12,7 @@
   failed_when: false
 
 - name: Check Rybbit health
-  uri:
+  ansible.builtin.uri:
     url: "{{ rybbit_url }}"
     method: GET
     status_code: [200, 301, 302]
@@ -24,7 +24,7 @@
   failed_when: false
 
 - name: Save Rybbit setup information
-  copy:
+  ansible.builtin.copy:
     content: |
       Rybbit Setup Information
       =========================
@@ -41,11 +41,11 @@
       3. Set up site tracking
       4. Configure data retention policies
     dest: "{{ rybbit_credentials_file }}"
-    mode: '0600'
+    mode: "0600"
   delegate_to: localhost
 
 - name: Display Rybbit configuration status
-  debug:
+  ansible.builtin.debug:
     msg: |
       Rybbit Configuration
       =====================

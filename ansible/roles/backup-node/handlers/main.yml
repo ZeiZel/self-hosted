@@ -2,17 +2,17 @@
 # Handlers for backup-node role
 
 - name: Reload NFS exports
-  command: exportfs -ra
-  become: yes
+  ansible.builtin.command: exportfs -ra
+  become: true
 
 - name: Restart NFS server
-  systemd:
+  ansible.builtin.systemd:
     name: nfs-server
     state: restarted
-  become: yes
+  become: true
 
 - name: Restart rpcbind
-  systemd:
+  ansible.builtin.systemd:
     name: rpcbind
     state: restarted
-  become: yes
+  become: true

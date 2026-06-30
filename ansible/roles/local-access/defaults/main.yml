@@ -21,7 +21,6 @@ hosts_marker: "# Kubernetes cluster services ({{ local_domain }})"
 # Services to configure for local access
 # These will be fetched from cluster ingresses if auto_discover is true
 local_access_services: []
-
 # Auto-discover services from cluster ingresses
 auto_discover_services: true
 

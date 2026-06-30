@@ -25,38 +25,38 @@
 
   tasks:
     - name: Check if kubectl is available
-      command: kubectl version --client
+      ansible.builtin.command: kubectl version --client
       register: kubectl_check
       changed_when: false
       failed_when: false
       tags: [local-access, check]
 
     - name: Fail if kubectl not available
-      fail:
+      ansible.builtin.fail:
         msg: "kubectl is not available. Please configure kubectl access to the cluster first."
       when: kubectl_check.rc != 0
       tags: [local-access, check]
 
     - name: Check cluster connectivity
-      command: kubectl cluster-info
+      ansible.builtin.command: kubectl cluster-info
       register: cluster_check
       changed_when: false
       failed_when: false
       tags: [local-access, check]
 
     - name: Warn if cluster not accessible
-      debug:
+      ansible.builtin.debug:
         msg: "WARNING: Cannot connect to cluster. Will use default/custom services list."
       when: cluster_check.rc != 0
       tags: [local-access, check]
 
     - name: Set auto_discover based on cluster connectivity
-      set_fact:
+      ansible.builtin.set_fact:
         auto_discover_services: "{{ cluster_check.rc == 0 }}"
       tags: [local-access, check]
 
     - name: Include local-access role
-      include_role:
+      ansible.builtin.include_role:
         name: local-access
       tags: [local-access]
 
@@ -68,10 +68,9 @@
   become: false
   gather_facts: false
   tags: [verify]
-
   tasks:
     - name: Test connectivity to local services
-      uri:
+      ansible.builtin.uri:
         url: "http://{{ traefik_node_ip | default('192.168.100.100') }}:{{ traefik_nodeport_http | default(30080) }}"
         method: GET
         headers:
@@ -88,7 +87,7 @@
       tags: [verify, test]
 
     - name: Display local connectivity results
-      debug:
+      ansible.builtin.debug:
         msg: |
           Local Access Test Results:
           {% for result in local_test.results %}
@@ -97,7 +96,7 @@
       tags: [verify, test]
 
     - name: Test connectivity to remote services
-      uri:
+      ansible.builtin.uri:
         url: "https://{{ item }}.zeizel.ru"
         method: GET
         timeout: 10
@@ -112,7 +111,7 @@
       tags: [verify, test-remote]
 
     - name: Display remote connectivity results
-      debug:
+      ansible.builtin.debug:
         msg: |
           Remote Access Test Results (via Pangolin):
           {% for result in remote_test.results %}
@@ -121,7 +120,7 @@
       tags: [verify, test-remote]
 
     - name: Summary
-      debug:
+      ansible.builtin.debug:
         msg:
           - "========================================="
           - "Connectivity Test Summary"

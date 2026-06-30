@@ -5,7 +5,7 @@
 # - Display DNS configuration requirements
 
 - name: Wait for Stalwart pod to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n social -l app.kubernetes.io/name=stalwart
     --timeout={{ stalwart_wait_timeout }}s
@@ -13,7 +13,7 @@
   failed_when: false
 
 - name: Get Stalwart admin password from secret
-  command: >
+  ansible.builtin.command: >
     kubectl get secret -n social stalwart
     -o jsonpath='{.data.admin-password}'
   register: stalwart_admin_password_b64
@@ -22,13 +22,13 @@
   no_log: true
 
 - name: Decode admin password
-  set_fact:
+  ansible.builtin.set_fact:
     stalwart_admin_password: "{{ stalwart_admin_password_b64.stdout | b64decode }}"
   when: stalwart_admin_password_b64.stdout | length > 0
   no_log: true
 
 - name: Check Stalwart SMTP health
-  wait_for:
+  ansible.builtin.wait_for:
     host: "{{ stalwart_host }}"
     port: 25
     timeout: 30
@@ -37,7 +37,7 @@
   register: stalwart_smtp_check
 
 - name: Check Stalwart IMAP health
-  wait_for:
+  ansible.builtin.wait_for:
     host: "{{ stalwart_host }}"
     port: 143
     timeout: 30
@@ -46,7 +46,7 @@
   register: stalwart_imap_check
 
 - name: Save Stalwart setup information
-  copy:
+  ansible.builtin.copy:
     content: |
       Stalwart Mail Server Setup Information
       =======================================
@@ -87,12 +87,12 @@
       4. Configure relay settings (if needed)
       5. Test email sending/receiving
     dest: "{{ stalwart_credentials_file }}"
-    mode: '0600'
+    mode: "0600"
   delegate_to: localhost
   no_log: true
 
 - name: Display Stalwart configuration status
-  debug:
+  ansible.builtin.debug:
     msg: |
       Stalwart Mail Server Configuration
       ====================================

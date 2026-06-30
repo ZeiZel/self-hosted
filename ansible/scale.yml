@@ -26,11 +26,11 @@
   gather_facts: true
   tasks:
     - name: Clone/prepare kubespray and regenerate inventory (includes the new node)
-      include_role:
+      ansible.builtin.include_role:
         name: kubespray
         tasks_from: prepare.yml
 
     - name: Run kubespray scale to join the new node(s)
-      include_role:
+      ansible.builtin.include_role:
         name: kubespray
         tasks_from: scale.yml

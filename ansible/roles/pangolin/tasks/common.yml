@@ -3,7 +3,7 @@
 # Extracted from original main.yml
 
 - name: Gather facts if not already gathered
-  setup:
+  ansible.builtin.setup:
     gather_subset:
       - min
       - network
@@ -11,14 +11,14 @@
   tags: [pangolin, always]
 
 - name: Update apt cache
-  apt:
-    update_cache: yes
+  ansible.builtin.apt:
+    update_cache: true
     cache_valid_time: 3600
   when: ansible_os_family == "Debian"
   tags: [pangolin, packages]
 
 - name: Remove conflicting packages (iptables-persistent conflicts with ufw)
-  apt:
+  ansible.builtin.apt:
     name:
       - iptables-persistent
       - netfilter-persistent
@@ -27,7 +27,7 @@
   tags: [pangolin, packages]
 
 - name: Install required system packages
-  apt:
+  ansible.builtin.apt:
     name:
       - apt-transport-https
       - ca-certificates
@@ -40,29 +40,29 @@
       - wireguard-tools
       - iptables
     state: present
-    update_cache: yes
+    update_cache: true
   when: ansible_os_family == "Debian"
   tags: [pangolin, packages]
 
 - name: Configure sysctl for WireGuard and IP forwarding
-  sysctl:
+  ansible.posix.sysctl:
     name: "{{ item.key }}"
     value: "{{ item.value }}"
     state: present
-    reload: yes
+    reload: true
     sysctl_file: /etc/sysctl.d/99-pangolin.conf
   loop: "{{ sysctl_config | dict2items }}"
   notify: reload sysctl
   tags: [pangolin, sysctl]
 
 - name: Enable and start UFW
-  ufw:
+  community.general.ufw:
     state: enabled
     policy: deny
   tags: [pangolin, firewall]
 
 - name: Allow SSH through firewall
-  ufw:
+  community.general.ufw:
     rule: allow
     port: "{{ ssh.port | default('22') }}"
     proto: tcp
@@ -70,7 +70,7 @@
   tags: [pangolin, firewall]
 
 - name: Allow TCP ports through firewall
-  ufw:
+  community.general.ufw:
     rule: allow
     port: "{{ item }}"
     proto: tcp
@@ -80,7 +80,7 @@
   tags: [pangolin, firewall]
 
 - name: Allow UDP ports through firewall (WireGuard)
-  ufw:
+  community.general.ufw:
     rule: allow
     port: "{{ item }}"
     proto: udp
@@ -89,28 +89,28 @@
   tags: [pangolin, firewall]
 
 - name: Create Pangolin installation directory
-  file:
+  ansible.builtin.file:
     path: "{{ pangolin_install_dir }}"
     state: directory
-    mode: '0755'
+    mode: "0755"
   tags: [pangolin, directories]
 
 - name: Create Pangolin configuration directory
-  file:
+  ansible.builtin.file:
     path: "{{ pangolin_config_dir }}"
     state: directory
-    mode: '0755'
+    mode: "0755"
   tags: [pangolin, directories]
 
 - name: Check if WireGuard kernel module is loaded
-  command: lsmod | grep wireguard
+  ansible.builtin.command: lsmod | grep wireguard
   register: wireguard_module
   changed_when: false
   failed_when: false
   tags: [pangolin, verify]
 
 - name: Load WireGuard kernel module
-  modprobe:
+  community.general.modprobe:
     name: wireguard
     state: present
   when: wireguard_module.rc != 0

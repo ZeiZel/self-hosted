@@ -8,12 +8,12 @@
 # Clone Kubespray Repository
 # -----------------------------------------------------------------------------
 - name: Check if kubespray directory exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ kubespray_dir }}"
   register: kubespray_dir_stat
 
 - name: Clone kubespray repository
-  git:
+  ansible.builtin.git:
     repo: "{{ kubespray_repo }}"
     dest: "{{ kubespray_dir }}"
     version: "{{ kubespray_version }}"
@@ -21,23 +21,23 @@
   when: not kubespray_dir_stat.stat.exists or kubespray_force_clone
 
 - name: Update kubespray repository
-  git:
+  ansible.builtin.git:
     repo: "{{ kubespray_repo }}"
     dest: "{{ kubespray_dir }}"
     version: "{{ kubespray_version }}"
-    update: yes
+    update: true
   when: kubespray_dir_stat.stat.exists and not kubespray_force_clone
 
 # -----------------------------------------------------------------------------
 # Create Python Virtual Environment
 # -----------------------------------------------------------------------------
 - name: Check if virtualenv exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ kubespray_venv_dir }}/bin/python"
   register: venv_stat
 
 - name: Find best Python for virtualenv
-  shell: |
+  ansible.builtin.shell: |
     # Prefer Python 3.10-3.12 for kubespray compatibility (3.13+ may have issues)
     for py in /opt/homebrew/opt/python@3.12/bin/python3.12 /opt/homebrew/opt/python@3.11/bin/python3.11 /opt/homebrew/opt/python@3.10/bin/python3.10 /opt/homebrew/bin/python3.12 /opt/homebrew/bin/python3.11; do
       if [ -x "$py" ]; then
@@ -51,57 +51,57 @@
   changed_when: false
 
 - name: Display Python path for virtualenv
-  debug:
+  ansible.builtin.debug:
     msg: "Using Python: {{ python_path.stdout }}"
 
 - name: Create Python virtual environment
-  command: "{{ python_path.stdout }} -m venv {{ kubespray_venv_dir }}"
+  ansible.builtin.command: "{{ python_path.stdout }} -m venv {{ kubespray_venv_dir }}"
   args:
     creates: "{{ kubespray_venv_dir }}/bin/python"
   when: not venv_stat.stat.exists
 
 - name: Check existing venv Python version
-  command: "{{ kubespray_venv_dir }}/bin/python -c 'import sys; print(sys.version_info.minor)'"
+  ansible.builtin.command: "{{ kubespray_venv_dir }}/bin/python -c 'import sys; print(sys.version_info.minor)'"
   register: venv_python_version
   changed_when: false
   failed_when: false
   when: venv_stat.stat.exists
 
 - name: Recreate venv if Python version is too old
-  block:
-    - name: Remove old virtualenv
-      file:
-        path: "{{ kubespray_venv_dir }}"
-        state: absent
-
-    - name: Create new virtualenv with modern Python
-      command: "{{ python_path.stdout }} -m venv {{ kubespray_venv_dir }}"
   when:
     - venv_stat.stat.exists
     - venv_python_version.stdout | default('0') | int < 10
 
+  block:
+    - name: Remove old virtualenv
+      ansible.builtin.file:
+        path: "{{ kubespray_venv_dir }}"
+        state: absent
+
+    - name: Create new virtualenv with modern Python
+      ansible.builtin.command: "{{ python_path.stdout }} -m venv {{ kubespray_venv_dir }}"
 - name: Upgrade pip in virtualenv
-  command: "{{ kubespray_venv_dir }}/bin/pip install --upgrade pip"
+  ansible.builtin.command: "{{ kubespray_venv_dir }}/bin/pip install --upgrade pip"
   changed_when: true
 
 - name: Install kubespray requirements
-  command: "{{ kubespray_venv_dir }}/bin/pip install -r {{ kubespray_dir }}/requirements.txt"
+  ansible.builtin.command: "{{ kubespray_venv_dir }}/bin/pip install -r {{ kubespray_dir }}/requirements.txt"
   changed_when: true
 
 # -----------------------------------------------------------------------------
 # Create Kubespray Inventory
 # -----------------------------------------------------------------------------
 - name: Create inventory directory
-  file:
+  ansible.builtin.file:
     path: "{{ kubespray_inventory_dir }}"
     state: directory
-    mode: '0755'
+    mode: "0755"
 
 - name: Create inventory group_vars directories
-  file:
+  ansible.builtin.file:
     path: "{{ kubespray_inventory_dir }}/group_vars/{{ item }}"
     state: directory
-    mode: '0755'
+    mode: "0755"
   loop:
     - all
     - kube_control_plane
@@ -110,42 +110,43 @@
     - k8s_cluster
 
 - name: Generate kubespray inventory file
-  template:
+  ansible.builtin.template:
     src: inventory.yaml.j2
     dest: "{{ kubespray_inventory_dir }}/hosts.yaml"
-    mode: '0644'
+    mode: "0644"
 
 - name: Generate all.yml configuration
-  template:
+  ansible.builtin.template:
     src: group_vars/all/all.yml.j2
     dest: "{{ kubespray_inventory_dir }}/group_vars/all/all.yml"
-    mode: '0644'
+    mode: "0644"
 
 - name: Generate k8s_cluster/k8s-cluster.yml configuration
-  template:
+  ansible.builtin.template:
     src: group_vars/k8s_cluster/k8s-cluster.yml.j2
     dest: "{{ kubespray_inventory_dir }}/group_vars/k8s_cluster/k8s-cluster.yml"
-    mode: '0644'
+    mode: "0644"
 
 - name: Generate k8s_cluster/addons.yml configuration
-  template:
+  ansible.builtin.template:
     src: group_vars/k8s_cluster/addons.yml.j2
     dest: "{{ kubespray_inventory_dir }}/group_vars/k8s_cluster/addons.yml"
-    mode: '0644'
+    mode: "0644"
 
 - name: Generate etcd.yml configuration
-  template:
+  ansible.builtin.template:
     src: group_vars/etcd/etcd.yml.j2
     dest: "{{ kubespray_inventory_dir }}/group_vars/etcd/etcd.yml"
-    mode: '0644'
+    mode: "0644"
 
 # -----------------------------------------------------------------------------
 # Verify SSH Connectivity
 # -----------------------------------------------------------------------------
 - name: Test SSH connectivity to all nodes
-  command: >
+  ansible.builtin.command: >
     ssh -o StrictHostKeyChecking=no -o BatchMode=yes -o ConnectTimeout=30
-    {% if hostvars[item]['ansible_ssh_private_key_file'] is defined %}-i {{ hostvars[item]['ansible_ssh_private_key_file'] }}{% else %}-i {{ kubespray_ssh_key }}{% endif %}
+    {% if hostvars[item]['ansible_ssh_private_key_file'] is defined %}-i {{ hostvars[item]['ansible_ssh_private_key_file'] }}{% else %}-i {{ kubespray_ssh_key }}{%
+    endif %}
     {{ hostvars[item]['ansible_ssh_common_args'] | default('') }}
     {{ hostvars[item]['ansible_user'] }}@{{ hostvars[item]['ansible_host'] }}
     "echo ok"
@@ -156,7 +157,7 @@
   when: not kubespray_skip_ssh_check | default(false)
 
 - name: Display SSH connectivity results
-  debug:
+  ansible.builtin.debug:
     msg: "SSH to {{ item.item }}: {{ 'OK' if item.rc == 0 else 'FAILED - ' + item.stderr }}"
   loop: "{{ ssh_test.results }}"
   loop_control:
@@ -164,14 +165,14 @@
   when: not kubespray_skip_ssh_check | default(false)
 
 - name: Fail if any SSH connection failed
-  fail:
+  ansible.builtin.fail:
     msg: "SSH connectivity test failed for some nodes. Please check SSH keys and connectivity."
   when:
     - not kubespray_skip_ssh_check | default(false)
     - ssh_test.results | selectattr('rc', 'ne', 0) | list | length > 0
 
 - name: Preparation complete
-  debug:
+  ansible.builtin.debug:
     msg: |
       Kubespray preparation complete!
 

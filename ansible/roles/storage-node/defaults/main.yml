@@ -22,7 +22,7 @@ storage_node_labels:
 
 # Node taints (optional, to dedicate node for storage)
 storage_node_taints: []
-  # - "storage=true:NoSchedule"
+# - "storage=true:NoSchedule"
 
 # Resource limits
 storage_reserved_cpu: "500m"

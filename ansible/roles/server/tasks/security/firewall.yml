@@ -3,32 +3,32 @@
 # This is the unified firewall configuration for all server types
 
 - name: Install UFW firewall
-  apt:
+  ansible.builtin.apt:
     name: ufw
     state: present
-    update_cache: yes
+    update_cache: true
 
 - name: Configure UFW default policies
-  ufw:
+  community.general.ufw:
     direction: "{{ item.direction }}"
     policy: "{{ item.policy }}"
   loop:
-    - direction: 'incoming'
-      policy: 'deny'
-    - direction: 'outgoing'
-      policy: 'allow'
-    - direction: 'routed'
-      policy: 'deny'
+    - direction: "incoming"
+      policy: "deny"
+    - direction: "outgoing"
+      policy: "allow"
+    - direction: "routed"
+      policy: "deny"
 
 - name: Configure UFW firewall - allow SSH port
-  ufw:
+  community.general.ufw:
     rule: allow
     port: "{{ ssh.port | default(2678) }}"
     proto: tcp
     comment: "SSH custom port"
 
 - name: Remove old SSH port from firewall (if different)
-  ufw:
+  community.general.ufw:
     rule: deny
     port: "22"
     proto: tcp
@@ -36,7 +36,7 @@
   failed_when: false
 
 - name: Allow essential TCP ports through firewall
-  ufw:
+  community.general.ufw:
     rule: allow
     port: "{{ item }}"
     proto: tcp
@@ -44,7 +44,7 @@
   when: firewall.allowed_tcp_ports is defined
 
 - name: Allow essential UDP ports through firewall
-  ufw:
+  community.general.ufw:
     rule: allow
     port: "{{ item }}"
     proto: udp
@@ -52,7 +52,7 @@
   when: firewall.allowed_udp_ports is defined
 
 - name: Configure UFW firewall with custom rules
-  ufw:
+  community.general.ufw:
     rule: "{{ item.rule }}"
     port: "{{ item.port }}"
     proto: "{{ item.proto | default('tcp') }}"
@@ -60,6 +60,6 @@
   when: firewall_rules is defined
 
 - name: Enable UFW firewall
-  ufw:
+  community.general.ufw:
     state: enabled
     policy: deny

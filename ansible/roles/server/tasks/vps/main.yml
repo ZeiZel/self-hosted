@@ -4,7 +4,7 @@
 # Only runs when server_type == 'vps'
 
 - name: Display VPS setup information
-  debug:
+  ansible.builtin.debug:
     msg: |
       VPS-Specific Setup Starting...
       Swap size: {{ vps_swap_size }}
@@ -13,38 +13,38 @@
     - vps
 
 - name: Include VPS package management tasks
-  include_tasks: packages.yml
+  ansible.builtin.include_tasks: packages.yml
   tags:
     - vps
     - packages
 
 - name: Include sysctl configuration
-  include_tasks: sysctl.yml
+  ansible.builtin.include_tasks: sysctl.yml
   tags:
     - vps
     - system
     - sysctl
 
 - name: Include services management
-  include_tasks: services.yml
+  ansible.builtin.include_tasks: services.yml
   tags:
     - vps
     - services
 
 - name: Include unattended upgrades configuration
-  include_tasks: unattended_upgrades.yml
+  ansible.builtin.include_tasks: unattended_upgrades.yml
   tags:
     - vps
     - updates
 
 - name: Include swap configuration
-  include_tasks: swap.yml
+  ansible.builtin.include_tasks: swap.yml
   tags:
     - vps
     - swap
 
 - name: Display system info
-  debug:
+  ansible.builtin.debug:
     msg:
       - "VPS setup complete!"
       - "Hostname: {{ ansible_hostname }}"

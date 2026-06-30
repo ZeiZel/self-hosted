@@ -8,19 +8,19 @@
 # Pre-scale Checks
 # -----------------------------------------------------------------------------
 - name: Verify kubespray directory exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ kubespray_dir }}/scale.yml"
   register: scale_yml_stat
   failed_when: not scale_yml_stat.stat.exists
 
 - name: Verify inventory exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ kubespray_inventory_dir }}/hosts.yaml"
   register: inventory_stat
   failed_when: not inventory_stat.stat.exists
 
 - name: Verify virtualenv exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ kubespray_venv_dir }}/bin/ansible-playbook"
   register: ansible_playbook_stat
   failed_when: not ansible_playbook_stat.stat.exists
@@ -29,7 +29,7 @@
 # Scale Cluster (Add New Nodes)
 # -----------------------------------------------------------------------------
 - name: Display scale start message
-  debug:
+  ansible.builtin.debug:
     msg: |
       Starting Kubernetes cluster scale operation...
 
@@ -46,7 +46,7 @@
 # Note: scale.yml must run WITHOUT --limit because it needs facts from all nodes
 # Kubespray will detect which nodes are already in the cluster and skip them
 - name: Run kubespray scale.yml playbook
-  shell: |
+  ansible.builtin.shell: |
     source {{ kubespray_venv_dir }}/bin/activate
     cd {{ kubespray_dir }}
     ansible-playbook -i {{ kubespray_inventory_dir }}/hosts.yaml \
@@ -65,12 +65,12 @@
   poll: "{{ kubespray_poll_interval }}"
 
 - name: Display scale output
-  debug:
+  ansible.builtin.debug:
     msg: "{{ kubespray_scale.stdout_lines[-50:] }}"
   when: kubespray_scale.stdout_lines is defined
 
 - name: Check scale result
-  fail:
+  ansible.builtin.fail:
     msg: |
       Kubespray scale operation failed!
 
@@ -80,17 +80,17 @@
   when: kubespray_scale.rc != 0
 
 - name: Verify new nodes joined cluster
-  shell: |
+  ansible.builtin.shell: |
     kubectl get nodes -o wide
   register: nodes_after_scale
   changed_when: false
 
 - name: Display cluster nodes after scale
-  debug:
+  ansible.builtin.debug:
     msg: "{{ nodes_after_scale.stdout_lines }}"
 
 - name: Scale complete
-  debug:
+  ansible.builtin.debug:
     msg: |
       Kubernetes cluster scale completed!
 

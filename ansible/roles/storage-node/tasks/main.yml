@@ -3,34 +3,34 @@
 # Prepares a node for OpenEBS LocalPV
 
 - name: Install required packages
-  apt:
+  ansible.builtin.apt:
     name:
       - xfsprogs
       - lvm2
       - open-iscsi
       - nfs-common
     state: present
-    update_cache: yes
-  become: yes
+    update_cache: true
+  become: true
   tags: [storage-node, packages]
 
 - name: Enable and start iSCSI
-  systemd:
+  ansible.builtin.systemd:
     name: iscsid
-    enabled: yes
+    enabled: true
     state: started
-  become: yes
+  become: true
   when: iscsi_enabled
   tags: [storage-node, iscsi]
 
 - name: Create OpenEBS directories
-  file:
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     owner: root
     group: root
-    mode: '0755'
-  become: yes
+    mode: "0755"
+  become: true
   loop:
     - "{{ openebs_data_dir }}"
     - "{{ openebs_local_dir }}"
@@ -38,45 +38,45 @@
   tags: [storage-node, directories]
 
 - name: Set up dedicated storage disk
+  when: storage_disk | length > 0
+  tags: [storage-node, disk]
   block:
     - name: Check if disk exists
-      stat:
+      ansible.builtin.stat:
         path: "{{ storage_disk }}"
       register: disk_check
 
     - name: Create filesystem on storage disk
-      filesystem:
+      community.general.filesystem:
         fstype: "{{ storage_filesystem }}"
         dev: "{{ storage_disk }}"
       when: disk_check.stat.exists
-      become: yes
+      become: true
 
     - name: Mount storage disk
-      mount:
+      ansible.posix.mount:
         path: "{{ openebs_data_dir }}"
         src: "{{ storage_disk }}"
         fstype: "{{ storage_filesystem }}"
         opts: "{{ storage_mount_options }}"
         state: mounted
       when: disk_check.stat.exists
-      become: yes
+      become: true
 
     - name: Create subdirectories after mount
-      file:
+      ansible.builtin.file:
         path: "{{ item }}"
         state: directory
         owner: root
         group: root
-        mode: '0755'
-      become: yes
+        mode: "0755"
+      become: true
       loop:
         - "{{ openebs_local_dir }}"
         - "{{ openebs_sparse_dir }}"
-  when: storage_disk | length > 0
-  tags: [storage-node, disk]
 
 - name: Apply Kubernetes node labels
-  command: >
+  ansible.builtin.command: >
     kubectl label node {{ inventory_hostname }}
     {{ item }}
     --overwrite
@@ -86,7 +86,7 @@
   tags: [storage-node, labels]
 
 - name: Apply Kubernetes node taints
-  command: >
+  ansible.builtin.command: >
     kubectl taint node {{ inventory_hostname }}
     {{ item }}
     --overwrite
@@ -97,19 +97,19 @@
   tags: [storage-node, taints]
 
 - name: Verify node is ready
-  command: kubectl get node {{ inventory_hostname }}
+  ansible.builtin.command: kubectl get node {{ inventory_hostname }}
   delegate_to: "{{ groups['masters'][0] }}"
   register: node_status
   changed_when: false
   tags: [storage-node, verify]
 
 - name: Display node status
-  debug:
+  ansible.builtin.debug:
     msg: "{{ node_status.stdout_lines }}"
   tags: [storage-node, verify]
 
 - name: Storage node configuration summary
-  debug:
+  ansible.builtin.debug:
     msg:
       - "========================================="
       - "Storage Node Configuration Complete"

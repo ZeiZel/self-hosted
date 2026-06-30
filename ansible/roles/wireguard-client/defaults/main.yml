@@ -4,7 +4,7 @@
 # Gateway configuration
 wireguard_gateway_host: "{{ hostvars[groups['gateway'][0]]['ansible_host'] | default('80.90.178.207') }}"
 wireguard_gateway_port: 51820
-wireguard_gateway_public_key: ""  # Must be set or fetched from gateway
+wireguard_gateway_public_key: "" # Must be set or fetched from gateway
 
 # Client configuration
 wireguard_client_ip: "10.99.0.2"
@@ -13,8 +13,8 @@ wireguard_interface: "wg0"
 
 # Routes through VPN
 wireguard_allowed_ips:
-  - "10.99.0.0/24"      # VPN network
-  - "10.233.0.0/16"     # Kubernetes pod network
+  - "10.99.0.0/24" # VPN network
+  - "10.233.0.0/16" # Kubernetes pod network
 
 # Kubernetes API
 kubernetes_api_ip: "10.99.0.10"

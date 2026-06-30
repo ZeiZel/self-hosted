@@ -1,3 +1,4 @@
+---
 galaxy_info:
   role_name: backup
   description: Velero backup automation and database backup configuration

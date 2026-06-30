@@ -1,6 +1,6 @@
 ---
 - name: Ensure Homebrew is in PATH
-  set_fact:
+  ansible.builtin.set_fact:
     brew_command: "{{ homebrew_install_path }}/bin/brew"
 
 - name: Install dependencies via Homebrew

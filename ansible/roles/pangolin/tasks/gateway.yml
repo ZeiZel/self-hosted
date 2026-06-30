@@ -9,45 +9,45 @@
 # =============================================================================
 
 - name: Download Traefik edge router binary
-  get_url:
+  ansible.builtin.get_url:
     url: "{{ traefik_url }}"
     dest: "/tmp/traefik.tar.gz"
-    mode: '0644'
+    mode: "0644"
   tags: [pangolin, gateway, download]
 
 - name: Extract Traefik binary
-  unarchive:
+  ansible.builtin.unarchive:
     src: "/tmp/traefik.tar.gz"
     dest: "{{ pangolin_install_dir }}"
-    remote_src: yes
+    remote_src: true
     creates: "{{ pangolin_install_dir }}/traefik"
   tags: [pangolin, gateway, install]
 
 - name: Create Traefik binary symlink
-  file:
+  ansible.builtin.file:
     src: "{{ pangolin_install_dir }}/traefik"
     dest: "/usr/local/bin/traefik"
     state: link
   tags: [pangolin, gateway, install]
 
 - name: Create Traefik configuration directories
-  file:
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
-    mode: '0755'
+    mode: "0755"
   loop:
     - "{{ traefik_config_dir }}"
     - "{{ traefik_config_dir }}/dynamic"
   tags: [pangolin, gateway, config]
 
 - name: Load WireGuard server private key from Vault
-  set_fact:
+  ansible.builtin.set_fact:
     wireguard_server_private_key: "{{ vpn.pangolin.server_private_key }}"
   no_log: true
   tags: [pangolin, gateway, config]
 
 - name: Load WireGuard server public key from Vault
-  set_fact:
+  ansible.builtin.set_fact:
     wireguard_server_public_key: "{{ vpn.pangolin.server_public_key }}"
   no_log: true
   tags: [pangolin, gateway, config]
@@ -57,10 +57,10 @@
 # =============================================================================
 
 - name: Deploy WireGuard server configuration
-  template:
+  ansible.builtin.template:
     src: wg0-server.conf.j2
     dest: "/etc/wireguard/{{ wireguard_interface }}.conf"
-    mode: '0600'
+    mode: "0600"
     owner: root
     group: root
   notify: restart wireguard-server
@@ -68,11 +68,11 @@
   tags: [pangolin, gateway, wireguard]
 
 - name: Enable and start WireGuard service
-  systemd:
+  ansible.builtin.systemd:
     name: "wg-quick@{{ wireguard_interface }}"
-    enabled: yes
+    enabled: true
     state: started
-    daemon_reload: yes
+    daemon_reload: true
   when: not use_gerbil | default(false)
   tags: [pangolin, gateway, wireguard]
 
@@ -81,15 +81,15 @@
 # =============================================================================
 
 - name: Download Pangolin installer binary
-  get_url:
+  ansible.builtin.get_url:
     url: "{{ pangolin_installer_url }}"
     dest: "{{ pangolin_install_dir }}/pangolin-installer"
-    mode: '0755'
+    mode: "0755"
   when: use_gerbil | default(false)
   tags: [pangolin, gateway, gerbil]
 
 - name: Create Pangolin installer symlink
-  file:
+  ansible.builtin.file:
     src: "{{ pangolin_install_dir }}/pangolin-installer"
     dest: "/usr/local/bin/pangolin-installer"
     state: link
@@ -97,15 +97,15 @@
   tags: [pangolin, gateway, gerbil]
 
 - name: Download Gerbil orchestrator binary
-  get_url:
+  ansible.builtin.get_url:
     url: "{{ gerbil_url }}"
     dest: "{{ pangolin_install_dir }}/gerbil"
-    mode: '0755'
+    mode: "0755"
   when: use_gerbil | default(false)
   tags: [pangolin, gateway, gerbil]
 
 - name: Create Gerbil binary symlink
-  file:
+  ansible.builtin.file:
     src: "{{ pangolin_install_dir }}/gerbil"
     dest: "/usr/local/bin/gerbil"
     state: link
@@ -113,29 +113,29 @@
   tags: [pangolin, gateway, gerbil]
 
 - name: Deploy Pangolin server configuration
-  template:
+  ansible.builtin.template:
     src: pangolin-config.yaml.j2
     dest: "{{ pangolin_config_dir }}/config.yaml"
-    mode: '0600'
+    mode: "0600"
   notify: restart pangolin
   when: use_gerbil | default(false)
   tags: [pangolin, gateway, gerbil]
 
 - name: Deploy Gerbil systemd unit
-  template:
+  ansible.builtin.template:
     src: gerbil.service.j2
     dest: /etc/systemd/system/gerbil.service
-    mode: '0644'
+    mode: "0644"
   notify: restart gerbil
   when: use_gerbil | default(false)
   tags: [pangolin, gateway, gerbil]
 
 - name: Enable and start Gerbil service
-  systemd:
+  ansible.builtin.systemd:
     name: gerbil
-    enabled: yes
+    enabled: true
     state: started
-    daemon_reload: yes
+    daemon_reload: true
   when: use_gerbil | default(false)
   tags: [pangolin, gateway, gerbil]
 
@@ -144,43 +144,43 @@
 # =============================================================================
 
 - name: Deploy Traefik gateway configuration
-  template:
+  ansible.builtin.template:
     src: traefik-gateway.yml.j2
     dest: "{{ traefik_config_dir }}/traefik.yml"
-    mode: '0644'
+    mode: "0644"
   notify: restart traefik
   tags: [pangolin, gateway, traefik]
 
 - name: Deploy cluster routing configuration
-  template:
+  ansible.builtin.template:
     src: cluster-routing.yml.j2
     dest: "{{ traefik_config_dir }}/dynamic/cluster.yml"
-    mode: '0644'
+    mode: "0644"
   notify: restart traefik
   tags: [pangolin, gateway, traefik]
 
 - name: Create ACME storage file
-  file:
+  ansible.builtin.file:
     path: "{{ traefik_config_dir }}/acme.json"
     state: touch
-    mode: '0600'
+    mode: "0600"
   changed_when: false
   tags: [pangolin, gateway, traefik]
 
 - name: Deploy Traefik systemd unit
-  template:
+  ansible.builtin.template:
     src: traefik.service.j2
     dest: /etc/systemd/system/traefik.service
-    mode: '0644'
+    mode: "0644"
   notify: restart traefik
   tags: [pangolin, gateway, traefik]
 
 - name: Enable and start Traefik service
-  systemd:
+  ansible.builtin.systemd:
     name: traefik
-    enabled: yes
+    enabled: true
     state: started
-    daemon_reload: yes
+    daemon_reload: true
   tags: [pangolin, gateway, traefik]
 
 # =============================================================================
@@ -188,15 +188,15 @@
 # =============================================================================
 
 - name: Wait for WireGuard tunnel to be listening
-  wait_for:
+  ansible.builtin.wait_for:
     port: "{{ wireguard_port }}"
     proto: udp
     timeout: 60
-  ignore_errors: yes
+  ignore_errors: true
   tags: [pangolin, gateway, verify]
 
 - name: Display gateway deployment status
-  debug:
+  ansible.builtin.debug:
     msg:
       - "Pangolin VPN gateway deployed successfully"
       - "Mode: {{ 'gerbil' if use_gerbil | default(false) else 'wireguard (plain)' }}"

@@ -5,7 +5,7 @@
 # - Configure database and agents
 
 - name: Wait for TeamCity server pod to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n code -l app=teamcity-server
     --timeout={{ teamcity_wait_timeout }}s
@@ -13,7 +13,7 @@
 
 # PostgreSQL JDBC driver must be downloaded manually as TeamCity image doesn't include it
 - name: Check if PostgreSQL JDBC driver exists
-  command: >
+  ansible.builtin.command: >
     kubectl exec -n code deployment/teamcity-server --
     test -f /data/teamcity_server/datadir/lib/jdbc/postgresql.jar
   register: teamcity_jdbc_check
@@ -21,14 +21,14 @@
   changed_when: false
 
 - name: Create JDBC lib directory
-  command: >
+  ansible.builtin.command: >
     kubectl exec -n code deployment/teamcity-server --
     mkdir -p /data/teamcity_server/datadir/lib/jdbc
   when: teamcity_jdbc_check.rc != 0
   changed_when: true
 
 - name: Download PostgreSQL JDBC driver
-  command: >
+  ansible.builtin.command: >
     kubectl exec -n code deployment/teamcity-server --
     curl -L --connect-timeout 30 --max-time 180
     -o /data/teamcity_server/datadir/lib/jdbc/postgresql.jar
@@ -38,28 +38,28 @@
   register: teamcity_jdbc_download
 
 - name: Restart TeamCity to load JDBC driver
-  command: kubectl rollout restart deployment/teamcity-server -n code
+  ansible.builtin.command: kubectl rollout restart deployment/teamcity-server -n code
   when: teamcity_jdbc_download is changed
   changed_when: true
 
 - name: Wait for TeamCity restart after JDBC driver install
-  command: >
+  ansible.builtin.command: >
     kubectl rollout status deployment/teamcity-server -n code --timeout={{ teamcity_wait_timeout }}s
   when: teamcity_jdbc_download is changed
   changed_when: false
 
 - name: Check TeamCity startup status
-  command: >
+  ansible.builtin.command: >
     kubectl logs -n code -l app.kubernetes.io/name=teamcity,app.kubernetes.io/component=server --tail=100
   register: teamcity_logs
   changed_when: false
 
 - name: Check if TeamCity requires initial setup
-  set_fact:
+  ansible.builtin.set_fact:
     teamcity_needs_setup: "{{ 'super user' in teamcity_logs.stdout.lower() or 'authentication token' in teamcity_logs.stdout.lower() }}"
 
 - name: Get TeamCity super user token from logs
-  command: >
+  ansible.builtin.command: >
     kubectl logs -n code -l app.kubernetes.io/name=teamcity,app.kubernetes.io/component=server |
     grep -oP '(?<=Super user authentication token: )[0-9]+' | tail -1
   register: teamcity_superuser_token
@@ -68,7 +68,7 @@
   when: teamcity_needs_setup
 
 - name: Get TeamCity super user token from file
-  command: >
+  ansible.builtin.command: >
     kubectl exec -n code deployment/teamcity-server --
     cat /data/teamcity_server/datadir/system/superuser.token
   register: teamcity_superuser_file
@@ -79,7 +79,7 @@
     - teamcity_superuser_token.stdout | length == 0
 
 - name: Set TeamCity super user token
-  set_fact:
+  ansible.builtin.set_fact:
     teamcity_token: >-
       {{
         teamcity_superuser_token.stdout
@@ -89,7 +89,7 @@
   when: teamcity_needs_setup
 
 - name: Wait for TeamCity agent pod to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n code -l app.kubernetes.io/name=teamcity,app.kubernetes.io/component=agent
     --timeout={{ teamcity_wait_timeout }}s
@@ -97,14 +97,14 @@
   failed_when: false
 
 - name: Get number of connected agents
-  command: >
+  ansible.builtin.command: >
     kubectl get pods -n code -l app.kubernetes.io/name=teamcity,app.kubernetes.io/component=agent
     --no-headers | wc -l
   register: teamcity_agents_count
   changed_when: false
 
 - name: Save TeamCity setup information
-  copy:
+  ansible.builtin.copy:
     content: |
       JetBrains TeamCity Setup Information
       =====================================
@@ -130,11 +130,11 @@
       7. Configure VCS roots (GitLab integration)
       8. Set up build configurations
     dest: "{{ teamcity_credentials_file }}"
-    mode: '0600'
+    mode: "0600"
   delegate_to: localhost
 
 - name: Check TeamCity health endpoint
-  uri:
+  ansible.builtin.uri:
     url: "{{ teamcity_url }}/app/rest/server"
     method: GET
     status_code: [200, 401, 503]
@@ -146,7 +146,7 @@
   failed_when: false
 
 - name: Display TeamCity configuration status
-  debug:
+  ansible.builtin.debug:
     msg: |
       JetBrains TeamCity Configuration
       =================================

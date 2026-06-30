@@ -1,5 +1,66 @@
 ---
-- name: validate services
-  gather_facts: true
+# =============================================================================
+# VALIDATE ROLE — post-deployment verification (runs on localhost)
+# =============================================================================
+# gather_facts is set by the play in all.yml, not here (it is not valid on a
+# task/block). These checks are best-effort and surface cluster health.
+
+- name: Validate cluster and core services
+  tags: [validate, verify, test]
   block:
-    -
+    - name: Check kubectl is available
+      ansible.builtin.command: kubectl version --client=true -o yaml
+      register: kubectl_version
+      changed_when: false
+
+    - name: Get cluster nodes
+      ansible.builtin.command: kubectl get nodes -o wide
+      register: validate_nodes
+      changed_when: false
+
+    - name: Show cluster nodes
+      ansible.builtin.debug:
+        msg: "{{ validate_nodes.stdout_lines }}"
+
+    - name: Check for NotReady nodes
+      ansible.builtin.command: >-
+        kubectl get nodes --no-headers
+      register: validate_nodes_status
+      changed_when: false
+
+    - name: Warn on NotReady nodes
+      ansible.builtin.debug:
+        msg: "WARNING: one or more nodes are NotReady"
+      when: "'NotReady' in validate_nodes_status.stdout"
+
+    - name: List namespaces
+      ansible.builtin.command: kubectl get namespaces -o name
+      register: validate_namespaces
+      changed_when: false
+
+    - name: Verify expected namespaces exist
+      ansible.builtin.debug:
+        msg: "Missing namespace: {{ item }}"
+      loop: "{{ validate_expected_namespaces | default(['ingress', 'service', 'db']) }}"
+      when: "('namespace/' ~ item) not in validate_namespaces.stdout"
+
+    - name: List non-running pods (all namespaces)
+      ansible.builtin.shell: >-
+        set -o pipefail;
+        kubectl get pods -A --no-headers
+        | awk '$4 != "Running" && $4 != "Completed" {print}'
+      args:
+        executable: /bin/bash
+      register: validate_bad_pods
+      changed_when: false
+      failed_when: false
+
+    - name: Report non-running pods
+      ansible.builtin.debug:
+        msg: "{{ validate_bad_pods.stdout_lines | default(['all pods Running/Completed']) }}"
+  rescue:
+    - name: Validation could not complete (cluster unreachable?)
+      ansible.builtin.debug:
+        msg: >-
+          Validation skipped/failed — is the cluster reachable and KUBECONFIG set?
+          Error: {{ ansible_failed_result.msg | default('see above') }}

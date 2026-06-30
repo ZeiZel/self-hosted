@@ -4,7 +4,7 @@
 # - Configure admin account
 
 - name: Wait for Stoat API pod to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n social -l app.kubernetes.io/name=stoat,app.kubernetes.io/component=api
     --timeout={{ stoat_wait_timeout }}s
@@ -12,7 +12,7 @@
   failed_when: false
 
 - name: Check Stoat health
-  uri:
+  ansible.builtin.uri:
     url: "{{ stoat_url }}"
     method: GET
     status_code: [200, 301, 302]
@@ -24,7 +24,7 @@
   failed_when: false
 
 - name: Save Stoat setup information
-  copy:
+  ansible.builtin.copy:
     content: |
       Stoat (Revolt) Setup Information
       =================================
@@ -49,11 +49,11 @@
       5. Create invite links for users
       6. Set up moderation rules
     dest: "{{ stoat_credentials_file }}"
-    mode: '0600'
+    mode: "0600"
   delegate_to: localhost
 
 - name: Display Stoat configuration status
-  debug:
+  ansible.builtin.debug:
     msg: |
       Stoat (Revolt) Configuration
       =============================

@@ -21,28 +21,28 @@
   tags: [prepare, inventory]
   tasks:
     - name: Include kubespray defaults
-      include_vars:
+      ansible.builtin.include_vars:
         file: "{{ playbook_dir }}/roles/kubespray/defaults/main.yml"
 
     - name: Create kubespray inventory directory
-      file:
+      ansible.builtin.file:
         path: "{{ kubespray_inventory_dir }}"
         state: directory
-        mode: '0755'
+        mode: "0755"
 
     - name: Generate kubespray inventory
-      template:
+      ansible.builtin.template:
         src: "{{ playbook_dir }}/roles/kubespray/templates/inventory.yaml.j2"
         dest: "{{ kubespray_inventory_dir }}/hosts.yaml"
-        mode: '0644'
+        mode: "0644"
 
     - name: Display inventory content
-      command: cat {{ kubespray_inventory_dir }}/hosts.yaml
+      ansible.builtin.command: cat {{ kubespray_inventory_dir }}/hosts.yaml
       register: inventory_content
       changed_when: false
 
     - name: Show generated inventory
-      debug:
+      ansible.builtin.debug:
         msg: "{{ inventory_content.stdout_lines }}"
 
 # -----------------------------------------------------------------------------
@@ -57,15 +57,11 @@
     scale_node_limit: "storage"
   tasks:
     - name: Include kubespray defaults
-      include_vars:
+      ansible.builtin.include_vars:
         file: "{{ playbook_dir }}/roles/kubespray/defaults/main.yml"
 
     - name: Include scale tasks
-      include_tasks: "{{ playbook_dir }}/roles/kubespray/tasks/scale.yml"
-
-# -----------------------------------------------------------------------------
-# Step 3: Prepare storage node
-# -----------------------------------------------------------------------------
+      ansible.builtin.include_tasks: "{{ playbook_dir }}/roles/kubespray/tasks/scale.yml"
 - name: Prepare Storage Node
   hosts: storages
   become: true
@@ -97,14 +93,14 @@
   tags: [glance]
   tasks:
     - name: Deploy Glance via Helmfile
-      command: helmfile -e k8s apply --selector name=glance
+      ansible.builtin.command: helmfile -e k8s apply --selector name=glance
       args:
         chdir: "{{ playbook_dir }}/../kubernetes"
       register: glance_deploy
       changed_when: "'no changes' not in glance_deploy.stdout"
 
     - name: Display Glance deployment result
-      debug:
+      ansible.builtin.debug:
         msg: "{{ glance_deploy.stdout_lines[-20:] }}"
       when: glance_deploy.stdout_lines is defined
 
@@ -118,7 +114,7 @@
   tags: [zerobyte]
   tasks:
     - name: Deploy Zerobyte via Helmfile
-      command: helmfile -e k8s apply --selector name=zerobyte
+      ansible.builtin.command: helmfile -e k8s apply --selector name=zerobyte
       args:
         chdir: "{{ playbook_dir }}/../kubernetes"
       register: zerobyte_deploy
@@ -126,7 +122,7 @@
       ignore_errors: true
 
     - name: Display Zerobyte deployment result
-      debug:
+      ansible.builtin.debug:
         msg: "{{ zerobyte_deploy.stdout_lines[-20:] }}"
       when: zerobyte_deploy.stdout_lines is defined
 
@@ -142,20 +138,20 @@
     vault_restic_password: "backup-secure-password-change-me"
   tasks:
     - name: Include backup-node defaults
-      include_vars:
+      ansible.builtin.include_vars:
         file: "{{ playbook_dir }}/roles/backup-node/defaults/main.yml"
 
     - name: Create test file for backup
-      copy:
+      ansible.builtin.copy:
         content: |
           Test backup file created at {{ ansible_date_time.iso8601 }}
           This verifies the backup infrastructure is working correctly.
         dest: /backup/dumps/test-backup-{{ ansible_date_time.epoch }}.txt
-        mode: '0644'
+        mode: "0644"
       register: test_file
 
     - name: Run test backup
-      command: >
+      ansible.builtin.command: >
         restic backup
         --verbose
         --tag test
@@ -168,12 +164,12 @@
       changed_when: true
 
     - name: Display test backup result
-      debug:
+      ansible.builtin.debug:
         msg: "{{ test_backup_result.stdout_lines }}"
       when: test_backup_result.stdout_lines is defined
 
     - name: List snapshots to verify
-      command: restic snapshots --json
+      ansible.builtin.command: restic snapshots --json
       environment:
         RESTIC_REPOSITORY: "{{ restic_repository }}"
         RESTIC_PASSWORD: "{{ vault_restic_password }}"
@@ -181,7 +177,7 @@
       changed_when: false
 
     - name: Parse and display snapshots
-      debug:
+      ansible.builtin.debug:
         msg: |
           Backup verification complete!
 
@@ -192,12 +188,12 @@
       when: snapshots_result.stdout | length > 2
 
     - name: Cleanup test file
-      file:
+      ansible.builtin.file:
         path: /backup/dumps/test-backup-{{ ansible_date_time.epoch }}.txt
         state: absent
 
     - name: Backup infrastructure verification
-      debug:
+      ansible.builtin.debug:
         msg:
           - "========================================="
           - "Backup Infrastructure Verified!"

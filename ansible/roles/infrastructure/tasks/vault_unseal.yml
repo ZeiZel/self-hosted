@@ -3,14 +3,14 @@
 # Handles both fresh initialization and unsealing of existing Vault
 
 - name: Check Vault pod status
-  command: kubectl get pods -n service -l app.kubernetes.io/name=vault -o jsonpath='{.items[0].metadata.name}'
+  ansible.builtin.command: kubectl get pods -n service -l app.kubernetes.io/name=vault -o jsonpath='{.items[0].metadata.name}'
   register: vault_pod_name
   changed_when: false
   failed_when: vault_pod_name.stdout == ""
   tags: [infrastructure, vault, unseal]
 
 - name: Wait for Vault pod to be running
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pod/{{ vault_pod_name.stdout }}
     -n service
@@ -21,20 +21,20 @@
   tags: [infrastructure, vault, unseal]
 
 - name: Check Vault initialization status
-  command: kubectl exec -n service {{ vault_pod_name.stdout }} -- vault status -format=json
+  ansible.builtin.command: kubectl exec -n service {{ vault_pod_name.stdout }} -- vault status -format=json
   register: vault_status
   changed_when: false
   failed_when: false
   tags: [infrastructure, vault, unseal]
 
 - name: Parse Vault status
-  set_fact:
+  ansible.builtin.set_fact:
     vault_status_json: "{{ vault_status.stdout | from_json }}"
   when: vault_status.rc == 0 or vault_status.rc == 2
   tags: [infrastructure, vault, unseal]
 
 - name: Display Vault status
-  debug:
+  ansible.builtin.debug:
     msg:
       - "Vault initialized: {{ vault_status_json.initialized | default(false) }}"
       - "Vault sealed: {{ vault_status_json.sealed | default(true) }}"
@@ -43,9 +43,11 @@
 
 # Initialize Vault if needed
 - name: Initialize Vault
+  when: vault_status_json is defined and not vault_status_json.initialized
+  tags: [infrastructure, vault, unseal, init]
   block:
     - name: Run Vault init
-      command: >
+      ansible.builtin.command: >
         kubectl exec -n service {{ vault_pod_name.stdout }} --
         vault operator init
         -key-shares={{ vault_init_secret_shares }}
@@ -54,11 +56,11 @@
       register: vault_init_output
 
     - name: Parse initialization output
-      set_fact:
+      ansible.builtin.set_fact:
         vault_init_data: "{{ vault_init_output.stdout | from_json }}"
 
     - name: Save unseal keys to local file (SECURE THIS!)
-      copy:
+      ansible.builtin.copy:
         content: |
           Vault Unseal Keys (KEEP SECURE!)
           Generated: {{ ansible_date_time.iso8601 }}
@@ -73,11 +75,11 @@
           IMPORTANT: Store these keys in a secure location!
           You need {{ vault_init_secret_threshold }} keys to unseal Vault.
         dest: "{{ lookup('env', 'HOME') }}/.vault-keys-{{ ansible_date_time.epoch }}.txt"
-        mode: '0600'
+        mode: "0600"
       delegate_to: localhost
 
     - name: Display warning about unseal keys
-      debug:
+      ansible.builtin.debug:
         msg:
           - "⚠️  CRITICAL: Vault has been initialized"
           - "Unseal keys and root token saved to: ~/.vault-keys-{{ ansible_date_time.epoch }}.txt"
@@ -85,23 +87,23 @@
           - "Update ansible/group_vars/all/vault.yml with these keys"
 
     - name: Store unseal keys for this session
-      set_fact:
+      ansible.builtin.set_fact:
         vault_unseal_keys: "{{ vault_init_data.unseal_keys_b64 }}"
         vault_root_token: "{{ vault_init_data.root_token }}"
-  when: vault_status_json is defined and not vault_status_json.initialized
-  tags: [infrastructure, vault, unseal, init]
 
 # Unseal Vault using keys from Ansible Vault
 - name: Unseal Vault with stored keys
+  when: vault_status_json is defined and vault_status_json.sealed
+  tags: [infrastructure, vault, unseal]
   block:
     - name: Load unseal keys from Ansible Vault
-      set_fact:
+      ansible.builtin.set_fact:
         vault_unseal_keys: "{{ vault.vault.unseal_keys }}"
       when: vault.vault.unseal_keys is defined and vault.vault.unseal_keys | length > 0
       no_log: true
 
     - name: Unseal Vault (key 1)
-      command: >
+      ansible.builtin.command: >
         kubectl exec -n service {{ vault_pod_name.stdout }} --
         vault operator unseal {{ vault_unseal_keys[0] }}
       when: vault_unseal_keys is defined and vault_unseal_keys | length >= 1
@@ -109,7 +111,7 @@
       register: unseal1
 
     - name: Unseal Vault (key 2)
-      command: >
+      ansible.builtin.command: >
         kubectl exec -n service {{ vault_pod_name.stdout }} --
         vault operator unseal {{ vault_unseal_keys[1] }}
       when: vault_unseal_keys is defined and vault_unseal_keys | length >= 2
@@ -117,7 +119,7 @@
       register: unseal2
 
     - name: Unseal Vault (key 3)
-      command: >
+      ansible.builtin.command: >
         kubectl exec -n service {{ vault_pod_name.stdout }} --
         vault operator unseal {{ vault_unseal_keys[2] }}
       when: vault_unseal_keys is defined and vault_unseal_keys | length >= 3
@@ -125,27 +127,25 @@
       register: unseal3
 
     - name: Wait for Vault to become active
-      pause:
+      ansible.builtin.pause:
         seconds: 10
-  when: vault_status_json is defined and vault_status_json.sealed
-  tags: [infrastructure, vault, unseal]
 
 # Verify Vault is unsealed
 - name: Check final Vault status
-  command: kubectl exec -n service {{ vault_pod_name.stdout }} -- vault status -format=json
+  ansible.builtin.command: kubectl exec -n service {{ vault_pod_name.stdout }} -- vault status -format=json
   register: vault_final_status
   changed_when: false
   failed_when: false
   tags: [infrastructure, vault, unseal]
 
 - name: Parse final Vault status
-  set_fact:
+  ansible.builtin.set_fact:
     vault_final_json: "{{ vault_final_status.stdout | from_json }}"
   when: vault_final_status.rc == 0
   tags: [infrastructure, vault, unseal]
 
 - name: Verify Vault is unsealed
-  assert:
+  ansible.builtin.assert:
     that:
       - vault_final_json is defined
       - not vault_final_json.sealed
@@ -154,7 +154,7 @@
   tags: [infrastructure, vault, unseal]
 
 - name: Display Vault health
-  debug:
+  ansible.builtin.debug:
     msg:
       - "✓ Vault Status: {{ vault_final_json.initialized | ternary('Initialized', 'Not initialized') }}"
       - "✓ Vault Sealed: {{ vault_final_json.sealed | ternary('YES (needs unseal)', 'NO (ready)') }}"
@@ -164,6 +164,6 @@
   tags: [infrastructure, vault, unseal]
 
 - name: Vault unsealing complete
-  debug:
+  ansible.builtin.debug:
     msg: "Vault is now unsealed and operational"
   tags: [infrastructure, vault, unseal]

@@ -5,24 +5,24 @@
 # - Configure Hub integration
 
 - name: Wait for YouTrack pod to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n code -l app.kubernetes.io/name=youtrack
     --timeout={{ youtrack_wait_timeout }}s
   changed_when: false
 
 - name: Check YouTrack startup status
-  command: >
+  ansible.builtin.command: >
     kubectl logs -n code -l app.kubernetes.io/name=youtrack --tail=100
   register: youtrack_logs
   changed_when: false
 
 - name: Check if YouTrack requires initial setup
-  set_fact:
+  ansible.builtin.set_fact:
     youtrack_needs_setup: "{{ 'wizard' in youtrack_logs.stdout.lower() or 'token' in youtrack_logs.stdout.lower() }}"
 
 - name: Get YouTrack wizard token from logs
-  command: >
+  ansible.builtin.command: >
     kubectl logs -n code -l app.kubernetes.io/name=youtrack |
     grep -oP '(?<=token[=: ])[a-zA-Z0-9]+' | head -1
   register: youtrack_wizard_token_logs
@@ -31,7 +31,7 @@
   when: youtrack_needs_setup
 
 - name: Get YouTrack wizard token from conf directory
-  command: >
+  ansible.builtin.command: >
     kubectl exec -n code deployment/youtrack --
     sh -c 'cat /opt/youtrack/conf/*.token 2>/dev/null || cat /opt/youtrack/data/conf/*.token 2>/dev/null || echo ""'
   register: youtrack_wizard_token_file
@@ -40,7 +40,7 @@
   when: youtrack_needs_setup
 
 - name: Get YouTrack wizard token from environment
-  command: >
+  ansible.builtin.command: >
     kubectl exec -n code deployment/youtrack --
     sh -c 'grep -r "token" /opt/youtrack/conf/ 2>/dev/null | head -1 || echo ""'
   register: youtrack_wizard_token_env
@@ -51,7 +51,7 @@
     - youtrack_wizard_token_file.stdout | length == 0
 
 - name: Set YouTrack wizard token
-  set_fact:
+  ansible.builtin.set_fact:
     youtrack_wizard_token: >-
       {{
         youtrack_wizard_token_logs.stdout
@@ -65,7 +65,7 @@
   when: youtrack_needs_setup
 
 - name: Save YouTrack setup information
-  copy:
+  ansible.builtin.copy:
     content: |
       JetBrains YouTrack Setup Information
       =====================================
@@ -91,11 +91,11 @@
       6. Set up projects and workflows
       7. Configure GitLab integration for issue tracking
     dest: "{{ youtrack_credentials_file }}"
-    mode: '0600'
+    mode: "0600"
   delegate_to: localhost
 
 - name: Check YouTrack health endpoint
-  uri:
+  ansible.builtin.uri:
     url: "{{ youtrack_url }}/api/config"
     method: GET
     status_code: [200, 401, 503]
@@ -107,7 +107,7 @@
   failed_when: false
 
 - name: Display YouTrack configuration status
-  debug:
+  ansible.builtin.debug:
     msg: |
       JetBrains YouTrack Configuration
       =================================

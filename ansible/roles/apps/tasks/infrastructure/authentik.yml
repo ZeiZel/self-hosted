@@ -6,7 +6,7 @@
 # - Create groups and assign permissions
 
 - name: Check if Authentik pod is running
-  command: >
+  ansible.builtin.command: >
     kubectl get pods -n service -l app.kubernetes.io/name=authentik
     -o jsonpath='{.items[0].status.phase}'
   register: authentik_pod_status
@@ -14,21 +14,21 @@
   failed_when: false
 
 - name: Wait for Authentik server to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n service -l app.kubernetes.io/name=authentik,app.kubernetes.io/component=server
     --timeout={{ authentik_wait_timeout }}s
   changed_when: false
 
 - name: Wait for Authentik worker to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n service -l app.kubernetes.io/name=authentik,app.kubernetes.io/component=worker
     --timeout={{ authentik_wait_timeout }}s
   changed_when: false
 
 - name: Get Authentik bootstrap password from secret
-  command: >
+  ansible.builtin.command: >
     kubectl get secret -n service authentik
     -o jsonpath='{.data.AUTHENTIK_BOOTSTRAP_PASSWORD}'
   register: authentik_bootstrap_password_b64
@@ -37,13 +37,13 @@
   no_log: true
 
 - name: Decode bootstrap password
-  set_fact:
+  ansible.builtin.set_fact:
     authentik_bootstrap_password: "{{ authentik_bootstrap_password_b64.stdout | b64decode }}"
   when: authentik_bootstrap_password_b64.stdout | length > 0
   no_log: true
 
 - name: Get Authentik API token
-  uri:
+  ansible.builtin.uri:
     url: "{{ authentik_url }}/api/v3/core/tokens/"
     method: POST
     body_format: json
@@ -60,7 +60,7 @@
   no_log: true
 
 - name: Set API token
-  set_fact:
+  ansible.builtin.set_fact:
     authentik_api_token: "{{ authentik_token_response.json.key }}"
   when:
     - authentik_token_response is defined
@@ -72,7 +72,7 @@
   when: authentik_api_token is defined
   block:
     - name: Create OAuth2 provider for GitLab
-      uri:
+      ansible.builtin.uri:
         url: "{{ authentik_url }}/api/v3/providers/oauth2/"
         method: POST
         body_format: json
@@ -90,7 +90,7 @@
       failed_when: false
 
     - name: Create OAuth2 provider for Coder
-      uri:
+      ansible.builtin.uri:
         url: "{{ authentik_url }}/api/v3/providers/oauth2/"
         method: POST
         body_format: json
@@ -108,7 +108,7 @@
       failed_when: false
 
     - name: Create OAuth2 provider for Nextcloud
-      uri:
+      ansible.builtin.uri:
         url: "{{ authentik_url }}/api/v3/providers/oauth2/"
         method: POST
         body_format: json
@@ -126,7 +126,7 @@
       failed_when: false
 
 - name: Create admin group
-  uri:
+  ansible.builtin.uri:
     url: "{{ authentik_url }}/api/v3/core/groups/"
     method: POST
     body_format: json
@@ -141,7 +141,7 @@
   failed_when: false
 
 - name: Create users group
-  uri:
+  ansible.builtin.uri:
     url: "{{ authentik_url }}/api/v3/core/groups/"
     method: POST
     body_format: json
@@ -156,7 +156,7 @@
   failed_when: false
 
 - name: Display Authentik configuration status
-  debug:
+  ansible.builtin.debug:
     msg: |
       Authentik Configuration Complete
       =================================

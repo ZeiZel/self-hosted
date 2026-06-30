@@ -2,9 +2,9 @@
 # SSH key deployment tasks
 
 - name: Check for local SSH public keys
-  local_action:
-    module: stat
+  ansible.builtin.stat:
     path: "{{ item }}"
+  delegate_to: localhost
   register: local_ssh_keys
   loop:
     - "{{ lookup('env', 'HOME') }}/.ssh/id_ed25519.pub"
@@ -13,9 +13,9 @@
   become: false
 
 - name: Read local SSH public keys
-  local_action:
-    module: slurp
+  ansible.builtin.slurp:
     src: "{{ item.item }}"
+  delegate_to: localhost
   register: ssh_key_contents
   loop: "{{ local_ssh_keys.results }}"
   when: item.stat.exists
@@ -23,7 +23,7 @@
   no_log: false
 
 - name: Deploy SSH public keys to admin user
-  authorized_key:
+  ansible.posix.authorized_key:
     user: "{{ user.name | default('admin') }}"
     state: present
     key: "{{ item['content'] | b64decode }}"
@@ -36,7 +36,7 @@
     - user.name | length > 0
 
 - name: Deploy SSH public keys to root user (if enabled)
-  authorized_key:
+  ansible.posix.authorized_key:
     user: root
     state: present
     key: "{{ item['content'] | b64decode }}"
@@ -48,7 +48,7 @@
     - security_ssh_root_key_enabled | default(false)
 
 - name: Display deployed SSH keys info
-  debug:
+  ansible.builtin.debug:
     msg:
       - "SSH keys deployed successfully!"
       - "Keys deployed: {{ ssh_key_contents.results | selectattr('content', 'defined') | list | length }}"

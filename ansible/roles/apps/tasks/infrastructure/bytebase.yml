@@ -4,14 +4,14 @@
 # - Configure database instances
 
 - name: Wait for Bytebase pod to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n infrastructure -l app.kubernetes.io/name=bytebase
     --timeout={{ bytebase_wait_timeout }}s
   changed_when: false
 
 - name: Check Bytebase health
-  uri:
+  ansible.builtin.uri:
     url: "{{ bytebase_url }}/healthz"
     method: GET
     status_code: [200]
@@ -23,7 +23,7 @@
   failed_when: false
 
 - name: Save Bytebase setup information
-  copy:
+  ansible.builtin.copy:
     content: |
       Bytebase Setup Information
       ===========================
@@ -67,11 +67,11 @@
 
       Documentation: https://www.bytebase.com/docs
     dest: "{{ bytebase_credentials_file }}"
-    mode: '0600'
+    mode: "0600"
   delegate_to: localhost
 
 - name: Display Bytebase configuration status
-  debug:
+  ansible.builtin.debug:
     msg: |
       Bytebase Configuration
       =======================

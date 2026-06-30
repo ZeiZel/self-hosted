@@ -8,19 +8,19 @@
 # Pre-deployment Checks
 # -----------------------------------------------------------------------------
 - name: Verify kubespray directory exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ kubespray_dir }}/cluster.yml"
   register: cluster_yml_stat
   failed_when: not cluster_yml_stat.stat.exists
 
 - name: Verify inventory exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ kubespray_inventory_dir }}/hosts.yaml"
   register: inventory_stat
   failed_when: not inventory_stat.stat.exists
 
 - name: Verify virtualenv exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ kubespray_venv_dir }}/bin/ansible-playbook"
   register: ansible_playbook_stat
   failed_when: not ansible_playbook_stat.stat.exists
@@ -29,7 +29,7 @@
 # Reset Cluster (Optional)
 # -----------------------------------------------------------------------------
 - name: Reset existing cluster (if requested)
-  shell: |
+  ansible.builtin.shell: |
     source {{ kubespray_venv_dir }}/bin/activate
     cd {{ kubespray_dir }}
     ansible-playbook -i {{ kubespray_inventory_dir }}/hosts.yaml \
@@ -52,7 +52,7 @@
 # Deploy Kubernetes Cluster
 # -----------------------------------------------------------------------------
 - name: Display deployment start message
-  debug:
+  ansible.builtin.debug:
     msg: |
       Starting Kubernetes cluster deployment...
 
@@ -62,7 +62,7 @@
       Inventory: {{ kubespray_inventory_dir }}/hosts.yaml
 
 - name: Run kubespray cluster.yml playbook
-  shell: |
+  ansible.builtin.shell: |
     source {{ kubespray_venv_dir }}/bin/activate
     cd {{ kubespray_dir }}
     ansible-playbook -i {{ kubespray_inventory_dir }}/hosts.yaml \
@@ -81,12 +81,12 @@
   poll: "{{ kubespray_poll_interval }}"
 
 - name: Display deployment output
-  debug:
+  ansible.builtin.debug:
     msg: "{{ kubespray_deploy.stdout_lines[-50:] }}"
   when: kubespray_deploy.stdout_lines is defined
 
 - name: Check deployment result
-  fail:
+  ansible.builtin.fail:
     msg: |
       Kubespray deployment failed!
 
@@ -99,14 +99,14 @@
 # Fetch Kubeconfig
 # -----------------------------------------------------------------------------
 - name: Create local .kube directory
-  file:
+  ansible.builtin.file:
     path: "{{ user_home }}/.kube"
     state: directory
-    mode: '0700'
+    mode: "0700"
   when: kubespray_fetch_kubeconfig
 
 - name: Fetch kubeconfig from first master node
-  shell: |
+  ansible.builtin.shell: |
     ssh -o StrictHostKeyChecking=no \
       -i {{ kubespray_ssh_key }} \
       {{ hostvars[groups['masters'][0]]['ansible_user'] }}@{{ hostvars[groups['masters'][0]]['ansible_host'] }} \
@@ -115,21 +115,21 @@
   when: kubespray_fetch_kubeconfig
 
 - name: Save kubeconfig locally
-  copy:
+  ansible.builtin.copy:
     content: "{{ kubeconfig_content.stdout }}"
     dest: "{{ kubespray_local_kubeconfig }}"
-    mode: '0600'
+    mode: "0600"
   when: kubespray_fetch_kubeconfig and kubeconfig_content.rc == 0
 
 - name: Update kubeconfig server address
-  replace:
+  ansible.builtin.replace:
     path: "{{ kubespray_local_kubeconfig }}"
-    regexp: 'server: https://127\.0\.0\.1:6443'
+    regexp: "server: https://127\\.0\\.0\\.1:6443"
     replace: "server: https://{{ hostvars[groups['masters'][0]]['ansible_host'] }}:6443"
   when: kubespray_fetch_kubeconfig and kubeconfig_content.rc == 0
 
 - name: Deployment complete
-  debug:
+  ansible.builtin.debug:
     msg: |
       Kubernetes cluster deployment completed!
 

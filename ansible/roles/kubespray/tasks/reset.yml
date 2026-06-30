@@ -6,7 +6,7 @@
 # Usage: ansible-playbook -i inventory all.yml --tags kubespray -e kubespray_reset_confirmation=true
 
 - name: Verify reset confirmation flag
-  fail:
+  ansible.builtin.fail:
     msg: |
       Cluster reset requires explicit confirmation!
 
@@ -21,7 +21,7 @@
   tags: [kubespray, reset]
 
 - name: Display reset warning
-  debug:
+  ansible.builtin.debug:
     msg: |
       WARNING: Resetting Kubernetes cluster!
       Cluster: {{ cluster_name }}
@@ -29,13 +29,13 @@
   tags: [kubespray, reset]
 
 - name: Check if kubespray directory exists
-  stat:
+  ansible.builtin.stat:
     path: "{{ kubespray_dir }}/reset.yml"
   register: reset_yml_stat
   tags: [kubespray, reset]
 
 - name: Run kubespray reset playbook
-  shell: |
+  ansible.builtin.shell: |
     source {{ kubespray_venv_dir }}/bin/activate
     cd {{ kubespray_dir }}
     ansible-playbook -i {{ kubespray_inventory_dir }}/hosts.yaml \
@@ -57,13 +57,13 @@
   tags: [kubespray, reset]
 
 - name: Remove local kubeconfig
-  file:
+  ansible.builtin.file:
     path: "{{ kubespray_local_kubeconfig }}"
     state: absent
   tags: [kubespray, reset]
 
 - name: Reset complete
-  debug:
+  ansible.builtin.debug:
     msg: |
       Kubernetes cluster has been reset!
 

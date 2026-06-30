@@ -4,7 +4,7 @@
 # - Get admin token
 
 - name: Wait for Vaultwarden pod to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready pod
     -n data -l app.kubernetes.io/name=vaultwarden
     --timeout={{ vaultwarden_wait_timeout }}s
@@ -12,7 +12,7 @@
   failed_when: false
 
 - name: Get Vaultwarden admin token from secret
-  command: >
+  ansible.builtin.command: >
     kubectl get secret -n data vaultwarden
     -o jsonpath='{.data.admin-token}'
   register: vaultwarden_admin_token_b64
@@ -21,13 +21,13 @@
   no_log: true
 
 - name: Decode admin token
-  set_fact:
+  ansible.builtin.set_fact:
     vaultwarden_admin_token: "{{ vaultwarden_admin_token_b64.stdout | b64decode }}"
   when: vaultwarden_admin_token_b64.stdout | length > 0
   no_log: true
 
 - name: Check Vaultwarden health
-  uri:
+  ansible.builtin.uri:
     url: "{{ vaultwarden_url }}/alive"
     method: GET
     status_code: [200]
@@ -39,7 +39,7 @@
   failed_when: false
 
 - name: Save Vaultwarden setup information
-  copy:
+  ansible.builtin.copy:
     content: |
       Vaultwarden Setup Information
       ==============================
@@ -62,12 +62,12 @@
         Use any Bitwarden-compatible client
         Server URL: {{ vaultwarden_url }}
     dest: "{{ vaultwarden_credentials_file }}"
-    mode: '0600'
+    mode: "0600"
   delegate_to: localhost
   no_log: true
 
 - name: Display Vaultwarden configuration status
-  debug:
+  ansible.builtin.debug:
     msg: |
       Vaultwarden Configuration
       ==========================

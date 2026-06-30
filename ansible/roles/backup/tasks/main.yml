@@ -3,25 +3,25 @@
 # Deploys Velero for K8s backups and configures database backup automation
 
 - name: Create Velero namespace
-  command: kubectl create namespace {{ velero_namespace }} --dry-run=client -o yaml | kubectl apply -f -
+  ansible.builtin.command: kubectl create namespace {{ velero_namespace }} --dry-run=client -o yaml | kubectl apply -f -
   register: ns_create
   changed_when: "'created' in ns_create.stdout"
   tags: [backup, namespace]
 
 - name: Add Velero Helm repository
-  command: helm repo add vmware-tanzu {{ velero_helm_repo }}
+  ansible.builtin.command: helm repo add vmware-tanzu {{ velero_helm_repo }}
   register: helm_repo_add
   changed_when: "'already exists' not in helm_repo_add.stderr"
   failed_when: helm_repo_add.rc != 0 and 'already exists' not in helm_repo_add.stderr
   tags: [backup, helm]
 
 - name: Update Helm repositories
-  command: helm repo update
+  ansible.builtin.command: helm repo update
   changed_when: false
   tags: [backup, helm]
 
 - name: Create backup storage credentials secret
-  command: >
+  ansible.builtin.command: >
     kubectl create secret generic velero-credentials
     --namespace {{ velero_namespace }}
     --from-literal=cloud="[default]
@@ -34,7 +34,7 @@
   tags: [backup, credentials]
 
 - name: Deploy Velero via Helm
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install velero vmware-tanzu/velero
     --namespace {{ velero_namespace }}
     --version {{ velero_version }}
@@ -66,7 +66,7 @@
   tags: [backup, deploy]
 
 - name: Wait for Velero pods to be ready
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n {{ velero_namespace }} -l app.kubernetes.io/name=velero
     --timeout={{ verify_timeout }}s
@@ -75,130 +75,132 @@
   tags: [backup, verify]
 
 - name: Get Velero pods status
-  command: kubectl get pods -n {{ velero_namespace }}
+  ansible.builtin.command: kubectl get pods -n {{ velero_namespace }}
   register: velero_pods
   changed_when: false
   tags: [backup, verify]
 
 - name: Display Velero pods status
-  debug:
+  ansible.builtin.debug:
     msg: "{{ velero_pods.stdout_lines }}"
   tags: [backup, verify]
 
 - name: Create backup schedules
+  tags: [backup, schedules]
   block:
     - name: Create backup schedule manifests
-      template:
+      ansible.builtin.template:
         src: backup-schedule.yaml.j2
         dest: "/tmp/backup-schedule-{{ item.name }}.yaml"
-        mode: '0644'
+        mode: "0644"
       loop: "{{ backup_schedules }}"
 
     - name: Apply backup schedules
-      command: kubectl apply -f /tmp/backup-schedule-{{ item.name }}.yaml
+      ansible.builtin.command: kubectl apply -f /tmp/backup-schedule-{{ item.name }}.yaml
       loop: "{{ backup_schedules }}"
       register: schedule_apply
       changed_when: "'created' in schedule_apply.stdout or 'configured' in schedule_apply.stdout"
 
     - name: Remove temporary schedule files
-      file:
+      ansible.builtin.file:
         path: "/tmp/backup-schedule-{{ item.name }}.yaml"
         state: absent
       loop: "{{ backup_schedules }}"
-  tags: [backup, schedules]
 
 - name: Get backup schedules
-  command: kubectl get schedules -n {{ velero_namespace }}
+  ansible.builtin.command: kubectl get schedules -n {{ velero_namespace }}
   register: backup_schedules_list
   changed_when: false
   tags: [backup, verify]
 
 - name: Display backup schedules
-  debug:
+  ansible.builtin.debug:
     msg: "{{ backup_schedules_list.stdout_lines }}"
   tags: [backup, verify]
 
 - name: Configure PostgreSQL backups
+  when: database_backups_enabled and postgres_backup_enabled
+  tags: [backup, database, postgres]
   block:
     - name: Create PostgreSQL backup CronJob
-      template:
+      ansible.builtin.template:
         src: postgres-backup-cronjob.yaml.j2
         dest: /tmp/postgres-backup-cronjob.yaml
-        mode: '0644'
+        mode: "0644"
 
     - name: Apply PostgreSQL backup CronJob
-      command: kubectl apply -f /tmp/postgres-backup-cronjob.yaml
+      ansible.builtin.command: kubectl apply -f /tmp/postgres-backup-cronjob.yaml
       register: pg_backup_apply
       changed_when: "'created' in pg_backup_apply.stdout or 'configured' in pg_backup_apply.stdout"
 
     - name: Remove temporary PostgreSQL backup file
-      file:
+      ansible.builtin.file:
         path: /tmp/postgres-backup-cronjob.yaml
         state: absent
-  when: database_backups_enabled and postgres_backup_enabled
-  tags: [backup, database, postgres]
 
 - name: Configure MongoDB backups
+  when: database_backups_enabled and mongodb_backup_enabled
+  tags: [backup, database, mongodb]
   block:
     - name: Create MongoDB backup CronJob
-      template:
+      ansible.builtin.template:
         src: mongodb-backup-cronjob.yaml.j2
         dest: /tmp/mongodb-backup-cronjob.yaml
-        mode: '0644'
+        mode: "0644"
 
     - name: Apply MongoDB backup CronJob
-      command: kubectl apply -f /tmp/mongodb-backup-cronjob.yaml
+      ansible.builtin.command: kubectl apply -f /tmp/mongodb-backup-cronjob.yaml
       register: mongo_backup_apply
       changed_when: "'created' in mongo_backup_apply.stdout or 'configured' in mongo_backup_apply.stdout"
 
     - name: Remove temporary MongoDB backup file
-      file:
+      ansible.builtin.file:
         path: /tmp/mongodb-backup-cronjob.yaml
         state: absent
-  when: database_backups_enabled and mongodb_backup_enabled
-  tags: [backup, database, mongodb]
 
 - name: Get database backup CronJobs
-  command: kubectl get cronjobs -n {{ database_backups_namespace }}
+  ansible.builtin.command: kubectl get cronjobs -n {{ database_backups_namespace }}
   register: db_cronjobs
   changed_when: false
   failed_when: false
   tags: [backup, verify, database]
 
 - name: Display database backup CronJobs
-  debug:
+  ansible.builtin.debug:
     msg: "{{ db_cronjobs.stdout_lines }}"
   when: db_cronjobs.rc == 0
   tags: [backup, verify, database]
 
 - name: Verify backup storage location
-  command: kubectl get backupstoragelocation -n {{ velero_namespace }}
+  ansible.builtin.command: kubectl get backupstoragelocation -n {{ velero_namespace }}
   register: bsl_status
   changed_when: false
   tags: [backup, verify]
 
 - name: Display backup storage location
-  debug:
+  ansible.builtin.debug:
     msg: "{{ bsl_status.stdout_lines }}"
   tags: [backup, verify]
 
 - name: Check for existing backups
-  command: kubectl get backups -n {{ velero_namespace }}
+  ansible.builtin.command: kubectl get backups -n {{ velero_namespace }}
   register: existing_backups
   changed_when: false
   failed_when: false
   tags: [backup, verify]
 
 - name: Display existing backups
-  debug:
+  ansible.builtin.debug:
     msg: "{{ existing_backups.stdout_lines }}"
   when: existing_backups.rc == 0
   tags: [backup, verify]
 
 - name: Create test backup
+  when: backup_verify_enabled
+  tags: [backup, verify, test]
   block:
     - name: Trigger on-demand backup
-      command: >
+      ansible.builtin.command: >
         kubectl create -f - <<EOF
         apiVersion: velero.io/v1
         kind: Backup
@@ -214,11 +216,11 @@
       changed_when: "'created' in test_backup.stdout"
 
     - name: Wait for test backup to complete
-      pause:
+      ansible.builtin.pause:
         seconds: 30
 
     - name: Check test backup status
-      command: >
+      ansible.builtin.command: >
         kubectl get backup test-backup-{{ ansible_date_time.epoch }}
         -n {{ velero_namespace }}
         -o jsonpath='{.status.phase}'
@@ -226,13 +228,11 @@
       changed_when: false
 
     - name: Display test backup status
-      debug:
+      ansible.builtin.debug:
         msg: "Test backup status: {{ test_backup_status.stdout }}"
-  when: backup_verify_enabled
-  tags: [backup, verify, test]
 
 - name: Backup configuration summary
-  debug:
+  ansible.builtin.debug:
     msg:
       - "========================================="
       - "Backup Configuration Complete"

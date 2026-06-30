@@ -3,35 +3,35 @@
 # Unified fail2ban setup for all server types
 
 - name: Check if fail2ban is installed
-  command: which fail2ban-server
+  ansible.builtin.command: which fail2ban-server
   register: fail2ban_installed
   changed_when: false
   failed_when: false
 
 - name: Install fail2ban
-  apt:
+  ansible.builtin.apt:
     name: fail2ban
     state: present
-    update_cache: yes
+    update_cache: true
   when: fail2ban_installed.rc != 0
 
 - name: Create fail2ban jail.local
-  template:
+  ansible.builtin.template:
     src: jail.local.j2
     dest: /etc/fail2ban/jail.local
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   notify: restart fail2ban
 
 - name: Check if fail2ban SSH filter exists
-  stat:
+  ansible.builtin.stat:
     path: /etc/fail2ban/filter.d/sshd.local
   register: fail2ban_filter_exists
   changed_when: false
 
 - name: Create fail2ban filter for SSH
-  copy:
+  ansible.builtin.copy:
     content: |
       [Definition]
       failregex = ^%(__prefix_line)s(?:error: PAM: )?Authentication failure for .* from <HOST>\s*$
@@ -53,20 +53,20 @@
     dest: /etc/fail2ban/filter.d/sshd.local
     owner: root
     group: root
-    mode: '0644'
+    mode: "0644"
   notify: restart fail2ban
 
 - name: Enable and start fail2ban
-  systemd:
+  ansible.builtin.systemd:
     name: fail2ban
-    enabled: yes
+    enabled: true
     state: started
 
 - name: Check fail2ban status
-  command: fail2ban-client status
+  ansible.builtin.command: fail2ban-client status
   register: fail2ban_status
   changed_when: false
 
 - name: Display fail2ban status
-  debug:
+  ansible.builtin.debug:
     var: fail2ban_status.stdout_lines

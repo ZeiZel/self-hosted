@@ -3,64 +3,65 @@
 # Deploys WireGuard VPN client using wg-quick and connects to gateway
 
 - name: Install WireGuard packages
-  apt:
+  ansible.builtin.apt:
     name:
       - wireguard
       - wireguard-tools
     state: present
-    update_cache: yes
+    update_cache: true
   tags: [pangolin, node, install]
 
 - name: Generate node IP from inventory position
-  set_fact:
-    node_wireguard_ip: "{{ pangolin_node_ip_prefix }}.{{ 10 + groups['masters'].index(inventory_hostname) if inventory_hostname in groups['masters'] else 20 + groups['workers'].index(inventory_hostname) }}"
+  ansible.builtin.set_fact:
+    node_wireguard_ip: "{{ pangolin_node_ip_prefix }}.{{ 10 + groups['masters'].index(inventory_hostname) if inventory_hostname in groups['masters'] else 20 + groups['workers'].index(inventory_hostname)
+      }}"
   tags: [pangolin, node, config]
 
 - name: Load WireGuard client private key from Vault
-  set_fact:
+  ansible.builtin.set_fact:
     wireguard_client_private_key: "{{ vpn.pangolin.client_keys[inventory_hostname].private_key }}"
   no_log: true
   tags: [pangolin, node, config]
 
 - name: Load gateway public key from Vault
-  set_fact:
+  ansible.builtin.set_fact:
     wireguard_gateway_public_key: "{{ vpn.pangolin.server_public_key }}"
   no_log: true
   tags: [pangolin, node, config]
 
 - name: Deploy WireGuard configuration
-  template:
+  ansible.builtin.template:
     src: wg0.conf.j2
     dest: "/etc/wireguard/{{ wireguard_interface }}.conf"
-    mode: '0600'
+    mode: "0600"
     owner: root
     group: root
   notify: restart wireguard
   tags: [pangolin, node, config]
 
 - name: Enable and start WireGuard service
-  systemd:
+  ansible.builtin.systemd:
     name: "wg-quick@{{ wireguard_interface }}"
-    enabled: yes
+    enabled: true
     state: started
-    daemon_reload: yes
+    daemon_reload: true
   tags: [pangolin, node, service]
 
 - name: Wait for WireGuard interface to be up
-  wait_for:
+  ansible.builtin.wait_for:
     path: "/sys/class/net/{{ wireguard_interface }}"
     timeout: 30
   tags: [pangolin, node, verify]
 
 - name: Verify WireGuard service is running
-  command: systemctl is-active wg-quick@{{ wireguard_interface }}
+  ansible.builtin.command: systemctl is-active wg-quick@{{ wireguard_interface }}
   register: wg_status
   changed_when: false
   failed_when: wg_status.stdout != "active"
   tags: [pangolin, node, verify]
 
 - name: Test tunnel connectivity to gateway
-  command: ping -c 3 -W 5 {{ wireguard_server_ip }}
+  ansible.builtin.command: ping -c 3 -W 5 {{ wireguard_server_ip }}
   register: ping_result
   changed_when: false
   failed_when: ping_result.rc != 0
@@ -68,7 +69,7 @@
 
 # UFW rules for NodePort access from VPN network
 - name: Allow NodePort HTTP access from VPN network
-  ufw:
+  community.general.ufw:
     rule: allow
     from_ip: "{{ wireguard_network }}"
     to_port: "{{ cluster_nodeport_http }}"
@@ -77,7 +78,7 @@
   tags: [pangolin, node, firewall]
 
 - name: Allow NodePort HTTPS access from VPN network
-  ufw:
+  community.general.ufw:
     rule: allow
     from_ip: "{{ wireguard_network }}"
     to_port: "{{ cluster_nodeport_https }}"
@@ -86,7 +87,7 @@
   tags: [pangolin, node, firewall]
 
 - name: Display node deployment status
-  debug:
+  ansible.builtin.debug:
     msg:
       - "Pangolin VPN node deployed successfully"
       - "Node WireGuard IP: {{ node_wireguard_ip }}"

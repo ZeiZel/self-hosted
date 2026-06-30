@@ -3,14 +3,14 @@
 # Depends on base infrastructure (traefik, consul, vault, cert-manager, authentik)
 
 - name: Display application deployment plan
-  debug:
+  ansible.builtin.debug:
     msg:
       - "Deploying application services"
       - "Services: {{ app_services | map(attribute='name') | list | join(', ') }}"
   tags: [infrastructure, apps]
 
 - name: Verify base infrastructure is ready
-  command: >
+  ansible.builtin.command: >
     kubectl get pods -n service
     -l 'app.kubernetes.io/name in (traefik,consul,vault,cert-manager,authentik)'
     -o jsonpath='{range .items[*]}{.metadata.name}{"\t"}{.status.phase}{"\n"}{end}'
@@ -19,13 +19,13 @@
   tags: [infrastructure, apps]
 
 - name: Display base infrastructure status
-  debug:
+  ansible.builtin.debug:
     msg: "{{ base_pods_status.stdout_lines }}"
   tags: [infrastructure, apps]
 
 # Deploy each application service with its tag
 - name: Deploy Stoat (Revolt chat)
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=stoat
@@ -39,7 +39,7 @@
   tags: [infrastructure, apps, stoat]
 
 - name: Wait for Stoat pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n social -l app.kubernetes.io/name=stoat
     --timeout=180s
@@ -49,7 +49,7 @@
   tags: [infrastructure, apps, stoat]
 
 - name: Deploy Stalwart (mail server)
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=stalwart
@@ -63,7 +63,7 @@
   tags: [infrastructure, apps, stalwart]
 
 - name: Wait for Stalwart pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n social -l app.kubernetes.io/name=stalwart
     --timeout=180s
@@ -73,7 +73,7 @@
   tags: [infrastructure, apps, stalwart]
 
 - name: Deploy YouTrack (issue tracker)
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=youtrack
@@ -87,7 +87,7 @@
   tags: [infrastructure, apps, youtrack]
 
 - name: Wait for YouTrack pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n code -l app.kubernetes.io/name=youtrack
     --timeout=300s
@@ -97,7 +97,7 @@
   tags: [infrastructure, apps, youtrack]
 
 - name: Deploy Hub (JetBrains SSO)
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=hub
@@ -111,7 +111,7 @@
   tags: [infrastructure, apps, hub]
 
 - name: Wait for Hub pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n code -l app.kubernetes.io/name=hub
     --timeout=300s
@@ -121,7 +121,7 @@
   tags: [infrastructure, apps, hub]
 
 - name: Deploy TeamCity (CI/CD)
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=teamcity
@@ -135,7 +135,7 @@
   tags: [infrastructure, apps, teamcity]
 
 - name: Wait for TeamCity pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n code -l app.kubernetes.io/name=teamcity
     --timeout=300s
@@ -145,7 +145,7 @@
   tags: [infrastructure, apps, teamcity]
 
 - name: Deploy Vaultwarden (password manager)
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=vaultwarden
@@ -159,7 +159,7 @@
   tags: [infrastructure, apps, vaultwarden]
 
 - name: Wait for Vaultwarden pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n data -l app.kubernetes.io/name=vaultwarden
     --timeout=180s
@@ -170,7 +170,7 @@
 
 # Deploy Coder (remote development)
 - name: Deploy Coder
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=coder
@@ -184,7 +184,7 @@
   tags: [infrastructure, apps, coder]
 
 - name: Wait for Coder pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n code -l app.kubernetes.io/name=coder
     --timeout=300s
@@ -195,7 +195,7 @@
 
 # Deploy Ghost (blog)
 - name: Deploy Ghost
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=ghost
@@ -209,7 +209,7 @@
   tags: [infrastructure, apps, ghost]
 
 - name: Wait for Ghost pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n content -l app.kubernetes.io/name=ghost
     --timeout=180s
@@ -220,7 +220,7 @@
 
 # Deploy Affine (note-taking)
 - name: Deploy Affine
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=affine
@@ -234,7 +234,7 @@
   tags: [infrastructure, apps, affine]
 
 - name: Wait for Affine pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n productivity -l app.kubernetes.io/name=affine
     --timeout=180s
@@ -245,7 +245,7 @@
 
 # Deploy Excalidraw (whiteboard)
 - name: Deploy Excalidraw
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=excalidraw
@@ -259,7 +259,7 @@
   tags: [infrastructure, apps, excalidraw]
 
 - name: Wait for Excalidraw pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n productivity -l app.kubernetes.io/name=excalidraw
     --timeout=180s
@@ -270,7 +270,7 @@
 
 # Deploy Penpot (design)
 - name: Deploy Penpot
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=penpot
@@ -284,7 +284,7 @@
   tags: [infrastructure, apps, penpot]
 
 - name: Wait for Penpot pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n productivity -l app.kubernetes.io/name=penpot
     --timeout=300s
@@ -295,7 +295,7 @@
 
 # Deploy Glance (dashboard)
 - name: Deploy Glance
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=glance
@@ -309,7 +309,7 @@
   tags: [infrastructure, apps, glance]
 
 - name: Wait for Glance pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n infrastructure -l app.kubernetes.io/name=glance
     --timeout=180s
@@ -320,7 +320,7 @@
 
 # Deploy MeTube (youtube downloader)
 - name: Deploy MeTube
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=metube
@@ -334,7 +334,7 @@
   tags: [infrastructure, apps, metube]
 
 - name: Wait for MeTube pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n utilities -l app.kubernetes.io/name=metube
     --timeout=180s
@@ -345,7 +345,7 @@
 
 # Deploy Vert (converter)
 - name: Deploy Vert
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=vert
@@ -359,7 +359,7 @@
   tags: [infrastructure, apps, vert]
 
 - name: Wait for Vert pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n utilities -l app.kubernetes.io/name=vert
     --timeout=180s
@@ -370,7 +370,7 @@
 
 # Deploy Syncthing (file sync)
 - name: Deploy Syncthing
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=syncthing
@@ -384,7 +384,7 @@
   tags: [infrastructure, apps, syncthing]
 
 - name: Wait for Syncthing pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n data -l app.kubernetes.io/name=syncthing
     --timeout=180s
@@ -395,7 +395,7 @@
 
 # Deploy Bytebase (database management)
 - name: Deploy Bytebase
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=bytebase
@@ -409,7 +409,7 @@
   tags: [infrastructure, apps, bytebase]
 
 - name: Wait for Bytebase pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n infrastructure -l app.kubernetes.io/name=bytebase
     --timeout=180s
@@ -420,7 +420,7 @@
 
 # Deploy GitLab (code management)
 - name: Deploy GitLab
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=gitlab
@@ -434,7 +434,7 @@
   tags: [infrastructure, apps, gitlab]
 
 - name: Wait for GitLab pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n code -l app=webservice
     --timeout=600s
@@ -445,7 +445,7 @@
 
 # Deploy GitLab Ingress (custom routes)
 - name: Deploy GitLab Ingress
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=gitlab-ingress
@@ -460,7 +460,7 @@
 
 # Deploy Harbor (container registry)
 - name: Deploy Harbor
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=harbor
@@ -474,7 +474,7 @@
   tags: [infrastructure, apps, harbor]
 
 - name: Wait for Harbor pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n infrastructure -l app.kubernetes.io/name=harbor
     --timeout=300s
@@ -485,7 +485,7 @@
 
 # Deploy Nextcloud (file sync)
 - name: Deploy Nextcloud
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=nextcloud
@@ -499,7 +499,7 @@
   tags: [infrastructure, apps, nextcloud]
 
 - name: Wait for Nextcloud pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n data -l app.kubernetes.io/name=nextcloud
     --timeout=300s
@@ -510,7 +510,7 @@
 
 # Deploy Rybbit (analytics)
 - name: Deploy Rybbit
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=rybbit
@@ -524,7 +524,7 @@
   tags: [infrastructure, apps, rybbit]
 
 - name: Wait for Rybbit pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n data -l app.kubernetes.io/name=rybbit
     --timeout=180s
@@ -535,7 +535,7 @@
 
 # Deploy Notesnook (notes)
 - name: Deploy Notesnook
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=notesnook
@@ -549,7 +549,7 @@
   tags: [infrastructure, apps, notesnook]
 
 - name: Wait for Notesnook pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n productivity -l app.kubernetes.io/name=notesnook
     --timeout=180s
@@ -560,7 +560,7 @@
 
 # Deploy Monitoring stack
 - name: Deploy Monitoring
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=monitoring
@@ -574,7 +574,7 @@
   tags: [infrastructure, apps, monitoring]
 
 - name: Wait for Monitoring pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n service -l app.kubernetes.io/name=prometheus
     --timeout=300s
@@ -585,7 +585,7 @@
 
 # Deploy Logging stack
 - name: Deploy Logging
-  command: >
+  ansible.builtin.command: >
     helmfile -e {{ helmfile_environment }}
     apply
     --selector name=logging
@@ -599,7 +599,7 @@
   tags: [infrastructure, apps, logging]
 
 - name: Wait for Logging pods
-  command: >
+  ansible.builtin.command: >
     kubectl wait --for=condition=Ready
     pods -n service -l app.kubernetes.io/name=loki
     --timeout=300s
@@ -609,7 +609,7 @@
   tags: [infrastructure, apps, logging]
 
 - name: Get all application pods status
-  command: >
+  ansible.builtin.command: >
     kubectl get pods -A
     -l 'app.kubernetes.io/name in (stoat,stalwart,youtrack,hub,teamcity,vaultwarden,coder,ghost,affine,excalidraw,penpot,glance,metube,vert,syncthing,bytebase)'
   register: app_pods_status
@@ -617,12 +617,12 @@
   tags: [infrastructure, apps]
 
 - name: Display application pods status
-  debug:
+  ansible.builtin.debug:
     msg: "{{ app_pods_status.stdout_lines }}"
   tags: [infrastructure, apps]
 
 - name: Application deployment summary
-  debug:
+  ansible.builtin.debug:
     msg:
       - "Application services deployment complete"
       - "✓ Stoat (Revolt): {{ stoat_ready.rc == 0 | ternary('Ready', 'Pending') }}"

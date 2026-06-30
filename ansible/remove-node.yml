@@ -15,6 +15,6 @@
   gather_facts: true
   tasks:
     - name: Run kubespray remove-node for "{{ node | default('<unset>') }}"
-      include_role:
+      ansible.builtin.include_role:
         name: kubespray
         tasks_from: remove-node.yml

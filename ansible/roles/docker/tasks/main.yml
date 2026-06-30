@@ -1,20 +1,20 @@
 ---
 - name: Check docker installed
   failed_when: false
-  command: "docker --version"
+  ansible.builtin.command: "docker --version"
   register: pre_docker_installed
 
 - name: Install Docker
   become: true
   when: pre_docker_installed.rc != 0
   block:
-    - name: add universe repo
-      apt_repository:
+    - name: Add universe repo
+      ansible.builtin.apt_repository:
         repo: "deb https://us.archive.ubuntu.com/ubuntu/ {{ ansible_distribution_release }} universe"
         state: present
 
     - name: Install required packages
-      apt:
+      ansible.builtin.apt:
         name:
           - apt-transport-https
           - ca-certificates
@@ -26,20 +26,20 @@
         cache_valid_time: 86400
 
     - name: Creating APT keyrings
-      file:
+      ansible.builtin.file:
         path: /etc/apt/keyrings
         state: directory
-        mode: '0755'
+        mode: "0755"
 
     - name: Add Docker keyrings
-      get_url:
+      ansible.builtin.get_url:
         url: https://download.docker.com/linux/ubuntu/gpg
         dest: /etc/apt/keyrings/docker.asc
-        mode: '0644'
+        mode: "0644"
         force: true
 
     - name: Install stable Docker repo
-      apt_repository:
+      ansible.builtin.apt_repository:
         repo: >
           deb [arch=amd64 signed-by=/etc/apt/keyrings/docker.asc]
           https://download.docker.com/linux/ubuntu
@@ -49,7 +49,7 @@
         filename: docker
 
     - name: Install Docker-ce and Docker Compose Plugin
-      apt:
+      ansible.builtin.apt:
         name:
           - docker-ce
           - docker-ce-cli
@@ -60,7 +60,7 @@
         state: present
 
     - name: Check Docker installed
-      systemd:
+      ansible.builtin.systemd:
         name: docker
         state: started
         enabled: true
@@ -71,18 +71,18 @@
   become: true
   block:
     - name: Add Docker group
-      user:
+      ansible.builtin.user:
         name: "{{ ansible_user }}"
         groups: docker
         append: true
 
     - name: Check reboot required
-      stat:
+      ansible.builtin.stat:
         path: /var/run/reboot-required
       register: reboot_required_file
 
     - name: Reboot
-      reboot:
+      ansible.builtin.reboot:
         msg: "Reboot initiated by Ansible for Docker installation"
         connect_timeout: 5
         reboot_timeout: 300
@@ -92,12 +92,11 @@
       when: reboot_required_file.stat.exists | default(false)
 
 - name: Verify Docker installed
-  command: docker ps
+  ansible.builtin.command: docker ps
   changed_when: false
   register: docker_verify
 
 - name: Display Docker verification result
-  debug:
+  ansible.builtin.debug:
     msg: "Docker installed and running successfully!"
   when: docker_verify.rc == 0
-

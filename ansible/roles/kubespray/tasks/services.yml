@@ -14,7 +14,7 @@
 # Prerequisites
 # -----------------------------------------------------------------------------
 - name: Ensure Helm repositories are configured
-  command: helm repo add {{ item.name }} {{ item.url }}
+  ansible.builtin.command: helm repo add {{ item.name }} {{ item.url }}
   loop:
     - { name: "jetstack", url: "https://charts.jetstack.io" }
     - { name: "bitnami", url: "https://charts.bitnami.com/bitnami" }
@@ -28,7 +28,7 @@
   tags: [services, repos]
 
 - name: Update Helm repositories
-  command: helm repo update
+  ansible.builtin.command: helm repo update
   changed_when: false
   tags: [services, repos]
 
@@ -36,7 +36,7 @@
 # cert-manager
 # -----------------------------------------------------------------------------
 - name: Deploy cert-manager
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install cert-manager jetstack/cert-manager
     --namespace cert-manager
     --create-namespace
@@ -51,7 +51,7 @@
   tags: [services, cert-manager]
 
 - name: Create ClusterIssuers
-  shell: |
+  ansible.builtin.shell: |
     kubectl --kubeconfig={{ kubespray_local_kubeconfig }} apply -f - <<EOF
     apiVersion: cert-manager.io/v1
     kind: ClusterIssuer
@@ -82,7 +82,7 @@
 # Databases
 # -----------------------------------------------------------------------------
 - name: Create PostgreSQL init database ConfigMap
-  shell: |
+  ansible.builtin.shell: |
     kubectl --kubeconfig={{ kubespray_local_kubeconfig }} apply -f - <<EOF
     apiVersion: v1
     kind: ConfigMap
@@ -110,7 +110,7 @@
   tags: [services, databases, postgres]
 
 - name: Deploy PostgreSQL
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install postgresql bitnami/postgresql
     --namespace db
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -128,7 +128,7 @@
   tags: [services, databases, postgres]
 
 - name: Deploy Valkey (Redis)
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install valkey bitnami/valkey
     --namespace db
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -147,7 +147,7 @@
 # Vault
 # -----------------------------------------------------------------------------
 - name: Deploy HashiCorp Vault
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install vault hashicorp/vault
     --namespace service
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -162,7 +162,7 @@
   tags: [services, vault]
 
 - name: Create Vault Ingress
-  shell: |
+  ansible.builtin.shell: |
     kubectl --kubeconfig={{ kubespray_local_kubeconfig }} apply -f - <<EOF
     apiVersion: networking.k8s.io/v1
     kind: Ingress
@@ -190,7 +190,7 @@
 # Authentik (SSO)
 # -----------------------------------------------------------------------------
 - name: Deploy Authentik
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install authentik authentik/authentik
     --namespace service
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -213,7 +213,7 @@
   tags: [services, authentik]
 
 - name: Create Authentik Ingress
-  shell: |
+  ansible.builtin.shell: |
     kubectl --kubeconfig={{ kubespray_local_kubeconfig }} apply -f - <<EOF
     apiVersion: networking.k8s.io/v1
     kind: Ingress
@@ -241,7 +241,7 @@
 # Custom Charts (from kubernetes/charts/)
 # -----------------------------------------------------------------------------
 - name: Deploy Glance Dashboard
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install glance {{ kubernetes_charts_dir }}/glance
     --namespace infrastructure
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -258,7 +258,7 @@
   tags: [services, glance]
 
 - name: Deploy Vaultwarden
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install vaultwarden {{ kubernetes_charts_dir }}/vaultwarden
     --namespace data
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -277,7 +277,7 @@
   tags: [services, vaultwarden]
 
 - name: Deploy Excalidraw
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install excalidraw {{ kubernetes_charts_dir }}/excalidraw
     --namespace productivity
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -295,7 +295,7 @@
   tags: [services, excalidraw]
 
 - name: Deploy MeTube
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install metube {{ kubernetes_charts_dir }}/metube
     --namespace utilities
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -313,7 +313,7 @@
   tags: [services, metube]
 
 - name: Deploy Bytebase
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install bytebase {{ kubernetes_charts_dir }}/bytebase
     --namespace infrastructure
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -336,7 +336,7 @@
 # JetBrains Stack
 # -----------------------------------------------------------------------------
 - name: Deploy Hub
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install hub {{ kubernetes_charts_dir }}/hub
     --namespace code
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -354,7 +354,7 @@
   tags: [services, hub, jetbrains]
 
 - name: Deploy YouTrack
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install youtrack {{ kubernetes_charts_dir }}/youtrack
     --namespace code
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -372,7 +372,7 @@
   tags: [services, youtrack, jetbrains]
 
 - name: Deploy TeamCity
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install teamcity {{ kubernetes_charts_dir }}/teamcity
     --namespace code
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -395,7 +395,7 @@
 # Data Services
 # -----------------------------------------------------------------------------
 - name: Deploy Syncthing
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install syncthing {{ kubernetes_charts_dir }}/syncthing
     --namespace data
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -416,7 +416,7 @@
 # Utilities
 # -----------------------------------------------------------------------------
 - name: Deploy Vert
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install vert {{ kubernetes_charts_dir }}/vert
     --namespace utilities
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -436,7 +436,7 @@
 # Code Platforms
 # -----------------------------------------------------------------------------
 - name: Deploy Coder
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install coder {{ kubernetes_charts_dir }}/coder
     --namespace code
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -461,7 +461,7 @@
 # Productivity
 # -----------------------------------------------------------------------------
 - name: Deploy Affine
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install affine {{ kubernetes_charts_dir }}/affine
     --namespace productivity
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -479,7 +479,7 @@
   tags: [services, affine]
 
 - name: Deploy Penpot
-  shell: >
+  ansible.builtin.shell: >
     helm repo add penpot https://helm.penpot.app;
     helm upgrade --install penpot penpot/penpot
     --namespace productivity
@@ -505,7 +505,7 @@
 # Content
 # -----------------------------------------------------------------------------
 - name: Deploy Ghost
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install ghost {{ kubernetes_charts_dir }}/ghost
     --namespace content
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -528,7 +528,7 @@
 # Infrastructure (Harbor)
 # -----------------------------------------------------------------------------
 - name: Deploy Harbor
-  shell: >
+  ansible.builtin.shell: >
     helm repo add harbor https://helm.goharbor.io;
     helm upgrade --install harbor harbor/harbor
     --namespace infrastructure
@@ -562,7 +562,7 @@
 # Monitoring
 # -----------------------------------------------------------------------------
 - name: Deploy Grafana
-  command: >
+  ansible.builtin.command: >
     helm upgrade --install grafana bitnami/grafana
     --namespace service
     --kubeconfig={{ kubespray_local_kubeconfig }}
@@ -577,7 +577,7 @@
   tags: [services, monitoring, grafana]
 
 - name: Create Grafana Ingress
-  shell: |
+  ansible.builtin.shell: |
     kubectl --kubeconfig={{ kubespray_local_kubeconfig }} apply -f - <<EOF
     apiVersion: networking.k8s.io/v1
     kind: Ingress
@@ -605,7 +605,7 @@
 # Summary
 # -----------------------------------------------------------------------------
 - name: Services Deployment Summary
-  debug:
+  ansible.builtin.debug:
     msg: |
       =====================================================
       Services Deployment Complete!

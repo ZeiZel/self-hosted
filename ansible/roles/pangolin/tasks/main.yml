@@ -3,7 +3,7 @@
 # Routes to gateway or node tasks based on pangolin_mode variable
 
 - name: Validate pangolin_mode variable
-  assert:
+  ansible.builtin.assert:
     that:
       - pangolin_mode is defined
       - pangolin_mode in ['gateway', 'node']
@@ -11,28 +11,28 @@
   tags: [pangolin, always]
 
 - name: Display Pangolin deployment mode
-  debug:
+  ansible.builtin.debug:
     msg: "Deploying Pangolin VPN in {{ pangolin_mode }} mode"
   tags: [pangolin, always]
 
 # Common tasks for both gateway and nodes
 - name: Include common setup tasks
-  include_tasks: common.yml
+  ansible.builtin.include_tasks: common.yml
   tags: [pangolin, common]
 
 # Gateway-specific tasks (VPS server)
 - name: Include gateway tasks
-  include_tasks: gateway.yml
+  ansible.builtin.include_tasks: gateway.yml
   when: pangolin_mode == 'gateway'
   tags: [pangolin, gateway]
 
 # Node-specific tasks (cluster clients)
 - name: Include node tasks
-  include_tasks: node.yml
+  ansible.builtin.include_tasks: node.yml
   when: pangolin_mode == 'node'
   tags: [pangolin, node]
 
 - name: Pangolin VPN deployment complete
-  debug:
+  ansible.builtin.debug:
     msg: "Pangolin VPN {{ pangolin_mode }} mode deployed successfully"
   tags: [pangolin, always]
