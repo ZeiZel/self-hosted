@@ -474,12 +474,11 @@ creating K8s Secrets from values).
 
 ## Operator Tooling
 
-- **`cli/`** — original operator CLI (Bun + NestJS + Commander + Ink).
-- **`cli-go/`** — Go rewrite (Charm stack: cobra + bubbletea + lipgloss + bubbles
-  + ntcharts + huh). Single static binary `selfhost` with full command parity;
-  the monitoring daemon is now a **native binary** supervised by launchd/systemd
-  (replacing the Bun-in-Docker `docker/selfhost-daemon`). Both share the same
-  `~/.selfhosted` config/DB layout. The Bun CLI and `docker/selfhost-daemon`
-  remain until the Go binary is verified on real infrastructure.
+- **`cli/`** — operator CLI, a single static Go binary `selfhost` (Charm stack:
+  cobra + bubbletea + lipgloss + bubbles + ntcharts + huh). Full feature set:
+  inventory/services/plan/balance, phased resumable deploy, monitor TUI, native
+  monitoring daemon (launchd/systemd, replacing the old Bun-in-Docker daemon),
+  Telegram alerting + inbound command bot. State lives under `~/.selfhosted`.
+  (Replaced the former Bun + NestJS + Ink implementation, June 2026.)
 - **`docker/qdrant/`** — local QDrant + qdrant MCP server for agent semantic
   memory / token optimisation (developer tooling; not part of the platform).
