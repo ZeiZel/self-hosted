@@ -1,0 +1,97 @@
+apps:
+
+  openebs:
+    repo: openebs
+    chart: openebs
+    namespace: openebs
+    version: "4.3.0"
+    needs:
+      - default/namespaces
+
+  bytebase:
+    repo: charts
+    chart: bytebase
+    namespace: infrastructure
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - db/postgres
+      - service/vault
+
+  # DATABASES
+  # Bitnami database charts - OCI registry
+  # Latest versions as of Feb 2026
+  valkey:
+    repo: bitnami
+    chart: valkey
+    namespace: db
+    version: "5.4.3"
+    needs:
+      - ingress/traefik
+      - service/vault
+
+  postgres:
+    repo: bitnami
+    chart: postgresql
+    namespace: db
+    version: "18.5.1"
+    needs:
+      - ingress/traefik
+      - service/vault
+
+  minio:
+    repo: bitnami
+    chart: minio
+    namespace: db
+    version: "17.0.21"
+    needs:
+      - ingress/traefik
+      - service/vault
+
+  mongodb:
+    repo: bitnami
+    chart: mongodb
+    namespace: db
+    version: "18.6.1"
+    needs:
+      - ingress/traefik
+      - service/vault
+
+  rabbitmq:
+    repo: bitnami
+    chart: rabbitmq
+    namespace: db
+    version: "16.0.14"
+    needs:
+      - ingress/traefik
+      - service/vault
+
+  clickhouse:
+    repo: bitnami
+    chart: clickhouse
+    namespace: db
+    version: "9.4.4"
+    needs:
+      - ingress/traefik
+      - service/vault
+
+  mysql:
+    repo: bitnami
+    chart: mysql
+    namespace: db
+    version: "14.0.3"
+    needs:
+      - ingress/traefik
+      - service/vault
+
+  supabase:
+    repo: charts
+    chart: supabase
+    namespace: db
+    version: "v1.0.0"  # Custom chart
+    needs:
+      - db/postgres
+      - db/minio
+      - db/valkey
+      - ingress/traefik
+      - service/vault

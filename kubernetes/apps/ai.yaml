@@ -1,0 +1,12 @@
+apps:
+
+  openclaw:
+    repo: charts
+    chart: openclaw
+    namespace: automation
+    version: v1.0.0
+    needs:
+      - ingress/traefik
+      - service/cert-manager
+      - service/authentik
+      - service/vault

@@ -29,6 +29,17 @@ func loadAppRegistry() (map[string]appEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("read app registry: %w", err)
 	}
+	// _others.yaml wraps the registry in a top-level `apps:` key.
+	var wrapper struct {
+		Apps map[string]appEntry `yaml:"apps"`
+	}
+	if err := yaml.Unmarshal(data, &wrapper); err != nil {
+		return nil, err
+	}
+	if wrapper.Apps != nil {
+		return wrapper.Apps, nil
+	}
+	// Fallback: flat map (older format).
 	reg := map[string]appEntry{}
 	if err := yaml.Unmarshal(data, &reg); err != nil {
 		return nil, err

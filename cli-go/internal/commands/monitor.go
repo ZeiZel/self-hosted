@@ -11,22 +11,30 @@ import (
 
 func newMonitorCmd(g *Global) *cobra.Command {
 	var (
-		refresh         int
-		headless, mock  bool
-		namespace, node string
-		noAlerts        bool
+		refresh                            int
+		headless, mock                     bool
+		namespace, node                    string
+		noAlerts                           bool
+		cpuWarn, cpuCrit, memWarn, memCrit float64
 	)
+	mkThresholds := func() cluster.AlertThresholds {
+		th := cluster.DefaultThresholds
+		th.CPUWarning, th.CPUCritical, th.MemWarning, th.MemCritical = cpuWarn, cpuCrit, memWarn, memCrit
+		return th
+	}
 	cmd := &cobra.Command{
 		Use:   "monitor",
 		Short: "Live cluster dashboard (TUI)",
 		RunE: func(c *cobra.Command, _ []string) error {
 			cl := cluster.New()
 			cl.Mock = mock
+			cl.Thresholds = mkThresholds()
 			opts := tui.Options{
 				RefreshInterval: refresh,
 				Namespace:       namespace,
 				Node:            node,
 				ShowAlerts:      !noAlerts,
+				Thresholds:      mkThresholds(),
 			}
 			if headless {
 				return tui.Headless(cl, opts)
@@ -40,6 +48,10 @@ func newMonitorCmd(g *Global) *cobra.Command {
 	cmd.Flags().StringVarP(&namespace, "namespace", "n", "", "Filter by namespace")
 	cmd.Flags().StringVar(&node, "node", "", "Filter by node")
 	cmd.Flags().BoolVar(&noAlerts, "no-alerts", false, "Disable alerts panel")
+	cmd.Flags().Float64Var(&cpuWarn, "cpu-warn", 75, "CPU warning threshold %")
+	cmd.Flags().Float64Var(&cpuCrit, "cpu-crit", 90, "CPU critical threshold %")
+	cmd.Flags().Float64Var(&memWarn, "mem-warn", 80, "Memory warning threshold %")
+	cmd.Flags().Float64Var(&memCrit, "mem-crit", 95, "Memory critical threshold %")
 
 	// Non-TUI sub-views.
 	cmd.AddCommand(
@@ -63,6 +75,14 @@ func newMonitorCmd(g *Global) *cobra.Command {
 				return err
 			}
 			return printJSON(s)
+		}),
+		monitorSub("alerts", "Active alerts", func(cl *cluster.Client) error {
+			nodes, err := cl.NodeMetricsList()
+			if err != nil {
+				return err
+			}
+			svcs, _ := cl.ServiceMetricsList("")
+			return printJSON(cluster.GenerateAlerts(nodes, svcs, cl.Thresholds))
 		}),
 	)
 	return cmd

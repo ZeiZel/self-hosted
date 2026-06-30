@@ -149,25 +149,6 @@ func newPlanCmd(g *Global) *cobra.Command {
 	return cmd
 }
 
-func newBalanceCmd(g *Global) *cobra.Command {
-	cmd := &cobra.Command{Use: "balance", Short: "Balance service placement across nodes"}
-	var strategy string
-	auto := &cobra.Command{
-		Use: "auto", Short: "Auto-balance placement",
-		RunE: func(c *cobra.Command, _ []string) error {
-			ui.Header("Balance (auto)")
-			ui.Info("strategy: %s", strategy)
-			ui.OK("placement computed (preview) — apply with 'selfhost deploy'")
-			return nil
-		},
-	}
-	auto.Flags().StringVarP(&strategy, "strategy", "s", "bin-packing", "bin-packing|round-robin|weighted|affinity|spread")
-	preview := &cobra.Command{Use: "preview", Short: "Preview current balance",
-		RunE: func(c *cobra.Command, _ []string) error { return newPlanCmd(g).RunE(c, nil) }}
-	cmd.AddCommand(auto, preview)
-	return cmd
-}
-
 func newTestCmd(g *Global) *cobra.Command {
 	var all bool
 	var service, namespace string
