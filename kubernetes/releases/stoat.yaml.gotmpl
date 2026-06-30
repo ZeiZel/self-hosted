@@ -1,77 +1,11 @@
-namespace: social
-
-# Global configuration
-global:
-  domain: "revolt.{{ .Values.infra.host }}"
-  
-  # Disable subcharts - use external services
-  subcharts:
-    mongo:
-      enabled: false
-      connection_url: "mongodb://mongodb-0.mongodb-headless.db.svc.cluster.local:27017"
-    
-    redis:
-      enabled: false
-      connection_url: "redis://valkey-primary.db.svc.cluster.local:6379"
-    
-    minio:
-      enabled: false
-      connection_url: "http://minio.db.svc.cluster.local:9000"
-    
-    rabbitmq:
-      enabled: false
-      host: "rabbitmq.db.svc.cluster.local"
-      port: 5672
-      username: "rabbituser"
-      password: "{{ .Values.secrets.rabbitmqPassword }}"
-
-  # Secrets for VAPID and encryption
-  secret:
-    vapid_key: "{{ .Values.secrets.stoatVapidPrivateKey }}"
-    vapid_public_key: "{{ .Values.secrets.stoatVapidPublicKey }}"
-    encryption_key: "{{ .Values.secrets.stoatEncryptionKey }}"
-
-  # Ingress configuration
-  ingress:
-    enabled: true
-    className: traefik
-    annotations:
-      traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    extra_hosts: []
-
-# Service replicas
-api:
-  replicaCount: 1
-
-web:
-  replicaCount: 1
-
-bonfire:
-  replicaCount: 1
-
-autumn:
-  replicaCount: 1
-
-january:
-  replicaCount: 1
-
-# SMTP configuration for email notifications via Stalwart
-smtp:
-  enabled: true
-  host: "stalwart.social.svc.cluster.local"
-  port: 587  # submission port with STARTTLS
-  secure: false  # Use STARTTLS instead of direct TLS
-  from: "revolt@{{ .Values.infra.host }}"
-  username: "{{ .Values.secrets.smtpUsername }}"
-  password: "{{ .Values.secrets.smtpPassword }}"
-
-# Consul service discovery
-consul:
-  enabled: true
-  host: "consul.service.svc.cluster.local"
-  port: 8500
-  datacenter: dc1
-  tags:
-    - revolt
-    - stoat
-    - chat-server
+# stoat release overrides.
+# Base config lives in charts/stoat/values.yaml under the "chart-base:" key.
+# Add env-specific overrides here, nested under "chart-base:" (subchart scoping).
+# Example:
+#   chart-base:
+#     workloads:
+#       - containers:
+#           - name: stoat
+#             env:
+#               - name: EXAMPLE
+#                 value: "value"

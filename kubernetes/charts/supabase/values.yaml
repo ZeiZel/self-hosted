@@ -1,473 +1,1011 @@
-# Default values for supabase chart
-# This is a YAML-formatted file.
+# supabase — rendered entirely by the chart-base subchart.
+# Every component (auth/edge-runtime/imgproxy/kong/meta/realtime/rest/storage/
+# studio) is a chart-base workload + service. Per-component ConfigMaps and the
+# Secrets are declared below. The init Job (Helm hook) and the custom
+# NetworkPolicy are relocated verbatim into extraManifests (tpl-rendered).
+#
+# NOTE: image tags are preserved EXACTLY from the original templates, including
+# the two `:latest` tags (darthsim/imgproxy, supabase/studio) — preservation
+# takes priority over the no-latest rule for this conversion.
+# NOTE: the JWT/anon/service-role keys come from an EXTERNAL secret named
+# `supabase-secrets` (jwt.existingSecret in the old chart); it is not created here.
+chart-base:
+  serviceAccount:
+    create: true
+    automount: true
 
-# Global settings
-global:
-  imagePullSecrets: []
-  storageClass: ""
-  
-  # Pod security context
-  podSecurityContext:
-    enabled: true
-    fsGroup: 1001
-  
-  # Container security context
-  containerSecurityContext:
-    enabled: true
-    runAsNonRoot: true
-    allowPrivilegeEscalation: false
+  rbac:
+    create: true
+    rules:
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["get", "list"]
+      - apiGroups: [""]
+        resources: ["configmaps"]
+        verbs: ["get", "list"]
 
-# PostgreSQL configuration
-postgresql:
-  enabled: false  # Use external PostgreSQL
-  external: true
-  host: "postgresql.db.svc.cluster.local"
-  port: 5432
-  database: "supabase"
-  user: "postgres"
-  password: ""
-  # Use existing secret for password
-  existingSecret: ""
-  existingSecretPasswordKey: "postgres-password"
-
-# MinIO configuration (for Storage)
-minio:
-  enabled: false  # Use external MinIO
-  external: true
-  endpoint: "minio.db.svc.cluster.local:9000"
-  region: "us-east-1"
-  bucket: "supabase-storage"
-  accessKey: "minio"
-  secretKey: ""
-  existingSecret: ""
-  existingSecretAccessKey: "access-key"
-  existingSecretSecretKey: "secret-key"
-  useSSL: false
-
-# Valkey/Redis configuration (for Realtime)
-redis:
-  enabled: false  # Use external Valkey
-  external: true
-  host: "valkey-primary.db.svc.cluster.local"
-  port: 6379
-  password: ""
-  existingSecret: ""
-  existingSecretPasswordKey: "redis-password"
-
-# JWT configuration
-jwt:
-  # Generate with: openssl rand -base64 32
-  secret: ""
-  existingSecret: "supabase-secrets"
-  existingSecretKey: "jwt-secret"
-  # Anon key and service role key
-  anonKey: ""
-  serviceRoleKey: ""
-  existingSecretAnonKey: "anon-key"
-  existingSecretServiceKey: "service-role-key"
-  expiry: 3600
-
-# Studio dashboard URL
-studio:
-  url: ""
-
-# API URL
-api:
-  url: ""
-  externalUrl: ""
-
-# Kong Gateway configuration
-kong:
-  enabled: true
-  replicaCount: 1
-  image:
-    repository: kong
-    tag: "2.8.1"
-    pullPolicy: IfNotPresent
-  
-  service:
-    type: ClusterIP
-    port: 8000
-    targetPort: 8000
-  
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 100m
-      memory: 256Mi
-  
-  # Kong configuration
-  config:
-    database: "off"  # DB-less mode
-    declarativeConfig: "/usr/local/kong/kong.yml"
-
-# GoTrue Auth configuration
-auth:
-  enabled: true
-  replicaCount: 1
-  image:
-    repository: supabase/gotrue
-    tag: "v2.151.0"
-    pullPolicy: IfNotPresent
-  
-  service:
-    type: ClusterIP
-    port: 9999
-    targetPort: 9999
-  
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 50m
-      memory: 128Mi
-  
-  config:
-    siteUrl: ""
-    apiExternalUrl: ""
-    disableSignup: false
-    externalEmailEnabled: true
-    externalPhoneEnabled: false
-    jwtExpiry: 3600
-    
-    # OAuth providers
-    externalGoogleEnabled: false
-    externalGithubEnabled: false
-    
-    # SMTP configuration
-    smtp:
-      enabled: false
-      host: ""
-      port: 587
-      user: ""
-      password: ""
-      adminEmail: ""
-      senderName: "Supabase"
-
-# PostgREST configuration
-rest:
-  enabled: true
-  replicaCount: 1
-  image:
-    repository: postgrest/postgrest
-    tag: "v12.0.2"
-    pullPolicy: IfNotPresent
-  
-  service:
-    type: ClusterIP
-    port: 3000
-    targetPort: 3000
-  
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 100m
-      memory: 256Mi
-  
-  config:
-    dbSchema: "public,storage,graphql_public"
-    dbAnonRole: "anon"
-    dbMaxRows: 1000
-    dbPreRequest: ""
-    dbExtraSearchPath: "public,extensions"
-    dbPool: 10
-
-# Realtime configuration
-realtime:
-  enabled: true
-  replicaCount: 1
-  image:
-    repository: supabase/realtime
-    tag: "v2.27.5"
-    pullPolicy: IfNotPresent
-  
-  service:
-    type: ClusterIP
-    port: 4000
-    targetPort: 4000
-  
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 50m
-      memory: 128Mi
-  
-  config:
-    dbAfterConnectQuery: 'SET search_path TO _realtime'
-    dbEncPass: ""
-    apiJwtSecret: ""
-    maxHeaderLength: 4096
-
-# Storage configuration
-storage:
-  enabled: true
-  replicaCount: 1
-  image:
-    repository: supabase/storage-api
-    tag: "v1.0.6"
-    pullPolicy: IfNotPresent
-  
-  service:
-    type: ClusterIP
-    port: 5000
-    targetPort: 5000
-  
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 50m
-      memory: 128Mi
-  
-  config:
-    backend: "s3"
-    fileStorageBackendPath: "/var/lib/storage"
-    fileSizeLimit: 52428800  # 50MB
-    imageTransformationEnabled: true
-    # Tenant ID for multi-tenancy
-    tenantId: "supabase"
-
-# Meta API configuration
-meta:
-  enabled: true
-  replicaCount: 1
-  image:
-    repository: supabase/postgres-meta
-    tag: "v0.80.0"
-    pullPolicy: IfNotPresent
-  
-  service:
-    type: ClusterIP
-    port: 8080
-    targetPort: 8080
-  
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 50m
-      memory: 128Mi
-
-# Studio UI configuration
-studio:
-  enabled: true
-  replicaCount: 1
-  image:
-    repository: supabase/studio
-    tag: "latest"
-    pullPolicy: IfNotPresent
-  
-  service:
-    type: ClusterIP
-    port: 3000
-    targetPort: 3000
-  
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 50m
-      memory: 128Mi
-  
-  config:
-    supabaseUrl: ""
-    supabasePublicUrl: ""
-
-# Edge Runtime (Deno Functions) configuration
-edgeRuntime:
-  enabled: true
-  replicaCount: 1
-  image:
-    repository: supabase/edge-runtime
-    tag: "v1.22.4"
-    pullPolicy: IfNotPresent
-  
-  service:
-    type: ClusterIP
-    port: 8081
-    targetPort: 8081
-  
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 100m
-      memory: 256Mi
-  
-  config:
-    verifyJwt: true
-
-# ImgProxy configuration
-imgproxy:
-  enabled: true
-  replicaCount: 1
-  image:
-    repository: darthsim/imgproxy
-    tag: "latest"
-    pullPolicy: IfNotPresent
-  
-  service:
-    type: ClusterIP
-    port: 8080
-    targetPort: 8080
-  
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 100m
-      memory: 256Mi
-  
-  config:
-    enableWebpDetection: true
-    enforceWebp: false
-    quality: 80
-    maxSrcResolution: 50.0
-
-# Ingress configuration
-ingress:
-  # API Ingress (Kong Gateway)
-  api:
-    enabled: true
-    className: "traefik"
-    annotations:
-      traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
-    hosts:
-      - host: supabase.zeizel.localhost
-        paths:
-          - path: /
-            pathType: Prefix
-    tls:
-      - secretName: supabase-api-tls
-        hosts:
-          - supabase.zeizel.localhost
-  
-  # Studio Ingress
-  studio:
-    enabled: true
-    className: "traefik"
-    annotations:
-      traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
-    hosts:
-      - host: supabase-studio.zeizel.localhost
-        paths:
-          - path: /
-            pathType: Prefix
-    tls:
-      - secretName: supabase-studio-tls
-        hosts:
-          - supabase-studio.zeizel.localhost
-
-# Init job configuration
-initJob:
-  enabled: true
-  image:
-    repository: postgres
-    tag: "16-alpine"
-    pullPolicy: IfNotPresent
-  
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 50m
-      memory: 128Mi
-  
-  # PostgreSQL extensions to install
-  extensions:
-    - pg_net
-    - pgjwt
-    - pg_graphql
-    - pgvector
-    - uuid-ossp
-    - pg_stat_statements
-  
-  # Schemas to create
-  schemas:
-    - auth
-    - storage
-    - realtime
-    - _realtime
-    - graphql_public
-    - extensions
-
-# Consul integration
-consul:
-  enabled: true
-  host: "consul-server.service.svc.cluster.local"
-  tags:
-    - supabase
-    - database
-    - api
-    - db
-
-# Monitoring
-monitoring:
-  enabled: false
   serviceMonitor:
-    enabled: false
+    enabled: true
+    port: metrics
+    path: /metrics
     interval: 30s
-    scrapeTimeout: 10s
-    labels: {}
 
-# Affinity settings
-affinity:
-  enabled: true
-  podAntiAffinity: "soft"
+  tests:
+    enabled: true
+    image: busybox:1.28
+    port: 8000
+    url: supabase-kong:8000
 
-# Node selector
-nodeSelector: {}
+  secrets:
+    - name: postgresql
+      data:
+        postgres-password: "cG9zdGdyZXM="
+        connection-uri: "cG9zdGdyZXNxbDovL3Bvc3RncmVzOnBvc3RncmVzQHBvc3RncmVzcWwuZGIuc3ZjLmNsdXN0ZXIubG9jYWw6NTQzMi9zdXBhYmFzZQ=="
+    - name: minio
+      data:
+        access-key: "bWluaW8="
+        secret-key: "bWluaW9TZWN1cmVQYXNzd29yZDEyMw=="
+    - name: redis
+      data:
+        redis-password: ""
+    - name: realtime
+      data:
+        db-enc-key: "RndjQjRydlZKN25xZ0VUazhHMzZ3cnlmWkpTSzMwQzg="
+        secret-key-base: "bFF1Z3l4UjB2N3FjNXFuUEo0T1plN3I2d1VNQkZEM1JGMmR4YVpJc0xybnoyTXQ5RHh4QmI4S05pb3M0N3BueQ=="
 
-# Tolerations
-tolerations: []
+  configMaps:
+    - name: auth-config
+    - name: meta-config
+    - name: realtime-config
+    - name: rest-config
+    - name: storage-config
+    - name: studio-config
+    - name: kong-config
+      data:
+        kong.yml: |
+          _format_version: "2.1"
+          _transform: true
 
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: true
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
+          services:
+            - name: auth-v1-open
+              url: http://supabase-auth:9999/verify
+              routes:
+                - name: auth-v1-open
+                  strip_path: true
+                  paths:
+                    - /auth/v1/verify
+              plugins:
+                - name: cors
 
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
+            - name: auth-v1-open-callback
+              url: http://supabase-auth:9999/callback
+              routes:
+                - name: auth-v1-open-callback
+                  strip_path: true
+                  paths:
+                    - /auth/v1/callback
+              plugins:
+                - name: cors
 
-# RBAC
-rbac:
-  create: true
-  allowSecrets: false
-  rules: []
+            - name: auth-v1-open-authorize
+              url: http://supabase-auth:9999/authorize
+              routes:
+                - name: auth-v1-open-authorize
+                  strip_path: true
+                  paths:
+                    - /auth/v1/authorize
+              plugins:
+                - name: cors
 
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
+            - name: auth-v1
+              _comment: "GoTrue: /auth/v1/* -> http://auth:9999/*"
+              url: http://supabase-auth:9999/
+              routes:
+                - name: auth-v1-all
+                  strip_path: true
+                  paths:
+                    - /auth/v1/
+              plugins:
+                - name: cors
 
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+            - name: rest-v1
+              _comment: "PostgREST: /rest/v1/* -> http://rest:3000/*"
+              url: http://supabase-rest:3000/
+              routes:
+                - name: rest-v1-all
+                  strip_path: true
+                  paths:
+                    - /rest/v1/
+              plugins:
+                - name: cors
+                - name: key-auth
+                  config:
+                    hide_credentials: false
+
+            - name: graphql-v1
+              _comment: "PostgREST: /graphql/v1/* -> http://rest:3000/rpc/graphql"
+              url: http://supabase-rest:3000/rpc/graphql
+              routes:
+                - name: graphql-v1-all
+                  strip_path: true
+                  paths:
+                    - /graphql/v1
+              plugins:
+                - name: cors
+                - name: key-auth
+                  config:
+                    hide_credentials: false
+
+            - name: realtime-v1
+              _comment: "Realtime: /realtime/v1/* -> ws://realtime:4000/socket/*"
+              url: http://supabase-realtime:4000/socket/
+              routes:
+                - name: realtime-v1-all
+                  strip_path: true
+                  paths:
+                    - /realtime/v1/
+              plugins:
+                - name: cors
+                - name: key-auth
+                  config:
+                    hide_credentials: false
+
+            - name: storage-v1
+              _comment: "Storage: /storage/v1/* -> http://storage:5000/*"
+              url: http://supabase-storage:5000/
+              routes:
+                - name: storage-v1-all
+                  strip_path: true
+                  paths:
+                    - /storage/v1/
+              plugins:
+                - name: cors
+
+            - name: meta
+              _comment: "pg-meta: /pg/* -> http://meta:8080/*"
+              url: http://supabase-meta:8080/
+              routes:
+                - name: meta-all
+                  strip_path: true
+                  paths:
+                    - /pg/
+              plugins:
+                - name: key-auth
+                  config:
+                    hide_credentials: false
+                - name: cors
+
+            - name: functions-v1
+              _comment: "Edge Functions: /functions/v1/* -> http://edge-runtime:8081/*"
+              url: http://supabase-edge-runtime:8081/
+              routes:
+                - name: functions-v1-all
+                  strip_path: true
+                  paths:
+                    - /functions/v1/
+              plugins:
+                - name: cors
+
+          consumers:
+            - username: anon
+              keyauth_credentials:
+                - key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0
+            - username: service_role
+              keyauth_credentials:
+                - key: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImV4cCI6MTk4MzgxMjk5Nn0.EGIM96RAZx35lJzdJsyH-qQwv8Hdp7fsn3W0YpN81IU
+
+          plugins:
+            - name: cors
+              config:
+                origins:
+                  - "*"
+                methods:
+                  - GET
+                  - HEAD
+                  - PUT
+                  - PATCH
+                  - POST
+                  - DELETE
+                  - OPTIONS
+                headers:
+                  - Accept
+                  - Accept-Version
+                  - Content-Length
+                  - Content-MD5
+                  - Content-Type
+                  - Date
+                  - X-Auth-Token
+                  - X-Client-Info
+                  - apikey
+                  - Authorization
+                exposed_headers:
+                  - X-Resource-Count
+                credentials: true
+                max_age: 3600
+
+  workloads:
+    - name: kong
+      kind: Deployment
+      replicas: 1
+      podSecurityContext:
+        fsGroup: 1001
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: supabase
+                    app.kubernetes.io/instance: supabase
+                    app.kubernetes.io/component: kong
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: kong
+          image: "kong:2.8.1"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          env:
+            - { name: KONG_DATABASE, value: "off" }
+            - { name: KONG_DECLARATIVE_CONFIG, value: "/usr/local/kong/kong.yml" }
+            - { name: KONG_DNS_ORDER, value: "LAST,A,CNAME" }
+            - { name: KONG_PLUGINS, value: "request-transformer,cors,key-auth,acl" }
+            - { name: KONG_NGINX_PROXY_PROXY_BUFFER_SIZE, value: "160k" }
+            - { name: KONG_NGINX_PROXY_PROXY_BUFFERS, value: "64 160k" }
+          ports:
+            - { name: http, containerPort: 8000, protocol: TCP }
+            - { name: admin, containerPort: 8001, protocol: TCP }
+          livenessProbe:
+            httpGet: { path: /status, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet: { path: /status, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            limits: { cpu: 1000m, memory: 1Gi }
+            requests: { cpu: 100m, memory: 256Mi }
+          volumeMounts:
+            - { name: kong-config, mountPath: /usr/local/kong, readOnly: true }
+      volumes:
+        - name: kong-config
+          configMap:
+            name: supabase-kong-config
+
+    - name: auth
+      kind: Deployment
+      replicas: 1
+      podSecurityContext:
+        fsGroup: 1001
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: supabase
+                    app.kubernetes.io/instance: supabase
+                    app.kubernetes.io/component: auth
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: auth
+          image: "supabase/gotrue:v2.151.0"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          env:
+            - { name: GOTRUE_API_HOST, value: "0.0.0.0" }
+            - { name: GOTRUE_API_PORT, value: "9999" }
+            - { name: API_EXTERNAL_URL, value: "https://supabase.zeizel.localhost" }
+            - { name: GOTRUE_DB_DRIVER, value: "postgres" }
+            - name: GOTRUE_DB_DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: supabase-postgresql, key: connection-uri }
+            - { name: GOTRUE_SITE_URL, value: "https://supabase-studio.zeizel.localhost" }
+            - { name: GOTRUE_URI_ALLOW_LIST, value: "*" }
+            - { name: GOTRUE_DISABLE_SIGNUP, value: "false" }
+            - { name: GOTRUE_JWT_ADMIN_ROLES, value: "service_role" }
+            - { name: GOTRUE_JWT_AUD, value: "authenticated" }
+            - { name: GOTRUE_JWT_DEFAULT_GROUP_NAME, value: "authenticated" }
+            - { name: GOTRUE_JWT_EXP, value: "3600" }
+            - name: GOTRUE_JWT_SECRET
+              valueFrom:
+                secretKeyRef: { name: supabase-secrets, key: jwt-secret }
+            - { name: GOTRUE_EXTERNAL_EMAIL_ENABLED, value: "true" }
+            - { name: GOTRUE_EXTERNAL_PHONE_ENABLED, value: "false" }
+            - { name: GOTRUE_MAILER_AUTOCONFIRM, value: "false" }
+            - { name: GOTRUE_MAILER_URLPATHS_INVITE, value: "/auth/v1/verify" }
+            - { name: GOTRUE_MAILER_URLPATHS_CONFIRMATION, value: "/auth/v1/verify" }
+            - { name: GOTRUE_MAILER_URLPATHS_RECOVERY, value: "/auth/v1/verify" }
+            - { name: GOTRUE_MAILER_URLPATHS_EMAIL_CHANGE, value: "/auth/v1/verify" }
+          ports:
+            - { name: http, containerPort: 9999, protocol: TCP }
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            limits: { cpu: 500m, memory: 512Mi }
+            requests: { cpu: 50m, memory: 128Mi }
+
+    - name: rest
+      kind: Deployment
+      replicas: 1
+      podSecurityContext:
+        fsGroup: 1001
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: supabase
+                    app.kubernetes.io/instance: supabase
+                    app.kubernetes.io/component: rest
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: rest
+          image: "postgrest/postgrest:v12.0.2"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          env:
+            - name: PGRST_DB_URI
+              valueFrom:
+                secretKeyRef: { name: supabase-postgresql, key: connection-uri }
+            - { name: PGRST_DB_SCHEMAS, value: "public,storage,graphql_public" }
+            - { name: PGRST_DB_ANON_ROLE, value: "anon" }
+            - name: PGRST_JWT_SECRET
+              valueFrom:
+                secretKeyRef: { name: supabase-secrets, key: jwt-secret }
+            - { name: PGRST_DB_USE_LEGACY_GUCS, value: "false" }
+            - name: PGRST_APP_SETTINGS_JWT_SECRET
+              valueFrom:
+                secretKeyRef: { name: supabase-secrets, key: jwt-secret }
+            - { name: PGRST_APP_SETTINGS_JWT_EXP, value: "3600" }
+            - { name: PGRST_DB_EXTRA_SEARCH_PATH, value: "public,extensions" }
+            - { name: PGRST_DB_MAX_ROWS, value: "1000" }
+            - { name: PGRST_DB_POOL, value: "10" }
+            - { name: PGRST_SERVER_HOST, value: "0.0.0.0" }
+            - { name: PGRST_SERVER_PORT, value: "3000" }
+          ports:
+            - { name: http, containerPort: 3000, protocol: TCP }
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            limits: { cpu: 1000m, memory: 1Gi }
+            requests: { cpu: 100m, memory: 256Mi }
+
+    - name: realtime
+      kind: Deployment
+      replicas: 1
+      podSecurityContext:
+        fsGroup: 1001
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: supabase
+                    app.kubernetes.io/instance: supabase
+                    app.kubernetes.io/component: realtime
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: realtime
+          image: "supabase/realtime:v2.27.5"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          env:
+            - { name: PORT, value: "4000" }
+            - { name: DB_HOST, value: "postgresql.db.svc.cluster.local" }
+            - { name: DB_PORT, value: "5432" }
+            - { name: DB_USER, value: "postgres" }
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: supabase-postgresql, key: postgres-password }
+            - { name: DB_NAME, value: "supabase" }
+            - { name: DB_AFTER_CONNECT_QUERY, value: "SET search_path TO _realtime" }
+            - name: DB_ENC_KEY
+              valueFrom:
+                secretKeyRef: { name: supabase-realtime, key: db-enc-key }
+            - name: API_JWT_SECRET
+              valueFrom:
+                secretKeyRef: { name: supabase-secrets, key: jwt-secret }
+            - name: FLY_ALLOC_ID
+              valueFrom:
+                fieldRef: { fieldPath: metadata.uid }
+            - { name: FLY_APP_NAME, value: "realtime" }
+            - name: SECRET_KEY_BASE
+              valueFrom:
+                secretKeyRef: { name: supabase-realtime, key: secret-key-base }
+            - { name: ERL_AFLAGS, value: "-proto_dist inet_tcp" }
+            - { name: ENABLE_TAILSCALE, value: "false" }
+            - { name: DNS_NODES, value: "''" }
+            - { name: REDIS_HOST, value: "valkey-primary.db.svc.cluster.local" }
+            - { name: REDIS_PORT, value: "6379" }
+            - { name: MAX_HEADER_LENGTH, value: "4096" }
+          ports:
+            - { name: http, containerPort: 4000, protocol: TCP }
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            limits: { cpu: 500m, memory: 512Mi }
+            requests: { cpu: 50m, memory: 128Mi }
+
+    - name: storage
+      kind: Deployment
+      replicas: 1
+      podSecurityContext:
+        fsGroup: 1001
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: supabase
+                    app.kubernetes.io/instance: supabase
+                    app.kubernetes.io/component: storage
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: storage
+          image: "supabase/storage-api:v1.0.6"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          env:
+            - name: ANON_KEY
+              valueFrom:
+                secretKeyRef: { name: supabase-secrets, key: anon-key }
+            - name: SERVICE_KEY
+              valueFrom:
+                secretKeyRef: { name: supabase-secrets, key: service-role-key }
+            - { name: POSTGREST_URL, value: "http://supabase-rest:3000" }
+            - name: PGRST_JWT_SECRET
+              valueFrom:
+                secretKeyRef: { name: supabase-secrets, key: jwt-secret }
+            - name: DATABASE_URL
+              valueFrom:
+                secretKeyRef: { name: supabase-postgresql, key: connection-uri }
+            - { name: FILE_SIZE_LIMIT, value: "5.24288e+07" }
+            - { name: STORAGE_BACKEND, value: "s3" }
+            - { name: GLOBAL_S3_BUCKET, value: "supabase-storage" }
+            - { name: REGION, value: "us-east-1" }
+            - { name: GLOBAL_S3_ENDPOINT, value: "minio.db.svc.cluster.local:9000" }
+            - { name: GLOBAL_S3_PROTOCOL, value: "http" }
+            - { name: GLOBAL_S3_FORCE_PATH_STYLE, value: "true" }
+            - name: AWS_ACCESS_KEY_ID
+              valueFrom:
+                secretKeyRef: { name: supabase-minio, key: access-key }
+            - name: AWS_SECRET_ACCESS_KEY
+              valueFrom:
+                secretKeyRef: { name: supabase-minio, key: secret-key }
+            - { name: TENANT_ID, value: "supabase" }
+            - { name: IMGPROXY_URL, value: "http://supabase-imgproxy:8080" }
+            - { name: IMAGE_TRANSFORMATION_ENABLED, value: "true" }
+          ports:
+            - { name: http, containerPort: 5000, protocol: TCP }
+          livenessProbe:
+            httpGet: { path: /status, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet: { path: /status, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            limits: { cpu: 500m, memory: 512Mi }
+            requests: { cpu: 50m, memory: 128Mi }
+
+    - name: meta
+      kind: Deployment
+      replicas: 1
+      podSecurityContext:
+        fsGroup: 1001
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: supabase
+                    app.kubernetes.io/instance: supabase
+                    app.kubernetes.io/component: meta
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: meta
+          image: "supabase/postgres-meta:v0.80.0"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          env:
+            - { name: PG_META_PORT, value: "8080" }
+            - { name: PG_META_DB_HOST, value: "postgresql.db.svc.cluster.local" }
+            - { name: PG_META_DB_PORT, value: "5432" }
+            - { name: PG_META_DB_NAME, value: "supabase" }
+            - { name: PG_META_DB_USER, value: "postgres" }
+            - name: PG_META_DB_PASSWORD
+              valueFrom:
+                secretKeyRef: { name: supabase-postgresql, key: postgres-password }
+          ports:
+            - { name: http, containerPort: 8080, protocol: TCP }
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            limits: { cpu: 500m, memory: 512Mi }
+            requests: { cpu: 50m, memory: 128Mi }
+
+    - name: studio
+      kind: Deployment
+      replicas: 1
+      podSecurityContext:
+        fsGroup: 1001
+      containers:
+        - name: studio
+          image: "supabase/studio:latest"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          env:
+            - { name: STUDIO_PG_META_URL, value: "http://supabase-meta:8080" }
+            - { name: SUPABASE_URL, value: "https://supabase.zeizel.localhost" }
+            - { name: SUPABASE_PUBLIC_URL, value: "https://supabase.zeizel.localhost" }
+            - name: SUPABASE_ANON_KEY
+              valueFrom:
+                secretKeyRef: { name: supabase-secrets, key: anon-key }
+            - name: SUPABASE_SERVICE_KEY
+              valueFrom:
+                secretKeyRef: { name: supabase-secrets, key: service-role-key }
+            - { name: LOGFLARE_API_KEY, value: "your-super-secret-and-long-logflare-key" }
+            - { name: LOGFLARE_URL, value: "http://analytics:4000" }
+            - { name: NEXT_PUBLIC_ENABLE_LOGS, value: "false" }
+            - { name: NEXT_ANALYTICS_BACKEND_PROVIDER, value: "postgres" }
+          ports:
+            - { name: http, containerPort: 3000, protocol: TCP }
+          livenessProbe:
+            httpGet: { path: /api/profile, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet: { path: /api/profile, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            limits: { cpu: 500m, memory: 512Mi }
+            requests: { cpu: 50m, memory: 128Mi }
+
+    - name: edge-runtime
+      kind: Deployment
+      replicas: 1
+      podSecurityContext:
+        fsGroup: 1001
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: supabase
+                    app.kubernetes.io/instance: supabase
+                    app.kubernetes.io/component: edge-runtime
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: edge-runtime
+          image: "supabase/edge-runtime:v1.22.4"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          env:
+            - { name: EDGE_RUNTIME_PORT, value: "8081" }
+            - name: JWT_SECRET
+              valueFrom:
+                secretKeyRef: { name: supabase-secrets, key: jwt-secret }
+            - { name: VERIFY_JWT, value: "true" }
+          ports:
+            - { name: http, containerPort: 8081, protocol: TCP }
+          livenessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet: { path: /, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            limits: { cpu: 1000m, memory: 1Gi }
+            requests: { cpu: 100m, memory: 256Mi }
+
+    - name: imgproxy
+      kind: Deployment
+      replicas: 1
+      podSecurityContext:
+        fsGroup: 1001
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: supabase
+                    app.kubernetes.io/instance: supabase
+                    app.kubernetes.io/component: imgproxy
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: imgproxy
+          image: "darthsim/imgproxy:latest"
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            runAsNonRoot: true
+            allowPrivilegeEscalation: false
+          env:
+            - { name: IMGPROXY_BIND, value: ":8080" }
+            - { name: IMGPROXY_ENABLE_WEBP_DETECTION, value: "true" }
+            - { name: IMGPROXY_ENFORCE_WEBP, value: "false" }
+            - { name: IMGPROXY_QUALITY, value: "80" }
+            - { name: IMGPROXY_MAX_SRC_RESOLUTION, value: "50" }
+            - { name: IMGPROXY_USE_ETAG, value: "true" }
+          ports:
+            - { name: http, containerPort: 8080, protocol: TCP }
+          livenessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 6
+          readinessProbe:
+            httpGet: { path: /health, port: http }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            limits: { cpu: 1000m, memory: 1Gi }
+            requests: { cpu: 100m, memory: 256Mi }
+
+  services:
+    - name: auth
+      component: auth
+      ports:
+        - { name: http, port: 9999, targetPort: http, protocol: TCP }
+    - name: edge-runtime
+      component: edge-runtime
+      ports:
+        - { name: http, port: 8081, targetPort: http, protocol: TCP }
+    - name: imgproxy
+      component: imgproxy
+      ports:
+        - { name: http, port: 8080, targetPort: http, protocol: TCP }
+    - name: kong
+      component: kong
+      ports:
+        - { name: http, port: 8000, targetPort: http, protocol: TCP }
+        - { name: admin, port: 8001, targetPort: 8001, protocol: TCP }
+    - name: meta
+      component: meta
+      ports:
+        - { name: http, port: 8080, targetPort: http, protocol: TCP }
+    - name: realtime
+      component: realtime
+      ports:
+        - { name: http, port: 4000, targetPort: http, protocol: TCP }
+    - name: rest
+      component: rest
+      ports:
+        - { name: http, port: 3000, targetPort: http, protocol: TCP }
+    - name: storage
+      component: storage
+      ports:
+        - { name: http, port: 5000, targetPort: http, protocol: TCP }
+    - name: studio
+      component: studio
+      ports:
+        - { name: http, port: 3000, targetPort: http, protocol: TCP }
+
+  routing:
+    ingresses:
+      - name: api
+        className: traefik
+        annotations:
+          traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
+        tls:
+          - hosts:
+              - "supabase.zeizel.localhost"
+            secretName: supabase-api-tls
+        rules:
+          - host: "supabase.zeizel.localhost"
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: supabase-kong
+                      port:
+                        number: 8000
+      - name: studio
+        className: traefik
+        annotations:
+          traefik.ingress.kubernetes.io/router.middlewares: default-redirect-https@kubernetescrd
+        tls:
+          - hosts:
+              - "supabase-studio.zeizel.localhost"
+            secretName: supabase-studio-tls
+        rules:
+          - host: "supabase-studio.zeizel.localhost"
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: supabase-studio
+                      port:
+                        number: 3000
+
+  # Custom NetworkPolicy (richer than chart-base's typed one) and the init Job
+  # (Helm hook with a large heredoc) are relocated verbatim here.
+  extraManifests:
+    - |
+      apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata:
+        name: {{ include "chart-base.fullname" . }}
+        namespace: {{ .Release.Namespace }}
+        labels:
+          {{- include "chart-base.labels" . | nindent 4 }}
+      spec:
+        podSelector:
+          matchLabels:
+            {{- include "chart-base.selectorLabels" . | nindent 6 }}
+        policyTypes:
+          - Ingress
+          - Egress
+        ingress:
+          - from:
+              - namespaceSelector:
+                  matchLabels:
+                    name: ingress
+                podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: traefik
+            ports:
+              - protocol: TCP
+                port: 8000
+          - from:
+              - podSelector: {}
+        egress:
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    name: kube-system
+            ports:
+              - protocol: UDP
+                port: 53
+          - to:
+              - namespaceSelector: {}
+            ports:
+              - protocol: TCP
+                port: 443
+          - to:
+              - namespaceSelector: {}
+            ports:
+              - protocol: TCP
+                port: 80
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    name: db
+            ports:
+              - protocol: TCP
+                port: 5432
+              - protocol: TCP
+                port: 27017
+              - protocol: TCP
+                port: 6379
+              - protocol: TCP
+                port: 9000
+              - protocol: TCP
+                port: 8123
+              - protocol: TCP
+                port: 3306
+              - protocol: TCP
+                port: 5672
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    name: service
+                podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: consul
+            ports:
+              - protocol: TCP
+                port: 8500
+              - protocol: TCP
+                port: 8600
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    name: service
+                podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: vault
+            ports:
+              - protocol: TCP
+                port: 8200
+    - |
+      apiVersion: batch/v1
+      kind: Job
+      metadata:
+        name: {{ include "chart-base.fullname" . }}-init
+        namespace: {{ .Release.Namespace }}
+        labels:
+          {{- include "chart-base.labels" . | nindent 4 }}
+        annotations:
+          "helm.sh/hook": post-install,post-upgrade
+          "helm.sh/hook-weight": "-5"
+          "helm.sh/hook-delete-policy": before-hook-creation
+      spec:
+        template:
+          metadata:
+            name: {{ include "chart-base.fullname" . }}-init
+            labels:
+              {{- include "chart-base.labels" . | nindent 8 }}
+          spec:
+            restartPolicy: Never
+            containers:
+            - name: init
+              image: "postgres:16-alpine"
+              imagePullPolicy: IfNotPresent
+              env:
+              - name: PGHOST
+                value: "postgresql.db.svc.cluster.local"
+              - name: PGPORT
+                value: "5432"
+              - name: PGDATABASE
+                value: "supabase"
+              - name: PGUSER
+                value: "postgres"
+              - name: PGPASSWORD
+                valueFrom:
+                  secretKeyRef:
+                    name: {{ include "chart-base.fullname" . }}-postgresql
+                    key: postgres-password
+              command:
+              - sh
+              - -c
+              - |
+                set -e
+                echo "Waiting for PostgreSQL to be ready..."
+                until pg_isready -h $PGHOST -p $PGPORT -U $PGUSER; do
+                  echo "PostgreSQL is unavailable - sleeping"
+                  sleep 2
+                done
+
+                echo "PostgreSQL is ready! Initializing Supabase database..."
+
+                psql -h $PGHOST -p $PGPORT -U $PGUSER -d postgres -tc "SELECT 1 FROM pg_database WHERE datname = '${PGDATABASE}'" | grep -q 1 || \
+                  psql -h $PGHOST -p $PGPORT -U $PGUSER -d postgres -c "CREATE DATABASE ${PGDATABASE};"
+
+                psql -h $PGHOST -p $PGPORT -U $PGUSER -d $PGDATABASE <<-EOSQL
+                  CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
+                  CREATE EXTENSION IF NOT EXISTS "pg_stat_statements";
+                  CREATE EXTENSION IF NOT EXISTS "pg_net";
+                  CREATE EXTENSION IF NOT EXISTS "pgjwt";
+                  CREATE EXTENSION IF NOT EXISTS "pg_graphql";
+                  CREATE EXTENSION IF NOT EXISTS "pgvector";
+
+                  CREATE SCHEMA IF NOT EXISTS auth;
+                  CREATE SCHEMA IF NOT EXISTS storage;
+                  CREATE SCHEMA IF NOT EXISTS realtime;
+                  CREATE SCHEMA IF NOT EXISTS _realtime;
+                  CREATE SCHEMA IF NOT EXISTS graphql_public;
+                  CREATE SCHEMA IF NOT EXISTS extensions;
+
+                  GRANT USAGE ON SCHEMA public TO postgres, anon, authenticated, service_role;
+                  GRANT ALL ON ALL TABLES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+                  GRANT ALL ON ALL SEQUENCES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+                  GRANT ALL ON ALL ROUTINES IN SCHEMA public TO postgres, anon, authenticated, service_role;
+
+                  DO \$\$
+                  BEGIN
+                    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'anon') THEN
+                      CREATE ROLE anon NOLOGIN;
+                    END IF;
+                    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'authenticated') THEN
+                      CREATE ROLE authenticated NOLOGIN;
+                    END IF;
+                    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'service_role') THEN
+                      CREATE ROLE service_role NOLOGIN BYPASSRLS;
+                    END IF;
+                  END
+                  \$\$;
+
+                  GRANT USAGE ON SCHEMA auth TO postgres, anon, authenticated, service_role;
+                  GRANT USAGE ON SCHEMA storage TO postgres, anon, authenticated, service_role;
+                  GRANT USAGE ON SCHEMA realtime TO postgres, anon, authenticated, service_role;
+                  GRANT USAGE ON SCHEMA _realtime TO postgres, anon, authenticated, service_role;
+                  GRANT USAGE ON SCHEMA graphql_public TO postgres, anon, authenticated, service_role;
+                  GRANT USAGE ON SCHEMA extensions TO postgres, anon, authenticated, service_role;
+                EOSQL
+
+                echo "Supabase database initialization completed successfully!"
+              resources:
+                limits:
+                  cpu: 500m
+                  memory: 512Mi
+                requests:
+                  cpu: 50m
+                  memory: 128Mi

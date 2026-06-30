@@ -1,162 +1,207 @@
-# Namespace
-namespace: code
+# teamcity — rendered entirely by the chart-base subchart.
+# JetBrains TeamCity: a server Deployment + an agent StatefulSet (two workloads),
+# each with its own Service, plus a server data PVC. Container readOnlyRootFilesystem
+# is relaxed because TeamCity writes into its dist/data dirs (the originals had no
+# container securityContext at all).
+chart-base:
+  workloads:
+    # --- TeamCity server (Deployment) ---
+    - name: server
+      kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "teamcity"
+        consul.hashicorp.com/connect-service-port: "8111"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs/multiline.pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}"
+        co.elastic.logs/multiline.negate: "true"
+        co.elastic.logs/multiline.match: "after"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8111"
+        prometheus.io/path: "/metrics"
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: teamcity-server
+          image: jetbrains/teamcity-server:2024.03
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 8111 }
+          env:
+            - { name: TEAMCITY_SERVER_MEM_OPTS, value: "-Xmx1024m" }
+            - { name: TEAMCITY_DATA_PATH, value: "/data/teamcity_server/datadir" }
+            - { name: TEAMCITY_DIST, value: "/opt/teamcity" }
+          resources:
+            limits: { cpu: 1000m, memory: 2Gi }
+            requests: { cpu: 200m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - { name: data, mountPath: /data/teamcity_server/datadir }
+            - { name: logs, mountPath: /opt/teamcity/logs }
+          livenessProbe:
+            httpGet: { path: /, port: 8111 }
+            initialDelaySeconds: 180
+            periodSeconds: 20
+          readinessProbe:
+            httpGet: { path: /, port: 8111 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: teamcity-server-data
+        - name: logs
+          emptyDir: {}
+    # --- TeamCity build agent (StatefulSet) ---
+    - name: agent
+      kind: StatefulSet
+      replicas: 1
+      podAnnotations:
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs/multiline.pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}"
+        co.elastic.logs/multiline.negate: "true"
+        co.elastic.logs/multiline.match: "after"
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: teamcity-agent
+          image: jetbrains/teamcity-agent:2024.03
+          imagePullPolicy: IfNotPresent
+          env:
+            - { name: SERVER_URL, value: "http://teamcity-server:8111" }
+            - name: AGENT_NAME
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - { name: AGENT_WORK_DIR, value: "/data/teamcity_agent/work" }
+          resources:
+            limits: { cpu: 1000m, memory: 2Gi }
+            requests: { cpu: 200m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - { name: work, mountPath: /data/teamcity_agent/work }
+            - { name: docker, mountPath: /var/run/docker.sock }
+          livenessProbe:
+            tcpSocket: { port: 9090 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+      volumes:
+        - name: docker
+          hostPath:
+            path: /var/run/docker.sock
+      volumeClaimTemplates:
+        - metadata:
+            name: work
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            storageClassName: local-path
+            resources:
+              requests:
+                storage: 3Gi
 
-create:
-  namespace: true
+  services:
+    # Server service (also registered with Consul via annotations).
+    - name: server
+      component: server
+      type: ClusterIP
+      annotations:
+        consul.hashicorp.com/service-name: "teamcity"
+        consul.hashicorp.com/service-port: "8111"
+        consul.hashicorp.com/service-tags: "teamcity,ci-cd,build-server"
+      ports:
+        - { name: http, port: 8111, targetPort: 8111 }
+    # Agent headless service.
+    - name: agent
+      component: agent
+      clusterIP: None
+      ports:
+        - { name: http, port: 9090, targetPort: 9090 }
 
-# TeamCity Server Image
-server:
-  image:
-    repository: jetbrains/teamcity-server
-    tag: "2024.03"
-    pullPolicy: IfNotPresent
+  pvcs:
+    - { name: server-data, accessModes: [ReadWriteOnce], storageClass: local-path, size: 5Gi }
 
-  replicaCount: 1
+  serviceAccount:
+    create: true
+    automount: true
 
-  service:
-    type: ClusterIP
-    port: 8111
+  rbac:
+    create: true
+    clusterRules:
+      - apiGroups: [""]
+        resources: ["pods", "pods/log", "pods/exec"]
+        verbs: ["get", "list", "watch", "create", "delete"]
+      - apiGroups: [""]
+        resources: ["services"]
+        verbs: ["get", "list"]
 
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 2Gi
-    requests:
-      cpu: 200m
-      memory: 512Mi
-
-  # Persistent Storage
-  persistence:
+  networkPolicy:
     enabled: true
-    storageClass: local-path
-    size: 5Gi
-    mountPath: /data/teamcity_server/datadir
+    allowDB: true
+    extraIngress:
+      - from:
+          - podSelector: {}
+    extraEgress:
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - { protocol: TCP, port: 443 }
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - { protocol: TCP, port: 80 }
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: consul
+        ports:
+          - { protocol: TCP, port: 8500 }
+          - { protocol: TCP, port: 8600 }
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: vault
+        ports:
+          - { protocol: TCP, port: 8200 }
 
-# TeamCity Agent Image
-agent:
-  image:
-    repository: jetbrains/teamcity-agent
-    tag: "2024.03"
-    pullPolicy: IfNotPresent
-
-  replicaCount: 1
-
-  service:
-    type: ClusterIP
-    port: 9090
-
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 2Gi
-    requests:
-      cpu: 200m
-      memory: 512Mi
-
-  # Persistent Storage для агентов
-  persistence:
+  serviceMonitor:
     enabled: true
-    storageClass: local-path
-    size: 3Gi
-    mountPath: /data/teamcity_agent/work
+    port: metrics
+    path: /metrics
+    interval: 30s
 
-# PostgreSQL (внешний)
-postgresql:
-  external: true
-  host: "postgresql.db.svc.cluster.local"
-  port: 5432
-  username: "teamcity"
-  password: ""  # Injected via Vault - see vault.hashicorp.com annotations
-  database: "teamcity"
-  ssl: false
+  routing:
+    httpRoutes:
+      - host: teamcity.localhost
+        port: 8111
+        service: teamcity-server
+        authentik:
+          enabled: false
 
-# Ingress через Traefik
-ingress:
-  enabled: true
-  className: traefik
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-
-  host: teamcity.local
-  path: /
-
-  tls:
+  tests:
     enabled: true
-    secretName: teamcity-tls
-
-# Consul интеграция
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  port: 8500
-  datacenter: dc1
-  tags:
-    - teamcity
-    - ci-cd
-    - build-server
-
-# Security
-securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-
-# Health Checks
-probes:
-  liveness:
-    enabled: true
-    initialDelaySeconds: 180
-    periodSeconds: 20
-  readiness:
-    enabled: true
-    initialDelaySeconds: 60
-    periodSeconds: 10
-
-# Vault integration (requires Vault policies and secrets to be configured)
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-vault:
-  enabled: false
-  # Note: Before enabling, configure Vault:
-  # 1. Create policy for teamcity service
-  # 2. Create secret at secret/data/teamcity/secrets
-  # 3. Enable Kubernetes auth method in Vault
-  # 4. Create role binding ServiceAccount to Vault policy
-  # See: kubernetes/docs/VAULT_MIGRATION.md
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: true
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+    url: "http://teamcity-server:8111"

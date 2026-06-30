@@ -1,110 +1,108 @@
-namespace: automation
+# n8n — rendered entirely by the chart-base subchart.
+# Workflow automation. Connects to PostgreSQL and Valkey (Redis) in the db namespace.
+chart-base:
+  workloads:
+    - kind: Deployment
+      replicas: 1
+      containers:
+        - name: n8n
+          image: n8nio/n8n:1.70.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 5678 }
+          env:
+            - { name: N8N_PORT, value: "5678" }
+            - { name: N8N_PROTOCOL, value: "https" }
+            - { name: N8N_HOST, value: "n8n.zeizel.ru" }
+            - { name: WEBHOOK_URL, value: "https://n8n.zeizel.ru/" }
+            - { name: GENERIC_TIMEZONE, value: "Europe/Moscow" }
+            - { name: DB_TYPE, value: "postgresdb" }
+            - { name: DB_POSTGRESDB_HOST, value: "postgresql.db.svc.cluster.local" }
+            - { name: DB_POSTGRESDB_PORT, value: "5432" }
+            - { name: DB_POSTGRESDB_DATABASE, value: "n8n" }
+            - { name: DB_POSTGRESDB_USER, value: "n8n" }
+            # Password injected via Vault / SOPS override in production
+            - { name: DB_POSTGRESDB_PASSWORD, value: "" }
+            - { name: EXECUTIONS_MODE, value: "queue" }
+            - { name: QUEUE_BULL_REDIS_HOST, value: "valkey-primary.db.svc.cluster.local" }
+            - { name: QUEUE_BULL_REDIS_PORT, value: "6379" }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 1000m, memory: 1Gi }
+          volumeMounts:
+            - { name: data, mountPath: /home/node/.n8n }
+          livenessProbe:
+            httpGet: { path: /healthz, port: 5678 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /healthz, port: 5678 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: n8n-data
 
-image:
-  repository: n8nio/n8n
-  tag: "1.70.0"
-  pullPolicy: IfNotPresent
+  services:
+    - ports:
+        - { name: http, port: 5678, targetPort: http, protocol: TCP }
 
-replicaCount: 1
+  pvcs:
+    - { name: data, accessModes: [ReadWriteOnce], storageClass: local-path, size: 5Gi }
 
-service:
-  type: ClusterIP
-  port: 5678
+  serviceAccount:
+    create: true
+    automount: false
 
-resources:
-  requests:
-    cpu: 100m
-    memory: 256Mi
-  limits:
-    cpu: 1000m
-    memory: 1Gi
+  rbac:
+    create: true
+    rules: []
 
-persistence:
-  enabled: true
-  storageClass: local-path
-  size: 5Gi
+  networkPolicy:
+    enabled: true
+    allowDB: true
+    extraEgress:
+      # External HTTPS/HTTP for webhooks & integrations
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - { protocol: TCP, port: 443 }
+          - { protocol: TCP, port: 80 }
+      # Consul service mesh
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: consul
+        ports:
+          - { protocol: TCP, port: 8500 }
+          - { protocol: TCP, port: 8600 }
+      # Vault
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: vault
+        ports:
+          - { protocol: TCP, port: 8200 }
 
-# Database
-database:
-  type: postgresdb
-  host: postgresql.db.svc.cluster.local
-  port: 5432
-  database: n8n
-  user: n8n
-  password: ""  # Injected via Vault - see vault.hashicorp.com annotations
+  serviceMonitor:
+    enabled: true
+    port: http
+    path: /metrics
 
-# Redis/Valkey for queue
-redis:
-  enabled: true
-  host: valkey-primary.db.svc.cluster.local
-  port: 6379
+  routing:
+    httpRoutes:
+      - host: n8n.zeizel.ru
+        port: 5678
+        authentik:
+          enabled: false
 
-# n8n configuration
-config:
-  executions:
-    mode: queue
-  generic:
-    timezone: Europe/Moscow
-
-ingress:
-  enabled: true
-  className: traefik
-  host: n8n.zeizel.ru
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-
-serviceAccount:
-  create: true
-  name: n8n
-  automountServiceAccountToken: false
-  annotations: {}
-
-# RBAC
-rbac:
-  create: true
-  rules: []
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: true
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# Metrics
-metrics:
-  enabled: true
-  port: "http"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Security Context
-securityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-  seccompProfile:
-    type: RuntimeDefault
-
-containerSecurityContext:
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: true
-  capabilities:
-    drop:
-      - ALL
-
-# Vault integration
-vault:
-  enabled: false
-  # Note: Before enabling, configure Vault:
-  # 1. Create policy for n8n service
-  # 2. Create secret at secret/data/n8n/secrets
-  # 3. Enable Kubernetes auth method in Vault
-  # 4. Create role binding ServiceAccount to Vault policy
+  tests:
+    enabled: true
+    port: 5678

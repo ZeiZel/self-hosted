@@ -1,48 +1,11 @@
-namespace: automation
-
-image:
-  repository: n8nio/n8n
-  tag: "1.70.0"
-  pullPolicy: IfNotPresent
-
-replicaCount: 1
-
-database:
-  type: postgresdb
-  host: postgresql.db.svc.cluster.local
-  port: "5432"
-  database: n8n
-  user: n8n
-  password: "{{ .Values.secrets.postgresPassword }}"
-
-redis:
-  enabled: true
-  host: valkey-primary.db.svc.cluster.local
-  port: "6379"
-
-config:
-  executions:
-    mode: queue
-  generic:
-    timezone: Europe/Moscow
-
-persistence:
-  enabled: true
-  storageClass: local-path
-  size: 5Gi
-
-resources:
-  requests:
-    cpu: 100m
-    memory: 256Mi
-  limits:
-    cpu: 1000m
-    memory: 1Gi
-
-ingress:
-  enabled: true
-  className: traefik
-  host: n8n.{{ .Values.infra.host }}
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
+# n8n release overrides.
+# Base config lives in charts/n8n/values.yaml under the "chart-base:" key.
+# Add env-specific overrides here, nested under "chart-base:" (subchart scoping).
+# Example:
+#   chart-base:
+#     workloads:
+#       - containers:
+#           - name: n8n
+#             env:
+#               - name: EXAMPLE
+#                 value: "value"

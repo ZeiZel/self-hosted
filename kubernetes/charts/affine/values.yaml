@@ -1,184 +1,140 @@
-replicaCount: 1
+# affine — rendered entirely by the chart-base subchart.
+# Non-secret config is inlined as container env (the original ConfigMap was
+# consumed via envFrom, not mounted as a file). Secret env vars live in the
+# `secret` Secret (rendered as affine-secret) and are pulled via envFrom.
+# Override credentials per-environment in releases/affine.yaml.gotmpl.
+chart-base:
+  # affine keeps a writable root filesystem (original readOnlyRootFilesystem: false).
+  securityContext:
+    readOnlyRootFilesystem: false
 
-image:
-  repository: ghcr.io/toeverything/affine
-  pullPolicy: IfNotPresent
-  tag: "stable"
+  workloads:
+    - kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "affine"
+        consul.hashicorp.com/connect-service-port: "3010"
+        consul.hashicorp.com/service-tags: "affine"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        co.elastic.logs.json.add_error_key: "true"
+        co.elastic.logs.json.message_key: "message"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3010"
+        prometheus.io/path: "/metrics"
+      containers:
+        - name: affine
+          image: ghcr.io/toeverything/affine:stable
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 3010, protocol: TCP }
+          env:
+            - { name: AFFINE_SERVER_HOST, value: "0.0.0.0" }
+            - { name: AFFINE_SERVER_PORT, value: "3010" }
+            - { name: AFFINE_SERVER_HTTPS, value: "false" }
+            - { name: NODE_ENV, value: "production" }
+            - { name: NODE_OPTIONS, value: "--max-old-space-size=4096" }
+            - { name: SERVER_NAME, value: "AFFiNE" }
+            - { name: AFFINE_SERVER_EXTERNAL_URL, value: "http://affine.local" }
+            - { name: AFFINE_EARLY_ACCESS_PREVIEW, value: "false" }
+            - { name: ENABLE_SIGNUP, value: "true" }
+            - { name: ENABLE_PASSWORD_SIGNIN, value: "true" }
+            - { name: STORAGE_PROVIDER, value: "s3" }
+            - { name: REDIS_SERVER_HOST, value: "valkey-primary.db.svc.cluster.local" }
+            - { name: REDIS_SERVER_PORT, value: "6379" }
+            - { name: AFFINE_S3_ENDPOINT, value: "http://minio.db.svc.cluster.local:9000" }
+            - { name: AFFINE_S3_BUCKET, value: "affine" }
+            - { name: AFFINE_S3_REGION, value: "us-east-1" }
+            - { name: AFFINE_S3_FORCE_PATH_STYLE, value: "true" }
+          envFrom:
+            - secretRef:
+                name: affine-secret
+          resources:
+            requests: { cpu: 500m, memory: 1Gi }
+            limits: { cpu: 2000m, memory: 4Gi }
+          volumeMounts:
+            - { name: storage, mountPath: /root/.affine/storage }
+            - { name: app-src, mountPath: /app/src }
+            - { name: tmp, mountPath: /tmp }
+          livenessProbe:
+            httpGet: { path: /api/healthz, port: 3010 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /api/healthz, port: 3010 }
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+      volumes:
+        - name: storage
+          persistentVolumeClaim:
+            claimName: affine-storage
+        - name: app-src
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
 
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
+  services:
+    - ports:
+        - { name: http, port: 3010, targetPort: http, protocol: TCP }
 
-serviceAccount:
-  create: true
-  annotations: {}
-  name: ""
+  secrets:
+    - name: secret
+      type: Opaque
+      stringData:
+        POSTGRES_HOST: "postgresql.db.svc.cluster.local"
+        POSTGRES_PORT: "5432"
+        POSTGRES_USER: "affine"
+        POSTGRES_PASSWORD: ""
+        POSTGRES_DB: "affine"
+        DATABASE_URL: "postgresql://affine:@postgresql.db.svc.cluster.local:5432/affine"
+        REDIS_HOST: "valkey-primary.db.svc.cluster.local"
+        REDIS_PORT: "6379"
+        REDIS_DB: "0"
+        S3_ENDPOINT: "http://minio.db.svc.cluster.local:9000"
+        S3_REGION: "us-east-1"
+        S3_BUCKET: "affine"
+        S3_ACCESS_KEY: "minioadmin"
+        S3_SECRET_KEY: "minioadmin"
+        S3_FORCE_PATH_STYLE: "true"
 
-podAnnotations: {}
+  pvcs:
+    - { name: storage, accessModes: [ReadWriteOnce], storageClass: local-path, size: 10Gi }
 
-podSecurityContext:
-  fsGroup: 1000
+  serviceAccount:
+    create: true
+    automount: false
 
-securityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-  capabilities:
-    drop:
-    - ALL
-  readOnlyRootFilesystem: false
-  allowPrivilegeEscalation: false
+  rbac:
+    create: true
+    rules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [configmaps], verbs: [get, list] }
 
-service:
-  type: ClusterIP
-  port: 3010
-  targetPort: 3010
+  networkPolicy:
+    enabled: true
+    allowDB: true
 
-ingress:
-  enabled: true
-  className: traefik
-  annotations: {}
-  hosts:
-    - host: affine.local
-      paths:
-        - path: /
-          pathType: Prefix
-  tls: []
+  serviceMonitor:
+    enabled: true
+    port: http
+    path: /metrics
 
-resources:
-  limits:
-    cpu: 2000m
-    memory: 4Gi
-  requests:
-    cpu: 500m
-    memory: 1Gi
+  pdb:
+    enabled: false
+    minAvailable: 1
 
-persistence:
-  enabled: true
-  storageClass: local-path
-  accessMode: ReadWriteOnce
-  size: 10Gi
-  mountPath: /root/.affine/storage
+  routing:
+    httpRoutes:
+      - host: affine.local
+        port: 3010
+        authentik:
+          enabled: false
 
-# External PostgreSQL configuration
-postgresql:
-  enabled: true
-  external:
-    host: postgresql.db.svc.cluster.local
-    port: 5432
-    username: affine
-    password: ""
-    database: affine
-    ssl: false
-
-# External Redis (ValKey) configuration
-redis:
-  enabled: true
-  external:
-    host: valkey-primary.db.svc.cluster.local
-    port: 6379
-    password: ""
-    database: 0
-
-# S3 Storage (Minio) configuration
-s3:
-  enabled: true
-  endpoint: http://minio.db.svc.cluster.local:9000
-  region: us-east-1
-  bucket: affine
-  accessKey: minioadmin
-  secretKey: minioadmin
-  forcePathStyle: true
-
-# AFFiNE specific configuration
-affine:
-  serverName: AFFiNE
-  host: "0.0.0.0"
-  port: 3010
-  https: false
-  
-  # Feature flags
-  features:
-    earlyAccess: false
-    
-  # Authentication
-  auth:
-    enableSignup: true
-    enablePassword: true
-    
-  # Server configuration
-  server:
-    host: affine.local
-    externalUrl: http://affine.local
-
-# Consul integration
-consul:
-  enabled: true
-  host: "consul-server.service.svc.cluster.local:8500"
-  serviceName: affine
-  servicePort: 3010
-  datacenter: dc1
-  tags:
-    - affine
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
-
-livenessProbe:
-  httpGet:
-    path: /api/healthz
+  tests:
+    enabled: true
     port: 3010
-  initialDelaySeconds: 30
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
-
-readinessProbe:
-  httpGet:
-    path: /api/healthz
-    port: 3010
-  initialDelaySeconds: 15
-  periodSeconds: 5
-  timeoutSeconds: 3
-  failureThreshold: 3
-
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: true
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# RBAC
-rbac:
-  create: true
-  allowSecrets: false
-  rules: []
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1

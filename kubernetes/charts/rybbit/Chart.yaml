@@ -14,3 +14,7 @@ keywords:
 home: https://github.com/ZeiZel/self-hosted
 sources:
   - https://github.com/ZeiZel/self-hosted/tree/main/kubernetes/charts/rybbit
+dependencies:
+  - name: chart-base
+    version: 0.1.0
+    repository: file://../chart-base

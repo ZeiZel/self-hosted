@@ -1,23 +1,11 @@
-namespace: data
-
-syncthing:
-  replicaCount: 1
-
-persistence:
-  enabled: true
-  storageClass: local-path
-  config:
-    size: 5Gi
-  sync:
-    size: 1Gi
-
-ingress:
-  enabled: true
-  host: syncthing.{{ .Values.infra.host }}
-
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  tags:
-    - syncthing
-    - file-sync
+# syncthing release overrides.
+# Base config lives in charts/syncthing/values.yaml under the "chart-base:" key.
+# Add env-specific overrides here, nested under "chart-base:" (subchart scoping).
+# Example:
+#   chart-base:
+#     workloads:
+#       - containers:
+#           - name: syncthing
+#             env:
+#               - name: EXAMPLE
+#                 value: "value"

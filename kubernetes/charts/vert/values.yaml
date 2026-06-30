@@ -1,118 +1,81 @@
-# Namespace
-namespace: utilities
+# vert — rendered entirely by the chart-base subchart.
+# VERT is an nginx-served file converter listening on container port 80, exposed
+# via a ClusterIP Service on port 3000. readOnlyRootFilesystem (baked into
+# chart-base) is satisfied by emptyDir mounts for nginx cache/run/tmp.
+chart-base:
+  workloads:
+    - kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: vert
+        consul.hashicorp.com/connect-service-port: "80"
+        consul.hashicorp.com/service-tags: "utilities,vert,converter"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        co.elastic.logs.json.add_error_key: "true"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
+      containers:
+        - name: vert
+          image: ghcr.io/vert-sh/vert:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 80 }
+          resources:
+            requests: { cpu: 50m, memory: 64Mi }
+            limits: { cpu: 300m, memory: 256Mi }
+          volumeMounts:
+            - { name: cache, mountPath: /var/cache/nginx }
+            - { name: run, mountPath: /var/run }
+            - { name: tmp, mountPath: /tmp }
+          livenessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - { name: cache, emptyDir: {} }
+        - { name: run, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
 
-create:
-  namespace: true
+  services:
+    - ports:
+        - { name: http, port: 3000, targetPort: http, protocol: TCP }
 
-# VERT Image
-image:
-  repository: ghcr.io/vert-sh/vert
-  tag: "latest"
-  pullPolicy: IfNotPresent
+  serviceAccount:
+    create: true
+    automount: true
 
-replicaCount: 1
+  rbac:
+    create: true
+    rules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [configmaps], verbs: [get, list] }
 
-nameOverride: ""
-fullnameOverride: ""
+  networkPolicy:
+    enabled: true
+    allowDB: false
 
-# Service configuration
-service:
-  type: ClusterIP
-  port: 3000
-  targetPort: 80
+  serviceMonitor:
+    enabled: true
+    port: http
+    path: /metrics
 
-# Resources
-resources:
-  limits:
-    cpu: 300m
-    memory: 256Mi
-  requests:
-    cpu: 50m
-    memory: 64Mi
-
-# Ingress configuration
-ingress:
-  enabled: true
-  className: traefik
-  host: vert.localhost
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-  tls:
+  pdb:
     enabled: false
-    secretName: vert-tls
-    clusterIssuer: letsencrypt
 
-# ServiceMonitor for Prometheus
-serviceMonitor:
-  enabled: true
-  interval: 30s
-  scrapeTimeout: 10s
+  routing:
+    httpRoutes:
+      - host: vert.localhost
+        port: 3000
+        authentik:
+          enabled: false
 
-# Consul integration
-consul:
-  enabled: true
-  tags:
-    - utilities
-    - vert
-    - converter
-
-# Security context
-securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-
-# Health checks
-probes:
-  liveness:
+  tests:
     enabled: true
-    path: "/"
-    initialDelaySeconds: 30
-    periodSeconds: 10
-  readiness:
-    enabled: true
-    path: "/"
-    initialDelaySeconds: 5
-    periodSeconds: 5
-
-nodeSelector: {}
-tolerations: []
-affinity: {}
-
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: false
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
-
-# RBAC
-rbac:
-  create: true
-  allowSecrets: false
-  rules: []
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+    port: 3000

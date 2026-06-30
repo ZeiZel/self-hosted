@@ -1,6 +1,6 @@
 apiVersion: v2
 name: affine
-description: A Helm chart for AFFiNE - open-source knowledge base
+description: A Helm chart for AFFiNE - open-source knowledge base (rendered by chart-base)
 type: application
 version: 1.0.0
 appVersion: "stable"
@@ -16,3 +16,7 @@ sources:
 maintainers:
   - name: ZeiZel
     email: valera2003lvov@yandex.ru
+dependencies:
+  - name: chart-base
+    version: 0.1.0
+    repository: file://../chart-base

@@ -1,184 +1,189 @@
-namespace: data
+# vaultwarden — rendered entirely by the chart-base subchart.
+# All resources live under the chart-base: key below. Secret values shown here are
+# placeholders; in production they are injected via Vault / SOPS overrides.
+chart-base:
+  # Vaultwarden runs as uid/gid 80; merged with the mandatory non-root context.
+  podSecurityContext:
+    runAsUser: 80
+    runAsGroup: 80
+    fsGroup: 80
 
-create:
-  namespace: true
+  workloads:
+    - kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "vaultwarden"
+        consul.hashicorp.com/connect-service-port: "8080"
+        consul.hashicorp.com/service-tags: "vaultwarden,password-manager"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        co.elastic.logs.json.add_error_key: "true"
+        co.elastic.logs.json.message_key: "message"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
+      initContainers:
+        - name: wait-for-postgresql
+          image: postgres:15-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until psql -h postgresql.db.svc.cluster.local -U vaultwarden -d vaultwarden -c "SELECT 1" > /dev/null 2>&1; do
+                echo "Waiting for PostgreSQL..."
+                sleep 5
+              done
+              echo "PostgreSQL is ready!"
+          env:
+            - name: PGPASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: vaultwarden-secrets
+                  key: DATABASE_URL
+      containers:
+        - name: vaultwarden
+          image: vaultwarden/server:1.0.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 80 }
+          envFrom:
+            - secretRef:
+                name: vaultwarden-secrets
+            - configMapRef:
+                name: vaultwarden-config
+          resources:
+            requests: { cpu: 500m, memory: 256Mi }
+            limits: { cpu: 1000m, memory: 512Mi }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+          livenessProbe:
+            httpGet: { path: /alive, port: 80 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /alive, port: 80 }
+            initialDelaySeconds: 30
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: vaultwarden-data
 
-# Vaultwarden Image
-image:
-  repository: vaultwarden/server
-  tag: "1.0.0"
-  pullPolicy: IfNotPresent
+  services:
+    - annotations:
+        consul.hashicorp.com/service-name: "vaultwarden"
+        consul.hashicorp.com/service-port: "8080"
+        consul.hashicorp.com/service-tags: "vaultwarden,password-manager"
+      ports:
+        - { name: http, port: 8080, targetPort: 80, protocol: TCP }
 
-# Vaultwarden Server config
-vaultwarden:
-  replicaCount: 1
+  pvcs:
+    - { name: data, accessModes: [ReadWriteOnce], storageClass: local-path, size: 2Gi }
 
-  service:
-    type: ClusterIP
+  secrets:
+    - name: secrets
+      stringData:
+        DATABASE_URL: "postgresql://vaultwarden:@postgresql.db.svc.cluster.local:5432/vaultwarden"
+        ADMIN_TOKEN: "changeme"
+        DOMAIN: "https://vaultwarden.local"
+        LOG_LEVEL: "info"
+        MAIL_FROM: "noreply@mail.local"
+        MAIL_FROM_NAME: "Vaultwarden"
+        MAIL_HOST: "stalwart.social.svc.cluster.local"
+        MAIL_PORT: "587"
+        MAIL_SECURITY: "starttls"
+        MAIL_USERNAME: "noreply@mail.local"
+        MAIL_PASSWORD: ""
+
+  # Env-style ConfigMap consumed via envFrom: kept verbatim through extraManifests
+  # because chart-base's configMaps[] renders every value as a block scalar (which
+  # would append trailing newlines to env values).
+  extraManifests:
+    - |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: vaultwarden-config
+        namespace: {{ .Release.Namespace }}
+        labels:
+          {{- include "chart-base.labels" . | nindent 4 }}
+      data:
+        # base config
+        DOMAIN: https://vaultwarden.local
+        PROTOCOL: https
+        ROCKET_ADDRESS: "0.0.0.0"
+        ROCKET_PORT: "80"
+        ROCKET_WORKERS: "10"
+
+        # Web Vault
+        WEB_VAULT_ENABLED: "true"
+        WEB_VAULT_VERSION: latest
+
+        # Admin
+        ADMIN_ENABLED: "true"
+        ADMIN_PATH: "/admin"
+
+        # SignUps
+        SIGNUPS_ALLOWED: "false"
+        INVITATIONS_ORG_NAME: Organization
+
+        # Organizations
+        ORGANIZATIONS_ALLOW_NEW: "true"
+
+        # Two Factor
+        EMAIL_TWO_FACTOR_ENFORCED: "false"
+
+        # Icons service
+        ICON_CACHE_TTL: "2592000"
+        ICON_CACHE_NEGTTL: "259200"
+        ICON_DOWNLOAD_TIMEOUT: "10"
+
+        # Logging
+        LOG_LEVEL: info
+
+        # Security
+        IP_HEADER: "X-Forwarded-For"
+        DOMAIN_ORIGIN: https://vaultwarden.local
+        DOMAIN_PATH: "/"
+        SHOW_PASSWORD_HINT: "true"
+
+        # Attachments cleanup
+        TRASH_AUTO_DELETE_DAYS: "30"
+
+        # Rate limiting
+        LOGIN_RATELIMIT_SECONDS: "60"
+        LOGIN_RATELIMIT_MAX_BURST: "10"
+
+  serviceAccount:
+    create: true
+    automount: true
+
+  rbac:
+    create: true
+    clusterRules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [secrets], verbs: [get, list] }
+
+  networkPolicy:
+    enabled: true
+    allowDB: true
+
+  serviceMonitor:
+    enabled: true
+    port: metrics
+    path: /metrics
+
+  pdb:
+    enabled: false
+
+  routing:
+    httpRoutes:
+      - host: vaultwarden.local
+        port: 8080
+        authentik:
+          enabled: false
+
+  tests:
+    enabled: true
     port: 8080
-
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 512Mi
-    requests:
-      cpu: 500m
-      memory: 256Mi
-
-  # Vaultwarden config
-  config:
-    domain: "https://vaultwarden.local"
-    protocol: "https"
-
-    # Admin config
-    admin:
-      enabled: true
-      # token: changeme (install with secret)
-
-    # WebVault config
-    webVault:
-      enabled: true
-      version: "latest"
-
-    # Logging
-    logLevel: "info"
-
-    # Signups and invitations
-    allowSignups: false
-    invitationsOrganizationName: "Organization"
-
-    # Email config
-    email:
-      enabled: true
-      host: "stalwart.social.svc.cluster.local"  # Stalwart in the same cluster
-      port: 587  # Submission port
-      from: "noreply@mail.local"
-      fromName: "Vaultwarden"
-      username: "noreply@mail.local"  # User email in Stalwart
-      password: ""  # Injected via Vault - see vault.hashicorp.com annotations
-      useTls: true
-      useSsl: false
-
-    twoFactor:
-      email: false
-
-    # Organizations
-    organizations:
-      allowNew: true
-
-    # Policies
-    policies:
-      masterPasswordForced: false
-
-# Persistent Storage
-persistence:
-  enabled: true
-  storageClass: local-path
-
-  # Data directory
-  data:
-    enabled: true
-    size: 2Gi
-    mountPath: /data
-    accessMode: ReadWriteOnce
-
-# PostgreSQL (external)
-postgresql:
-  enabled: true
-  external: true
-  host: "postgresql.db.svc.cluster.local"
-  port: 5432
-  username: "vaultwarden"
-  password: ""  # Injected via Vault - see vault.hashicorp.com annotations
-  database: "vaultwarden"
-  ssl: false
-
-# Ingress through Traefik
-ingress:
-  enabled: true
-  className: traefik
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-
-  host: vaultwarden.local
-  path: /
-
-  tls:
-    enabled: true
-    secretName: vaultwarden-tls
-
-# Consul integration
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  port: 8500
-  datacenter: dc1
-  tags:
-    - vaultwarden
-    - password-manager
-
-# Security
-securityContext:
-  runAsUser: 80
-  runAsGroup: 80
-  fsGroup: 80
-
-# Health Checks
-probes:
-  liveness:
-    enabled: true
-    initialDelaySeconds: 60
-    periodSeconds: 10
-  readiness:
-    enabled: true
-    initialDelaySeconds: 30
-    periodSeconds: 5
-
-# Vault integration (requires Vault policies and secrets to be configured)
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-vault:
-  enabled: false
-  # Note: Before enabling, configure Vault:
-  # 1. Create policy for vaultwarden service
-  # 2. Create secret at secret/data/vaultwarden/database with connection_string
-  # 3. Enable Kubernetes auth method in Vault
-  # 4. Create role binding ServiceAccount to Vault policy
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: true
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1

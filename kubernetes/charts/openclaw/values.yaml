@@ -1,170 +1,176 @@
-namespace: automation
+# openclaw — rendered entirely by the chart-base subchart.
+# OpenClaw self-hosted AI assistant. Needs a writable root filesystem
+# (readOnlyRootFilesystem disabled) and external HTTPS egress for LLM API calls.
+chart-base:
+  workloads:
+    - kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: openclaw
+        consul.hashicorp.com/connect-service-port: "18789"
+        consul.hashicorp.com/service-tags: "openclaw,ai-assistant,automation"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        co.elastic.logs.json.add_error_key: "true"
+        co.elastic.logs.json.message_key: "message"
+        vault.hashicorp.com/agent-inject: "true"
+        vault.hashicorp.com/role: "openclaw"
+        vault.hashicorp.com/agent-inject-secret-secrets: "secret/data/openclaw/secrets"
+        vault.hashicorp.com/agent-inject-template-secrets: |
+          {{- with secret "secret/data/openclaw/secrets" -}}
+          {{- range $key, $value := .Data.data -}}
+          export {{ $key }}={{ $value }}
+          {{ end -}}
+          {{- end }}
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "18789"
+        prometheus.io/path: "/metrics"
+      containers:
+        - name: openclaw
+          image: "alpine/openclaw:1.0.0"
+          imagePullPolicy: IfNotPresent
+          # OpenClaw needs a writable root filesystem (relax chart-base default).
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+          ports:
+            - { name: http, containerPort: 18789, protocol: TCP }
+            - { name: oauth, containerPort: 1455, protocol: TCP }
+          env:
+            - { name: LANG, value: "C.UTF-8" }
+            - { name: PLAYWRIGHT_BROWSERS_PATH, value: "/home/node/.cache/ms-playwright" }
+            # Source secrets from the Vault-injected file.
+            - { name: BASH_ENV, value: "/vault/secrets/secrets" }
+          resources:
+            limits: { cpu: 2000m, memory: 4Gi }
+            requests: { cpu: 500m, memory: 1Gi }
+          volumeMounts:
+            - { name: config, mountPath: /home/node/.openclaw }
+            - { name: workspace, mountPath: /workspace }
+            - { name: tmp, mountPath: /tmp }
+            - { name: cache, mountPath: /home/node/.cache }
+          startupProbe:
+            httpGet: { path: /health, port: 18789 }
+            initialDelaySeconds: 10
+            periodSeconds: 10
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /health, port: 18789 }
+            initialDelaySeconds: 60
+            periodSeconds: 30
+            timeoutSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health, port: 18789 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: openclaw-config
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: openclaw-workspace
+        - name: tmp
+          emptyDir: {}
+        - name: cache
+          emptyDir: {}
 
-create:
-  namespace: true
+  services:
+    - annotations:
+        consul.hashicorp.com/service-name: openclaw
+        consul.hashicorp.com/service-port: "18789"
+        consul.hashicorp.com/service-tags: "openclaw,ai-assistant,automation"
+      ports:
+        - { name: http, port: 18789, targetPort: 18789, protocol: TCP }
+        - { name: oauth, port: 1455, targetPort: 1455, protocol: TCP }
 
-# OpenClaw Image
-image:
-  repository: alpine/openclaw
-  tag: "1.0.0"
-  pullPolicy: IfNotPresent
+  pvcs:
+    - { name: config, accessModes: [ReadWriteOnce], storageClass: local-path, size: 10Gi }
+    - { name: workspace, accessModes: [ReadWriteOnce], storageClass: local-path, size: 50Gi }
 
-# OpenClaw Server configuration
-openclaw:
-  replicaCount: 1
+  serviceAccount:
+    create: true
+    automount: false
 
-  service:
-    type: ClusterIP
+  rbac:
+    create: true
+    rules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [configmaps], verbs: [get, list] }
+
+  networkPolicy:
+    enabled: true
+    allowDB: false
+    extraIngress:
+      # Allow ingress from same namespace (e.g. Consul connect sidecars)
+      - from:
+          - podSelector: {}
+    extraEgress:
+      # External HTTPS — required for LLM API calls
+      - to:
+          - ipBlock:
+              cidr: 0.0.0.0/0
+              except:
+                - 10.0.0.0/8
+                - 172.16.0.0/12
+                - 192.168.0.0/16
+        ports:
+          - { protocol: TCP, port: 443 }
+      # Consul service mesh
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: consul
+        ports:
+          - { protocol: TCP, port: 8500 }
+          - { protocol: TCP, port: 8600 }
+      # Vault
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: vault
+        ports:
+          - { protocol: TCP, port: 8200 }
+      # Authentik
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: authentik
+        ports:
+          - { protocol: TCP, port: 9000 }
+          - { protocol: TCP, port: 9443 }
+
+  serviceMonitor:
+    enabled: true
+    port: http
+    path: /metrics
+
+  pdb:
+    enabled: false
+    minAvailable: 1
+
+  routing:
+    httpRoutes:
+      - host: openclaw.localhost
+        port: 18789
+        authentik:
+          enabled: true
+          middleware: authentik-forward-auth
+
+  tests:
+    enabled: true
     port: 18789
-    oauthPort: 1455
-
-  # Gateway token (set via Vault)
-  # gatewayToken: ""
-
-  # Extra apt packages to install during build
-  extraAptPackages: ""
-
-  # Extra host bind mounts
-  extraMounts: ""
-
-# Resources
-resources:
-  limits:
-    cpu: 2000m
-    memory: 4Gi
-  requests:
-    cpu: 500m
-    memory: 1Gi
-
-# Persistence
-persistence:
-  config:
-    enabled: true
-    storageClass: local-path
-    accessMode: ReadWriteOnce
-    size: 10Gi
-    mountPath: /home/node/.openclaw
-
-  workspace:
-    enabled: true
-    storageClass: local-path
-    accessMode: ReadWriteOnce
-    size: 50Gi
-    mountPath: /workspace
-
-# Ingress
-ingress:
-  enabled: true
-  className: traefik
-  host: openclaw.localhost
-  annotations: {}
-  tls:
-    enabled: true
-    secretName: openclaw-tls
-
-# Security Context
-securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-
-podSecurityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-  fsGroup: 1000
-  seccompProfile:
-    type: RuntimeDefault
-
-containerSecurityContext:
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false  # OpenClaw needs writable filesystem
-  capabilities:
-    drop: [ALL]
-
-# Probes
-probes:
-  liveness:
-    enabled: true
-    path: /health
-    port: 18789
-    initialDelaySeconds: 60
-    periodSeconds: 30
-    timeoutSeconds: 10
-  readiness:
-    enabled: true
-    path: /health
-    port: 18789
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 5
-  startup:
-    enabled: true
-    path: /health
-    port: 18789
-    initialDelaySeconds: 10
-    periodSeconds: 10
-    failureThreshold: 30
-
-# Consul integration
-consul:
-  enabled: true
-  tags:
-    - openclaw
-    - ai-assistant
-    - automation
-
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-# Vault integration
-vault:
-  enabled: false
-  role: "openclaw"
-  secretPath: "secret/data/openclaw/secrets"
-  # Secrets to inject:
-  # - ANTHROPIC_API_KEY
-  # - OPENAI_API_KEY
-  # - GATEWAY_TOKEN
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: false
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-    allowExternalHTTPS: true  # Required for LLM API calls
-  ingress: []
-  egress: []
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: false
-  annotations: {}
-  name: ""
-
-# RBAC
-rbac:
-  create: true
-  allowSecrets: false
-  rules: []
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+    url: "http://openclaw:18789/health"

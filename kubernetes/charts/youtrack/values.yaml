@@ -1,177 +1,217 @@
-# Namespace
-namespace: code
+# youtrack — rendered entirely by the chart-base subchart.
+# JetBrains YouTrack with Hub SSO and GitLab integration.
+chart-base:
+  workloads:
+    - kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "youtrack"
+        consul.hashicorp.com/connect-service-port: "8080"
+        consul.hashicorp.com/service-tags: "youtrack,issue-tracking"
+        # ELK Filebeat logging (Java multiline)
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs/multiline.pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}"
+        co.elastic.logs/multiline.negate: "true"
+        co.elastic.logs/multiline.match: "after"
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+      initContainers:
+        # Ожидание Hub
+        - name: wait-for-hub
+          image: curlimages/curl:8.11.1  # Pinned version - do not use :latest
+          command:
+            - sh
+            - -c
+            - |
+              until curl -f http://hub.code.svc.cluster.local:8080/ > /dev/null 2>&1; do
+                echo "Waiting for Hub..."
+                sleep 5
+              done
+              echo "Hub is ready!"
+        # Ожидание GitLab
+        - name: wait-for-gitlab
+          image: curlimages/curl:8.11.1  # Pinned version - do not use :latest
+          command:
+            - sh
+            - -c
+            - |
+              until curl -f http://gitlab.code.svc.cluster.local:80/ > /dev/null 2>&1; do
+                echo "Waiting for GitLab..."
+                sleep 5
+              done
+              echo "GitLab is ready!"
+      containers:
+        - name: youtrack
+          image: jetbrains/youtrack:2024.3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: YOUTRACK_BASE_URL, value: "http://youtrack.localhost" }
+            - { name: YOUTRACK_LISTEN_PORT, value: "8080" }
+            - { name: YOUTRACK_JVM_OPTIONS, value: "-Xmx1024m" }
+          envFrom:
+            - secretRef:
+                name: youtrack-secrets
+            - configMapRef:
+                name: youtrack-config
+          resources:
+            limits: { cpu: 1000m, memory: 2Gi }
+            requests: { cpu: 200m, memory: 512Mi }
+          volumeMounts:
+            - { name: data, mountPath: /opt/youtrack/data }
+            - { name: backups, mountPath: /opt/youtrack/backups }
+            - { name: logs, mountPath: /opt/youtrack/logs }
+            - { name: config, mountPath: /opt/youtrack/config }
+          livenessProbe:
+            httpGet: { path: /, port: 8080 }
+            initialDelaySeconds: 180
+            periodSeconds: 20
+          readinessProbe:
+            httpGet: { path: /, port: 8080 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: youtrack-data
+        - name: backups
+          persistentVolumeClaim:
+            claimName: youtrack-backups
+        - name: logs
+          persistentVolumeClaim:
+            claimName: youtrack-logs
+        - name: config
+          configMap:
+            name: youtrack-config
 
-create:
-  namespace: true
+  services:
+    - annotations:
+        consul.hashicorp.com/service-name: "youtrack"
+        consul.hashicorp.com/service-port: "8080"
+        consul.hashicorp.com/service-tags: "youtrack,issue-tracking,jetbrains"
+      ports:
+        - { name: http, port: 8080, targetPort: 8080, protocol: TCP }
 
-# YouTrack Image
-image:
-  repository: jetbrains/youtrack
-  tag: "2024.3"
-  pullPolicy: IfNotPresent
+  pvcs:
+    - { name: data, accessModes: [ReadWriteOnce], storageClass: local-path, size: 5Gi }
+    - { name: backups, accessModes: [ReadWriteOnce], storageClass: local-path, size: 3Gi }
+    - { name: logs, accessModes: [ReadWriteOnce], storageClass: local-path, size: 1Gi }
 
-# YouTrack Server конфигурация
-youtrack:
-  replicaCount: 1
+  configMaps:
+    - name: config
+      data:
+        hub-config.properties: |
+          hub.enabled=true
+          hub.host=hub.code.svc.cluster.local
+          hub.port=8080
+          hub.sso.enabled=true
+        gitlab-config.properties: |
+          gitlab.enabled=true
+          gitlab.host=gitlab.code.svc.cluster.local
+          gitlab.port=80
+          gitlab.cicd.enabled=true
+          gitlab.webhooks.enabled=true
+          gitlab.ssl=false
+        saml-config.properties: |
+          saml.enabled=true
+          saml.idp.sso.url=http://hub.code.svc.cluster.local:8080/saml/sso
+          saml.idp.entity.id=hub
+          saml.sp.entity.id=youtrack
+          saml.sp.acs.url=http://http://youtrack.localhost/saml/acs
 
-  service:
-    type: ClusterIP
+  secrets:
+    - name: secrets
+      stringData:
+        # Hub SSO
+        HUB_HOST: "hub.code.svc.cluster.local"
+        HUB_PORT: "8080"
+        # GitLab integration
+        GITLAB_HOST: "gitlab.code.svc.cluster.local"
+        GITLAB_PORT: "80"
+        GITLAB_TOKEN: ""
+
+  serviceAccount:
+    create: true
+    automount: true
+
+  rbac:
+    create: true
+    clusterRules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list, watch] }
+      - { apiGroups: [""], resources: [configmaps], verbs: [get, list] }
+
+  networkPolicy:
+    enabled: true
+    allowDB: true
+    extraEgress:
+      # Allow HTTPS to external
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - { protocol: TCP, port: 443 }
+      # Allow HTTP to external (covers GitLab :80 in code namespace)
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - { protocol: TCP, port: 80 }
+      # Allow Hub (code namespace, :8080)
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: code
+        ports:
+          - { protocol: TCP, port: 8080 }
+      # Allow service mesh (Consul)
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: consul
+        ports:
+          - { protocol: TCP, port: 8500 }
+          - { protocol: TCP, port: 8600 }
+      # Allow Vault
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: vault
+        ports:
+          - { protocol: TCP, port: 8200 }
+
+  serviceMonitor:
+    enabled: true
+    port: metrics
+    path: /metrics
+
+  routing:
+    httpRoutes:
+      - host: youtrack.local
+        port: 8080
+        authentik:
+          enabled: true
+          middleware: authentik-forward-auth
+
+  # StorageClass is cluster-scoped — kept verbatim via the raw escape hatch.
+  extraManifests:
+    - |
+      apiVersion: storage.k8s.io/v1
+      kind: StorageClass
+      metadata:
+        name: youtrack-storage-class
+      provisioner: kubernetes.io/gce-pd
+      parameters:
+        type: pd-ssd
+
+  tests:
+    enabled: true
     port: 8080
-
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 2Gi
-    requests:
-      cpu: 200m
-      memory: 512Mi
-
-  # Конфигурация YouTrack
-  config:
-    baseUrl: "http://youtrack.localhost"
-    listenPort: 8080
-    jvmOptions: "-Xmx1024m"
-
-# Persistent Storage
-persistence:
-  enabled: true
-  storageClass: local-path
-
-  # Data directory
-  data:
-    enabled: true
-    size: 5Gi
-    mountPath: /opt/youtrack/data
-    accessMode: ReadWriteOnce
-
-  # Backups directory
-  backups:
-    enabled: true
-    size: 3Gi
-    mountPath: /opt/youtrack/backups
-    accessMode: ReadWriteOnce
-
-  # Logs directory
-  logs:
-    enabled: true
-    size: 1Gi
-    mountPath: /opt/youtrack/logs
-    accessMode: ReadWriteOnce
-
-# Hub интеграция (для SSO)
-hub:
-  enabled: true
-  host: "hub.code.svc.cluster.local"
-  port: 8080
-  # Или используйте DNS:
-  # host: "hub.example.com"
-
-# Authentik интеграция (через Hub)
-authentik:
-  enabled: true
-  hubIntegration: true  # SSO через Hub
-
-# GitLab интеграция
-gitlab:
-  enabled: true
-  host: "gitlab.code.svc.cluster.local"
-  # Или используйте DNS:
-  # host: "gitlab.example.com"
-  port: 80
-
-  # Personal Access Token для GitLab
-  token: ""  # Injected via Vault - see vault.hashicorp.com annotations
-
-  # Integration settings
-  integration:
-    cicd: true  # GitLab CI/CD integration
-    webhooks: true
-
-# Ingress через Traefik
-ingress:
-  enabled: true
-  className: traefik
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-
-  host: youtrack.local
-  path: /
-
-  tls:
-    enabled: true
-    secretName: youtrack-tls
-
-# Consul интеграция
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  port: 8500
-  datacenter: dc1
-  tags:
-    - youtrack
-    - issue-tracking
-
-# Security
-securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-
-# Health Checks
-probes:
-  liveness:
-    enabled: true
-    initialDelaySeconds: 180
-    periodSeconds: 20
-  readiness:
-    enabled: true
-    initialDelaySeconds: 60
-    periodSeconds: 10
-
-# Environment variables
-env:
-  YOUTRACK_BASE_URL: "http://youtrack.localhost"
-  YOUTRACK_LISTEN_PORT: "8080"
-
-# Vault integration (requires Vault policies and secrets to be configured)
-vault:
-  enabled: false
-  # Note: Before enabling, configure Vault:
-  # 1. Create policy for youtrack service
-  # 2. Create secret at secret/data/youtrack/secrets
-  # 3. Enable Kubernetes auth method in Vault
-  # 4. Create role binding ServiceAccount to Vault policy
-  # See: kubernetes/docs/VAULT_MIGRATION.md
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: true
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+    url: http://youtrack:8080/api/admin/healthcheck

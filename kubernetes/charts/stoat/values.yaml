@@ -1,282 +1,320 @@
-# Config Reference: https://github.com/revoltchat/backend/blob/stable/crates/core/config/Revolt.toml
-# Default values for revolt.
-# This is a YAML-formatted file.
-# Declare variables to be passed into your templates.
+# stoat (Revolt chat) — rendered entirely by the chart-base subchart.
+# Each Revolt component is a workloads[] entry whose `name` becomes the
+# app.kubernetes.io/component label and the resource name suffix
+# (e.g. release "stoat" -> Deployment "stoat-api").
+#
+# NOTE on the original chart: templates/january/deployment.yaml was a copy-paste
+# of crond (it rendered a SECOND "-crond" Deployment), and the january Service
+# had no backing Deployment. That bug is corrected here: january is now a real
+# Deployment. Net kind counts are unchanged (7 Deployments, 5 Services).
+#
+# Config: Revolt.toml lives inline in configMaps[0] with production database
+# FQDNs (db namespace). Domain/secret values are placeholders — override in the
+# release file or via SOPS as needed.
+chart-base:
+  workloads:
+    # ---- Revolt API server ----
+    - name: api
+      kind: Deployment
+      replicas: 1
+      containers:
+        - name: api
+          image: ghcr.io/revoltchat/server:20250210-1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 14702, protocol: TCP }
+          livenessProbe:
+            tcpSocket: { port: 14702 }
+            initialDelaySeconds: 45
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket: { port: 14702 }
+            initialDelaySeconds: 45
+            periodSeconds: 30
+          volumeMounts:
+            - { name: config, subPath: Revolt.toml, mountPath: /Revolt.toml }
+      volumes:
+        - { name: config, configMap: { name: stoat-config } }
 
+    # ---- File server (autumn) ----
+    - name: autumn
+      kind: Deployment
+      replicas: 1
+      containers:
+        - name: autumn
+          image: ghcr.io/revoltchat/autumn:20250210-1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 14704, protocol: TCP }
+          livenessProbe:
+            tcpSocket: { port: 14704 }
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket: { port: 14704 }
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          volumeMounts:
+            - { name: config, subPath: Revolt.toml, mountPath: /Revolt.toml }
+      volumes:
+        - { name: config, configMap: { name: stoat-config } }
 
-# Consul integration
-consul:
-  enabled: true
-  tags:
-    - stoat
-    - revolt
-    - chat
-    - social
+    # ---- Events service (bonfire) ----
+    - name: bonfire
+      kind: Deployment
+      replicas: 1
+      containers:
+        - name: bonfire
+          image: ghcr.io/revoltchat/bonfire:20250210-1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 14703, protocol: TCP }
+          env:
+            - { name: RUST_BACKTRACE, value: "full" }
+          livenessProbe:
+            tcpSocket: { port: 14703 }
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket: { port: 14703 }
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          volumeMounts:
+            - { name: config, subPath: Revolt.toml, mountPath: /Revolt.toml }
+      volumes:
+        - { name: config, configMap: { name: stoat-config } }
 
-global:
-  namespace: 'social'
-  # Domain name used for access, ex revolt.example.com
-  domain: ''
+    # ---- Metadata / image proxy (january) ----
+    - name: january
+      kind: Deployment
+      replicas: 1
+      containers:
+        - name: january
+          image: ghcr.io/revoltchat/january:20250210-1
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 14705, protocol: TCP }
+          livenessProbe:
+            tcpSocket: { port: 14705 }
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket: { port: 14705 }
+            initialDelaySeconds: 15
+            periodSeconds: 30
+          volumeMounts:
+            - { name: config, subPath: Revolt.toml, mountPath: /Revolt.toml }
+      volumes:
+        - { name: config, configMap: { name: stoat-config } }
 
-  web:
-    port: 5000
-  api:
-    port: 14702
-  bonfire:
-    port: 14703
-  autumn:
-    port: 14704
-  january:
-    port: 14705
+    # ---- Web client ----
+    - name: web
+      kind: Deployment
+      replicas: 1
+      containers:
+        - name: web
+          image: ghcr.io/revoltchat/client:master
+          imagePullPolicy: Always
+          ports:
+            - { name: http, containerPort: 5000, protocol: TCP }
+          env:
+            - { name: HOSTNAME, value: "https://revolt.localhost" }
+            - { name: REVOLT_PUBLIC_URL, value: "https://revolt.localhost/api" }
+          livenessProbe:
+            tcpSocket: { port: 5000 }
+            initialDelaySeconds: 60
+            periodSeconds: 30
+          readinessProbe:
+            tcpSocket: { port: 5000 }
+            initialDelaySeconds: 60
+            periodSeconds: 30
+      volumes:
+        - { name: config, configMap: { name: stoat-config } }
 
-  secret:
-    vapid_key: ''
-    vapid_public_key: ''
-    encryption_key: ''
+    # ---- Regular task daemon (crond) ----
+    - name: crond
+      kind: Deployment
+      replicas: 1
+      containers:
+        - name: crond
+          image: ghcr.io/revoltchat/crond:20250210-1-debug
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 8000, protocol: TCP }
+          volumeMounts:
+            - { name: config, subPath: Revolt.toml, mountPath: /Revolt.toml }
+      volumes:
+        - { name: config, configMap: { name: stoat-config } }
 
-  ingress:
-    enabled: false
-    className: ''
-    annotations: {}
-    extra_hosts: []
+    # ---- Push notification daemon (pushd) ----
+    - name: pushd
+      kind: Deployment
+      replicas: 1
+      containers:
+        - name: pushd
+          image: ghcr.io/revoltchat/pushd:20250210-1
+          imagePullPolicy: IfNotPresent
+          env:
+            - { name: RUST_BACKTRACE, value: "full" }
+          volumeMounts:
+            - { name: config, subPath: Revolt.toml, mountPath: /Revolt.toml }
+      volumes:
+        - { name: config, configMap: { name: stoat-config } }
+
+    # ---- MinIO bucket bootstrap (Job) ----
+    - name: create-buckets
+      kind: Job
+      restartPolicy: Never
+      containers:
+        - name: create-buckets
+          image: docker.io/minio/minio
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+          env:
+            - { name: HOME, value: "/tmp" }
+          command: [/bin/sh, -c]
+          args:
+            - |
+              echo http://minio.db.svc.cluster.local:9000
+              while ! /usr/bin/mc ready minio; do
+                /usr/bin/mc alias set minio http://minio.db.svc.cluster.local:9000 minioautumn minioautumn
+                echo 'Waiting minio...' && sleep 1
+              done
+              /usr/bin/mc mb minio/revolt-uploads
+              exit 0
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+
+  services:
+    - name: api
+      component: api
+      annotations:
+        consul.hashicorp.com/service-name: "stoat-api"
+        consul.hashicorp.com/service-port: "14702"
+        consul.hashicorp.com/service-tags: "stoat,revolt,chat,social"
+      ports:
+        - { name: http, port: 14702, targetPort: http, protocol: TCP }
+    - name: autumn
+      component: autumn
+      annotations:
+        consul.hashicorp.com/service-name: "stoat-autumn"
+        consul.hashicorp.com/service-port: "14704"
+        consul.hashicorp.com/service-tags: "stoat,revolt,chat,social"
+      ports:
+        - { name: http, port: 14704, targetPort: http, protocol: TCP }
+    - name: bonfire
+      component: bonfire
+      annotations:
+        consul.hashicorp.com/service-name: "stoat-bonfire"
+        consul.hashicorp.com/service-port: "14703"
+        consul.hashicorp.com/service-tags: "stoat,revolt,chat,social"
+      ports:
+        - { name: http, port: 14703, targetPort: http, protocol: TCP }
+    - name: january
+      component: january
+      annotations:
+        consul.hashicorp.com/service-name: "stoat-january"
+        consul.hashicorp.com/service-port: "14705"
+        consul.hashicorp.com/service-tags: "stoat,revolt,chat,social"
+      ports:
+        - { name: http, port: 14705, targetPort: http, protocol: TCP }
+    - name: web
+      component: web
+      annotations:
+        consul.hashicorp.com/service-name: "stoat-web"
+        consul.hashicorp.com/service-port: "5000"
+        consul.hashicorp.com/service-tags: "stoat,revolt,chat,social"
+      ports:
+        - { name: http, port: 5000, targetPort: http, protocol: TCP }
+
+  configMaps:
+    - name: config
+      data:
+        Revolt.toml: |
+          production = false
+
+          [database]
+          mongodb = "mongodb://mongodb-0.mongodb-headless.db.svc.cluster.local:27017"
+          redis = "redis://valkey-primary.db.svc.cluster.local:6379"
+
+          [rabbit]
+          host = "rabbitmq.db.svc.cluster.local"
+          port = 5672
+          username = "rabbituser"
+          password = "rabbitpass"
+
+          [hosts]
+          app = "https://revolt.localhost"
+          api = "https://revolt.localhost/api"
+          events = "wss://revolt.localhost/ws"
+          autumn = "https://revolt.localhost/autumn"
+          january = "https://revolt.localhost/january"
+
+          [pushd.vapid]
+          private_key = ""
+          public_key = ""
+
+          [files]
+          encryption_key = ""
+
+          [files.s3]
+          # S3 protocol endpoint
+          endpoint = "http://minio.db.svc.cluster.local:9000"
+          # Whether to use path-style buckets (generally true, except for MinIO)
+          path_style_buckets = false
+          # S3 region name
+          region = "minio"
+          # S3 protocol key ID
+          access_key_id = "minioautumn"
+          # S3 protocol access key
+          secret_access_key = "minioautumn"
+          default_bucket = "revolt-uploads"
+
   serviceAccount:
     create: true
     automount: true
-    annotations: { }
-    name: ""
 
-  subcharts:
-    mongo:
-      enabled: false  # Set to false to use external MongoDB
-      connection_url: ''
-    redis:
-      enabled: false  # Set to false to use external Redis
-      connection_url: ''
-    minio:
-      enabled: false  # Set to false to use external MinIO
-      connection_url: ''
-    rabbitmq:
-      enabled: false  # Set to false to use external RabbitMQ
-      host: ''
-      port: 5672
-      username: 'rabbituser'
-      password: 'rabbitpass'
+  rbac:
+    create: true
+    rules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [configmaps], verbs: [get, list] }
 
+  networkPolicy:
+    enabled: true
+    allowDB: true
+    extraEgress:
+      # External HTTP/HTTPS
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - { protocol: TCP, port: 443 }
+          - { protocol: TCP, port: 80 }
+      # Consul / Vault / Authentik in the service namespace
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+        ports:
+          - { protocol: TCP, port: 8500 }
+          - { protocol: TCP, port: 8600 }
+          - { protocol: TCP, port: 8200 }
+          - { protocol: TCP, port: 9000 }
+          - { protocol: TCP, port: 9443 }
 
-mongodb:
-  architecture: standalone
-  auth:
-    enabled: false
-  persistence:
-    enabled: false
+  serviceMonitor:
+    enabled: true
+    port: metrics
+    path: /metrics
+    interval: 30s
 
-
-redis:
-  #  image:
-  #    repository: eqalpha/keydb
-  #    tag: x86_64_v6.3.4
-  #    pullPolicy: IfNotPresent
-  architecture: standalone
-  auth:
-    enabled: false
-  master:
-    persistence:
-      enabled: false
-
-
-rabbitmq:
-  replicaCount: 1
-  auth:
-    username: "rabbituser"
-    password: "rabbitpass"
-  persistence:
-    enabled: false
-
-
-minio:
-  mode: standalone
-  rootUser: minioautumn
-  rootPassword: minioautumn
-  persistence:
-    enabled: false
-  auth:
-    rootUser: 'minioautumn'
-    rootPassword: 'minioautumn'
-
-
-# Web app
-web:
-  image:
-    repository: ghcr.io/revoltchat/client
-    tag: master
-    pullPolicy: Always
-  annotations: {}
-  labels: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  replicaCount: 1
-  resources: {}
-  livenessProbe:
-  readinessProbe:
-  service:
-    type: ClusterIP
-  extra_volumes: []
-  extra_volumeMounts: []
-
-
-# Revolt API Server
-api:
-  image:
-    repository: ghcr.io/revoltchat/server
-    tag: 20250210-1
-    pullPolicy: IfNotPresent
-  replicaCount: 1
-  annotations: {}
-  labels: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  resources: {}
-  livenessProbe:
-  readinessProbe:
-  service:
-    type: ClusterIP
-  extra_volumes: []
-  extra_volumeMounts: []
-  configMountPath: /Revolt.toml
-
-
-# Events service
-bonfire:
-  image:
-    repository: ghcr.io/revoltchat/bonfire
-    tag: 20250210-1
-    pullPolicy: IfNotPresent
-  replicaCount: 1
-  annotations: {}
-  labels: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  resources: {}
-  livenessProbe:
-  readinessProbe:
-  service:
-    type: ClusterIP
-  extra_volumes: []
-  extra_volumeMounts: []
-  configMountPath: /Revolt.toml
-
-
-# File server
-autumn:
-  image:
-    repository: ghcr.io/revoltchat/autumn
-    tag: 20250210-1
-    pullPolicy: IfNotPresent
-  replicaCount: 1
-  annotations: {}
-  labels: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  resources: {}
-  #  livenessProbe:
-  livenessProbe: {}
-  readinessProbe:
-  service:
-    type: ClusterIP
-  extra_volumes: []
-  extra_volumeMounts: []
-  configMountPath: /Revolt.toml
-
-# Metadata and image proxy
-january:
-  image:
-    repository: ghcr.io/revoltchat/january
-    tag: 20250210-1
-    pullPolicy: IfNotPresent
-  replicaCount: 1
-  annotations: {}
-  labels: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  resources: {}
-  livenessProbe:
-  readinessProbe:
-  service:
-    type: ClusterIP
-  extra_volumes: []
-  extra_volumeMounts: []
-  configMountPath: /Revolt.toml
-
-# Regular task daemon
-crond:
-  image:
-    repository: ghcr.io/revoltchat/crond
-    tag: 20250210-1-debug
-    pullPolicy: IfNotPresent
-  replicaCount: 1
-  annotations: {}
-  labels: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  resources: {}
-  livenessProbe:
-  readinessProbe:
-  extra_volumes: []
-  extra_volumeMounts: []
-  configMountPath: /Revolt.toml
-
-# Push notification daemon
-pushd:
-  image:
-    repository: ghcr.io/revoltchat/pushd
-    tag: 20250210-1
-    pullPolicy: IfNotPresent
-  replicaCount: 1
-  annotations: {}
-  labels: {}
-  nodeSelector: {}
-  tolerations: []
-  affinity: {}
-  resources: {}
-  livenessProbe:
-  readinessProbe:
-  extra_volumes: []
-  extra_volumeMounts: []
-  configMountPath: /Revolt.toml
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: true
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: true
-  ingress: []
-  egress: []
-
-# RBAC
-rbac:
-  create: true
-  allowSecrets: false
-  rules: []
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+  tests:
+    enabled: true
+    image: curlimages/curl:8.5.0
+    url: "http://stoat-web:5000"

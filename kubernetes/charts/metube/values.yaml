@@ -1,136 +1,85 @@
-# Namespace
-namespace: utilities
+# metube — rendered entirely by the chart-base subchart.
+# MeTube: YouTube downloader web UI. Downloads persist to a PVC mounted at /downloads.
+chart-base:
+  workloads:
+    - kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: metube
+        consul.hashicorp.com/connect-service-port: "8081"
+        consul.hashicorp.com/service-tags: "utilities,metube,downloader"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        co.elastic.logs.json.add_error_key: "true"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8081"
+        prometheus.io/path: "/metrics"
+      containers:
+        - name: metube
+          image: ghcr.io/alexta69/metube:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 8081 }
+          env:
+            - { name: OUTPUT_TEMPLATE, value: "%(title)s.%(ext)s" }
+            - { name: DEFAULT_RES, value: "1080" }
+            - { name: DARK_MODE, value: "true" }
+          resources:
+            requests: { cpu: 100m, memory: 64Mi }
+            limits: { cpu: 500m, memory: 256Mi }
+          volumeMounts:
+            - { name: downloads, mountPath: /downloads }
+          livenessProbe:
+            httpGet: { path: /, port: 8081 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /, port: 8081 }
+            initialDelaySeconds: 5
+            periodSeconds: 5
+      volumes:
+        - name: downloads
+          persistentVolumeClaim:
+            claimName: metube-downloads
 
-create:
-  namespace: true
+  services:
+    - ports:
+        - { name: http, port: 8081, targetPort: 8081, protocol: TCP }
 
-# MeTube Image
-image:
-  repository: ghcr.io/alexta69/metube
-  tag: "latest"
-  pullPolicy: IfNotPresent
+  pvcs:
+    - { name: downloads, accessModes: [ReadWriteOnce], storageClass: local-path, size: 10Gi }
 
-replicaCount: 1
+  serviceAccount:
+    create: true
+    automount: true
 
-nameOverride: ""
-fullnameOverride: ""
+  rbac:
+    create: true
+    rules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [configmaps], verbs: [get, list] }
 
-# Service configuration
-service:
-  type: ClusterIP
-  port: 8081
-  targetPort: 8081
-
-# Resources
-resources:
-  limits:
-    cpu: 500m
-    memory: 256Mi
-  requests:
-    cpu: 100m
-    memory: 64Mi
-
-# Persistent storage for downloads
-persistence:
-  enabled: true
-  storageClass: local-path
-  accessMode: ReadWriteOnce
-  size: 10Gi
-  mountPath: /downloads
-
-# Ingress configuration
-ingress:
-  enabled: true
-  className: traefik
-  host: metube.localhost
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-  tls:
+  networkPolicy:
     enabled: true
-    secretName: metube-tls
-    clusterIssuer: letsencrypt
+    allowDB: false
 
-# ServiceMonitor for Prometheus
-serviceMonitor:
-  enabled: true
-  interval: 30s
-  scrapeTimeout: 10s
-
-# Consul integration
-consul:
-  enabled: true
-  tags:
-    - utilities
-    - metube
-    - downloader
-
-# Security context
-securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-
-# Health checks
-probes:
-  liveness:
+  serviceMonitor:
     enabled: true
-    path: "/"
-    initialDelaySeconds: 30
-    periodSeconds: 10
-  readiness:
+    port: http
+    path: /metrics
+    interval: 30s
+
+  pdb:
+    enabled: false
+
+  routing:
+    httpRoutes:
+      - host: metube.localhost
+        port: 8081
+        authentik:
+          enabled: false
+
+  tests:
     enabled: true
-    path: "/"
-    initialDelaySeconds: 5
-    periodSeconds: 5
-
-# MeTube specific configuration
-metube:
-  # Output template for downloaded files
-  outputTemplate: "%(title)s.%(ext)s"
-  # Default download quality
-  defaultRes: "1080"
-  # Enable dark mode
-  darkMode: true
-
-nodeSelector: {}
-tolerations: []
-affinity: {}
-
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: false
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
-
-# RBAC
-rbac:
-  create: true
-  allowSecrets: false
-  rules: []
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+    port: 8081

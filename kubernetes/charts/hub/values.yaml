@@ -1,162 +1,124 @@
-# Namespace
-namespace: code
+# hub (JetBrains Hub) — rendered entirely by the chart-base subchart.
+# Env-specific overrides (DB password, ingress host, PVC sizes) live in
+# kubernetes/releases/hub.yaml.gotmpl, nested under the same `chart-base:` key.
+chart-base:
+  # Hub is a JetBrains Java app: keep the root filesystem writable as the original
+  # chart did (it never set readOnlyRootFilesystem). All other hardening is kept.
+  podSecurityContext:
+    runAsGroup: 1000
+  securityContext:
+    readOnlyRootFilesystem: false
 
-create:
-  namespace: true
+  workloads:
+    - kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "hub"
+        consul.hashicorp.com/connect-service-port: "8080"
+        consul.hashicorp.com/service-tags: "hub,sso,jetbrains"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs/multiline.pattern: "^[0-9]{4}-[0-9]{2}-[0-9]{2}"
+        co.elastic.logs/multiline.negate: "true"
+        co.elastic.logs/multiline.match: "after"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+        prometheus.io/path: "/metrics"
+      initContainers:
+        - name: wait-for-postgresql
+          image: postgres:15-alpine
+          command:
+            - sh
+            - -c
+            - |
+              until psql -h postgresql.db.svc.cluster.local -U hub -d hub -c "SELECT 1" > /dev/null 2>&1; do
+                echo "Waiting for PostgreSQL..."
+                sleep 5
+              done
+              echo "PostgreSQL is ready!"
+          env:
+            - name: PGPASSWORD
+              value: ""
+      containers:
+        - name: hub
+          image: jetbrains/hub:2025.3.124603
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 8080 }
+          env:
+            - { name: HUB_BASE_URL, value: "http://hub.local" }
+            - { name: HUB_LISTEN_PORT, value: "8080" }
+            - { name: HUB_DATABASE_URL, value: "postgresql://hub:@postgresql.db.svc.cluster.local:5432/hub" }
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 1000m, memory: 2Gi }
+          volumeMounts:
+            - { name: data, mountPath: /opt/hub/data }
+            - { name: config, mountPath: /opt/hub/conf }
+            - { name: logs, mountPath: /opt/hub/logs }
+          livenessProbe:
+            httpGet: { path: /, port: 8080 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /, port: 8080 }
+            initialDelaySeconds: 30
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: hub-data
+        - name: config
+          persistentVolumeClaim:
+            claimName: hub-config
+        - name: logs
+          persistentVolumeClaim:
+            claimName: hub-logs
 
-# Hub Image
-image:
-  repository: jetbrains/hub
-  tag: "2025.3.124603"
-  pullPolicy: IfNotPresent
+  services:
+    - type: ClusterIP
+      annotations:
+        consul.hashicorp.com/service-name: "hub"
+        consul.hashicorp.com/service-port: "8080"
+        consul.hashicorp.com/service-tags: "hub,jetbrains,authentication"
+      ports:
+        - { name: http, port: 8080, targetPort: 8080, protocol: TCP }
 
-# Hub Server
-hub:
-  replicaCount: 1
+  pvcs:
+    - { name: data, accessModes: [ReadWriteOnce], storageClass: local-path, size: 1Gi }
+    - { name: config, accessModes: [ReadWriteOnce], storageClass: local-path, size: 1Gi }
+    - { name: logs, accessModes: [ReadWriteOnce], storageClass: local-path, size: 1Gi }
 
-  service:
-    type: ClusterIP
+  serviceAccount:
+    create: true
+    automount: true
+
+  rbac:
+    create: true
+    rules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [configmaps], verbs: [get, list] }
+
+  networkPolicy:
+    enabled: true
+    allowDB: true
+
+  serviceMonitor:
+    enabled: true
+    port: metrics
+    path: /metrics
+
+  pdb:
+    enabled: false
+    minAvailable: 1
+
+  routing:
+    httpRoutes:
+      - host: hub.local
+        port: 8080
+        authentik:
+          enabled: false
+
+  tests:
+    enabled: true
     port: 8080
-
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 2Gi
-    requests:
-      cpu: 100m
-      memory: 256Mi
-
-  # Конфигурация Hub
-  config:
-    baseUrl: "http://hub.local"
-    listenPort: 8080
-
-# Persistent Storage
-persistence:
-  enabled: true
-  storageClass: local-path
-
-  # Data
-  data:
-    enabled: true
-    size: 1Gi
-    mountPath: /opt/hub/data
-
-  # Config
-  config:
-    enabled: true
-    size: 1Gi
-    mountPath: /opt/hub/conf
-
-  # Logs
-  logs:
-    enabled: true
-    size: 1Gi
-    mountPath: /opt/hub/logs
-
-# PostgreSQL (внешний)
-postgresql:
-  external: true
-  host: "postgresql.db.svc.cluster.local"
-  port: 5432
-  username: "hub"
-  password: ""  # Injected via Vault - see vault.hashicorp.com annotations
-  database: "hub"
-  ssl: false
-
-# Ingress через Traefik
-ingress:
-  enabled: true
-  className: traefik
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-
-  host: hub.local
-  path: /
-
-  tls:
-    enabled: true
-    secretName: hub-tls
-
-# Consul интеграция
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  port: 8500
-  datacenter: dc1
-  tags:
-    - hub
-    - jetbrains
-    - authentication
-
-# Security
-securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-
-# Health Checks
-probes:
-  liveness:
-    enabled: true
-    initialDelaySeconds: 60
-    periodSeconds: 10
-  readiness:
-    enabled: true
-    initialDelaySeconds: 30
-    periodSeconds: 5
-
-# Vault integration (requires Vault policies and secrets to be configured)
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-vault:
-  enabled: false
-  # Note: Before enabling, configure Vault:
-  # 1. Create policy for hub service
-  # 2. Create secret at secret/data/hub/secrets
-  # 3. Enable Kubernetes auth method in Vault
-  # 4. Create role binding ServiceAccount to Vault policy
-  # See: kubernetes/docs/VAULT_MIGRATION.md
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: true
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
-
-# RBAC
-rbac:
-  create: true
-  allowSecrets: false
-  rules: []
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1

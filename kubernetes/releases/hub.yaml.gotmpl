@@ -1,27 +1,11 @@
-namespace: code
-
-hub:
-  config:
-    baseUrl: "http://hub.{{ .Values.infra.host }}"
-
-persistence:
-  storageClass: local-path
-  data:
-    size: 3Gi
-  config:
-    size: 5Gi
-  logs:
-    size: 1Gi
-
-postgresql:
-  external: true
-  host: "postgresql.db.svc.cluster.local"
-  password: "{{ .Values.secrets.postgresPassword }}"
-
-ingress:
-  enabled: true
-  host: hub.{{ .Values.infra.host }}
-
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
+# hub release overrides.
+# Base config lives in charts/hub/values.yaml under the "chart-base:" key.
+# Add env-specific overrides here, nested under "chart-base:" (subchart scoping).
+# Example:
+#   chart-base:
+#     workloads:
+#       - containers:
+#           - name: hub
+#             env:
+#               - name: EXAMPLE
+#                 value: "value"

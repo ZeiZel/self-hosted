@@ -1,177 +1,250 @@
-replicaCount: 1
+# remnawave — rendered entirely by the chart-base subchart.
+#
+# Notes on faithfulness to the original chart:
+# - The application ConfigMap is env-var style (consumed via `envFrom`). chart-base's
+#   typed `configMaps` renderer forces block scalars (`|`), which would append a
+#   trailing newline to every value (e.g. APP_PORT "3000" -> "3000\n") and corrupt the
+#   env vars. It is therefore emitted verbatim via `extraManifests`.
+# - The ServiceMonitor uses basicAuth (not supported by the typed `serviceMonitor`
+#   schema) and its companion `remnawave-metrics` Secret are emitted via `extraManifests`.
+# - The Traefik IngressRoute is emitted via `extraManifests`. The Traefik Middleware is
+#   only rendered when authentik is enabled (disabled here), matching the original.
+# - The plain Kubernetes Ingress is replaced by a Gateway API HTTPRoute.
+chart-base:
+  serviceAccount:
+    create: true
+    automount: false
 
-image:
-  repository: remnawave/backend
-  pullPolicy: IfNotPresent
-  tag: "latest"
+  rbac:
+    create: true
+    rules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [configmaps], verbs: [get, list] }
 
-imagePullSecrets: []
-nameOverride: ""
-fullnameOverride: ""
-
-serviceAccount:
-  create: true
-  annotations: {}
-  name: ""
-
-podAnnotations: {}
-
-podSecurityContext:
-  fsGroup: 1000
-
-securityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-  capabilities:
-    drop:
-    - ALL
-  readOnlyRootFilesystem: false
-  allowPrivilegeEscalation: false
-
-service:
-  type: ClusterIP
-  port: 3000
-  targetPort: 3000
-  metricsPort: 3001
-
-ingress:
-  enabled: true
-  className: traefik
-  annotations: {}
-  hosts:
-    - host: remnawave.local
-      paths:
-        - path: /
-          pathType: Prefix
-  tls: []
-
-resources:
-  limits:
-    cpu: 1000m
-    memory: 1Gi
-  requests:
-    cpu: 100m
-    memory: 256Mi
-
-# External PostgreSQL configuration
-postgresql:
-  enabled: false
-  external:
-    host: postgresql.db.svc.cluster.local
-    port: 5432
-    username: remnawave
-    password: ""
-    database: remnawave
-
-# External Redis (ValKey) configuration
-redis:
-  enabled: false
-  external:
-    host: valkey-primary.db.svc.cluster.local
-    port: 6379
-    password: ""
-    database: 0
-
-# Remnawave specific configuration
-remnawave:
-  # API Configuration
-  apiInstances: 1
-
-  # Security
-  jwt:
-    authSecret: "change_me_auth_secret"
-    apiTokensSecret: "change_me_api_tokens_secret"
-    authLifetime: 12
-
-  # Domain configuration
-  frontendDomain: "*"
-  subPublicDomain: "example.com/api/sub"
-
-  # Documentation
-  docs:
+  networkPolicy:
     enabled: false
-    swaggerPath: "/docs"
-    scalarPath: "/scalar"
 
-  # Metrics (Prometheus)
-  metrics:
+  serviceMonitor:
+    enabled: false
+
+  pdb:
+    enabled: false
+
+  tests:
     enabled: true
-    user: "admin"
-    password: "change_me_metrics"
-
-  # Telegram notifications
-  telegram:
-    enabled: false
-    botToken: ""
-    usersChatId: ""
-    nodesChatId: ""
-    crmChatId: ""
-
-  # Webhooks
-  webhook:
-    enabled: false
-    url: ""
-    secretHeader: ""
-
-  # Other settings
-  shortUuidLength: 16
-  httpLoggingEnabled: false
-  bandwidthNotificationsEnabled: false
-  notConnectedUsersNotificationsEnabled: false
-
-# Consul integration
-consul:
-  enabled: true
-  host: "consul-server.service.svc.cluster.local:8500"
-  serviceName: remnawave
-  servicePort: 3000
-  datacenter: dc1
-  tags:
-    - remnawave
-
-# Authentik integration (OIDC)
-authentik:
-  enabled: false
-  issuer: ""
-  clientId: ""
-  clientSecret: ""
-
-# Network Policy
-networkPolicy:
-  enabled: false
-
-nodeSelector: {}
-
-tolerations: []
-
-affinity: {}
-
-livenessProbe:
-  httpGet:
-    path: /api/health
     port: 3000
-  initialDelaySeconds: 30
-  periodSeconds: 10
-  timeoutSeconds: 5
-  failureThreshold: 3
 
-readinessProbe:
-  httpGet:
-    path: /api/health
-    port: 3000
-  initialDelaySeconds: 15
-  periodSeconds: 5
-  timeoutSeconds: 3
-  failureThreshold: 3
+  workloads:
+    - kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: remnawave
+        consul.hashicorp.com/connect-service-port: "3000"
+        consul.hashicorp.com/service-tags: "remnawave"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        co.elastic.logs.json.add_error_key: "true"
+        co.elastic.logs.json.message_key: "message"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
+      podSecurityContext:
+        fsGroup: 1000
+      initContainers:
+        - name: wait-for-postgres
+          image: postgres:17-alpine
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for PostgreSQL to be ready..."
+              until pg_isready -h postgresql.db.svc.cluster.local -p 5432; do
+                echo "PostgreSQL is not ready yet..."
+                sleep 2
+              done
+              echo "PostgreSQL is ready!"
+        - name: wait-for-redis
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Redis/ValKey to be ready..."
+              until nc -z valkey-primary.db.svc.cluster.local 6379; do
+                echo "Redis/ValKey is not ready yet..."
+                sleep 2
+              done
+              echo "Redis/ValKey is ready!"
+      containers:
+        - name: remnawave
+          image: remnawave/backend:latest
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities:
+              drop:
+                - ALL
+            readOnlyRootFilesystem: false
+            runAsNonRoot: true
+            runAsUser: 1000
+          ports:
+            - { name: http, containerPort: 3000, protocol: TCP }
+            - { name: metrics, containerPort: 3001, protocol: TCP }
+          envFrom:
+            - configMapRef:
+                name: remnawave
+            - secretRef:
+                name: remnawave
+          livenessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          readinessProbe:
+            httpGet:
+              path: /api/health
+              port: 3000
+            initialDelaySeconds: 15
+            periodSeconds: 5
+            timeoutSeconds: 3
+            failureThreshold: 3
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 1Gi
+            requests:
+              cpu: 100m
+              memory: 256Mi
 
-# RBAC
-rbac:
-  create: true
-  allowSecrets: false
-  rules: []
+  services:
+    - annotations:
+        consul.hashicorp.com/service-name: remnawave
+        consul.hashicorp.com/service-port: "3000"
+        consul.hashicorp.com/service-tags: "remnawave"
+      ports:
+        - { name: http, port: 3000, targetPort: http, protocol: TCP }
+        - { name: metrics, port: 3001, targetPort: metrics, protocol: TCP }
 
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+  secrets:
+    # App secret (name resolves to the release fullname "remnawave"), consumed via secretRef.
+    - type: Opaque
+      stringData:
+        POSTGRES_USER: "remnawave"
+        POSTGRES_PASSWORD: ""
+        POSTGRES_DB: "remnawave"
+        DATABASE_URL: "postgresql://remnawave:@postgresql.db.svc.cluster.local:5432/remnawave"
+        REDIS_HOST: "valkey-primary.db.svc.cluster.local"
+        REDIS_PORT: "6379"
+        REDIS_DB: "0"
+        JWT_AUTH_SECRET: "change_me_auth_secret"
+        JWT_API_TOKENS_SECRET: "change_me_api_tokens_secret"
+        METRICS_PASS: "change_me_metrics"
+
+  routing:
+    httpRoutes:
+      - host: remnawave.local
+        port: 3000
+        authentik:
+          enabled: false
+
+  extraManifests:
+    # Env-var ConfigMap (verbatim to avoid block-scalar mangling of values).
+    - |
+      apiVersion: v1
+      kind: ConfigMap
+      metadata:
+        name: remnawave
+        namespace: {{ .Release.Namespace }}
+        labels:
+          {{- include "chart-base.labels" . | nindent 6 }}
+      data:
+        # Application ports
+        APP_PORT: "3000"
+        METRICS_PORT: "3001"
+        # API scaling
+        API_INSTANCES: "1"
+        # Domain configuration
+        FRONT_END_DOMAIN: "*"
+        SUB_PUBLIC_DOMAIN: "example.com/api/sub"
+        # Documentation
+        IS_DOCS_ENABLED: "false"
+        SWAGGER_PATH: "/docs"
+        SCALAR_PATH: "/scalar"
+        # JWT settings
+        JWT_AUTH_LIFETIME: "12"
+        # Other settings
+        SHORT_UUID_LENGTH: "16"
+        IS_HTTP_LOGGING_ENABLED: "false"
+        BANDWIDTH_USAGE_NOTIFICATIONS_ENABLED: "false"
+        NOT_CONNECTED_USERS_NOTIFICATIONS_ENABLED: "false"
+        # Telegram notifications
+        IS_TELEGRAM_NOTIFICATIONS_ENABLED: "false"
+        # Webhook
+        WEBHOOK_ENABLED: "false"
+        # Metrics
+        METRICS_USER: "admin"
+    # Metrics basic-auth Secret consumed by the ServiceMonitor below.
+    - |
+      apiVersion: v1
+      kind: Secret
+      metadata:
+        name: remnawave-metrics
+        namespace: {{ .Release.Namespace }}
+        labels:
+          {{- include "chart-base.labels" . | nindent 6 }}
+      type: Opaque
+      stringData:
+        username: "admin"
+        password: "change_me_metrics"
+    # ServiceMonitor with basicAuth (typed serviceMonitor schema has no basicAuth support).
+    - |
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: remnawave
+        namespace: {{ .Release.Namespace }}
+        labels:
+          {{- include "chart-base.labels" . | nindent 6 }}
+      spec:
+        selector:
+          matchLabels:
+            {{- include "chart-base.selectorLabels" . | nindent 8 }}
+        endpoints:
+          - port: metrics
+            path: /metrics
+            interval: 30s
+            basicAuth:
+              username:
+                name: remnawave-metrics
+                key: username
+              password:
+                name: remnawave-metrics
+                key: password
+    # Traefik IngressRoute (raw CRD).
+    - |
+      apiVersion: traefik.io/v1alpha1
+      kind: IngressRoute
+      metadata:
+        name: remnawave
+        namespace: {{ .Release.Namespace }}
+        labels:
+          {{- include "chart-base.labels" . | nindent 6 }}
+      spec:
+        entryPoints:
+          - websecure
+        routes:
+          - match: Host(`remnawave.local`)
+            kind: Rule
+            services:
+              - name: remnawave
+                port: 3000
+          # Subscription API endpoint (public, no auth)
+          - match: Host(`remnawave.local`) && PathPrefix(`/api/sub`)
+            kind: Rule
+            services:
+              - name: remnawave
+                port: 3000

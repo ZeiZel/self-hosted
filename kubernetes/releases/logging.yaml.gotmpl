@@ -1,51 +1,11 @@
-namespace: service
-
-elasticsearch:
-  enabled: true
-  replicaCount: 1
-  persistence:
-    enabled: true
-    storageClass: local-path
-    size: 10Gi
-  security:
-    enabled: true
-    password: "changeme"
-
-logstash:
-  enabled: true
-  replicaCount: 1
-  persistence:
-    enabled: true
-    storageClass: local-path
-    size: 2Gi
-
-kibana:
-  enabled: true
-  replicaCount: 1
-
-filebeat:
-  enabled: true
-  output: logstash
-
-ingress:
-  enabled: true
-  className: traefik
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-  hosts:
-    kibana:
-      host: kibana.{{ .Values.infra.host }}
-      path: /
-  tls:
-    enabled: true
-    secretName: logging-tls
-
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowConsul: true
-    allowVault: true
+# logging release overrides.
+# Base config lives in charts/logging/values.yaml under the "chart-base:" key.
+# Add env-specific overrides here, nested under "chart-base:" (subchart scoping).
+# Example:
+#   chart-base:
+#     workloads:
+#       - containers:
+#           - name: logging
+#             env:
+#               - name: EXAMPLE
+#                 value: "value"

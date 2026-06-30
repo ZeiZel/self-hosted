@@ -1,34 +1,11 @@
-namespace: service
-
-image:
-  repository: hashicorp/consul
-  tag: "1.18.2"
-  pullPolicy: IfNotPresent
-
-server:
-  enabled: true
-  replicas: 1
-
-ui:
-  enabled: true
-
-persistence:
-  enabled: true
-  storageClass: local-path
-  size: 1Gi
-
-resources:
-  requests:
-    cpu: 100m
-    memory: 128Mi
-  limits:
-    cpu: 500m
-    memory: 512Mi
-
-ingress:
-  enabled: true
-  className: traefik
-  host: consul.{{ .Values.infra.host }}
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
+# consul release overrides.
+# Base config lives in charts/consul/values.yaml under the "chart-base:" key.
+# Add env-specific overrides here, nested under "chart-base:" (subchart scoping).
+# Example:
+#   chart-base:
+#     workloads:
+#       - containers:
+#           - name: consul
+#             env:
+#               - name: EXAMPLE
+#                 value: "value"

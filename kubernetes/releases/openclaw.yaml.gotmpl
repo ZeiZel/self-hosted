@@ -1,62 +1,11 @@
-namespace: automation
-
-image:
-  repository: alpine/openclaw
-  tag: "1.0.0"
-
-openclaw:
-  replicaCount: 1
-
-resources:
-  limits:
-    cpu: 2000m
-    memory: 4Gi
-  requests:
-    cpu: 500m
-    memory: 1Gi
-
-persistence:
-  config:
-    enabled: true
-    storageClass: local-path
-    size: 10Gi
-
-  workspace:
-    enabled: true
-    storageClass: local-path
-    size: 50Gi
-
-ingress:
-  enabled: true
-  className: traefik
-  host: openclaw.{{ .Values.infra.host }}
-  tls:
-    enabled: true
-    secretName: openclaw-tls
-
-consul:
-  enabled: true
-  tags:
-    - openclaw
-    - ai-assistant
-
-authentik:
-  enabled: true
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-
-vault:
-  enabled: true
-  role: "openclaw"
-  secretPath: "secret/data/openclaw/secrets"
-
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: false
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: true
-    allowExternalHTTPS: true
-
-metrics:
-  enabled: true
+# openclaw release overrides.
+# Base config lives in charts/openclaw/values.yaml under the "chart-base:" key.
+# Add env-specific overrides here, nested under "chart-base:" (subchart scoping).
+# Example:
+#   chart-base:
+#     workloads:
+#       - containers:
+#           - name: openclaw
+#             env:
+#               - name: EXAMPLE
+#                 value: "value"

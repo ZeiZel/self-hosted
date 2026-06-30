@@ -9,3 +9,7 @@ sources:
   - https://github.com/dani-garcia/vaultwarden
 maintainers:
   - name: DevOps Team
+dependencies:
+  - name: chart-base
+    version: 0.1.0
+    repository: file://../chart-base

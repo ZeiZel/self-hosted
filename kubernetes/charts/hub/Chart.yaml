@@ -1,11 +1,15 @@
 apiVersion: v2
 name: hub
-description: A Helm chart for JetBrains Hub (SSO and Integration)
+description: A Helm chart for JetBrains Hub (SSO and Integration) (rendered by chart-base)
 type: application
 version: 1.0.0
-appVersion: "2025.1"
+appVersion: "2025.3.124603"
 home: https://www.jetbrains.com/help/hub/
 sources:
   - https://github.com/JetBrains/hub-docker-images
 maintainers:
   - name: DevOps Team
+dependencies:
+  - name: chart-base
+    version: 0.1.0
+    repository: file://../chart-base

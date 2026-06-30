@@ -3,7 +3,7 @@ name: ghost
 description: Ghost - Professional publishing platform for bloggers and content creators
 type: application
 version: 0.1.0
-appVersion: "5.108.0"
+appVersion: "5.108.0-alpine"
 home: https://ghost.org
 sources:
   - https://github.com/TryGhost/Ghost
@@ -16,3 +16,7 @@ keywords:
 maintainers:
   - name: Zeizel
     url: https://github.com/ZeiZel
+dependencies:
+  - name: chart-base
+    version: 0.1.0
+    repository: file://../chart-base

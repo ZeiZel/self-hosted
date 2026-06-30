@@ -1,187 +1,120 @@
-namespace: content
+# ghost — rendered entirely by the chart-base subchart.
+# Ghost (TryGhost) publishing platform. Connects to external MySQL in the db
+# namespace and stores content (themes/images) on a PVC. Ghost writes to its
+# content dir at runtime, so the container filesystem must stay writable
+# (readOnlyRootFilesystem: false override below).
+chart-base:
+  # Ghost writes to its working dir; relax the baked-in read-only rootfs.
+  securityContext:
+    readOnlyRootFilesystem: false
+  podSecurityContext:
+    runAsGroup: 1000
 
-create:
-  namespace: true
+  workloads:
+    - kind: Deployment
+      replicas: 1
+      strategy:
+        type: Recreate
+      podAnnotations:
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        co.elastic.logs.json.add_error_key: "true"
+        co.elastic.logs.json.message_key: "message"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "2368"
+        prometheus.io/path: "/metrics"
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "ghost"
+        consul.hashicorp.com/connect-service-port: "2368"
+        consul.hashicorp.com/service-tags: "ghost,blog,cms,content"
+      containers:
+        - name: ghost
+          image: ghost:5.108.0-alpine
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 2368, protocol: TCP }
+          env:
+            - { name: url, value: "https://ghost.localhost" }
+            - { name: NODE_ENV, value: "production" }
+            - { name: database__client, value: "mysql" }
+            - { name: database__connection__host, value: "mysql.db.svc.cluster.local" }
+            - { name: database__connection__port, value: "3306" }
+            - { name: database__connection__database, value: "ghost" }
+            - name: database__connection__user
+              valueFrom:
+                secretKeyRef:
+                  name: ghost-secrets
+                  key: mysql-user
+            - name: database__connection__password
+              valueFrom:
+                secretKeyRef:
+                  name: ghost-secrets
+                  key: mysql-password
+          resources:
+            requests: { cpu: 100m, memory: 256Mi }
+            limits: { cpu: 1000m, memory: 1Gi }
+          livenessProbe:
+            httpGet: { path: /, port: http, scheme: HTTP }
+            initialDelaySeconds: 120
+            periodSeconds: 30
+            timeoutSeconds: 10
+            failureThreshold: 6
+          readinessProbe:
+            httpGet: { path: /, port: http, scheme: HTTP }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 3
+          volumeMounts:
+            - { name: content, mountPath: /var/lib/ghost/content }
+      volumes:
+        - name: content
+          persistentVolumeClaim:
+            claimName: ghost-pvc
 
-image:
-  repository: ghost
-  tag: "6-alpine"
-  pullPolicy: IfNotPresent
+  services:
+    - type: ClusterIP
+      ports:
+        - { name: http, port: 2368, targetPort: http, protocol: TCP }
 
-replicaCount: 1
+  secrets:
+    - name: secrets
+      stringData:
+        mysql-user: "ghost"
+        mysql-password: ""
 
-service:
-  type: ClusterIP
-  port: 2368
+  pvcs:
+    - { name: pvc, accessModes: [ReadWriteOnce], storageClass: local-path, size: 10Gi }
 
-# MySQL connection (external MySQL in db namespace)
-mysql:
-  external: true
-  host: "mysql.db.svc.cluster.local"
-  port: 3306
-  database: "ghost"
-  user: "ghost"
-  password: "" # Set in secrets
+  serviceAccount:
+    create: true
+    automount: true
 
-# Ghost configuration
-ghost:
-  # URL configuration
-  url: "https://ghost.localhost"
+  rbac:
+    create: true
+    rules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [configmaps], verbs: [get, list] }
 
-  # Mail configuration (optional)
-  mail:
+  networkPolicy:
+    enabled: true
+    allowDB: true
+
+  serviceMonitor:
+    enabled: true
+    port: http
+    path: /metrics
+
+  pdb:
     enabled: false
-    transport: "SMTP"
-    from: "ghost@example.com"
-    host: ""
-    port: 587
-    user: ""
-    password: ""
-    secure: false
 
-  # Environment
-  nodeEnv: "production"
+  routing:
+    httpRoutes:
+      - host: ghost.localhost
+        port: 2368
+        authentik:
+          enabled: false
 
-# Resources
-resources:
-  requests:
-    cpu: 100m
-    memory: 256Mi
-  limits:
-    cpu: 1000m
-    memory: 1Gi
-
-# Persistence for Ghost content (themes, images, etc.)
-persistence:
-  enabled: true
-  storageClass: local-path
-  accessMode: ReadWriteOnce
-  size: 10Gi
-  mountPath: /var/lib/ghost/content
-
-# Ingress configuration
-ingress:
-  enabled: true
-  className: traefik
-  annotations: {}
-  hosts:
-    - host: ghost.localhost
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
+  tests:
     enabled: true
-    secretName: ghost-tls
-    clusterIssuer: letsencrypt
-
-# Security contexts
-securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-  runAsNonRoot: true
-
-podSecurityContext:
-  seccompProfile:
-    type: RuntimeDefault
-
-containerSecurityContext:
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop:
-      - ALL
-  readOnlyRootFilesystem: false
-
-# Health probes
-probes:
-  liveness:
-    enabled: true
-    path: /
-    initialDelaySeconds: 120
-    periodSeconds: 30
-    timeoutSeconds: 10
-    failureThreshold: 6
-  readiness:
-    enabled: true
-    path: /
-    initialDelaySeconds: 60
-    periodSeconds: 10
-    timeoutSeconds: 5
-    failureThreshold: 3
-
-# Consul integration
-consul:
-  enabled: true
-  tags:
-    - ghost
-    - blog
-    - cms
-    - content
-
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  # Traefik middleware reference
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  # Authentik host for OIDC
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-# Vault integration
-vault:
-  enabled: false
-  role: "ghost"
-
-# ServiceMonitor for Prometheus (Ghost doesn't expose metrics natively)
-serviceMonitor:
-  enabled: false
-
-# HorizontalPodAutoscaler
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 3
-  targetCPUUtilizationPercentage: 80
-  targetMemoryUtilizationPercentage: 80
-
-nodeSelector: {}
-tolerations: []
-affinity: {}
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: true
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: true
-  ingress: []
-  egress: []
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
-
-# RBAC
-rbac:
-  create: true
-  allowSecrets: false
-  rules: []
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+    port: 2368

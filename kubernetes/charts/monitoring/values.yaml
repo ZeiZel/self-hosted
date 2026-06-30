@@ -1,210 +1,1095 @@
-# Namespace
-namespace: service
+# monitoring — Grafana + Loki + Prometheus + Promtail stack, rendered entirely by
+# the chart-base subchart. fullnameOverride keeps child resource names
+# deterministic ("monitoring-<suffix>") so workload volume references resolve
+# regardless of the Helm release name.
+chart-base:
+  fullnameOverride: monitoring
 
-create:
-  namespace: true
+  serviceAccount:
+    create: true
+    automount: true
+  serviceAccounts:
+    - { name: prometheus, automount: true }
+    - { name: promtail, automount: true }
 
-# Prometheus config
-prometheus:
-  enabled: true
-  image: prom/prometheus:v3.1.0  # Pinned version - do not use :latest
-  replicaCount: 1
+  workloads:
+    # ---- Grafana ----
+    - name: grafana
+      kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "grafana"
+        consul.hashicorp.com/connect-service-port: "3000"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3000"
+        prometheus.io/path: "/metrics"
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: grafana
+          image: grafana/grafana:11.4.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+          ports:
+            - { name: http, containerPort: 3000 }
+          env:
+            - name: GF_SECURITY_ADMIN_USER
+              valueFrom:
+                secretKeyRef:
+                  name: monitoring-grafana-secrets
+                  key: admin-user
+            - name: GF_SECURITY_ADMIN_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: monitoring-grafana-secrets
+                  key: admin-password
+            - { name: GF_USERS_ALLOW_SIGN_UP, value: "false" }
+            - { name: GF_SERVER_ROOT_URL, value: "https://grafana.local/" }
+            - { name: GF_THEME_DEFAULT, value: dark }
+          resources:
+            limits: { cpu: 500m, memory: 512Mi }
+            requests: { cpu: 250m, memory: 256Mi }
+          volumeMounts:
+            - { name: provisioning, mountPath: /etc/grafana/provisioning }
+            - { name: storage, mountPath: /var/lib/grafana }
+          livenessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /api/health, port: 3000 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: provisioning
+          configMap:
+            name: monitoring-grafana-provisioning
+        - name: storage
+          persistentVolumeClaim:
+            claimName: monitoring-grafana-storage
 
-  service:
-    type: ClusterIP
-    port: 9090
+    # ---- Loki ----
+    - name: loki
+      kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "loki"
+        consul.hashicorp.com/connect-service-port: "3100"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3100"
+        prometheus.io/path: "/metrics"
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: loki
+          image: grafana/loki:3.3.2
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+          args:
+            - -config.file=/etc/loki/loki-config.yaml
+          ports:
+            - { name: http, containerPort: 3100 }
+          resources:
+            limits: { cpu: 500m, memory: 512Mi }
+            requests: { cpu: 250m, memory: 256Mi }
+          volumeMounts:
+            - { name: config, mountPath: /etc/loki }
+            - { name: data, mountPath: /loki }
+          livenessProbe:
+            httpGet: { path: /ready, port: 3100 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /ready, port: 3100 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: monitoring-loki-config
+        - name: data
+          persistentVolumeClaim:
+            claimName: monitoring-loki-data
 
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 500m
-      memory: 512Mi
+    # ---- Prometheus ----
+    - name: prometheus
+      kind: Deployment
+      replicas: 1
+      serviceAccountName: monitoring-prometheus
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "prometheus"
+        consul.hashicorp.com/connect-service-port: "9090"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9090"
+        prometheus.io/path: "/metrics"
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 65534
+        runAsGroup: 65534
+        fsGroup: 65534
+        seccompProfile:
+          type: RuntimeDefault
+      containers:
+        - name: prometheus
+          image: prom/prometheus:v3.1.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+          args:
+            - '--config.file=/etc/prometheus/prometheus.yml'
+            - '--storage.tsdb.path=/prometheus'
+            - '--storage.tsdb.retention.time=30d'
+            - '--storage.tsdb.retention.size=25GB'
+            - '--web.console.libraries=/usr/share/prometheus/console_libraries'
+            - '--web.console.templates=/usr/share/prometheus/consoles'
+          ports:
+            - { name: http, containerPort: 9090 }
+          resources:
+            limits: { cpu: 1000m, memory: 1Gi }
+            requests: { cpu: 500m, memory: 512Mi }
+          volumeMounts:
+            - { name: config, mountPath: /etc/prometheus }
+            - { name: rules, mountPath: /etc/prometheus/rules }
+            - { name: data, mountPath: /prometheus }
+          livenessProbe:
+            httpGet: { path: /-/healthy, port: 9090 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /-/ready, port: 9090 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: monitoring-prometheus-config
+        - name: rules
+          configMap:
+            name: monitoring-prometheus-rules
+        - name: data
+          persistentVolumeClaim:
+            claimName: monitoring-prometheus-data
 
-  persistence:
+  services:
+    - name: grafana
+      component: grafana
+      type: ClusterIP
+      annotations:
+        consul.hashicorp.com/service-name: "grafana"
+        consul.hashicorp.com/service-port: "3000"
+        consul.hashicorp.com/service-tags: "grafana,monitoring,visualization"
+      ports:
+        - { name: http, port: 3000, targetPort: 3000, protocol: TCP }
+    - name: loki
+      component: loki
+      type: ClusterIP
+      annotations:
+        consul.hashicorp.com/service-name: "loki"
+        consul.hashicorp.com/service-port: "3100"
+        consul.hashicorp.com/service-tags: "loki,monitoring,logging"
+      ports:
+        - { name: http, port: 3100, targetPort: 3100, protocol: TCP }
+    - name: prometheus
+      component: prometheus
+      type: ClusterIP
+      annotations:
+        consul.hashicorp.com/service-name: "prometheus"
+        consul.hashicorp.com/service-port: "9090"
+        consul.hashicorp.com/service-tags: "prometheus,monitoring,metrics"
+      ports:
+        - { name: http, port: 9090, targetPort: 9090, protocol: TCP }
+
+  pvcs:
+    - { name: grafana-storage, accessModes: [ReadWriteOnce], storageClass: local-path, size: 5Gi }
+    - { name: loki-data, accessModes: [ReadWriteOnce], storageClass: local-path, size: 2Gi }
+    - { name: prometheus-data, accessModes: [ReadWriteOnce], storageClass: local-path, size: 3Gi }
+
+  secrets:
+    - name: grafana-secrets
+      type: Opaque
+      stringData:
+        admin-user: "admin"
+        admin-password: ""
+
+  rbac:
+    create: true
+    rules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [configmaps], verbs: [get, list] }
+    extra:
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        metadata:
+          name: "monitoring-prometheus-{{ .Release.Namespace }}"
+        rules:
+          - apiGroups: [""]
+            resources: [nodes, nodes/proxy, services, endpoints, pods]
+            verbs: ["get", "list", "watch"]
+          - apiGroups: ["extensions"]
+            resources: [ingresses]
+            verbs: ["get", "list", "watch"]
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        metadata:
+          name: "monitoring-promtail-{{ .Release.Namespace }}"
+        rules:
+          - apiGroups: [""]
+            resources: [pods]
+            verbs: ["get", "list", "watch"]
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        metadata:
+          name: "monitoring-prometheus-{{ .Release.Namespace }}"
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: "monitoring-prometheus-{{ .Release.Namespace }}"
+        subjects:
+          - kind: ServiceAccount
+            name: monitoring-prometheus
+            namespace: "{{ .Release.Namespace }}"
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        metadata:
+          name: "monitoring-promtail-{{ .Release.Namespace }}"
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: "monitoring-promtail-{{ .Release.Namespace }}"
+        subjects:
+          - kind: ServiceAccount
+            name: monitoring-promtail
+            namespace: "{{ .Release.Namespace }}"
+
+  networkPolicy:
     enabled: true
-    storageClass: local-path
-    size: 3Gi
-    mountPath: /prometheus
+    allowDB: false
+    extraEgress:
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - { protocol: TCP, port: 443 }
+          - { protocol: TCP, port: 80 }
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: consul
+        ports:
+          - { protocol: TCP, port: 8500 }
+          - { protocol: TCP, port: 8600 }
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: vault
+        ports:
+          - { protocol: TCP, port: 8200 }
 
-  # Retention
-  retention: 30d
-  retentionSize: "25GB"
-
-  # Scrape intervals
-  globalScrapeInterval: 30s
-  globalEvaluationInterval: 30s
-
-# Loki config
-loki:
-  enabled: true
-  image: grafana/loki:3.3.2  # Pinned version - do not use :latest
-  replicaCount: 1
-
-  service:
-    type: ClusterIP
-    port: 3100
-
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 250m
-      memory: 256Mi
-
-  persistence:
+  serviceMonitor:
     enabled: true
-    storageClass: local-path
-    size: 2Gi
-    mountPath: /loki
+    port: http
+    path: /metrics
+    interval: 30s
 
-  # Retention
-  retention_period: 720h  # 30 дней
-  max_chunk_age: 2h
+  routing:
+    ingresses:
+      - name: ""
+        className: traefik
+        annotations:
+          cert-manager.io/cluster-issuer: "letsencrypt"
+          traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+        tls:
+          - hosts:
+              - prometheus.local
+              - loki.local
+              - grafana.local
+            secretName: monitoring-tls
+        rules:
+          - host: prometheus.local
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: monitoring-prometheus
+                      port:
+                        number: 9090
+          - host: loki.local
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: monitoring-loki
+                      port:
+                        number: 3100
+          - host: grafana.local
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: monitoring-grafana
+                      port:
+                        number: 3000
 
-# Promtail config (Log collector)
-promtail:
-  enabled: true
-  image: grafana/promtail:3.3.2  # Pinned version - do not use :latest
+  # Promtail DaemonSet uses hostNetwork + hostPath (not expressible via the typed
+  # podSpec), and the two Helm-test pods, go through the raw escape hatch.
+  extraManifests:
+    - |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: monitoring-promtail
+        namespace: {{ .Release.Namespace }}
+        labels:
+          app: promtail
+          app.kubernetes.io/name: monitoring
+          app.kubernetes.io/instance: {{ .Release.Name }}
+          app.kubernetes.io/component: promtail
+      spec:
+        selector:
+          matchLabels:
+            app: promtail
+        template:
+          metadata:
+            labels:
+              app: promtail
+            annotations:
+              co.elastic.logs/enabled: "true"
+              co.elastic.logs.json.keys_under_root: "true"
+          spec:
+            serviceAccountName: monitoring-promtail
+            hostNetwork: true
+            dnsPolicy: ClusterFirst
+            containers:
+              - name: promtail
+                image: grafana/promtail:3.3.2
+                imagePullPolicy: IfNotPresent
+                args:
+                  - -config.file=/etc/promtail/config.yaml
+                volumeMounts:
+                  - name: config
+                    mountPath: /etc/promtail
+                  - name: varlibdockercontainers
+                    mountPath: /var/lib/docker/containers
+                    readOnly: true
+                  - name: varlog
+                    mountPath: /var/log
+                    readOnly: true
+                resources:
+                  limits:
+                    cpu: 200m
+                    memory: 128Mi
+                  requests:
+                    cpu: 100m
+                    memory: 64Mi
+                env:
+                  - name: HOSTNAME
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: spec.nodeName
+            volumes:
+              - name: config
+                configMap:
+                  name: monitoring-promtail-config
+              - name: varlibdockercontainers
+                hostPath:
+                  path: /var/lib/docker/containers
+              - name: varlog
+                hostPath:
+                  path: /var/log
+            tolerations:
+              - effect: NoSchedule
+                operator: Exists
+              - effect: NoExecute
+                operator: Exists
+    - |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: "monitoring-test-grafana"
+        namespace: {{ .Release.Namespace }}
+        labels:
+          app.kubernetes.io/name: monitoring
+          app.kubernetes.io/instance: {{ .Release.Name }}
+        annotations:
+          "helm.sh/hook": test
+          "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+      spec:
+        restartPolicy: Never
+        containers:
+          - name: wget
+            image: busybox:1.28
+            command: ['wget']
+            args: ['--spider', '-q', 'monitoring-grafana:3000/api/health']
+    - |
+      apiVersion: v1
+      kind: Pod
+      metadata:
+        name: "monitoring-test-prometheus"
+        namespace: {{ .Release.Namespace }}
+        labels:
+          app.kubernetes.io/name: monitoring
+          app.kubernetes.io/instance: {{ .Release.Name }}
+        annotations:
+          "helm.sh/hook": test
+          "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+      spec:
+        restartPolicy: Never
+        containers:
+          - name: wget
+            image: busybox:1.28
+            command: ['wget']
+            args: ['--spider', '-q', 'monitoring-prometheus:9090/-/ready']
 
-  resources:
-    limits:
-      cpu: 200m
-      memory: 128Mi
-    requests:
-      cpu: 100m
-      memory: 64Mi
+  configMaps:
+    - name: grafana-provisioning
+      data:
+        datasources.yaml: |
+          apiVersion: 1
+          datasources:
+            - name: Prometheus
+              type: prometheus
+              access: proxy
+              url: http://prometheus:9090
+              isDefault: true
+              editable: true
 
-# Grafana config
-grafana:
-  enabled: true
-  image: grafana/grafana:11.4.0  # Pinned version - do not use :latest
-  replicaCount: 1
+            - name: Loki
+              type: loki
+              access: proxy
+              url: http://loki:3100
+              editable: true
 
-  service:
-    type: ClusterIP
-    port: 3000
+            - name: Elasticsearch
+              type: elasticsearch
+              access: proxy
+              url: http://elasticsearch.service.svc.cluster.local:9200
+              database: "logstash-*"
+              editable: true
+              jsonData:
+                timeField: "@timestamp"
+                esVersion: "8.15.0"
+                logMessageField: message
+                logLevelField: log.level
+        dashboards.yaml: |
+          apiVersion: 1
+          providers:
+            - name: 'Prometheus'
+              orgId: 1
+              folder: ''
+              type: file
+              disableDeletion: false
+              updateIntervalSeconds: 10
+              allowUiUpdates: true
+              options:
+                path: /var/lib/grafana/dashboards
 
-  resources:
-    limits:
-      cpu: 500m
-      memory: 512Mi
-    requests:
-      cpu: 250m
-      memory: 256Mi
+    - name: grafana-dashboards-db
+      data:
+        postgresql-dashboard.json: |
+          {
+            "dashboard": {
+              "title": "PostgreSQL Database Metrics",
+              "tags": ["postgresql", "database"],
+              "timezone": "browser",
+              "panels": [
+                {
+                  "title": "Database Connections",
+                  "targets": [
+                    {
+                      "expr": "pg_stat_database_numbackends{datname!='template0',datname!='template1'}",
+                      "legendFormat": "{{datname}}"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "Transaction Rate",
+                  "targets": [
+                    {
+                      "expr": "rate(pg_stat_database_xact_commit{datname!='template0',datname!='template1'}[5m])",
+                      "legendFormat": "{{datname}} commits"
+                    },
+                    {
+                      "expr": "rate(pg_stat_database_xact_rollback{datname!='template0',datname!='template1'}[5m])",
+                      "legendFormat": "{{datname}} rollbacks"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "Database Size",
+                  "targets": [
+                    {
+                      "expr": "pg_database_size_bytes{datname!='template0',datname!='template1'}",
+                      "legendFormat": "{{datname}}"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "Replication Lag",
+                  "targets": [
+                    {
+                      "expr": "pg_replication_lag",
+                      "legendFormat": "{{instance}}"
+                    }
+                  ],
+                  "type": "graph"
+                }
+              ]
+            }
+          }
+        mongodb-dashboard.json: |
+          {
+            "dashboard": {
+              "title": "MongoDB Database Metrics",
+              "tags": ["mongodb", "database"],
+              "timezone": "browser",
+              "panels": [
+                {
+                  "title": "Operations per Second",
+                  "targets": [
+                    {
+                      "expr": "rate(mongodb_op_counters_total[5m])",
+                      "legendFormat": "{{type}}"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "Connections",
+                  "targets": [
+                    {
+                      "expr": "mongodb_connections",
+                      "legendFormat": "{{state}}"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "Memory Usage",
+                  "targets": [
+                    {
+                      "expr": "mongodb_memory{type='resident'}",
+                      "legendFormat": "Resident"
+                    },
+                    {
+                      "expr": "mongodb_memory{type='virtual'}",
+                      "legendFormat": "Virtual"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "Replication Lag",
+                  "targets": [
+                    {
+                      "expr": "mongodb_replset_member_replication_lag",
+                      "legendFormat": "{{name}}"
+                    }
+                  ],
+                  "type": "graph"
+                }
+              ]
+            }
+          }
+        minio-dashboard.json: |
+          {
+            "dashboard": {
+              "title": "MinIO Object Storage Metrics",
+              "tags": ["minio", "storage"],
+              "timezone": "browser",
+              "panels": [
+                {
+                  "title": "API Request Rate",
+                  "targets": [
+                    {
+                      "expr": "rate(minio_s3_requests_total[5m])",
+                      "legendFormat": "{{api}}"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "Storage Usage",
+                  "targets": [
+                    {
+                      "expr": "minio_bucket_usage_total_bytes",
+                      "legendFormat": "{{bucket}}"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "Network Throughput",
+                  "targets": [
+                    {
+                      "expr": "rate(minio_s3_traffic_received_bytes[5m])",
+                      "legendFormat": "Received"
+                    },
+                    {
+                      "expr": "rate(minio_s3_traffic_sent_bytes[5m])",
+                      "legendFormat": "Sent"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "API Errors",
+                  "targets": [
+                    {
+                      "expr": "rate(minio_s3_requests_errors_total[5m])",
+                      "legendFormat": "{{api}}"
+                    }
+                  ],
+                  "type": "graph"
+                }
+              ]
+            }
+          }
+        valkey-dashboard.json: |
+          {
+            "dashboard": {
+              "title": "Valkey/Redis Cache Metrics",
+              "tags": ["valkey", "redis", "cache"],
+              "timezone": "browser",
+              "panels": [
+                {
+                  "title": "Commands per Second",
+                  "targets": [
+                    {
+                      "expr": "rate(redis_commands_processed_total[5m])",
+                      "legendFormat": "{{instance}}"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "Memory Usage",
+                  "targets": [
+                    {
+                      "expr": "redis_memory_used_bytes",
+                      "legendFormat": "Used - {{instance}}"
+                    },
+                    {
+                      "expr": "redis_memory_max_bytes",
+                      "legendFormat": "Max - {{instance}}"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "Hit Rate",
+                  "targets": [
+                    {
+                      "expr": "rate(redis_keyspace_hits_total[5m]) / (rate(redis_keyspace_hits_total[5m]) + rate(redis_keyspace_misses_total[5m]))",
+                      "legendFormat": "{{instance}}"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "Connected Clients",
+                  "targets": [
+                    {
+                      "expr": "redis_connected_clients",
+                      "legendFormat": "{{instance}}"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "Replication Lag",
+                  "targets": [
+                    {
+                      "expr": "redis_master_repl_offset - on(instance) group_right redis_slave_repl_offset",
+                      "legendFormat": "{{instance}}"
+                    }
+                  ],
+                  "type": "graph"
+                }
+              ]
+            }
+          }
+        bytebase-dashboard.json: |
+          {
+            "dashboard": {
+              "title": "Bytebase Metrics",
+              "tags": ["bytebase", "database-management"],
+              "timezone": "browser",
+              "panels": [
+                {
+                  "title": "HTTP Request Rate",
+                  "targets": [
+                    {
+                      "expr": "rate(http_requests_total{job='bytebase'}[5m])",
+                      "legendFormat": "{{method}} {{path}}"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "HTTP Request Duration",
+                  "targets": [
+                    {
+                      "expr": "histogram_quantile(0.95, rate(http_request_duration_seconds_bucket{job='bytebase'}[5m]))",
+                      "legendFormat": "p95"
+                    },
+                    {
+                      "expr": "histogram_quantile(0.99, rate(http_request_duration_seconds_bucket{job='bytebase'}[5m]))",
+                      "legendFormat": "p99"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "Active Database Connections",
+                  "targets": [
+                    {
+                      "expr": "bytebase_database_connections_active",
+                      "legendFormat": "{{database}}"
+                    }
+                  ],
+                  "type": "graph"
+                },
+                {
+                  "title": "Migration Status",
+                  "targets": [
+                    {
+                      "expr": "bytebase_migrations_total",
+                      "legendFormat": "{{status}}"
+                    }
+                  ],
+                  "type": "graph"
+                }
+              ]
+            }
+          }
 
-  persistence:
-    enabled: true
-    storageClass: local-path
-    size: 5Gi
-    mountPath: /var/lib/grafana
+    - name: grafana-dashboard-provider
+      data:
+        dashboards.yaml: |
+          apiVersion: 1
+          providers:
+            - name: 'Database Dashboards'
+              orgId: 1
+              folder: 'Databases'
+              type: file
+              disableDeletion: false
+              updateIntervalSeconds: 10
+              allowUiUpdates: true
+              options:
+                path: /var/lib/grafana/dashboards/db
 
-  # Admin config
-  admin:
-    user: admin
-    password: ""  # Injected via Vault - see vault.hashicorp.com annotations
+    - name: loki-config
+      data:
+        loki-config.yaml: |
+          auth_enabled: false
 
-  # Theme
-  theme: dark
+          ingester:
+            chunk_idle_period: 3m
+            chunk_retain_period: 1m
+            max_chunk_age: 2h
+            chunk_encoding: snappy
+            lifecycler:
+              ring:
+                kvstore:
+                  store: inmemory
+                replication_factor: 1
 
-  # Plugins
-  plugins: []
+          limits_config:
+            enforce_metric_name: false
+            reject_old_samples: true
+            reject_old_samples_max_age: 168h
+            ingestion_rate_mb: 32
+            ingestion_burst_size_mb: 64
+            retention_period: 720h
 
-  # OIDC/OAuth2 Configuration (Authentik)
-  oidc:
-    enabled: false
-    clientId: ""
-    clientSecret: ""
-    authUrl: "https://auth.example.com/application/o/authorize/"
-    tokenUrl: "https://auth.example.com/application/o/token/"
-    userInfoUrl: "https://auth.example.com/application/o/userinfo/"
-    logoutUrl: "https://auth.example.com/application/o/grafana/end-session/"
+          schema_config:
+            configs:
+              - from: 2020-10-24
+                store: boltdb-shipper
+                object_store: filesystem
+                schema: v11
+                index:
+                  prefix: index_
+                  period: 24h
 
-# Ingress config
-ingress:
-  enabled: true
-  className: traefik
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+          server:
+            http_listen_port: 3100
+            log_level: info
 
-  hosts:
-    prometheus:
-      host: prometheus.local
-      path: /
-    loki:
-      host: loki.local
-      path: /
-    grafana:
-      host: grafana.local
-      path: /
+          storage_config:
+            boltdb_shipper:
+              active_index_directory: /loki/boltdb-shipper-active
+              cache_location: /loki/boltdb-shipper-cache
+            filesystem:
+              directory: /loki/chunks
 
-  tls:
-    enabled: true
-    secretName: monitoring-tls
+    - name: prometheus-config
+      data:
+        prometheus.yml: |
+          global:
+            scrape_interval: 30s
+            evaluation_interval: 30s
+            external_labels:
+              cluster: kubernetes
+              environment: production
 
-# Consul integration
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  port: 8500
-  datacenter: dc1
+          # Alertmanager config
+          alerting:
+            alertmanagers:
+              - static_configs:
+                  - targets: []
 
-# Pod Anti-affinity for multi-node deployment
-affinity:
-  podAntiAffinity:
-    enabled: false
-    type: preferredDuringSchedulingIgnoredDuringExecution
+          # Rule files
+          rule_files:
+            - /etc/prometheus/rules/*.yml
 
-# Security
-securityContext:
-  runAsUser: 65534
-  runAsGroup: 65534
-  fsGroup: 65534
+          scrape_configs:
+            # Prometheus self-monitoring
+            - job_name: 'prometheus'
+              static_configs:
+                - targets: ['localhost:9090']
 
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
+            # Kubernetes API server
+            - job_name: 'kubernetes-apiservers'
+              kubernetes_sd_configs:
+                - role: endpoints
+              scheme: https
+              tls_config:
+                ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+              relabel_configs:
+                - source_labels: [__meta_kubernetes_namespace, __meta_kubernetes_service_name, __meta_kubernetes_endpoint_port_name]
+                  action: keep
+                  regex: default;kubernetes;https
 
+            # Kubernetes nodes
+            - job_name: 'kubernetes-nodes'
+              kubernetes_sd_configs:
+                - role: node
+              scheme: https
+              tls_config:
+                ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+              bearer_token_file: /var/run/secrets/kubernetes.io/serviceaccount/token
 
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: false
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
+            # Kubernetes pods
+            - job_name: 'kubernetes-pods'
+              kubernetes_sd_configs:
+                - role: pod
+              relabel_configs:
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                  action: keep
+                  regex: "true"
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+                  action: replace
+                  target_label: __metrics_path__
+                  regex: (.+)
+                - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+                  action: replace
+                  regex: ([^:]+)(?::\d+)?;(\d+)
+                  replacement: $1:$2
+                  target_label: __address__
 
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
+            # Loki
+            - job_name: 'loki'
+              static_configs:
+                - targets: ['loki:3100']
 
-# RBAC
-rbac:
-  create: true
-  allowSecrets: false
-  rules: []
+            # Database monitoring
+            # PostgreSQL Exporter (Bitnami chart includes exporter on port 9187)
+            - job_name: 'postgresql'
+              static_configs:
+                - targets:
+                    - 'postgresql-0.postgresql-headless.db.svc.cluster.local:9187'
+                    - 'postgresql-1.postgresql-headless.db.svc.cluster.local:9187'
+                    - 'postgresql-2.postgresql-headless.db.svc.cluster.local:9187'
+              relabel_configs:
+                - source_labels: [__address__]
+                  target_label: instance
+                  regex: '([^:]+):.*'
+                  replacement: '$1'
 
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
+            # MongoDB Exporter (if enabled in Bitnami chart, typically on port 9216)
+            - job_name: 'mongodb'
+              kubernetes_sd_configs:
+                - role: pod
+                  namespaces:
+                    names:
+                      - db
+              relabel_configs:
+                - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+                  action: keep
+                  regex: mongodb
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                  action: keep
+                  regex: "true"
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+                  action: replace
+                  target_label: __address__
+                  regex: (.+)
+                  replacement: $1:9216
 
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+            # MinIO Metrics (MinIO provides built-in Prometheus metrics)
+            - job_name: 'minio'
+              metrics_path: /minio/v2/metrics/cluster
+              scheme: http
+              static_configs:
+                - targets:
+                    - 'minio.db.svc.cluster.local:9000'
+
+            # Valkey/Redis Exporter (if enabled in Bitnami chart, typically on port 9121)
+            - job_name: 'valkey'
+              kubernetes_sd_configs:
+                - role: pod
+                  namespaces:
+                    names:
+                      - db
+              relabel_configs:
+                - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+                  action: keep
+                  regex: valkey
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                  action: keep
+                  regex: "true"
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+                  action: replace
+                  target_label: __address__
+                  regex: (.+)
+                  replacement: $1:9121
+
+            # Bytebase Metrics
+            - job_name: 'bytebase'
+              kubernetes_sd_configs:
+                - role: pod
+                  namespaces:
+                    names:
+                      - infrastructure
+              relabel_configs:
+                - source_labels: [__meta_kubernetes_pod_label_app_kubernetes_io_name]
+                  action: keep
+                  regex: bytebase
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+                  action: keep
+                  regex: "true"
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_port]
+                  action: replace
+                  target_label: __address__
+                  regex: (.+)
+                  replacement: $1:8080
+                - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_path]
+                  action: replace
+                  target_label: __metrics_path__
+                  regex: (.+)
+
+    - name: prometheus-rules
+      data:
+        alerts.yml: |
+          groups:
+            - name: kubernetes.rules
+              interval: 30s
+              rules:
+                - alert: PodCrashLooping
+                  expr: rate(kube_pod_container_status_restarts_total[15m]) > 0
+                  for: 5m
+                  labels:
+                    severity: warning
+                  annotations:
+                    summary: "Pod monitoring is crash looping"
+
+                - alert: NodeNotReady
+                  expr: kube_node_status_condition{condition="Ready",status="true"} == 0
+                  for: 5m
+                  labels:
+                    severity: critical
+                  annotations:
+                    summary: "Node monitoring is not ready"
+
+    - name: promtail-config
+      data:
+        config.yaml: |
+          clients:
+            - url: http://loki:3100/loki/api/v1/push
+
+          positions:
+            filename: /tmp/positions.yaml
+
+          scrape_configs:
+            - job_name: kubernetes-pods
+              kubernetes_sd_configs:
+                - role: pod
+              relabel_configs:
+                - source_labels: [__meta_kubernetes_pod_label_app]
+                  target_label: app
+                - source_labels: [__meta_kubernetes_pod_name]
+                  target_label: pod
+                - source_labels: [__meta_kubernetes_namespace]
+                  target_label: namespace
+                - action: drop
+                  regex: ''
+                  source_labels: [__service__]
+                - action: replace
+                  regex: ([^:]+)(?::\d+)?;(\d+)
+                  replacement: $1:$2
+                  source_labels:
+                    - __meta_kubernetes_pod_node_name
+                    - __meta_kubernetes_pod_container_port_number
+                  target_label: __address__
+                - action: replace
+                  source_labels:
+                    - __meta_kubernetes_pod_node_name
+                  target_label: __host__
+                - action: drop
+                  regex: Succeeded|Failed
+                  source_labels:
+                    - __meta_kubernetes_pod_phase
+
+            - job_name: docker
+              static_configs:
+                - targets:
+                    - stdout
+                  labels:
+                    job: varlogs
+                    __path__: /var/log/*log

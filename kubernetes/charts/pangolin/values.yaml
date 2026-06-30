@@ -1,116 +1,175 @@
-namespace: infrastructure
+# pangolin (pangolin-client) — rendered entirely by the chart-base subchart.
+# Names are pinned via fullnameOverride/nameOverride to preserve the original
+# "pangolin-pangolin-client" resource names (referenced by Consul annotations).
+chart-base:
+  fullnameOverride: pangolin-pangolin-client
+  nameOverride: pangolin-client
 
-create:
-  namespace: true
+  workloads:
+    - kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: pangolin-pangolin-client
+        consul.hashicorp.com/connect-service-port: "3001"
+        consul.hashicorp.com/service-tags: "pangolin,dynamic-routing,traefik-provider"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        co.elastic.logs.json.add_error_key: "true"
+        co.elastic.logs.json.message_key: "message"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3001"
+        prometheus.io/path: "/metrics"
+      containers:
+        - name: pangolin-client
+          image: "fosrl/pangolin:latest"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { name: http, containerPort: 3001 }
+          env:
+            - { name: PANGOLIN_SERVER_URL, value: "https://yourdomain.com" }
+            - { name: PANGOLIN_CLIENT_NAME, value: "k8s-cluster" }
+          resources:
+            limits: { cpu: 500m, memory: 512Mi }
+            requests: { cpu: 100m, memory: 128Mi }
+          volumeMounts:
+            - { name: certificates, mountPath: /var/certificates }
+          livenessProbe:
+            httpGet: { path: /api/v1/, port: 3001 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /api/v1/, port: 3001 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: certificates
+          persistentVolumeClaim:
+            claimName: pangolin-pangolin-client-pvc
 
-image:
-  repository: fosrl/pangolin
-  tag: "latest"
-  pullPolicy: IfNotPresent
+  services:
+    - annotations:
+        consul.hashicorp.com/service-name: pangolin-pangolin-client
+        consul.hashicorp.com/service-port: "3001"
+        consul.hashicorp.com/service-tags: "pangolin,dynamic-routing,traefik-provider"
+      ports:
+        - { name: http, port: 3001, targetPort: 3001, protocol: TCP }
 
-service:
-  type: ClusterIP
-  port: 3001
+  pvcs:
+    - { name: pvc, accessModes: [ReadWriteOnce], storageClass: local-path, size: 1Gi }
 
-pangolin:
-  serverEndpoint: "yourdomain.com"
-  clientName: "k8s-cluster"
-  port: 3001
+  serviceAccount:
+    create: true
+    automount: true
 
-resources:
-  limits:
-    cpu: 500m
-    memory: 512Mi
-  requests:
-    cpu: 100m
-    memory: 128Mi
+  rbac:
+    create: true
+    rules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [configmaps], verbs: [get, list] }
 
-persistence:
-  enabled: true
-  storageClass: local-path
-  accessMode: ReadWriteOnce
-  size: 1Gi
-  mountPath: /var/certificates
-
-ingress:
-  enabled: false
-  className: traefik
-  annotations: {}
-  host: pangolin-client.local
-  tls:
+  serviceMonitor:
     enabled: true
-    secretName: pangolin-client-tls
-    clusterIssuer: letsencrypt
+    port: metrics
+    path: /metrics
+    interval: 30s
 
-consul:
-  enabled: true
-  tags:
-    - pangolin
-    - dynamic-routing
-    - traefik-provider
+  pdb:
+    enabled: false
 
-securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
+  # Ingress was disabled in the original chart (ingress.enabled: false), so no
+  # HTTPRoute is emitted. To expose externally, add an httpRoute here, e.g.:
+  # routing:
+  #   httpRoutes:
+  #     - host: pangolin-client.local
+  #       port: 3001
+  #       authentik: { enabled: false }
+  routing:
+    httpRoutes: []
 
-probes:
-  liveness:
+  tests:
     enabled: true
-    initialDelaySeconds: 30
-    periodSeconds: 10
-  readiness:
-    enabled: true
-    initialDelaySeconds: 10
-    periodSeconds: 5
+    image: busybox:1.28
+    port: 3001
 
+  # The original NetworkPolicy is highly customized (restricts ingress to the
+  # Traefik pod + same namespace; egress to DNS, external HTTP/HTTPS, Consul,
+  # Vault) and does not map onto the simple chart-base networkPolicy schema, so
+  # it is reproduced verbatim here. chart-base networkPolicy stays disabled.
+  networkPolicy:
+    enabled: false
 
-
-
-
-
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: false
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
-
-# RBAC
-rbac:
-  create: true
-  allowSecrets: false
-  rules: []
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+  extraManifests:
+    - |
+      apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata:
+        name: {{ include "chart-base.fullname" . }}
+        namespace: {{ .Release.Namespace }}
+        labels:
+          {{- include "chart-base.labels" . | nindent 6 }}
+      spec:
+        podSelector:
+          matchLabels:
+            {{- include "chart-base.selectorLabels" . | nindent 8 }}
+        policyTypes:
+          - Ingress
+          - Egress
+        ingress:
+          # Allow ingress from Traefik
+          - from:
+              - namespaceSelector:
+                  matchLabels:
+                    name: ingress
+                podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: traefik
+            ports:
+              - protocol: TCP
+                port: 3001
+          # Allow ingress from same namespace
+          - from:
+              - podSelector: {}
+        egress:
+          # Allow DNS
+          - to:
+              - namespaceSelector: {}
+            ports:
+              - protocol: UDP
+                port: 53
+          # Allow HTTPS to external
+          - to:
+              - namespaceSelector: {}
+            ports:
+              - protocol: TCP
+                port: 443
+          # Allow HTTP to external
+          - to:
+              - namespaceSelector: {}
+            ports:
+              - protocol: TCP
+                port: 80
+          # Allow service mesh (Consul)
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    name: service
+                podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: consul
+            ports:
+              - protocol: TCP
+                port: 8500
+              - protocol: TCP
+                port: 8600
+          # Allow Vault
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    name: service
+                podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: vault
+            ports:
+              - protocol: TCP
+                port: 8200

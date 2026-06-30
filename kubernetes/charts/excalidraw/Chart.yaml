@@ -1,6 +1,6 @@
 apiVersion: v2
 name: excalidraw
-description: A Helm chart for Excalidraw - Virtual Whiteboard
+description: A Helm chart for Excalidraw - Virtual Whiteboard (rendered by chart-base)
 type: application
 version: 1.0.0
 appVersion: "0.16.0"
@@ -10,3 +10,7 @@ sources:
   - https://github.com/PatWie/excalidraw-complete
 maintainers:
   - name: DevOps Team
+dependencies:
+  - name: chart-base
+    version: 0.1.0
+    repository: file://../chart-base

@@ -18,3 +18,7 @@ sources:
 maintainers:
   - name: ZeiZel
     email: valera2003lvov@yandex.ru
+dependencies:
+  - name: chart-base
+    version: 0.1.0
+    repository: file://../chart-base

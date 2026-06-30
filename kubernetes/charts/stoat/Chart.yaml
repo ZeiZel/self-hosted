@@ -6,3 +6,7 @@ version: 0.1.0
 appVersion: "1.16.0"
 sources:
   - https://github.com/cclloyd/helm-revolt
+dependencies:
+  - name: chart-base
+    version: 0.1.0
+    repository: file://../chart-base

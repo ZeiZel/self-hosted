@@ -1,8 +1,11 @@
-# glance release overrides. All base config lives in charts/glance/values.yaml
-# under the `chart-base:` key. Add env-specific overrides here, also nested under
-# `chart-base:` (subchart scoping), e.g.:
-# chart-base:
-#   routing:
-#     httpRoutes:
-#       - host: glance.{{ .Values.domain | default "localhost" }}
-#         port: 8080
+# glance release overrides.
+# Base config lives in charts/glance/values.yaml under the "chart-base:" key.
+# Add env-specific overrides here, nested under "chart-base:" (subchart scoping).
+# Example:
+#   chart-base:
+#     workloads:
+#       - containers:
+#           - name: glance
+#             env:
+#               - name: EXAMPLE
+#                 value: "value"

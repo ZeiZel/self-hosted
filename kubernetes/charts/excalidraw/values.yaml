@@ -1,233 +1,221 @@
-# Namespace
-namespace: productivity
+# excalidraw — rendered entirely by the chart-base subchart.
+# Two workloads: the static frontend (excalidraw/excalidraw) and the collab
+# server (excalidraw-complete). Both must be component-named so their Service
+# selectors don't collide under the shared app.kubernetes.io label scheme.
+chart-base:
+  # Add runAsGroup to the mandatory pod security context (matches the original
+  # frontend pod securityContext); merged with chart-base defaults.
+  podSecurityContext:
+    runAsGroup: 1000
 
-create:
-  namespace: true
+  workloads:
+    # Frontend (static nginx-served Excalidraw)
+    - name: web
+      kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "excalidraw"
+        consul.hashicorp.com/connect-service-port: "80"
+        consul.hashicorp.com/service-tags: "excalidraw,whiteboard"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        co.elastic.logs.json.add_error_key: "true"
+        co.elastic.logs.json.message_key: "message"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
+      containers:
+        - name: excalidraw
+          image: "excalidraw/excalidraw:sha-4bdf58f"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { containerPort: 80, name: http }
+          env:
+            - { name: PORT, value: "80" }
+            - { name: NODE_ENV, value: "production" }
+          resources:
+            limits: { cpu: 1000m, memory: 512Mi }
+            requests: { cpu: 500m, memory: 256Mi }
+          volumeMounts:
+            - { name: cache, mountPath: /var/cache/nginx }
+            - { name: run, mountPath: /var/run }
+            - { name: tmp, mountPath: /tmp }
+          livenessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /, port: 80 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - { name: cache, emptyDir: {} }
+        - { name: run, emptyDir: {} }
+        - { name: tmp, emptyDir: {} }
 
-# Excalidraw Image (Frontend)
-image:
-  repository: excalidraw/excalidraw
-  tag: "sha-4bdf58f"  # Pinned version - do not use :latest
-  pullPolicy: IfNotPresent
+    # Collaboration server (excalidraw-complete, sqlite + websocket)
+    - name: server
+      kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "excalidraw-server"
+        consul.hashicorp.com/connect-service-port: "3002"
+        consul.hashicorp.com/service-tags: "excalidraw,whiteboard"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        co.elastic.logs.json.add_error_key: "true"
+        co.elastic.logs.json.message_key: "message"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "3002"
+        prometheus.io/path: "/metrics"
+      containers:
+        - name: excalidraw-server
+          image: "patrickhwilly/excalidraw-complete:1.0.0"
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { containerPort: 8080, name: socket }
+            - { containerPort: 3002, name: http }
+          env:
+            - { name: STORAGE_TYPE, value: "sqlite" }
+            - { name: LOCAL_STORAGE_PATH, value: "/data/excalidraw" }
+            - { name: SOCKET_PORT, value: "8080" }
+            - { name: LOG_LEVEL, value: "info" }
+            - { name: MAX_CONNECTIONS, value: "1000" }
+          resources:
+            limits: { cpu: 1000m, memory: 1Gi }
+            requests: { cpu: 500m, memory: 512Mi }
+          volumeMounts:
+            - { name: data, mountPath: /data }
+          livenessProbe:
+            tcpSocket: { port: 3002 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /health, port: 3002 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: excalidraw-data
 
-# Excalidraw Server конфигурация
-excalidraw:
-  replicaCount: 1
+  services:
+    # Frontend service → name "excalidraw"
+    - component: web
+      type: ClusterIP
+      annotations:
+        consul.hashicorp.com/service-name: "excalidraw"
+        consul.hashicorp.com/service-port: "80"
+        consul.hashicorp.com/service-tags: "excalidraw,whiteboard"
+      ports:
+        - { name: http, port: 80, targetPort: 80 }
+    # Server service → name "excalidraw-server"
+    - name: server
+      component: server
+      type: ClusterIP
+      annotations:
+        consul.hashicorp.com/service-name: "excalidraw-server"
+        consul.hashicorp.com/service-port: "3002"
+        consul.hashicorp.com/service-tags: "excalidraw,whiteboard"
+      ports:
+        - { name: http, port: 3002, targetPort: 3002 }
+        - { name: socket, port: 8080, targetPort: 8080, protocol: TCP }
 
-  service:
-    type: ClusterIP
+  pvcs:
+    - { name: data, accessModes: [ReadWriteOnce], storageClass: local-path, size: 5Gi }
+
+  configMaps:
+    - name: config
+      data:
+        appTitle: "Excalidraw"
+        appDescription: "Virtual whiteboard for sketching hand-drawn diagrams"
+        collaborationEnabled: "true"
+        socketServer: "ws://excalidraw.local"
+        libraryEnabled: "true"
+        libraryShowPrivate: "true"
+        infiniteCanvas: "true"
+        storageType: "sqlite"
+        localStoragePath: "/data/excalidraw"
+        socketPort: "8080"
+        logLevel: "info"
+        maxConnections: "1000"
+
+  serviceAccount:
+    create: true
+    automount: true
+
+  rbac:
+    create: true
+    clusterRules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [services], verbs: [get, list] }
+
+  networkPolicy:
+    enabled: true
+    allowDB: false
+    extraIngress:
+      # Allow ingress from same namespace
+      - from:
+          - podSelector: {}
+    extraEgress:
+      # Allow HTTPS to external
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - { protocol: TCP, port: 443 }
+      # Allow HTTP to external
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - { protocol: TCP, port: 80 }
+      # Allow service mesh (Consul)
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: consul
+        ports:
+          - { protocol: TCP, port: 8500 }
+          - { protocol: TCP, port: 8600 }
+      # Allow Vault
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: vault
+        ports:
+          - { protocol: TCP, port: 8200 }
+
+  serviceMonitor:
+    enabled: true
+    port: http
+    path: /metrics
+
+  pdb:
+    enabled: false
+
+  routing:
+    httpRoutes:
+      # Frontend
+      - host: excalidraw.localhost
+        port: 80
+        service: excalidraw
+        authentik:
+          enabled: false
+      # Server API
+      - name: api
+        host: excalidraw-api.localhost
+        port: 3002
+        service: excalidraw-server
+        authentik:
+          enabled: false
+
+  tests:
+    enabled: true
     port: 80
-
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 512Mi
-    requests:
-      cpu: 500m
-      memory: 256Mi
-
-  # Конфигурация Excalidraw
-  config:
-    # Application metadata
-    appTitle: "Excalidraw"
-    appDescription: "Virtual whiteboard for sketching hand-drawn diagrams"
-
-    # Storage configuration
-    storage:
-      type: "filesystem"  # filesystem, localstorage, или excalidraw-complete для full-featured server
-      # Если используется excalidraw-complete (recommend для production)
-      serverType: "complete"
-
-    # Collaboration settings
-    collaboration:
-      enabled: true
-      socketServer: "ws://excalidraw.local"
-
-    # Library settings
-    library:
-      enabled: true
-      showPrivateLibraries: true
-
-    # Export settings
-    export:
-      embedScene: true
-      embedSequence: true
-
-    # Rendering settings
-    rendering:
-      infiniteCanvas: true
-
-# Excalidraw Server (для полнофункционального хостинга с persistence)
-server:
-  enabled: true
-  image:
-    repository: patrickhwilly/excalidraw-complete
-    tag: "1.0.0"  # Pinned version - do not use :latest
-    pullPolicy: IfNotPresent
-
-  replicaCount: 1
-
-  service:
-    type: ClusterIP
-    port: 3002
-
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 500m
-      memory: 512Mi
-
-  # Server configuration
-  config:
-    storageType: "sqlite"  # filesystem, sqlite, или s3
-    localStoragePath: "/data/excalidraw"
-    socketPort: 8080
-    logLevel: "info"
-    maxConnections: 1000
-    # Для S3:
-    # s3BucketName: "excalidraw"
-    # s3Endpoint: "http://minio:9000"
-
-# Persistent Storage
-persistence:
-  enabled: true
-  storageClass: local-path
-
-  # Application data
-  data:
-    enabled: true
-    size: 5Gi
-    mountPath: /data
-    accessMode: ReadWriteOnce
-
-# PostgreSQL (опционально для advanced backend)
-postgresql:
-  enabled: false
-  external: true
-  host: "postgresql.db.svc.cluster.local"
-  port: 5432
-  username: "excalidraw"
-  password: ""  # Injected via Vault - see vault.hashicorp.com annotations
-  database: "excalidraw"
-
-# MinIO/S3 (опционально для хранения экспортов)
-s3:
-  enabled: false
-  endpoint: "http://minio.db.svc.cluster.local:9000"
-  bucket: "excalidraw"
-  accessKey: "minioadmin"
-  secretKey: "minioadmin"
-
-# Ingress через Traefik
-ingress:
-  enabled: true
-  className: traefik
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
-
-  # Frontend ingress
-  frontend:
-    host: excalidraw.localhost
-    path: /
-
-  # Server ingress (для WebSocket)
-  server:
-    host: excalidraw-api.localhost
-    path: /
-
-  tls:
-    enabled: true
-    secretName: excalidraw-tls
-
-# Consul интеграция
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  port: 8500
-  datacenter: dc1
-  tags:
-    - excalidraw
-    - whiteboard
-
-# Security - use non-root user with high port, Traefik handles port 80
-podSecurityContext:
-  runAsNonRoot: true
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-  seccompProfile:
-    type: RuntimeDefault
-
-containerSecurityContext:
-  runAsUser: 1000
-  runAsNonRoot: true
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: true
-  capabilities:
-    drop:
-      - ALL
-
-# Health Checks
-probes:
-  liveness:
-    enabled: true
-    path: "/"
-    initialDelaySeconds: 30
-    periodSeconds: 10
-  readiness:
-    enabled: true
-    path: "/"
-    initialDelaySeconds: 10
-    periodSeconds: 5
-
-# Vault integration (requires Vault policies and secrets to be configured)
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-vault:
-  enabled: false
-  # Note: Before enabling, configure Vault:
-  # 1. Create policy for excalidraw service
-  # 2. Create secret at secret/data/excalidraw/secrets
-  # 3. Enable Kubernetes auth method in Vault
-  # 4. Create role binding ServiceAccount to Vault policy
-  # See: kubernetes/docs/VAULT_MIGRATION.md
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: false
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1

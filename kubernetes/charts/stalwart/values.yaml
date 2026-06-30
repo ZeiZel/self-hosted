@@ -1,240 +1,304 @@
-# Namespace
-namespace: social
+# stalwart — rendered entirely by the chart-base subchart.
+# Stalwart Mail & Collaboration Server. All resources are declared below under
+# the `chart-base:` key and rendered by the shared chart-base library chart.
+chart-base:
+  # Match the original pod securityContext (adds runAsGroup); chart-base merges in
+  # the mandatory runAsNonRoot/runAsUser/fsGroup/seccompProfile defaults.
+  podSecurityContext:
+    runAsGroup: 1000
 
-create:
-  namespace: true
+  workloads:
+    - kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "stalwart"
+        consul.hashicorp.com/connect-service-port: "25"
+        consul.hashicorp.com/service-tags: "stalwart,mail-server,smtp,imap"
+        # ELK Filebeat logging
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        co.elastic.logs.json.add_error_key: "true"
+        co.elastic.logs.json.message_key: "message"
+        # Prometheus metrics
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "80"
+        prometheus.io/path: "/metrics"
+      containers:
+        - name: stalwart
+          image: stalwartlabs/stalwart:v0.10.8
+          imagePullPolicy: IfNotPresent
+          ports:
+            # Mail ports
+            - { containerPort: 25, name: smtp, protocol: TCP }
+            - { containerPort: 587, name: submission, protocol: TCP }
+            - { containerPort: 465, name: smtps, protocol: TCP }
+            - { containerPort: 143, name: imap, protocol: TCP }
+            - { containerPort: 993, name: imaps, protocol: TCP }
+            - { containerPort: 110, name: pop3, protocol: TCP }
+            - { containerPort: 995, name: pop3s, protocol: TCP }
+            - { containerPort: 4190, name: managesieve, protocol: TCP }
+            # HTTP ports
+            - { containerPort: 80, name: http, protocol: TCP }
+            - { containerPort: 443, name: https, protocol: TCP }
+          envFrom:
+            - secretRef:
+                name: stalwart-secrets
+          resources:
+            limits:
+              cpu: 2000m
+              memory: 2Gi
+            requests:
+              cpu: 1000m
+              memory: 1Gi
+          volumeMounts:
+            - { name: data, mountPath: /opt/stalwart/data }
+            - { name: config, mountPath: /opt/stalwart/config }
+            - { name: stalwart-config, mountPath: /opt/stalwart/etc }
+            - { name: logs, mountPath: /opt/stalwart-mail/logs }
+            - { name: tmp, mountPath: /tmp }
+          livenessProbe:
+            tcpSocket:
+              port: 143
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          readinessProbe:
+            tcpSocket:
+              port: 143
+            initialDelaySeconds: 30
+            periodSeconds: 5
+      volumes:
+        - name: data
+          persistentVolumeClaim:
+            claimName: stalwart-data
+        - name: config
+          persistentVolumeClaim:
+            claimName: stalwart-config
+        - name: stalwart-config
+          configMap:
+            name: stalwart-config
+        - name: logs
+          emptyDir: {}
+        - name: tmp
+          emptyDir: {}
 
-# Stalwart Image
-image:
-  repository: stalwartlabs/stalwart
-  tag: "v0.10.8"  # Pinned version - do not use :latest
-  pullPolicy: IfNotPresent
+  services:
+    - annotations:
+        consul.hashicorp.com/service-name: "stalwart"
+        consul.hashicorp.com/service-port: "80"
+        consul.hashicorp.com/service-tags: "stalwart,mail-server,smtp,imap"
+      type: ClusterIP
+      ports:
+        # Mail ports
+        - { port: 25, targetPort: 25, name: smtp, protocol: TCP }
+        - { port: 587, targetPort: 587, name: submission, protocol: TCP }
+        - { port: 465, targetPort: 465, name: smtps, protocol: TCP }
+        - { port: 143, targetPort: 143, name: imap, protocol: TCP }
+        - { port: 993, targetPort: 993, name: imaps, protocol: TCP }
+        - { port: 110, targetPort: 110, name: pop3, protocol: TCP }
+        - { port: 995, targetPort: 995, name: pop3s, protocol: TCP }
+        - { port: 4190, targetPort: 4190, name: managesieve, protocol: TCP }
+        # HTTP ports
+        - { port: 80, targetPort: 80, name: http, protocol: TCP }
+        - { port: 443, targetPort: 443, name: https, protocol: TCP }
 
-# Stalwart Server конфигурация
-stalwart:
-  replicaCount: 1
+  pvcs:
+    - { name: data, accessModes: [ReadWriteOnce], storageClass: local-path, size: 5Gi }
+    - { name: config, accessModes: [ReadWriteOnce], storageClass: local-path, size: 5Gi }
 
-  # Services ports
-  service:
-    type: ClusterIP
-    # HTTP/HTTPS ports
-    http:
-      port: 80
-    https:
-      port: 443
-    # Mail ports
-    smtp:
-      port: 25
-    submission:
-      port: 587
-    smtps:
-      port: 465
-    imap:
-      port: 143
-    imaps:
-      port: 993
-    pop3:
-      port: 110
-    pop3s:
-      port: 995
-    managesieve:
-      port: 4190
+  configMaps:
+    - name: config
+      data:
+        stalwart.toml: |
+          # Stalwart Mail Server Configuration
+          [server]
+          hostname = ["mail.localhost"]
 
-  resources:
-    limits:
-      cpu: 2000m
-      memory: 2Gi
-    requests:
-      cpu: 1000m
-      memory: 1Gi
+          [[server.listener.smtp]]
+          bind = ["0.0.0.0:25"]
+          greeting = "Welcome to Stalwart Mail Server"
 
-  # Конфигурация Stalwart
-  config:
-    # Domain configuration
-    domain: "mail.localhost"
-    hostnames:
-      - "mail.localhost"
-      - "smtp.mail.localhost"
+          [[server.listener.submission]]
+          bind = ["0.0.0.0:587"]
 
-    # TLS
-    tls:
-      enabled: true
-      selfSigned: true
+          [[server.listener.smtps]]
+          bind = ["0.0.0.0:465"]
 
-    # SMTP configuration
-    smtp:
-      greeting: "Welcome to Stalwart Mail Server"
-      maxSize: 52428800  # 50MB
+          [[server.listener.imap]]
+          bind = ["0.0.0.0:143"]
 
-    # IMAP configuration
-    imap:
-      enabled: true
+          [[server.listener.imaps]]
+          bind = ["0.0.0.0:993"]
 
-    # JMAP configuration
-    jmap:
-      enabled: true
+          [[server.listener.pop3]]
+          bind = ["0.0.0.0:110"]
 
-    # WebUI
-    webui:
-      enabled: true
-      port: 443
+          [[server.listener.pop3s]]
+          bind = ["0.0.0.0:995"]
 
-    # Rate limiting
-    rateLimiting:
-      enabled: true
-      maxConnections: 100
+          [[server.listener.managesieve]]
+          bind = ["0.0.0.0:4190"]
 
-# Persistent Storage
-persistence:
-  enabled: true
-  storageClass: local-path
+          [[server.listener.http]]
+          bind = ["0.0.0.0:80"]
 
-  # Data directory (SQLite database, blobs, etc)
-  data:
+          [[server.listener.https]]
+          bind = ["0.0.0.0:443"]
+
+          # Storage configuration
+          [storage]
+          data = "sqlite:///opt/stalwart/data/stalwart.db"
+          blob = "filecache:///opt/stalwart/data"
+          fts = "sqlite:///opt/stalwart/data/fts.db"
+          directory = "internal"
+
+          # LDAP Directory Configuration (Authentik)
+          [directory."ldap"]
+          type = "ldap"
+          url = "ldap://authentik.service.svc.cluster.local:389"
+          timeout = "30s"
+
+          [directory."ldap".tls]
+          enable = false
+          allow-invalid-certs = true
+
+          # LDAP bind credentials - secret injected via Vault
+          [directory."ldap".bind]
+          dn = "cn=admin,dc=authentik,dc=local"
+          secret = "%{env:LDAP_BIND_PASSWORD}%"  # Injected via Vault - see vault.hashicorp.com annotations
+
+          # LDAP authentication method
+          [directory."ldap".auth]
+          mechanism = "bind"
+          base-dn = "ou=users,dc=authentik,dc=local"
+          filter = "(&(objectClass=user)(uid={username}))"
+          username-attribute = "uid"
+          mail-attribute = "mail"
+          name-attribute = "cn"
+
+          # Accounts configuration
+          [directory."ldap".attributes]
+          mail-from = "noreply@mail.localhost"
+          quota = 2147483648  # 2GB
+
+          # SMTP rate limiting
+          [smtp]
+          max-message-size = 5.24288e+07
+
+          [smtp.rate-limit]
+          requests = 100
+          period = "1m"
+
+          # IMAP rate limiting
+          [imap]
+          max-connections = 100
+
+          # JMAP configuration
+          [jmap]
+          enabled = true
+
+          # Web UI configuration
+          [webadmin]
+          enabled = true
+          port = 443
+
+          # Let's Encrypt (optional, если нужно получить сертификат)
+          [certificate.acme]
+          enable = false
+          renew = 30
+
+          # или self-signed для текущей конфигурации
+          [certificate.self-signed]
+          enable = true
+
+          # Logging
+          [log]
+          level = "info"
+          fmt = "json"
+
+  secrets:
+    - name: secrets
+      type: Opaque
+      stringData:
+        # Domain configuration
+        STALWART_HOSTNAME: mail.localhost
+        # LDAP для Authentik
+        LDAP_HOST: authentik.service.svc.cluster.local
+        LDAP_PORT: "389"
+        LDAP_BIND_DN: cn=admin,dc=authentik,dc=local
+        LDAP_BIND_PASSWORD: ""
+        LDAP_BASE_DN: ou=users,dc=authentik,dc=local
+        LDAP_AUTH_METHOD: bind
+
+  serviceAccount:
+    create: true
+    automount: true
+
+  rbac:
+    create: true
+    clusterRules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [secrets], verbs: [get, list] }
+
+  networkPolicy:
     enabled: true
-    size: 5Gi
-    mountPath: /opt/stalwart/data
-    accessMode: ReadWriteOnce
+    allowDB: false
+    # base ingress rule (from namespaceSelector name=ingress) covers Traefik;
+    # this adds the same-namespace traffic the original allowed.
+    extraIngress:
+      - from:
+          - podSelector: {}
+    # base egress already allows DNS; these add external HTTP/HTTPS, Consul, Vault.
+    extraEgress:
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - protocol: TCP
+            port: 443
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - protocol: TCP
+            port: 80
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: consul
+        ports:
+          - protocol: TCP
+            port: 8500
+          - protocol: TCP
+            port: 8600
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: vault
+        ports:
+          - protocol: TCP
+            port: 8200
 
-  # Config directory
-  config:
+  serviceMonitor:
     enabled: true
-    size: 5Gi
-    mountPath: /opt/stalwart/config
-    accessMode: ReadWriteOnce
+    port: metrics
+    path: /metrics
+    interval: 30s
 
-# PostgreSQL (для интеграции)
-postgresql:
-  enabled: false
-  external: true
-  host: "postgresql.db.svc.cluster.local"
-  port: 5432
-  username: "stalwart"
-  password: ""  # Injected via Vault - see vault.hashicorp.com annotations
-  database: "stalwart"
+  pdb:
+    enabled: false
 
-# Redis/ValKey (для кэширования и сессий)
-redis:
-  enabled: false
-  host: "valkey-primary.db.svc.cluster.local"
-  port: 6379
-  password: ""
+  routing:
+    httpRoutes:
+      - host: mail.localhost
+        port: 443
+        authentik:
+          enabled: false
 
-# LDAP Authentication (Authentik)
-ldap:
-  enabled: true
-  host: "authentik.service.svc.cluster.local"  # Authentik LDAP interface
-  port: 389
-  bindDN: "cn=admin,dc=authentik,dc=local"
-  bindPassword: ""  # Injected via Vault - see vault.hashicorp.com annotations
-  baseDN: "ou=users,dc=authentik,dc=local"
-  # User search filter
-  userFilter: "(&(objectClass=user)(uid={username}))"
-  usernameAttribute: "uid"
-  emailAttribute: "mail"
-  displayNameAttribute: "cn"
-  # Bind authentication method
-  authMethod: "bind"  # bind, template, или lookup
-
-# Ingress через Traefik (для WebUI)
-ingress:
-  enabled: true
-  className: traefik
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-
-  host: mail.localhost
-  path: /
-
-  tls:
+  tests:
     enabled: true
-    secretName: stalwart-tls
-
-# Consul интеграция
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  port: 8500
-  datacenter: dc1
-  tags:
-    - stalwart
-    - mail-server
-    - smtp
-    - imap
-
-# Security
-securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-
-# Health Checks
-probes:
-  liveness:
-    enabled: true
-    initialDelaySeconds: 60
-    periodSeconds: 10
-  readiness:
-    enabled: true
-    initialDelaySeconds: 30
-    periodSeconds: 5
-
-# NodePort для mail портов (опционально)
-nodePort:
-  enabled: false
-  smtp: 25
-  submission: 587
-  smtps: 465
-  imap: 143
-  imaps: 993
-  pop3: 110
-  pop3s: 995
-
-# Vault integration (requires Vault policies and secrets to be configured)
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-vault:
-  enabled: false
-  # Note: Before enabling, configure Vault:
-  # 1. Create policy for stalwart service
-  # 2. Create secret at secret/data/stalwart/secrets
-  # 3. Enable Kubernetes auth method in Vault
-  # 4. Create role binding ServiceAccount to Vault policy
-  # See: kubernetes/docs/VAULT_MIGRATION.md
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: false
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+    port: 80

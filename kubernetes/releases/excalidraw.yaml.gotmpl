@@ -1,57 +1,11 @@
-namespace: productivity
-
-image:
-  tag: "0.16.0"
-
-excalidraw:
-  replicaCount: 1
-  config:
-    appTitle: "Excalidraw - Collaborative Whiteboard"
-    collaboration:
-      enabled: true
-      socketServer: "wss://excalidraw-api.{{ .Values.infra.host }}"
-
-# Enable full-featured server для persistence и collaboration
-server:
-  enabled: true
-  image:
-    tag: "latest"
-  config:
-    storageType: "sqlite"
-    localStoragePath: "/data/excalidraw"
-    logLevel: "info"
-
-persistence:
-  enabled: true
-  storageClass: local-path
-  data:
-    size: 1Gi
-
-ingress:
-  enabled: true
-  frontend:
-    host: excalidraw.{{ .Values.infra.host }}
-  server:
-    host: excalidraw-api.{{ .Values.infra.host }}
-
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  tags:
-    - excalidraw
-    - whiteboard
-
-# Override security context to allow nginx to bind to port 80
-podSecurityContext:
-  fsGroup: 1000
-
-containerSecurityContext:
-  runAsUser: 0
-  runAsNonRoot: false
-  allowPrivilegeEscalation: false
-  readOnlyRootFilesystem: false
-  capabilities:
-    drop:
-      - ALL
-    add:
-      - NET_BIND_SERVICE
+# excalidraw release overrides.
+# Base config lives in charts/excalidraw/values.yaml under the "chart-base:" key.
+# Add env-specific overrides here, nested under "chart-base:" (subchart scoping).
+# Example:
+#   chart-base:
+#     workloads:
+#       - containers:
+#           - name: excalidraw
+#             env:
+#               - name: EXAMPLE
+#                 value: "value"

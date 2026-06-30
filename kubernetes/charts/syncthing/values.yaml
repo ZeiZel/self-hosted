@@ -1,199 +1,271 @@
-# Namespace
-namespace: data
+# syncthing — rendered entirely by the chart-base subchart.
+# All resources live under the `chart-base:` key (subchart scoping).
+chart-base:
+  # Preserve original pod security context (chart-base enforces runAsNonRoot +
+  # seccompProfile on top of these).
+  podSecurityContext:
+    runAsUser: 1000
+    runAsGroup: 1000
+    fsGroup: 1000
 
-create:
-  namespace: true
+  workloads:
+    - kind: Deployment
+      replicas: 1
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "syncthing"
+        consul.hashicorp.com/connect-service-port: "8384"
+        consul.hashicorp.com/service-tags: "syncthing,file-sync"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        co.elastic.logs.json.add_error_key: "true"
+        co.elastic.logs.json.message_key: "message"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8384"
+        prometheus.io/path: "/metrics"
+      containers:
+        - name: syncthing
+          image: syncthing/syncthing:1.27.0
+          imagePullPolicy: IfNotPresent
+          ports:
+            - { containerPort: 8384, name: gui, protocol: TCP }
+            - { containerPort: 22000, name: sync-tcp, protocol: TCP }
+            - { containerPort: 22000, name: sync-quic, protocol: UDP }
+            - { containerPort: 21027, name: discovery, protocol: UDP }
+          env:
+            - { name: STNOUPGRADE, value: "1" }
+            - { name: STNODEFAULTFOLDER, value: "1" }
+          resources:
+            limits: { cpu: 1000m, memory: 512Mi }
+            requests: { cpu: 250m, memory: 256Mi }
+          volumeMounts:
+            - { name: config, mountPath: /var/syncthing/config }
+            - { name: sync, mountPath: /var/syncthing/Sync }
+          livenessProbe:
+            httpGet: { path: /, port: 8384 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /, port: 8384 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: config
+          persistentVolumeClaim:
+            claimName: syncthing-config
+        - name: sync
+          persistentVolumeClaim:
+            claimName: syncthing-sync
 
-# Syncthing Image
-image:
-  repository: syncthing/syncthing
-  tag: "1.27.0"
-  pullPolicy: IfNotPresent
-
-# Syncthing conf
-syncthing:
-  replicaCount: 1
-
-  # GUI Service
-  service:
-    gui:
+  services:
+    # GUI Service
+    - name: gui
       type: ClusterIP
-      port: 8384
-    # Sync Service (TCP)
-    sync:
+      annotations:
+        consul.hashicorp.com/service-name: "syncthing"
+        consul.hashicorp.com/service-port: "8384"
+        consul.hashicorp.com/service-tags: "syncthing,file-sync"
+      ports:
+        - { name: gui, port: 8384, targetPort: 8384 }
+    # Sync Service (TCP + QUIC/UDP)
+    - name: sync
       type: ClusterIP
-      port: 22000
+      ports:
+        - { name: sync-tcp, port: 22000, targetPort: 22000, protocol: TCP }
+        - { name: sync-quic, port: 22000, targetPort: 22000, protocol: UDP }
     # Discovery Service (UDP)
-    discovery:
+    - name: discovery
       type: ClusterIP
-      port: 21027
+      ports:
+        - { name: discovery, port: 21027, targetPort: 21027, protocol: UDP }
 
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 512Mi
-    requests:
-      cpu: 250m
-      memory: 256Mi
+  pvcs:
+    - { name: config, accessModes: [ReadWriteOnce], storageClass: local-path, size: 5Gi }
+    - { name: sync, accessModes: [ReadWriteOnce], storageClass: local-path, size: 1Gi }
 
-  # Conf Syncthing
-  config:
-    # GUI Configuration
-    gui:
-      enabled: true
-      address: "0.0.0.0:8384"
-      tls: false
-      # Install password UI after first login
-      authentication: false
+  serviceAccount:
+    create: true
+    automount: true
 
-    # Sync Configuration
-    sync:
-      listenAddresses:
-        - "tcp://0.0.0.0:22000"
-        - "quic://0.0.0.0:22000"
-      maxConcurrentScans: 0
-      maxSendKbps: 0
-      maxRecvKbps: 0
+  rbac:
+    create: true
+    clusterRules:
+      - { apiGroups: [""], resources: [pods], verbs: [get, list] }
+      - { apiGroups: [""], resources: [configmaps], verbs: [get, list] }
 
-    # Discovery
-    discovery:
-      enabled: true
-      globalEnabled: true
-      searchEnabled: true
-      upgradeToEncryption: false
-
-# Persistent Storage
-persistence:
-  enabled: true
-  storageClass: local-path
-
-  # Config directory (/var/syncthing/config)
-  config:
+  networkPolicy:
     enabled: true
-    size: 5Gi
-    mountPath: /var/syncthing/config
-    accessMode: ReadWriteOnce
+    allowDB: false
+    extraIngress:
+      # Allow ingress from same namespace
+      - from:
+          - podSelector: {}
+    extraEgress:
+      # Allow HTTPS to external
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - { protocol: TCP, port: 443 }
+      # Allow HTTP to external
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - { protocol: TCP, port: 80 }
+      # Allow service mesh (Consul)
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: consul
+        ports:
+          - { protocol: TCP, port: 8500 }
+          - { protocol: TCP, port: 8600 }
+      # Allow Vault
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: vault
+        ports:
+          - { protocol: TCP, port: 8200 }
 
-  # Synced files directory (/var/syncthing/Sync)
-  sync:
+  serviceMonitor:
     enabled: true
-    size: 1Gi
-    mountPath: /var/syncthing/Sync
-    accessMode: ReadWriteOnce
+    port: metrics
+    path: /metrics
 
-# Ingress through Traefik for GUI
-ingress:
-  enabled: true
-  className: traefik
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
+  pdb:
+    enabled: false
 
-  host: syncthing.local
-  path: /
+  routing:
+    httpRoutes:
+      - host: syncthing.local
+        port: 8384
+        service: syncthing-gui
+        authentik:
+          enabled: false
+          middleware: service-authentik-forward-auth@kubernetescrd
 
-  tls:
+  tests:
     enabled: true
-    secretName: syncthing-tls
-
-# Network Policy for Syncthing sync ports
-networkPolicy:
-  enabled: true
-  allowNodePort: true
-  egressRules:
-    allowDatabases: false
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# Consul интеграция
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  port: 8500
-  datacenter: dc1
-  tags:
-    - syncthing
-    - file-sync
-
-# Security
-securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-
-# Health Checks
-probes:
-  liveness:
-    enabled: true
-    path: "/"
     port: 8384
-    initialDelaySeconds: 30
-    periodSeconds: 10
-  readiness:
-    enabled: true
-    path: "/"
-    port: 8384
-    initialDelaySeconds: 10
-    periodSeconds: 5
 
-# Vault integration (requires Vault policies and secrets to be configured)
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-vault:
-  enabled: false
-  # Note: Before enabling, configure Vault:
-  # 1. Create policy for syncthing service
-  # 2. Create secret at secret/data/syncthing/secrets
-  # 3. Enable Kubernetes auth method in Vault
-  # 4. Create role binding ServiceAccount to Vault policy
-  # See: kubernetes/docs/VAULT_MIGRATION.md
-
-# Sync config folder
-folders:
-  enabled: true
-  folders:
-    - id: "default"
-      label: "Default Sync Folder"
-      path: "/var/syncthing/Sync/default"
-      rescanIntervalS: 3600
-      ignorePerms: false
-      autoNormalize: true
-      filesystemType: "basic"
-
-# Devices (another Syncthing nodes for sync)
-devices:
-  enabled: false
-  # Sample:
-  # - name: "other-node"
-  #   deviceID: "XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX-XXXXX"
-  #   address: "dynamic"
-  #   compression: "metadata"
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+  configMaps:
+    - name: config
+      data:
+        config.xml: |
+          <?xml version="1.0" encoding="UTF-8"?>
+          <configuration version="32">
+            <folder id="default" label="Default" path="/var/syncthing/Sync/default" type="sendreceive" rescanIntervalS="3600" ignorePerms="false" autoNormalize="true">
+              <filesystemType>basic</filesystemType>
+              <device id="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" introducedBy="" name="" compression="metadata" certName="" addresses="dynamic" skipIntroductionRemovals="false" introducedAt="0001-01-01T00:00:00Z" paused="false" allowedNetworks="" autoAcceptFolders="false"/>
+              <ignoreDelete value="false"/>
+              <ignorePattern value=""/>
+              <simpleVersioning maxVersions="5"/>
+            </folder>
+            <device id="XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX" name="syncthing" compression="metadata" certName="" addresses="dynamic" skipIntroductionRemovals="false" introducedAt="0001-01-01T00:00:00Z" paused="false" allowedNetworks="" autoAcceptFolders="false"/>
+            <gui enabled="true" tls="false" debugging="false">
+              <address>0.0.0.0:8384</address>
+              <apikey/>
+              <insecureAdminAccess>false</insecureAdminAccess>
+              <theme>default</theme>
+              <insecureSkipHostcheck>true</insecureSkipHostcheck>
+              <insecureAllowFrameLoading>false</insecureAllowFrameLoading>
+              <overrideTrustedCertificates/>
+              <overrideRemoteUIURL/>
+              <premiumpaid>0</premiumpaid>
+              <sendUsageReport>false</sendUsageReport>
+              <urAccepted>-1</urAccepted>
+              <urSeen>-1</urSeen>
+              <urUniqueID/>
+            </gui>
+            <ldap enabled="false">
+              <address/>
+              <bindDN/>
+              <bindPassword/>
+              <searchBaseDN/>
+              <searchFilter/>
+              <displayNameAttribute/>
+              <emailAttribute/>
+              <legacyPasswordBehavior>false</legacyPasswordBehavior>
+            </ldap>
+            <options>
+              <listenAddresses>
+                <listenAddress>tcp://0.0.0.0:22000</listenAddress>
+                <listenAddress>quic://0.0.0.0:22000</listenAddress>
+                <listenAddress>dynamic+https://relays.syncthing.net/endpoint</listenAddress>
+              </listenAddresses>
+              <globalAnnounceServers>
+                <globalAnnounceServer>default</globalAnnounceServer>
+              </globalAnnounceServers>
+              <globalAnnounceEnabled>true</globalAnnounceEnabled>
+              <localAnnounceEnabled>true</localAnnounceEnabled>
+              <localAnnouncePort>21027</localAnnouncePort>
+              <localAnnounceMCAddr>[ff12::8384]:21027</localAnnounceMCAddr>
+              <maxSendKbps>0</maxSendKbps>
+              <maxRecvKbps>0</maxRecvKbps>
+              <maxConcurrentScans>0</maxConcurrentScans>
+              <reconnectionIntervalS>60</reconnectionIntervalS>
+              <relaysEnabled>true</relaysEnabled>
+              <relayReconnectIntervalM>10</relayReconnectIntervalM>
+              <startBrowser>false</startBrowser>
+              <natEnabled>true</natEnabled>
+              <natLeaseMinutes>60</natLeaseMinutes>
+              <natRenewalMinutes>30</natRenewalMinutes>
+              <natTimeoutSeconds>0</natTimeoutSeconds>
+              <urAccepted>-1</urAccepted>
+              <urUniqueID/>
+              <urURL>https://data.syncthing.net/newdata</urURL>
+              <urPostInsecurely>false</urPostInsecurely>
+              <urInitialDelayS>1800</urInitialDelayS>
+              <usageReportingEnabled>false</usageReportingEnabled>
+              <statsReportingEnabled>false</statsReportingEnabled>
+              <limitBandwidthInLan>false</limitBandwidthInLan>
+              <minHomeDiskFree percentage="5"/>
+              <releasesURL>https://upgrades.syncthing.net/meta/v2/latest-v1.json</releasesURL>
+              <alwaysLocalNets/>
+              <overwriteRemoteDeviceNamesOnConnect>false</overwriteRemoteDeviceNamesOnConnect>
+              <tempIndexMinBlocks>10</tempIndexMinBlocks>
+              <unackedNotificationID/>
+              <trafficClass>0</trafficClass>
+              <setLowPriority>true</setLowPriority>
+              <scsiEjectMethod/>
+              <fsWatcherEnabled>true</fsWatcherEnabled>
+              <fsWatcherDelayS>10</fsWatcherDelayS>
+              <fsWatcherArgsEscaped>true</fsWatcherArgsEscaped>
+              <fsWatcherArgs/>
+              <restartOnWakeup>true</restartOnWakeup>
+              <periodicVersionCleanupEnabled>true</periodicVersionCleanupEnabled>
+              <periodicVersionCleanupIntervalH>0</periodicVersionCleanupIntervalH>
+              <skipUpdateCheck>false</skipUpdateCheck>
+              <upgradeSorting>descending</upgradeSorting>
+              <upgradeCheckInterval>24</upgradeCheckInterval>
+              <upgradeToEncryption>false</upgradeToEncryption>
+              <pullOrder>random</pullOrder>
+              <strictEncodingNorm>true</strictEncodingNorm>
+              <syncOwnershipMode/>
+              <syncOwnershipUid/>
+              <syncOwnershipGid/>
+              <syncThrottleKb>0</syncThrottleKb>
+              <blockSyncPersonal>false</blockSyncPersonal>
+              <iscsEnabled>false</iscsEnabled>
+              <iscsChunkSize>262144</iscsChunkSize>
+              <iscsapikey/>
+              <iscshttpurl/>
+              <weakHashThresholdPct>25</weakHashThresholdPct>
+              <stunKeepaliveStartH>8</stunKeepaliveStartH>
+              <stunKeepaliveMinS>900</stunKeepaliveMinS>
+              <stunServers>
+                <stunServer>stun.l.google.com:19302</stunServer>
+                <stunServer>stun1.l.google.com:19302</stunServer>
+                <stunServer>stun2.l.google.com:19302</stunServer>
+                <stunServer>stun3.l.google.com:19302</stunServer>
+                <stunServer>stun4.l.google.com:19302</stunServer>
+                <stunServer>stun.stunprotocol.org:3478</stunServer>
+              </stunServers>
+            </options>
+          </configuration>

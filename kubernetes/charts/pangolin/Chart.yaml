@@ -1,11 +1,11 @@
 apiVersion: v2
 name: pangolin-client
-description: A Helm chart for Pangolin VPN client in Kubernetes
+description: A Helm chart for Pangolin VPN client in Kubernetes (rendered by chart-base)
 type: application
 version: 0.1.0
 appVersion: "latest"
-
-
-
-
+dependencies:
+  - name: chart-base
+    version: 0.1.0
+    repository: file://../chart-base
 

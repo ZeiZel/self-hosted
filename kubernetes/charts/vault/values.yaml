@@ -1,151 +1,315 @@
-# Namespace
-namespace: service
+# vault — rendered entirely by the chart-base subchart.
+# HashiCorp Vault: single StatefulSet (Raft integrated storage) named "vault" so
+# pod DNS (vault-0.vault-internal) keeps matching the HCL retry_join entries.
+# Two RBAC sets (vault + vault-agent-injector) are emitted via rbac.extra; the
+# headless vault-internal Service is an extraManifest so publishNotReadyAddresses
+# is preserved (needed for Raft peer discovery).
+chart-base:
+  workloads:
+    - kind: StatefulSet
+      serviceName: vault-internal
+      replicas: 1
+      podLabels:
+        app: vault
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "vault"
+        consul.hashicorp.com/connect-service-port: "8200"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8200"
+        prometheus.io/path: "/v1/sys/metrics"
+      podSecurityContext:
+        runAsNonRoot: true
+        runAsUser: 100
+        runAsGroup: 1000
+        fsGroup: 1000
+        seccompProfile:
+          type: RuntimeDefault
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app
+                      operator: In
+                      values:
+                        - vault
+                topologyKey: kubernetes.io/hostname
+      containers:
+        - name: vault
+          image: vault:1.17.0
+          imagePullPolicy: IfNotPresent
+          args:
+            - "server"
+            - "-config=/vault/config/vault.hcl"
+          ports:
+            - { name: api, containerPort: 8200 }
+            - { name: cluster, containerPort: 8201 }
+          env:
+            - { name: VAULT_LOG_LEVEL, value: "info" }
+            - { name: VAULT_ADDR, value: "http://127.0.0.1:8200" }
+            - { name: VAULT_API_ADDR, value: "http://$(POD_IP):8200" }
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: VAULT_RAFT_NODE_ID
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+          resources:
+            limits: { cpu: 2000m, memory: 1024Mi }
+            requests: { cpu: 1000m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - { name: config, mountPath: /vault/config }
+            - { name: data, mountPath: /vault/data }
+            - { name: audit, mountPath: /vault/logs }
+          livenessProbe:
+            httpGet: { path: /v1/sys/health, port: 8200, scheme: HTTP }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /v1/sys/health, port: 8200, scheme: HTTP }
+            initialDelaySeconds: 30
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: vault-config
+      volumeClaimTemplates:
+        - metadata:
+            name: data
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            storageClassName: local-path
+            resources:
+              requests:
+                storage: 3Gi
+        - metadata:
+            name: audit
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            storageClassName: local-path
+            resources:
+              requests:
+                storage: 1Gi
 
-create:
-  namespace: true
+  services:
+    # Client-facing Vault service (also registered with Consul via annotations).
+    - annotations:
+        consul.hashicorp.com/service-name: "vault"
+        consul.hashicorp.com/service-port: "8200"
+        consul.hashicorp.com/service-tags: "vault,secrets-management,security"
+      type: ClusterIP
+      ports:
+        - { name: api, port: 8200, targetPort: 8200 }
+    # Vault Agent Injector webhook service (selects external injector pods).
+    - name: agent-injector-svc
+      selector:
+        app: vault-agent-injector
+      ports:
+        - { port: 443, targetPort: 8080 }
 
-# Vault Image
-image:
-  repository: vault
-  tag: "1.17.0"
-  pullPolicy: IfNotPresent
+  configMaps:
+    - name: config
+      data:
+        vault.hcl: |
+          ui = true
 
-# Vault Server конфигурация
-server:
-  replicaCount: 1  # For HA
+          listener "tcp" {
+            address = "[::]:8200"
+            cluster_address = "[::]:8201"
+            tls_disable = true
+          }
 
-  service:
-    type: ClusterIP
+          # Integrated Storage (Raft)
+          storage "raft" {
+            path    = "/vault/data"
+            node_id = "${VAULT_RAFT_NODE_ID}"
+
+            retry_join {
+              leader_api_addr = "http://vault-0.vault-internal:8200"
+            }
+            retry_join {
+              leader_api_addr = "http://vault-1.vault-internal:8200"
+            }
+            retry_join {
+              leader_api_addr = "http://vault-2.vault-internal:8200"
+            }
+          }
+
+          # Audit logging
+          audit {
+            file {
+              path = "/vault/logs/audit.log"
+            }
+          }
+
+          # High Availability
+          ha_storage "raft" {
+            path    = "/vault/data"
+            node_id = "${VAULT_RAFT_NODE_ID}"
+          }
+
+          # Consul Service Registration
+          service_registration "consul" {
+            address      = "consul.consul.svc.cluster.local"
+            service      = "vault"
+            service_tags = "vault"
+            check_interval = "10s"
+            check_timeout = "5s"
+          }
+
+  serviceAccount:
+    create: true
+    automount: true
+
+  rbac:
+    # Two cluster-scoped RBAC sets: vault + vault-agent-injector (raw objects,
+    # tpl-rendered so {{ .Release.Namespace }} resolves).
+    extra:
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        metadata:
+          name: vault
+        rules:
+          - apiGroups: [""]
+            resources: ["pods"]
+            verbs: ["get", "list", "watch"]
+          - apiGroups: [""]
+            resources: ["serviceaccounts"]
+            verbs: ["get"]
+          - apiGroups: [""]
+            resources: ["configmaps"]
+            verbs: ["get", "list"]
+          - apiGroups: [""]
+            resources: ["secrets"]
+            verbs: ["get", "list"]
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        metadata:
+          name: vault
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: vault
+        subjects:
+          - kind: ServiceAccount
+            name: vault
+            namespace: "{{ .Release.Namespace }}"
+      - apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: vault-agent-injector
+          namespace: "{{ .Release.Namespace }}"
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        metadata:
+          name: vault-agent-injector
+        rules:
+          - apiGroups: [""]
+            resources: ["configmaps", "secrets"]
+            verbs: ["get", "list", "watch"]
+          - apiGroups: [""]
+            resources: ["serviceaccounts"]
+            verbs: ["get"]
+          - apiGroups: ["admissionregistration.k8s.io"]
+            resources: ["mutatingwebhookconfigurations"]
+            verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        metadata:
+          name: vault-agent-injector
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: vault-agent-injector
+        subjects:
+          - kind: ServiceAccount
+            name: vault-agent-injector
+            namespace: "{{ .Release.Namespace }}"
+
+  networkPolicy:
+    enabled: true
+    allowDB: false
+    extraIngress:
+      - from:
+          - podSelector: {}
+    extraEgress:
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - { protocol: TCP, port: 443 }
+      - to:
+          - namespaceSelector: {}
+        ports:
+          - { protocol: TCP, port: 80 }
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: consul
+        ports:
+          - { protocol: TCP, port: 8500 }
+          - { protocol: TCP, port: 8600 }
+      - to:
+          - namespaceSelector:
+              matchLabels:
+                name: service
+            podSelector:
+              matchLabels:
+                app.kubernetes.io/name: vault
+        ports:
+          - { protocol: TCP, port: 8200 }
+
+  serviceMonitor:
+    enabled: true
+    port: metrics
+    path: /metrics
+    interval: 30s
+
+  pdb:
+    enabled: true
+    minAvailable: 2
+
+  routing:
+    httpRoutes:
+      - host: vault.localhost
+        port: 8200
+        authentik:
+          enabled: false
+
+  # Headless service for the StatefulSet, kept raw to preserve
+  # publishNotReadyAddresses (required for Raft peer discovery before readiness).
+  extraManifests:
+    - |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: vault-internal
+        namespace: {{ .Release.Namespace }}
+        labels:
+          {{- include "chart-base.labels" . | nindent 4 }}
+      spec:
+        clusterIP: None
+        publishNotReadyAddresses: true
+        ports:
+          - { port: 8200, targetPort: 8200, name: api }
+          - { port: 8201, targetPort: 8201, name: cluster }
+        selector:
+          app: vault
+
+  tests:
+    enabled: true
     port: 8200
-    clusterPort: 8201
-
-  resources:
-    limits:
-      cpu: 2000m
-      memory: 1024Mi
-    requests:
-      cpu: 1000m
-      memory: 512Mi
-
-  # Data Storage конфигурация
-  dataStorage:
-    enabled: true
-    storageClass: local-path
-    size: 3Gi
-    mountPath: /vault/data
-
-  # Audit Storage
-  auditStorage:
-    enabled: true
-    storageClass: local-path
-    size: 1Gi
-    mountPath: /vault/logs
-
-  # HA Configuration с Integrated Storage (Raft)
-  ha:
-    enabled: true
-    replicas: 3
-    raftStoragePath: "/vault/data"
-
-# UI конфигурация
-ui:
-  enabled: true
-  serviceType: ClusterIP
-  servicePort: 8200
-
-# Ingress через Traefik
-ingress:
-  enabled: true
-  className: traefik
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
-
-  host: vault.local
-  path: /
-
-  tls:
-    enabled: true
-    secretName: vault-tls
-
-# Consul интеграция
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  port: 8500
-  datacenter: dc1
-  tags:
-    - vault
-    - secrets-management
-    - security
-
-# Vault Agent Injector (для инъекции секретов)
-injector:
-  enabled: true
-  replicas: 1
-  resources:
-    limits:
-      cpu: 250m
-      memory: 256Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
-
-# Security
-securityContext:
-  runAsUser: 100
-  runAsGroup: 1000
-  fsGroup: 1000
-
-# Health Checks
-probes:
-  liveness:
-    enabled: true
-    initialDelaySeconds: 60
-    periodSeconds: 10
-  readiness:
-    enabled: true
-    initialDelaySeconds: 30
-    periodSeconds: 5
-
-# Telemetry
-telemetry:
-  prometheusOperator: false
-
-# PodDisruptionBudget
-pdb:
-  enabled: true
-  minAvailable: 2
-
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: false
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"

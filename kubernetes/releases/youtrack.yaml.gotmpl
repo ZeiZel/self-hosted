@@ -1,47 +1,11 @@
-namespace: code
-
-youtrack:
-  config:
-    baseUrl: "http://youtrack.{{ .Values.infra.host }}"
-
-persistence:
-  enabled: true
-  storageClass: local-path
-  data:
-    size: 5Gi
-  backups:
-    size: 3Gi
-  logs:
-    size: 1Gi
-
-# Hub SSO конфигурация
-hub:
-  enabled: true
-  host: "hub.code.svc.cluster.local"
-  port: 8080
-
-# Authentik через Hub
-authentik:
-  enabled: true
-  hubIntegration: true
-
-# GitLab интеграция
-gitlab:
-  enabled: true
-  host: "gitlab.code.svc.cluster.local"
-  port: 80
-  token: "{{ .Values.secrets.gitlabToken }}"
-  integration:
-    cicd: true
-    webhooks: true
-
-ingress:
-  enabled: true
-  host: youtrack.{{ .Values.infra.host }}
-
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  tags:
-    - youtrack
-    - issue-tracking
+# youtrack release overrides.
+# Base config lives in charts/youtrack/values.yaml under the "chart-base:" key.
+# Add env-specific overrides here, nested under "chart-base:" (subchart scoping).
+# Example:
+#   chart-base:
+#     workloads:
+#       - containers:
+#           - name: youtrack
+#             env:
+#               - name: EXAMPLE
+#                 value: "value"

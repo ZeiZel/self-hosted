@@ -1,41 +1,11 @@
-namespace: data
-
-vaultwarden:
-  replicaCount: 1
-  config:
-    domain: "https://vaultwarden.{{ .Values.infra.host }}"
-    protocol: "https"
-    admin:
-      enabled: true
-    email:
-      enabled: true
-      host: "smtp.gmail.com"
-      port: 587
-      from: "{{ .Values.secrets.vaultwardenEmail }}"
-      fromName: "Vaultwarden"
-      username: "{{ .Values.secrets.smtpUsername }}"
-      password: "{{ .Values.secrets.smtpPassword }}"
-    allowSignups: false
-
-persistence:
-  enabled: true
-  storageClass: local-path
-  data:
-    size: 2Gi
-
-postgresql:
-  enabled: true
-  external: true
-  host: "postgresql.db.svc.cluster.local"
-  password: "{{ .Values.secrets.postgresPassword }}"
-
-ingress:
-  enabled: true
-  host: vaultwarden.{{ .Values.infra.host }}
-
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  tags:
-    - vaultwarden
-    - password-manager
+# vaultwarden release overrides.
+# Base config lives in charts/vaultwarden/values.yaml under the "chart-base:" key.
+# Add env-specific overrides here, nested under "chart-base:" (subchart scoping).
+# Example:
+#   chart-base:
+#     workloads:
+#       - containers:
+#           - name: vaultwarden
+#             env:
+#               - name: EXAMPLE
+#                 value: "value"

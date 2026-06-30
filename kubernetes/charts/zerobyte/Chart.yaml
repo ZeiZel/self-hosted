@@ -14,3 +14,7 @@ maintainers:
 home: https://github.com/kiwimato/zerobyte
 sources:
   - https://github.com/kiwimato/zerobyte
+dependencies:
+  - name: chart-base
+    version: 0.1.0
+    repository: file://../chart-base

@@ -1,61 +1,155 @@
-namespace: service
+# consul — rendered entirely by the chart-base subchart.
+# HashiCorp Consul: single-server StatefulSet with a headless peer service,
+# a client-facing Service, HCL config, an HTTPRoute and a Prometheus
+# ServiceMonitor (kept as an extraManifest to preserve the ?format=prometheus
+# scrape param that the built-in serviceMonitor block cannot express).
+chart-base:
+  workloads:
+    - name: server
+      kind: StatefulSet
+      replicas: 1
+      podLabels:
+        component: server
+      containers:
+        - name: consul
+          image: hashicorp/consul:1.18.2
+          imagePullPolicy: IfNotPresent
+          command:
+            - consul
+            - agent
+            - -config-file=/consul/config/consul.hcl
+          ports:
+            - { name: http, containerPort: 8500 }
+            - { name: grpc, containerPort: 8502 }
+            - { name: dns, containerPort: 8600, protocol: UDP }
+            - { name: serflan, containerPort: 8301 }
+            - { name: serfwan, containerPort: 8302 }
+            - { name: server, containerPort: 8300 }
+          env:
+            - name: POD_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.podIP
+            - name: CONSUL_BIND_INTERFACE
+              value: eth0
+          resources:
+            requests: { cpu: 100m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: false
+            capabilities:
+              drop: [ALL]
+          volumeMounts:
+            - { name: data, mountPath: /consul/data }
+            - { name: config, mountPath: /consul/config }
+          livenessProbe:
+            httpGet: { path: /v1/status/leader, port: 8500 }
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet: { path: /v1/status/leader, port: 8500 }
+            initialDelaySeconds: 10
+            periodSeconds: 5
+      volumes:
+        - name: config
+          configMap:
+            name: consul-config
+      volumeClaimTemplates:
+        - metadata:
+            name: data
+          spec:
+            accessModes: ["ReadWriteOnce"]
+            storageClassName: local-path
+            resources:
+              requests:
+                storage: 1Gi
 
-image:
-  repository: hashicorp/consul
-  tag: "1.18.2"
-  pullPolicy: IfNotPresent
+  services:
+    # Client-facing service.
+    - component: server
+      type: ClusterIP
+      ports:
+        - { name: http, port: 8500, targetPort: http }
+        - { name: grpc, port: 8502, targetPort: grpc }
+        - { name: dns, port: 8600, targetPort: dns, protocol: UDP }
+    # Headless service for the StatefulSet peers (serfwan/lan/server).
+    - name: server
+      component: server
+      clusterIP: None
+      ports:
+        - { name: http, port: 8500 }
+        - { name: serflan, port: 8301 }
+        - { name: serfwan, port: 8302 }
+        - { name: server, port: 8300 }
 
-replicaCount: 1
+  configMaps:
+    - name: config
+      data:
+        consul.hcl: |
+          datacenter = "dc1"
+          data_dir = "/consul/data"
+          log_level = "INFO"
 
-server:
-  enabled: true
-  replicas: 1
-  bootstrapExpect: 1
-  storage: 1Gi
-  storageClass: local-path
+          server = true
+          bootstrap_expect = 1
 
-client:
-  enabled: false
+          ui_config {
+            enabled = true
+          }
 
-ui:
-  enabled: true
+          bind_addr = "0.0.0.0"
+          client_addr = "0.0.0.0"
 
-service:
-  type: ClusterIP
-  ports:
-    http: 8500
-    grpc: 8502
-    dns: 8600
+          ports {
+            http = 8500
+            grpc = 8502
+            dns = 8600
+          }
 
-resources:
-  requests:
-    cpu: 100m
-    memory: 128Mi
-  limits:
-    cpu: 500m
-    memory: 512Mi
+          connect {
+            enabled = true
+          }
 
-persistence:
-  enabled: true
-  storageClass: local-path
-  size: 1Gi
+          addresses {
+            http = "0.0.0.0"
+          }
 
-ingress:
-  enabled: true
-  className: traefik
-  host: consul.zeizel.ru
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: websecure
-    traefik.ingress.kubernetes.io/router.tls: "true"
+  serviceAccount:
+    create: true
 
-serviceAccount:
-  create: true
-  name: consul
+  routing:
+    httpRoutes:
+      - host: consul.localhost
+        port: 8500
+        authentik:
+          enabled: false
 
-# Metrics
-metrics:
-  enabled: true
-  port: "http"
-  path: "/v1/agent/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
+  # ServiceMonitor kept raw to preserve params.format=prometheus + scrapeTimeout
+  # (the built-in serviceMonitor block does not support these fields).
+  extraManifests:
+    - |
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: {{ include "chart-base.fullname" . }}
+        namespace: {{ .Release.Namespace }}
+        labels:
+          {{- include "chart-base.labels" . | nindent 4 }}
+          prometheus: kube-prometheus
+      spec:
+        selector:
+          matchLabels:
+            {{- include "chart-base.selectorLabels" . | nindent 6 }}
+        endpoints:
+          - port: http
+            path: /v1/agent/metrics
+            interval: 30s
+            scrapeTimeout: 10s
+            params:
+              format:
+                - prometheus
+
+  tests:
+    enabled: true
+    port: 8500

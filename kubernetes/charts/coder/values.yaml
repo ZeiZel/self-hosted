@@ -1,221 +1,756 @@
-namespace: code
-
-create:
-  namespace: true
-
-image:
-  repository: ghcr.io/coder/coder
-  tag: "v2.17.0"
-  pullPolicy: IfNotPresent
-
-coder:
-  replicaCount: 1
-
-  service:
-    type: ClusterIP
-    port: 3000
-    httpsPort: 3443
-
-  # PostgreSQL connection (use external postgres)
-  postgres:
-    external: true
-    host: "postgresql.db.svc.cluster.local"
-    port: 5432
-    database: "coder"
-    user: "coder"
-    password: "" # Set in secrets
-    sslMode: "disable"
-
-  # Coder configuration
-  config:
-    # Access URL for users
-    accessUrl: "https://coder.localhost"
-    # Wildcard access URL for workspaces
-    wildcardAccessUrl: "*.workspace.coder.localhost"
-    # Enable telemetry (set to false for privacy)
-    telemetry: false
-    # Enable metrics endpoint
-    prometheusEnable: true
-    prometheusAddress: "0.0.0.0:2112"
-    # Provisioner daemons (for managing workspaces)
-    provisionerDaemons: 3
-    # Max token lifetime
-    maxTokenLifetime: "168h"
-    # Session duration
-    sessionDuration: "24h"
-    # Enable browser-only connections (for security)
-    browserOnly: false
-
-  # OIDC configuration for Authentik
-  oidc:
-    enabled: false
-    issuerUrl: ""
-    clientId: ""
-    clientSecret: ""
-    scopes: "openid profile email groups"
-    allowSignups: true
-    emailDomain: []
-    groupField: "groups"
-    groupMapping: {}
-
-  # GitLab OAuth integration
-  gitlab:
-    enabled: false
-    url: ""
-    clientId: ""
-    clientSecret: ""
-    allowSignups: false
-    allowedGroups: []
-
-  # AgentAPI configuration
-  agentapi:
-    enabled: true
-    # Allow AI agents to connect via API
-    tokenLifetime: "720h"  # 30 days
-
-  # Default workspace resources
-  workspaces:
-    defaultResources:
-      requests:
-        cpu: "500m"
-        memory: "1Gi"
-      limits:
-        cpu: "2"
-        memory: "4Gi"
-    storage:
-      size: "50Gi"
-      storageClass: "local-path"
-    # Workspace inactivity timeout (stop after)
-    inactivityTimeout: "4h"
-    # Workspace TTL (delete after)
-    ttl: "168h"  # 7 days
-
-resources:
-  limits:
-    cpu: 1000m
-    memory: 2Gi
-  requests:
-    cpu: 200m
-    memory: 512Mi
-
-persistence:
-  enabled: true
-  storageClass: local-path
-  accessMode: ReadWriteOnce
-  size: 10Gi
-  mountPath: /home/coder
-
-ingress:
-  enabled: true
-  className: traefik
-  annotations: {}
-  hosts:
-    - host: coder.localhost
-      paths:
-        - path: /
-          pathType: Prefix
-  wildcardHost: "*.workspace.coder.localhost"
-  tls:
-    enabled: true
-    secretName: coder-tls
-    wildcardSecretName: coder-workspace-tls
-
-securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-  runAsNonRoot: true
-
-podSecurityContext:
-  seccompProfile:
-    type: RuntimeDefault
-
-containerSecurityContext:
-  allowPrivilegeEscalation: false
-  capabilities:
-    drop:
+# coder — rendered entirely by the chart-base subchart.
+# Env-style config ConfigMap, both Ingresses, the cluster RBAC trio (SA+ClusterRole+
+# ClusterRoleBinding), the custom NetworkPolicy and the Helm test Pod are relocated
+# verbatim into extraManifests; file-style ConfigMaps use typed configMaps[].
+chart-base:
+  podSecurityContext:
+    seccompProfile:
+      type: RuntimeDefault
+  securityContext:
+    allowPrivilegeEscalation: false
+    readOnlyRootFilesystem: false
+    capabilities:
+      drop:
       - ALL
-  readOnlyRootFilesystem: false
-
-probes:
-  liveness:
+  workloads:
+  - kind: Deployment
+    replicas: 1
+    podAnnotations:
+      consul.hashicorp.com/connect-inject: 'true'
+      consul.hashicorp.com/connect-service: coder
+      consul.hashicorp.com/connect-service-port: '3000'
+      consul.hashicorp.com/service-tags: coder,development,remote-ide
+      co.elastic.logs/enabled: 'true'
+      co.elastic.logs.json.keys_under_root: 'true'
+      co.elastic.logs.json.add_error_key: 'true'
+      co.elastic.logs.json.message_key: message
+      prometheus.io/scrape: 'true'
+      prometheus.io/port: '2112'
+      prometheus.io/path: /metrics
+    containers:
+    - name: coder
+      image: ghcr.io/coder/coder:v2.17.0
+      imagePullPolicy: IfNotPresent
+      command:
+      - /opt/coder
+      - server
+      ports:
+      - name: http
+        containerPort: 3000
+        protocol: TCP
+      - name: metrics
+        containerPort: 2112
+        protocol: TCP
+      envFrom:
+      - configMapRef:
+          name: coder-config
+      env:
+      - name: CODER_PG_CONNECTION_URL
+        valueFrom:
+          secretKeyRef:
+            name: coder-secrets
+            key: postgres-url
+      - name: CODER_PROVISIONER_DAEMON_PSK
+        valueFrom:
+          secretKeyRef:
+            name: coder-secrets
+            key: provisioner-psk
+            optional: true
+      livenessProbe:
+        httpGet:
+          path: /api/v2/buildinfo
+          port: http
+          scheme: HTTP
+        initialDelaySeconds: 60
+        periodSeconds: 30
+        timeoutSeconds: 5
+        failureThreshold: 6
+      readinessProbe:
+        httpGet:
+          path: /api/v2/buildinfo
+          port: http
+          scheme: HTTP
+        initialDelaySeconds: 30
+        periodSeconds: 10
+        timeoutSeconds: 3
+        failureThreshold: 3
+      resources:
+        limits:
+          cpu: 1000m
+          memory: 2Gi
+        requests:
+          cpu: 200m
+          memory: 512Mi
+      securityContext:
+        allowPrivilegeEscalation: false
+        readOnlyRootFilesystem: false
+        capabilities:
+          drop:
+          - ALL
+      volumeMounts:
+      - name: data
+        mountPath: /home/coder
+    volumes:
+    - name: data
+      persistentVolumeClaim:
+        claimName: coder-pvc
+  services:
+  - annotations:
+      consul.hashicorp.com/service-name: coder
+      consul.hashicorp.com/service-port: '3000'
+      consul.hashicorp.com/service-tags: coder,development,remote-ide
+    ports:
+    - name: http
+      port: 3000
+      targetPort: http
+      protocol: TCP
+    - name: metrics
+      port: 2112
+      targetPort: metrics
+      protocol: TCP
+  secrets:
+  - name: secrets
+    stringData:
+      postgres-url: postgres://coder:@postgresql.db.svc.cluster.local:5432/coder?sslmode=disable
+  pvcs:
+  - name: pvc
+    accessModes:
+    - ReadWriteOnce
+    storageClass: local-path
+    size: 10Gi
+  serviceAccount:
+    create: true
+    automount: true
+  serviceMonitor:
     enabled: true
-    path: /api/v2/buildinfo
-    initialDelaySeconds: 60
-    periodSeconds: 30
-    timeoutSeconds: 5
-    failureThreshold: 6
-  readiness:
-    enabled: true
-    path: /api/v2/buildinfo
-    initialDelaySeconds: 30
-    periodSeconds: 10
-    timeoutSeconds: 3
-    failureThreshold: 3
+    port: http
+    path: /metrics
+    interval: 30s
+  networkPolicy:
+    enabled: false
+  rbac:
+    create: false
+  configMaps:
+  - name: agentapi-config
+    data:
+      agentapi.yaml: "# Coder AgentAPI Configuration for AI Agents\n# This enables AI coding assistants to connect to workspaces\n\nenabled: true\n\n# Authentication configuration\nauthentication:\n  enabled: true\n  method: \"token\"  # Bearer token authentication\n  token_lifetime: \"720h\"\n  \n# Supported AI agents\nagents:\n  # Claude Code (Anthropic)\n  - name: \"claude-code\"\n    enabled: true\n    description: \"Anthropic Claude Code integration\"\n    capabilities:\n      - file_read\n      - file_write\n      - command_execution\n      - terminal_access\n    rate_limits:\n      requests_per_minute: 100\n      concurrent_operations: 10\n  \n  # Goose (Block)\n  - name: \"goose\"\n    enabled: true\n    description: \"Block Goose AI agent\"\n    capabilities:\n      - file_read\n      - file_write\n      - command_execution\n      - git_operations\n    rate_limits:\n      requests_per_minute: 100\n      concurrent_operations: 10\n  \n  # Aider (Paul Gauthier)\n  - name: \"aider\"\n    enabled: true\n    description: \"Aider AI pair programming\"\n    capabilities:\n      - file_read\n      - file_write\n      - git_operations\n      - diff_generation\n    rate_limits:\n      requests_per_minute: 150\n      concurrent_operations: 15\n  \n  # Cursor AI\n  - name: \"cursor\"\n    enabled: true\n    description: \"Cursor AI IDE\"\n    capabilities:\n      - file_read\n      - file_write\n      - command_execution\n      - lsp_support\n    rate_limits:\n      requests_per_minute: 200\n      concurrent_operations: 20\n  \n  # GitHub Copilot Workspace\n  - name: \"github-copilot\"\n    enabled: true\n    description: \"GitHub Copilot Workspace\"\n    capabilities:\n      - file_read\n      - file_write\n      - suggestions\n    rate_limits:\n      requests_per_minute: 100\n      concurrent_operations: 10\n  \n  # Generic agent support\n  - name: \"generic\"\n    enabled: true\n    description: \"Generic AI agent via HTTP API\"\n    capabilities:\n      - file_read\n      - file_write\n      - command_execution\n    rate_limits:\n      requests_per_minute: 50\n      concurrent_operations: 5\n\n# API endpoints\nendpoints:\n  # File operations\n  file_read: \"/api/v2/workspaces/{workspace_id}/agent/file/read\"\n  file_write: \"/api/v2/workspaces/{workspace_id}/agent/file/write\"\n  file_list: \"/api/v2/workspaces/{workspace_id}/agent/file/list\"\n  \n  # Command execution\n  exec: \"/api/v2/workspaces/{workspace_id}/agent/exec\"\n  terminal: \"/api/v2/workspaces/{workspace_id}/agent/terminal\"\n  \n  # Git operations\n  git_clone: \"/api/v2/workspaces/{workspace_id}/agent/git/clone\"\n  git_status: \"/api/v2/workspaces/{workspace_id}/agent/git/status\"\n  git_commit: \"/api/v2/workspaces/{workspace_id}/agent/git/commit\"\n  git_push: \"/api/v2/workspaces/{workspace_id}/agent/git/push\"\n  \n  # Workspace info\n  info: \"/api/v2/workspaces/{workspace_id}/agent/info\"\n  health: \"/api/v2/workspaces/{workspace_id}/agent/health\"\n\n# Security settings\nsecurity:\n  # Allowed operations\n  allow_file_write: true\n  allow_command_execution: true\n  allow_terminal_access: true\n  \n  # Path restrictions\n  restricted_paths:\n    - \"/etc\"\n    - \"/sys\"\n    - \"/proc\"\n    - \"/dev\"\n    - \"/var/run\"\n  \n  # Command restrictions\n  blocked_commands:\n    - \"rm -rf /\"\n    - \"dd if=\"\n    - \"mkfs\"\n    - \"fdisk\"\n  \n  # File size limits\n  max_file_size: \"100MB\"\n  max_files_per_operation: 1000\n\n# Logging and monitoring\nlogging:\n  enabled: true\n  level: \"info\"\n  audit_log: true\n  log_path: \"/var/log/coder/agentapi\"\n\nmonitoring:\n  prometheus_enabled: true\n  metrics_port: 2112\n  health_check_interval: \"30s\"\n"
+      README.md: |-
+        # Coder AgentAPI - AI Agent Integration Guide
 
-# Consul integration
-consul:
-  enabled: true
-  tags:
-    - coder
-    - development
-    - remote-ide
+        ## Overview
 
-# Vault integration (requires Vault policies and secrets to be configured)
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  middleware: "service-authentik-forward-auth@kubernetescrd"
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
+        The Coder AgentAPI enables AI coding assistants to connect directly to your development workspaces,
+        allowing them to read files, write code, execute commands, and interact with your development environment.
 
-vault:
-  enabled: false
-  role: "coder"
-  # Note: Before enabling, configure Vault:
-  # 1. Create policy for coder service
-  # 2. Create secret at secret/data/coder/secrets
-  # 3. Enable Kubernetes auth method in Vault
-  # 4. Create role binding ServiceAccount to Vault policy
+        ## Supported AI Agents
 
-# ServiceMonitor for Prometheus
-serviceMonitor:
-  enabled: true
-  interval: 30s
-  scrapeTimeout: 10s
+        - **Claude Code** (Anthropic) - Advanced AI pair programming
+        - **Goose** (Block) - Autonomous AI developer agent
+        - **Aider** (Paul Gauthier) - AI pair programming in terminal
+        - **Cursor AI** - AI-first code editor
+        - **GitHub Copilot Workspace** - GitHub's AI development environment
 
-# HorizontalPodAutoscaler
-autoscaling:
-  enabled: false
-  minReplicas: 1
-  maxReplicas: 3
-  targetCPUUtilizationPercentage: 80
-  targetMemoryUtilizationPercentage: 80
+        ## Authentication
 
-nodeSelector: {}
-tolerations: []
-affinity: {}
+        All API requests must include a Bearer token in the Authorization header:
 
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: true
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: true
-  ingress: []
-  egress: []
+        ```bash
+        curl -H "Authorization: Bearer YOUR_TOKEN" \
+             https://coder.coder.localhost/api/v2/workspaces/my-workspace/agent/info
+        ```
 
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
+        ## Getting an API Token
 
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+        1. Log into Coder: https://coder.coder.localhost
+        2. Go to Account Settings → Tokens
+        3. Create a new token with workspace access
+        4. Copy the token and configure your AI agent
+
+        ## Configuration Examples
+
+        ### Claude Code
+
+        ```json
+        {
+          "coder": {
+            "url": "https://coder.coder.localhost",
+            "workspace": "my-workspace",
+            "token": "YOUR_TOKEN"
+          }
+        }
+        ```
+
+        ### Aider
+
+        ```bash
+        export CODER_URL="https://coder.coder.localhost"
+        export CODER_WORKSPACE="my-workspace"
+        export CODER_TOKEN="YOUR_TOKEN"
+
+        aider --coder
+        ```
+
+        ### Goose
+
+        ```yaml
+        providers:
+          coder:
+            url: https://coder.coder.localhost
+            workspace: my-workspace
+            token: YOUR_TOKEN
+        ```
+
+        ## API Endpoints
+
+        ### File Operations
+
+        - `GET /api/v2/workspaces/{workspace}/agent/file/read?path=/path/to/file`
+        - `POST /api/v2/workspaces/{workspace}/agent/file/write`
+        - `GET /api/v2/workspaces/{workspace}/agent/file/list?path=/path`
+
+        ### Command Execution
+
+        - `POST /api/v2/workspaces/{workspace}/agent/exec`
+        - `WS /api/v2/workspaces/{workspace}/agent/terminal`
+
+        ### Git Operations
+
+        - `POST /api/v2/workspaces/{workspace}/agent/git/clone`
+        - `GET /api/v2/workspaces/{workspace}/agent/git/status`
+        - `POST /api/v2/workspaces/{workspace}/agent/git/commit`
+
+        ## Rate Limits
+
+        - Standard agents: 100 requests/minute
+        - Premium agents: 200 requests/minute
+        - Burst allowance: 20 requests
+
+        ## Security
+
+        - All operations are scoped to the workspace
+        - File access is restricted to workspace home directory
+        - Dangerous commands are blocked
+        - All operations are audit logged
+
+        ## Troubleshooting
+
+        Check agent logs:
+        ```bash
+        kubectl logs -n default -l app.kubernetes.io/name=coder -c coder --tail=100
+        ```
+
+        Test API connectivity:
+        ```bash
+        curl -H "Authorization: Bearer YOUR_TOKEN" \
+             https://coder.coder.localhost/api/v2/buildinfo
+        ```
+  - name: dashboard
+    data:
+      coder-dashboard.json: |-
+        {
+          "dashboard": {
+            "title": "Coder Metrics",
+            "tags": ["coder", "development", "workspaces"],
+            "timezone": "browser",
+            "schemaVersion": 16,
+            "version": 1,
+            "refresh": "30s",
+            "panels": [
+              {
+                "id": 1,
+                "title": "Active Workspaces",
+                "type": "stat",
+                "gridPos": {"h": 8, "w": 6, "x": 0, "y": 0},
+                "targets": [
+                  {
+                    "expr": "coder_workspaces_active_total",
+                    "refId": "A"
+                  }
+                ],
+                "fieldConfig": {
+                  "defaults": {
+                    "color": {"mode": "thresholds"},
+                    "thresholds": {
+                      "mode": "absolute",
+                      "steps": [
+                        {"value": 0, "color": "green"},
+                        {"value": 5, "color": "yellow"},
+                        {"value": 10, "color": "red"}
+                      ]
+                    }
+                  }
+                }
+              },
+              {
+                "id": 2,
+                "title": "Total Users",
+                "type": "stat",
+                "gridPos": {"h": 8, "w": 6, "x": 6, "y": 0},
+                "targets": [
+                  {
+                    "expr": "coder_users_total",
+                    "refId": "A"
+                  }
+                ]
+              },
+              {
+                "id": 3,
+                "title": "API Request Rate",
+                "type": "graph",
+                "gridPos": {"h": 8, "w": 12, "x": 12, "y": 0},
+                "targets": [
+                  {
+                    "expr": "rate(coder_api_requests_total[5m])",
+                    "legendFormat": "{{ method }} {{ path }}",
+                    "refId": "A"
+                  }
+                ],
+                "yaxes": [
+                  {"format": "reqps", "label": "Requests/sec"},
+                  {"format": "short"}
+                ]
+              },
+              {
+                "id": 4,
+                "title": "Workspace CPU Usage",
+                "type": "graph",
+                "gridPos": {"h": 8, "w": 12, "x": 0, "y": 8},
+                "targets": [
+                  {
+                    "expr": "sum(rate(container_cpu_usage_seconds_total{namespace=\"default\",pod=~\"coder-.*\"}[5m])) by (pod)",
+                    "legendFormat": "{{ pod }}",
+                    "refId": "A"
+                  }
+                ],
+                "yaxes": [
+                  {"format": "percentunit", "label": "CPU"},
+                  {"format": "short"}
+                ]
+              },
+              {
+                "id": 5,
+                "title": "Workspace Memory Usage",
+                "type": "graph",
+                "gridPos": {"h": 8, "w": 12, "x": 12, "y": 8},
+                "targets": [
+                  {
+                    "expr": "sum(container_memory_working_set_bytes{namespace=\"default\",pod=~\"coder-.*\"}) by (pod)",
+                    "legendFormat": "{{ pod }}",
+                    "refId": "A"
+                  }
+                ],
+                "yaxes": [
+                  {"format": "bytes", "label": "Memory"},
+                  {"format": "short"}
+                ]
+              },
+              {
+                "id": 6,
+                "title": "API Latency (p95)",
+                "type": "graph",
+                "gridPos": {"h": 8, "w": 12, "x": 0, "y": 16},
+                "targets": [
+                  {
+                    "expr": "histogram_quantile(0.95, rate(coder_api_request_duration_seconds_bucket[5m]))",
+                    "legendFormat": "{{ method }} {{ path }}",
+                    "refId": "A"
+                  }
+                ],
+                "yaxes": [
+                  {"format": "s", "label": "Latency"},
+                  {"format": "short"}
+                ]
+              },
+              {
+                "id": 7,
+                "title": "Workspace Builds",
+                "type": "graph",
+                "gridPos": {"h": 8, "w": 12, "x": 12, "y": 16},
+                "targets": [
+                  {
+                    "expr": "rate(coder_workspace_builds_total[5m])",
+                    "legendFormat": "{{ status }}",
+                    "refId": "A"
+                  }
+                ],
+                "yaxes": [
+                  {"format": "ops", "label": "Builds/sec"},
+                  {"format": "short"}
+                ]
+              },
+              {
+                "id": 8,
+                "title": "Database Connection Pool",
+                "type": "graph",
+                "gridPos": {"h": 8, "w": 12, "x": 0, "y": 24},
+                "targets": [
+                  {
+                    "expr": "coder_db_connections_active",
+                    "legendFormat": "Active",
+                    "refId": "A"
+                  },
+                  {
+                    "expr": "coder_db_connections_idle",
+                    "legendFormat": "Idle",
+                    "refId": "B"
+                  }
+                ]
+              },
+              {
+                "id": 9,
+                "title": "AgentAPI Requests",
+                "type": "graph",
+                "gridPos": {"h": 8, "w": 12, "x": 12, "y": 24},
+                "targets": [
+                  {
+                    "expr": "rate(coder_agentapi_requests_total[5m])",
+                    "legendFormat": "{{ agent }} - {{ operation }}",
+                    "refId": "A"
+                  }
+                ],
+                "yaxes": [
+                  {"format": "reqps", "label": "Requests/sec"},
+                  {"format": "short"}
+                ]
+              }
+            ]
+          }
+        }
+  - name: template-docker
+    data:
+      template.tf: "terraform {\n  required_providers {\n    coder = {\n      source = \"coder/coder\"\n    }\n    kubernetes = {\n      source = \"hashicorp/kubernetes\"\n    }\n  }\n}\n\nprovider \"coder\" {}\nprovider \"kubernetes\" {\n  config_path = null\n}\n\ndata \"coder_workspace\" \"me\" {}\n\nresource \"coder_agent\" \"main\" {\n  arch = \"amd64\"\n  os   = \"linux\"\n  \n  startup_script = <<-EOT\n    #!/bin/bash\n    set -e\n    \n    # Start Docker daemon\n    sudo dockerd > /var/log/docker.log 2>&1 &\n    \n    # Wait for Docker to be ready\n    timeout 30 sh -c 'until docker info > /dev/null 2>&1; do sleep 1; done'\n    \n    # Install common tools\n    sudo apt-get update\n    sudo apt-get install -y git curl wget vim nano htop build-essential\n    \n    # Configure git\n    if [ ! -z \"$GIT_AUTHOR_NAME\" ]; then\n      git config --global user.name \"$GIT_AUTHOR_NAME\"\n      git config --global user.email \"$GIT_AUTHOR_EMAIL\"\n    fi\n    \n    # Clone repository if specified\n    if [ ! -z \"$GIT_CLONE_URL\" ]; then\n      cd ~/workspace\n      git clone \"$GIT_CLONE_URL\" project || true\n      cd project\n    fi\n    \n    echo \"Docker-in-Docker workspace ready!\"\n  EOT\n\n  metadata {\n    display_name = \"Docker Version\"\n    key          = \"docker_version\"\n    script       = \"docker --version\"\n    interval     = 0\n    timeout      = 1\n  }\n\n  metadata {\n    display_name = \"Running Containers\"\n    key          = \"running_containers\"\n    script       = \"docker ps -q | wc -l\"\n    interval     = 30\n    timeout      = 2\n  }\n\n  metadata {\n    display_name = \"Docker Images\"\n    key          = \"docker_images\"\n    script       = \"docker images -q | wc -l\"\n    interval     = 60\n    timeout      = 2\n  }\n}\n\nresource \"kubernetes_pod\" \"main\" {\n  count = data.coder_workspace.me.start_count\n  \n  metadata {\n    name      = \"coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}\"\n    namespace = \"default\"\n    labels = {\n      \"app.kubernetes.io/name\"     = \"coder-workspace\"\n      \"app.kubernetes.io/instance\" = data.coder_workspace.me.name\n      \"app.kubernetes.io/owner\"    = data.coder_workspace.me.owner\n      \"coder.workspace\"            = \"true\"\n      \"coder.template\"             = \"docker\"\n    }\n  }\n\n  spec {\n    security_context {\n      run_as_user = 0  # Docker requires root\n      fs_group    = 0\n    }\n\n    container {\n      name  = \"dev\"\n      image = \"codercom/enterprise-base:ubuntu\"\n      \n      command = [\"/bin/bash\", \"-c\", coder_agent.main.init_script]\n      \n      security_context {\n        privileged = true  # Required for Docker-in-Docker\n      }\n\n      env {\n        name  = \"CODER_AGENT_TOKEN\"\n        value = coder_agent.main.token\n      }\n\n      env {\n        name  = \"DOCKER_TLS_CERTDIR\"\n        value = \"\"\n      }\n\n      resources {\n        requests = {\n          cpu    = \"500m\"\n          memory = \"1Gi\"\n        }\n        limits = {\n          cpu    = \"2\"\n          memory = \"4Gi\"\n        }\n      }\n\n      volume_mount {\n        mount_path = \"/home/coder\"\n        name       = \"home\"\n      }\n\n      volume_mount {\n        mount_path = \"/var/lib/docker\"\n        name       = \"docker-storage\"\n      }\n    }\n\n    volume {\n      name = \"home\"\n      persistent_volume_claim {\n        claim_name = kubernetes_persistent_volume_claim.home.metadata[0].name\n      }\n    }\n\n    volume {\n      name = \"docker-storage\"\n      empty_dir {}\n    }\n  }\n}\n\nresource \"kubernetes_persistent_volume_claim\" \"home\" {\n  metadata {\n    name      = \"coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-home\"\n    namespace = \"default\"\n  }\n  wait_until_bound = false\n  spec {\n    access_modes = [\"ReadWriteOnce\"]\n    storage_class_name = \"local-path\"\n    resources {\n      requests = {\n        storage = \"50Gi\"\n      }\n    }\n  }\n}\n\nresource \"coder_app\" \"code-server\" {\n  agent_id     = coder_agent.main.id\n  slug         = \"code-server\"\n  display_name = \"VS Code\"\n  url          = \"http://localhost:13337/?folder=/home/coder\"\n  icon         = \"/icon/code.svg\"\n  subdomain    = false\n  share        = \"owner\"\n}"
+  - name: template-go
+    data:
+      template.tf: "terraform {\n  required_providers {\n    coder = {\n      source = \"coder/coder\"\n    }\n    kubernetes = {\n      source = \"hashicorp/kubernetes\"\n    }\n  }\n}\n\nprovider \"coder\" {}\nprovider \"kubernetes\" {\n  config_path = null\n}\n\ndata \"coder_workspace\" \"me\" {}\n\nresource \"coder_agent\" \"main\" {\n  arch = \"amd64\"\n  os   = \"linux\"\n  \n  startup_script = <<-EOT\n    #!/bin/bash\n    set -e\n    \n    # Install common tools\n    sudo apt-get update\n    sudo apt-get install -y git curl wget vim nano htop build-essential\n    \n    # Configure git\n    if [ ! -z \"$GIT_AUTHOR_NAME\" ]; then\n      git config --global user.name \"$GIT_AUTHOR_NAME\"\n      git config --global user.email \"$GIT_AUTHOR_EMAIL\"\n    fi\n    \n    # Setup Go environment\n    export GOPATH=$HOME/go\n    export PATH=$PATH:$GOPATH/bin\n    \n    # Clone repository if specified\n    if [ ! -z \"$GIT_CLONE_URL\" ]; then\n      cd ~/workspace\n      git clone \"$GIT_CLONE_URL\" project || true\n      cd project\n      \n      # Download Go dependencies\n      if [ -f go.mod ]; then\n        go mod download\n      fi\n    fi\n  EOT\n\n  metadata {\n    display_name = \"Go Version\"\n    key          = \"go_version\"\n    script       = \"go version\"\n    interval     = 0\n    timeout      = 1\n  }\n\n  metadata {\n    display_name = \"Go Path\"\n    key          = \"go_path\"\n    script       = \"echo $GOPATH\"\n    interval     = 0\n    timeout      = 1\n  }\n}\n\nresource \"kubernetes_pod\" \"main\" {\n  count = data.coder_workspace.me.start_count\n  \n  metadata {\n    name      = \"coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}\"\n    namespace = \"default\"\n    labels = {\n      \"app.kubernetes.io/name\"     = \"coder-workspace\"\n      \"app.kubernetes.io/instance\" = data.coder_workspace.me.name\n      \"app.kubernetes.io/owner\"    = data.coder_workspace.me.owner\n      \"coder.workspace\"            = \"true\"\n      \"coder.template\"             = \"go\"\n    }\n  }\n\n  spec {\n    security_context {\n      run_as_user = 1000\n      fs_group    = 1000\n    }\n\n    container {\n      name  = \"dev\"\n      image = \"codercom/enterprise-golang:ubuntu\"\n      \n      command = [\"/bin/bash\", \"-c\", coder_agent.main.init_script]\n      \n      security_context {\n        run_as_user = 1000\n      }\n\n      env {\n        name  = \"CODER_AGENT_TOKEN\"\n        value = coder_agent.main.token\n      }\n\n      env {\n        name  = \"GOPATH\"\n        value = \"/home/coder/go\"\n      }\n\n      resources {\n        requests = {\n          cpu    = \"500m\"\n          memory = \"1Gi\"\n        }\n        limits = {\n          cpu    = \"2\"\n          memory = \"4Gi\"\n        }\n      }\n\n      volume_mount {\n        mount_path = \"/home/coder\"\n        name       = \"home\"\n      }\n    }\n\n    volume {\n      name = \"home\"\n      persistent_volume_claim {\n        claim_name = kubernetes_persistent_volume_claim.home.metadata[0].name\n      }\n    }\n  }\n}\n\nresource \"kubernetes_persistent_volume_claim\" \"home\" {\n  metadata {\n    name      = \"coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-home\"\n    namespace = \"default\"\n  }\n  wait_until_bound = false\n  spec {\n    access_modes = [\"ReadWriteOnce\"]\n    storage_class_name = \"local-path\"\n    resources {\n      requests = {\n        storage = \"50Gi\"\n      }\n    }\n  }\n}\n\nresource \"coder_app\" \"code-server\" {\n  agent_id     = coder_agent.main.id\n  slug         = \"code-server\"\n  display_name = \"VS Code\"\n  url          = \"http://localhost:13337/?folder=/home/coder\"\n  icon         = \"/icon/code.svg\"\n  subdomain    = false\n  share        = \"owner\"\n}"
+  - name: template-k8s
+    data:
+      template.tf: "terraform {\n  required_providers {\n    coder = {\n      source = \"coder/coder\"\n    }\n    kubernetes = {\n      source = \"hashicorp/kubernetes\"\n    }\n  }\n}\n\nprovider \"coder\" {}\nprovider \"kubernetes\" {\n  config_path = null\n}\n\ndata \"coder_workspace\" \"me\" {}\n\nresource \"coder_agent\" \"main\" {\n  arch = \"amd64\"\n  os   = \"linux\"\n  \n  startup_script = <<-EOT\n    #!/bin/bash\n    set -e\n    \n    # Install common tools\n    sudo apt-get update\n    sudo apt-get install -y git curl wget vim nano htop build-essential\n    \n    # Install kubectl\n    curl -LO \"https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl\"\n    sudo install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl\n    rm kubectl\n    \n    # Install Helm\n    curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash\n    \n    # Configure kubectl to use in-cluster config\n    export KUBECONFIG=/var/run/secrets/kubernetes.io/serviceaccount\n    \n    # Configure git\n    if [ ! -z \"$GIT_AUTHOR_NAME\" ]; then\n      git config --global user.name \"$GIT_AUTHOR_NAME\"\n      git config --global user.email \"$GIT_AUTHOR_EMAIL\"\n    fi\n    \n    # Clone repository if specified\n    if [ ! -z \"$GIT_CLONE_URL\" ]; then\n      cd ~/workspace\n      git clone \"$GIT_CLONE_URL\" project || true\n      cd project\n    fi\n    \n    echo \"Kubernetes native workspace ready!\"\n    kubectl version --client\n  EOT\n\n  metadata {\n    display_name = \"Kubectl Version\"\n    key          = \"kubectl_version\"\n    script       = \"kubectl version --client --short 2>/dev/null || echo 'Not installed'\"\n    interval     = 0\n    timeout      = 1\n  }\n\n  metadata {\n    display_name = \"Helm Version\"\n    key          = \"helm_version\"\n    script       = \"helm version --short 2>/dev/null || echo 'Not installed'\"\n    interval     = 0\n    timeout      = 1\n  }\n\n  metadata {\n    display_name = \"Cluster Info\"\n    key          = \"cluster_info\"\n    script       = \"kubectl cluster-info 2>/dev/null | head -1 || echo 'Not connected'\"\n    interval     = 60\n    timeout      = 2\n  }\n}\n\n# ServiceAccount for workspace with k8s API access\nresource \"kubernetes_service_account\" \"workspace\" {\n  metadata {\n    name      = \"coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-sa\"\n    namespace = \"default\"\n  }\n}\n\n# Role for workspace operations\nresource \"kubernetes_role\" \"workspace\" {\n  metadata {\n    name      = \"coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-role\"\n    namespace = \"default\"\n  }\n\n  rule {\n    api_groups = [\"\"]\n    resources  = [\"pods\", \"services\", \"configmaps\", \"secrets\"]\n    verbs      = [\"get\", \"list\", \"watch\", \"create\", \"update\", \"patch\", \"delete\"]\n  }\n\n  rule {\n    api_groups = [\"apps\"]\n    resources  = [\"deployments\", \"statefulsets\", \"daemonsets\"]\n    verbs      = [\"get\", \"list\", \"watch\", \"create\", \"update\", \"patch\", \"delete\"]\n  }\n\n  rule {\n    api_groups = [\"\"]\n    resources  = [\"pods/log\", \"pods/exec\"]\n    verbs      = [\"get\", \"create\"]\n  }\n}\n\n# RoleBinding for workspace\nresource \"kubernetes_role_binding\" \"workspace\" {\n  metadata {\n    name      = \"coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-rb\"\n    namespace = \"default\"\n  }\n\n  role_ref {\n    api_group = \"rbac.authorization.k8s.io\"\n    kind      = \"Role\"\n    name      = kubernetes_role.workspace.metadata[0].name\n  }\n\n  subject {\n    kind      = \"ServiceAccount\"\n    name      = kubernetes_service_account.workspace.metadata[0].name\n    namespace = \"default\"\n  }\n}\n\nresource \"kubernetes_pod\" \"main\" {\n  count = data.coder_workspace.me.start_count\n  \n  metadata {\n    name      = \"coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}\"\n    namespace = \"default\"\n    labels = {\n      \"app.kubernetes.io/name\"     = \"coder-workspace\"\n      \"app.kubernetes.io/instance\" = data.coder_workspace.me.name\n      \"app.kubernetes.io/owner\"    = data.coder_workspace.me.owner\n      \"coder.workspace\"            = \"true\"\n      \"coder.template\"             = \"kubernetes\"\n    }\n  }\n\n  spec {\n    service_account_name = kubernetes_service_account.workspace.metadata[0].name\n\n    security_context {\n      run_as_user = 1000\n      fs_group    = 1000\n    }\n\n    container {\n      name  = \"dev\"\n      image = \"codercom/enterprise-base:ubuntu\"\n      \n      command = [\"/bin/bash\", \"-c\", coder_agent.main.init_script]\n      \n      security_context {\n        run_as_user = 1000\n      }\n\n      env {\n        name  = \"CODER_AGENT_TOKEN\"\n        value = coder_agent.main.token\n      }\n\n      resources {\n        requests = {\n          cpu    = \"500m\"\n          memory = \"1Gi\"\n        }\n        limits = {\n          cpu    = \"2\"\n          memory = \"4Gi\"\n        }\n      }\n\n      volume_mount {\n        mount_path = \"/home/coder\"\n        name       = \"home\"\n      }\n    }\n\n    volume {\n      name = \"home\"\n      persistent_volume_claim {\n        claim_name = kubernetes_persistent_volume_claim.home.metadata[0].name\n      }\n    }\n  }\n}\n\nresource \"kubernetes_persistent_volume_claim\" \"home\" {\n  metadata {\n    name      = \"coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-home\"\n    namespace = \"default\"\n  }\n  wait_until_bound = false\n  spec {\n    access_modes = [\"ReadWriteOnce\"]\n    storage_class_name = \"local-path\"\n    resources {\n      requests = {\n        storage = \"50Gi\"\n      }\n    }\n  }\n}\n\nresource \"coder_app\" \"code-server\" {\n  agent_id     = coder_agent.main.id\n  slug         = \"code-server\"\n  display_name = \"VS Code\"\n  url          = \"http://localhost:13337/?folder=/home/coder\"\n  icon         = \"/icon/code.svg\"\n  subdomain    = false\n  share        = \"owner\"\n}"
+  - name: template-nodejs
+    data:
+      template.tf: "terraform {\n  required_providers {\n    coder = {\n      source = \"coder/coder\"\n    }\n    kubernetes = {\n      source = \"hashicorp/kubernetes\"\n    }\n  }\n}\n\nprovider \"coder\" {}\n\nprovider \"kubernetes\" {\n  config_path = null\n}\n\ndata \"coder_workspace\" \"me\" {}\n\nresource \"coder_agent\" \"main\" {\n  arch = \"amd64\"\n  os   = \"linux\"\n  \n  startup_script = <<-EOT\n    #!/bin/bash\n    set -e\n    \n    # Install common tools\n    sudo apt-get update\n    sudo apt-get install -y git curl wget vim nano htop\n    \n    # Configure git if credentials available\n    if [ ! -z \"$GIT_AUTHOR_NAME\" ]; then\n      git config --global user.name \"$GIT_AUTHOR_NAME\"\n      git config --global user.email \"$GIT_AUTHOR_EMAIL\"\n    fi\n    \n    # Clone repository if specified\n    if [ ! -z \"$GIT_CLONE_URL\" ]; then\n      cd ~/workspace\n      git clone \"$GIT_CLONE_URL\" project || true\n      cd project\n    fi\n    \n    # Install project dependencies\n    if [ -f package.json ]; then\n      bun install || npm install || yarn install\n    fi\n  EOT\n\n  metadata {\n    display_name = \"Node.js Version\"\n    key          = \"node_version\"\n    script       = \"node --version\"\n    interval     = 0\n    timeout      = 1\n  }\n\n  metadata {\n    display_name = \"Bun Version\"\n    key          = \"bun_version\"\n    script       = \"bun --version\"\n    interval     = 0\n    timeout      = 1\n  }\n\n  metadata {\n    display_name = \"CPU Usage\"\n    key          = \"cpu_usage\"\n    script       = \"top -bn1 | grep 'Cpu(s)' | awk '{print $2}'\"\n    interval     = 10\n    timeout      = 1\n  }\n\n  metadata {\n    display_name = \"Memory Usage\"\n    key          = \"mem_usage\"\n    script       = \"free -h | awk '/^Mem:/ {print $3 \\\"/\\\" $2}'\"\n    interval     = 10\n    timeout      = 1\n  }\n}\n\nresource \"kubernetes_pod\" \"main\" {\n  count = data.coder_workspace.me.start_count\n  \n  metadata {\n    name      = \"coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}\"\n    namespace = \"default\"\n    labels = {\n      \"app.kubernetes.io/name\"     = \"coder-workspace\"\n      \"app.kubernetes.io/instance\" = data.coder_workspace.me.name\n      \"app.kubernetes.io/owner\"    = data.coder_workspace.me.owner\n      \"coder.workspace\"            = \"true\"\n    }\n  }\n\n  spec {\n    security_context {\n      run_as_user = 1000\n      fs_group    = 1000\n    }\n\n    container {\n      name  = \"dev\"\n      image = \"codercom/enterprise-node:ubuntu\"\n      \n      command = [\"/bin/bash\", \"-c\", coder_agent.main.init_script]\n      \n      security_context {\n        run_as_user = 1000\n      }\n\n      env {\n        name  = \"CODER_AGENT_TOKEN\"\n        value = coder_agent.main.token\n      }\n\n      resources {\n        requests = {\n          cpu    = \"500m\"\n          memory = \"1Gi\"\n        }\n        limits = {\n          cpu    = \"2\"\n          memory = \"4Gi\"\n        }\n      }\n\n      volume_mount {\n        mount_path = \"/home/coder\"\n        name       = \"home\"\n      }\n    }\n\n    volume {\n      name = \"home\"\n      persistent_volume_claim {\n        claim_name = kubernetes_persistent_volume_claim.home.metadata[0].name\n      }\n    }\n  }\n}\n\nresource \"kubernetes_persistent_volume_claim\" \"home\" {\n  metadata {\n    name      = \"coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-home\"\n    namespace = \"default\"\n  }\n\n  wait_until_bound = false\n\n  spec {\n    access_modes = [\"ReadWriteOnce\"]\n    storage_class_name = \"local-path\"\n    \n    resources {\n      requests = {\n        storage = \"50Gi\"\n      }\n    }\n  }\n}\n\nresource \"coder_app\" \"code-server\" {\n  agent_id     = coder_agent.main.id\n  slug         = \"code-server\"\n  display_name = \"VS Code\"\n  url          = \"http://localhost:13337/?folder=/home/coder\"\n  icon         = \"/icon/code.svg\"\n  subdomain    = false\n  share        = \"owner\"\n\n  healthcheck {\n    url       = \"http://localhost:13337/healthz\"\n    interval  = 5\n    threshold = 6\n  }\n}\n\nresource \"coder_app\" \"terminal\" {\n  agent_id     = coder_agent.main.id\n  slug         = \"terminal\"\n  display_name = \"Terminal\"\n  url          = \"http://localhost:7681\"\n  icon         = \"/icon/terminal.svg\"\n  subdomain    = false\n  share        = \"owner\"\n}"
+  - name: template-python
+    data:
+      template.tf: "terraform {\n  required_providers {\n    coder = {\n      source = \"coder/coder\"\n    }\n    kubernetes = {\n      source = \"hashicorp/kubernetes\"\n    }\n  }\n}\n\nprovider \"coder\" {}\nprovider \"kubernetes\" {\n  config_path = null\n}\n\ndata \"coder_workspace\" \"me\" {}\n\nresource \"coder_agent\" \"main\" {\n  arch = \"amd64\"\n  os   = \"linux\"\n  \n  startup_script = <<-EOT\n    #!/bin/bash\n    set -e\n    \n    # Install common tools\n    sudo apt-get update\n    sudo apt-get install -y git curl wget vim nano htop build-essential\n    \n    # Configure git\n    if [ ! -z \"$GIT_AUTHOR_NAME\" ]; then\n      git config --global user.name \"$GIT_AUTHOR_NAME\"\n      git config --global user.email \"$GIT_AUTHOR_EMAIL\"\n    fi\n    \n    # Clone repository if specified\n    if [ ! -z \"$GIT_CLONE_URL\" ]; then\n      cd ~/workspace\n      git clone \"$GIT_CLONE_URL\" project || true\n      cd project\n    fi\n    \n    # Setup Python virtual environment\n    if [ -f requirements.txt ]; then\n      python3 -m venv venv\n      source venv/bin/activate\n      pip install -r requirements.txt\n    elif [ -f pyproject.toml ]; then\n      poetry install || pip install poetry && poetry install\n    fi\n  EOT\n\n  metadata {\n    display_name = \"Python Version\"\n    key          = \"python_version\"\n    script       = \"python3 --version\"\n    interval     = 0\n    timeout      = 1\n  }\n\n  metadata {\n    display_name = \"Poetry Version\"\n    key          = \"poetry_version\"\n    script       = \"poetry --version 2>/dev/null || echo 'Not installed'\"\n    interval     = 0\n    timeout      = 1\n  }\n}\n\nresource \"kubernetes_pod\" \"main\" {\n  count = data.coder_workspace.me.start_count\n  \n  metadata {\n    name      = \"coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}\"\n    namespace = \"default\"\n    labels = {\n      \"app.kubernetes.io/name\"     = \"coder-workspace\"\n      \"app.kubernetes.io/instance\" = data.coder_workspace.me.name\n      \"app.kubernetes.io/owner\"    = data.coder_workspace.me.owner\n      \"coder.workspace\"            = \"true\"\n      \"coder.template\"             = \"python\"\n    }\n  }\n\n  spec {\n    security_context {\n      run_as_user = 1000\n      fs_group    = 1000\n    }\n\n    container {\n      name  = \"dev\"\n      image = \"codercom/enterprise-python:ubuntu\"\n      \n      command = [\"/bin/bash\", \"-c\", coder_agent.main.init_script]\n      \n      security_context {\n        run_as_user = 1000\n      }\n\n      env {\n        name  = \"CODER_AGENT_TOKEN\"\n        value = coder_agent.main.token\n      }\n\n      resources {\n        requests = {\n          cpu    = \"500m\"\n          memory = \"1Gi\"\n        }\n        limits = {\n          cpu    = \"2\"\n          memory = \"4Gi\"\n        }\n      }\n\n      volume_mount {\n        mount_path = \"/home/coder\"\n        name       = \"home\"\n      }\n    }\n\n    volume {\n      name = \"home\"\n      persistent_volume_claim {\n        claim_name = kubernetes_persistent_volume_claim.home.metadata[0].name\n      }\n    }\n  }\n}\n\nresource \"kubernetes_persistent_volume_claim\" \"home\" {\n  metadata {\n    name      = \"coder-${lower(data.coder_workspace.me.owner)}-${lower(data.coder_workspace.me.name)}-home\"\n    namespace = \"default\"\n  }\n  wait_until_bound = false\n  spec {\n    access_modes = [\"ReadWriteOnce\"]\n    storage_class_name = \"local-path\"\n    resources {\n      requests = {\n        storage = \"50Gi\"\n      }\n    }\n  }\n}\n\nresource \"coder_app\" \"code-server\" {\n  agent_id     = coder_agent.main.id\n  slug         = \"code-server\"\n  display_name = \"VS Code\"\n  url          = \"http://localhost:13337/?folder=/home/coder\"\n  icon         = \"/icon/code.svg\"\n  subdomain    = false\n  share        = \"owner\"\n}"
+  extraManifests:
+  - "apiVersion: v1\nkind: ConfigMap\nmetadata:\n  name: coder-config\n  namespace: {{ .Release.Namespace }}\n  labels:\n    helm.sh/chart: coder-0.1.0\n    app.kubernetes.io/name: coder\n    app.kubernetes.io/instance: coder\n    app.kubernetes.io/version: \"2.17.0\"\n    app.kubernetes.io/managed-by: Helm\ndata:\n  # Coder server configuration\n  CODER_HTTP_ADDRESS: \"0.0.0.0:3000\"\n  CODER_ACCESS_URL: \"https://coder.localhost\"\n  CODER_WILDCARD_ACCESS_URL: \"*.workspace.coder.localhost\"\n  CODER_TELEMETRY: \"false\"\n  CODER_PROMETHEUS_ENABLE: \"true\"\n  CODER_PROMETHEUS_ADDRESS: \"0.0.0.0:2112\"\n  CODER_PROVISIONER_DAEMONS: \"3\"\n  CODER_MAX_TOKEN_LIFETIME: \"168h\"\n  CODER_SESSION_DURATION: \"24h\"\n  CODER_BROWSER_ONLY: \"false\"\n  \n  # Workspace defaults\n  CODER_WORKSPACE_INACTIVITY_TIMEOUT: \"4h\"\n  CODER_WORKSPACE_TTL: \"168h\"\n"
+  - |
+    ---
+    apiVersion: networking.k8s.io/v1
+    kind: NetworkPolicy
+    metadata:
+      name: coder
+      labels:
+        helm.sh/chart: coder-0.1.0
+        app.kubernetes.io/name: coder
+        app.kubernetes.io/instance: coder
+        app.kubernetes.io/version: "2.17.0"
+        app.kubernetes.io/managed-by: Helm
+    spec:
+      podSelector:
+        matchLabels:
+          app.kubernetes.io/name: coder
+          app.kubernetes.io/instance: coder
+      policyTypes:
+        - Ingress
+        - Egress
+
+      ingress:
+        # Allow ingress from Traefik
+        - from:
+            - namespaceSelector:
+                matchLabels:
+                  name: ingress
+              podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: traefik
+          ports:
+            - protocol: TCP
+              port: 3000
+
+        # Allow ingress from same namespace
+        - from:
+            - podSelector: {}
+
+      egress:
+        # Allow DNS
+        - to:
+            - namespaceSelector:
+              matchLabels:
+                name: kube-system
+          ports:
+            - protocol: UDP
+              port: 53
+
+        # Allow HTTPS to external
+        - to:
+            - namespaceSelector: {}
+          ports:
+            - protocol: TCP
+              port: 443
+
+        # Allow HTTP to external
+        - to:
+            - namespaceSelector: {}
+          ports:
+            - protocol: TCP
+              port: 80
+
+        # Allow database connections
+        - to:
+            - namespaceSelector:
+                matchLabels:
+                  name: db
+          ports:
+            - protocol: TCP
+              port: 5432  # PostgreSQL
+            - protocol: TCP
+              port: 27017  # MongoDB
+            - protocol: TCP
+              port: 6379  # Valkey/Redis
+            - protocol: TCP
+              port: 9000  # MinIO
+            - protocol: TCP
+              port: 8123  # ClickHouse
+            - protocol: TCP
+              port: 3306  # MySQL
+            - protocol: TCP
+              port: 5672  # RabbitMQ
+
+        # Allow service mesh (Consul)
+        - to:
+            - namespaceSelector:
+                matchLabels:
+                  name: service
+              podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: consul
+          ports:
+            - protocol: TCP
+              port: 8500
+            - protocol: TCP
+              port: 8600
+
+        # Allow Vault
+        - to:
+            - namespaceSelector:
+                matchLabels:
+                  name: service
+              podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: vault
+          ports:
+            - protocol: TCP
+              port: 8200
+
+        # Allow Authentik
+        - to:
+            - namespaceSelector:
+                matchLabels:
+                  name: service
+              podSelector:
+                matchLabels:
+                  app.kubernetes.io/name: authentik
+          ports:
+            - protocol: TCP
+              port: 9000
+            - protocol: TCP
+              port: 9443
+  - |
+    apiVersion: v1
+    kind: ServiceAccount
+    metadata:
+      name: coder
+      namespace: {{ .Release.Namespace }}
+      labels:
+        helm.sh/chart: coder-0.1.0
+        app.kubernetes.io/name: coder
+        app.kubernetes.io/instance: coder
+        app.kubernetes.io/version: "2.17.0"
+        app.kubernetes.io/managed-by: Helm
+  - |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRole
+    metadata:
+      name: coder
+      labels:
+        helm.sh/chart: coder-0.1.0
+        app.kubernetes.io/name: coder
+        app.kubernetes.io/instance: coder
+        app.kubernetes.io/version: "2.17.0"
+        app.kubernetes.io/managed-by: Helm
+    rules:
+      # Workspace pod management
+      - apiGroups: [""]
+        resources: ["pods"]
+        verbs: ["create", "get", "list", "watch", "delete", "update", "patch"]
+      - apiGroups: [""]
+        resources: ["pods/log"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: [""]
+        resources: ["pods/exec"]
+        verbs: ["create", "get"]
+      - apiGroups: [""]
+        resources: ["pods/portforward"]
+        verbs: ["create", "get"]
+
+      # Workspace service management
+      - apiGroups: [""]
+        resources: ["services"]
+        verbs: ["create", "get", "list", "watch", "delete", "update", "patch"]
+
+      # Workspace storage management
+      - apiGroups: [""]
+        resources: ["persistentvolumeclaims"]
+        verbs: ["create", "get", "list", "watch", "delete", "update", "patch"]
+      - apiGroups: [""]
+        resources: ["persistentvolumes"]
+        verbs: ["get", "list", "watch"]
+
+      # ConfigMaps and Secrets for workspace configuration
+      - apiGroups: [""]
+        resources: ["configmaps"]
+        verbs: ["create", "get", "list", "watch", "delete", "update", "patch"]
+      - apiGroups: [""]
+        resources: ["secrets"]
+        verbs: ["create", "get", "list", "watch", "delete", "update", "patch"]
+
+      # ServiceAccount management for workspaces
+      - apiGroups: [""]
+        resources: ["serviceaccounts"]
+        verbs: ["create", "get", "list", "watch", "delete"]
+
+      # Namespace management (for workspace isolation)
+      - apiGroups: [""]
+        resources: ["namespaces"]
+        verbs: ["get", "list", "watch"]
+
+      # Events for debugging
+      - apiGroups: [""]
+        resources: ["events"]
+        verbs: ["get", "list", "watch"]
+
+      # Node information (for scheduling)
+      - apiGroups: [""]
+        resources: ["nodes"]
+        verbs: ["get", "list", "watch"]
+
+      # RBAC for workspace service accounts
+      - apiGroups: ["rbac.authorization.k8s.io"]
+        resources: ["roles", "rolebindings"]
+        verbs: ["create", "get", "list", "watch", "delete", "update", "patch"]
+
+      # Apps API for Deployments/StatefulSets
+      - apiGroups: ["apps"]
+        resources: ["deployments", "statefulsets"]
+        verbs: ["create", "get", "list", "watch", "delete", "update", "patch"]
+
+      # Networking for Ingress
+      - apiGroups: ["networking.k8s.io"]
+        resources: ["ingresses"]
+        verbs: ["create", "get", "list", "watch", "delete", "update", "patch"]
+  - |
+    apiVersion: rbac.authorization.k8s.io/v1
+    kind: ClusterRoleBinding
+    metadata:
+      name: coder
+      labels:
+        helm.sh/chart: coder-0.1.0
+        app.kubernetes.io/name: coder
+        app.kubernetes.io/instance: coder
+        app.kubernetes.io/version: "2.17.0"
+        app.kubernetes.io/managed-by: Helm
+    roleRef:
+      apiGroup: rbac.authorization.k8s.io
+      kind: ClusterRole
+      name: coder
+    subjects:
+      - kind: ServiceAccount
+        name: coder
+        namespace: {{ .Release.Namespace }}
+  - |
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: coder
+      namespace: {{ .Release.Namespace }}
+      labels:
+        helm.sh/chart: coder-0.1.0
+        app.kubernetes.io/name: coder
+        app.kubernetes.io/instance: coder
+        app.kubernetes.io/version: "2.17.0"
+        app.kubernetes.io/managed-by: Helm
+      annotations:
+        cert-manager.io/cluster-issuer: "letsencrypt"
+        traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    spec:
+      ingressClassName: traefik
+      tls:
+        - hosts:
+            - coder.localhost
+          secretName: coder-tls
+      rules:
+        - host: coder.localhost
+          http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: coder
+                    port:
+                      number: 3000
+  - |
+    # Wildcard Ingress for workspaces
+    apiVersion: networking.k8s.io/v1
+    kind: Ingress
+    metadata:
+      name: coder-wildcard
+      namespace: {{ .Release.Namespace }}
+      labels:
+        helm.sh/chart: coder-0.1.0
+        app.kubernetes.io/name: coder
+        app.kubernetes.io/instance: coder
+        app.kubernetes.io/version: "2.17.0"
+        app.kubernetes.io/managed-by: Helm
+        app.kubernetes.io/component: wildcard
+      annotations:
+        cert-manager.io/cluster-issuer: "letsencrypt"
+        traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    spec:
+      ingressClassName: traefik
+      tls:
+        - hosts:
+            - "*.workspace.coder.localhost"
+          secretName: coder-workspace-tls
+      rules:
+        - host: "*.workspace.coder.localhost"
+          http:
+            paths:
+              - path: /
+                pathType: Prefix
+                backend:
+                  service:
+                    name: coder
+                    port:
+                      number: 3000
+  - |
+    apiVersion: v1
+    kind: Pod
+    metadata:
+      name: "coder-test-connection"
+      labels:
+        helm.sh/chart: coder-0.1.0
+        app.kubernetes.io/name: coder
+        app.kubernetes.io/instance: coder
+        app.kubernetes.io/version: "2.17.0"
+        app.kubernetes.io/managed-by: Helm
+      annotations:
+        "helm.sh/hook": test
+        "helm.sh/hook-delete-policy": before-hook-creation,hook-succeeded
+    spec:
+      restartPolicy: Never
+      containers:
+        - name: curl
+          image: curlimages/curl:8.5.0
+          command: ['curl']
+          args: ['-sf', 'http://coder:3000/healthz']

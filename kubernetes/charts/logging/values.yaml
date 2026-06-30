@@ -1,215 +1,798 @@
-# Namespace
-namespace: service
+# logging (ELK Stack) — rendered entirely by the chart-base subchart.
+# Components: Elasticsearch (StatefulSet + ILM setup Job), Logstash (Deployment),
+# Kibana (Deployment), Filebeat (DaemonSet). All resource names are prefixed with
+# the release name "logging-" by chart-base; internal cross-references below have
+# been updated to match (e.g. http://logging-elasticsearch:9200).
+#
+# extraManifests are used for resources chart-base cannot express verbatim:
+#   - Elasticsearch headless Service (publishNotReadyAddresses)
+#   - Filebeat DaemonSet (hostNetwork + dnsPolicy)
+#   - the custom NetworkPolicy / PodDisruptionBudget / ServiceMonitor
+#   - the four component ServiceAccounts + Filebeat ClusterRole/Binding (rbac.extra)
+chart-base:
+  serviceAccount:
+    create: true
+    automount: true
 
-create:
-  namespace: true
+  rbac:
+    create: true
+    rules:
+      - { apiGroups: [""], resources: ["pods"], verbs: ["get", "list"] }
+      - { apiGroups: [""], resources: ["configmaps"], verbs: ["get", "list"] }
+    extra:
+      # Component ServiceAccounts (bare names preserved from the original chart).
+      - apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: elasticsearch
+          namespace: "{{ .Release.Namespace }}"
+      - apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: logstash
+          namespace: "{{ .Release.Namespace }}"
+      - apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: kibana
+          namespace: "{{ .Release.Namespace }}"
+      - apiVersion: v1
+        kind: ServiceAccount
+        metadata:
+          name: filebeat
+          namespace: "{{ .Release.Namespace }}"
+      # Filebeat needs cluster-wide pod/node listing for kubernetes metadata.
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRole
+        metadata:
+          name: filebeat
+        rules:
+          - apiGroups: [""]
+            resources:
+              - namespaces
+              - pods
+              - nodes
+            verbs: ["get", "list", "watch"]
+          - apiGroups: ["apps"]
+            resources:
+              - replicasets
+            verbs: ["get", "list", "watch"]
+      - apiVersion: rbac.authorization.k8s.io/v1
+        kind: ClusterRoleBinding
+        metadata:
+          name: filebeat
+        roleRef:
+          apiGroup: rbac.authorization.k8s.io
+          kind: ClusterRole
+          name: filebeat
+        subjects:
+          - kind: ServiceAccount
+            name: filebeat
+            namespace: "{{ .Release.Namespace }}"
 
-# Elasticsearch config
-elasticsearch:
-  enabled: true
-  image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
-  replicaCount: 1
+  workloads:
+    # ---------------------------------------------------------------- Elasticsearch
+    - name: elasticsearch
+      kind: StatefulSet
+      replicas: 1
+      serviceName: logging-elasticsearch-headless
+      serviceAccountName: elasticsearch
+      podSecurityContext:
+        fsGroup: 1000
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "elasticsearch"
+        consul.hashicorp.com/connect-service-port: "9200"
+        consul.hashicorp.com/service-tags: "elasticsearch,logging,search"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9200"
+        prometheus.io/path: "/_prometheus/metrics"
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchExpressions:
+                    - key: app.kubernetes.io/component
+                      operator: In
+                      values:
+                        - elasticsearch
+                topologyKey: kubernetes.io/hostname
+      initContainers:
+        - name: sysctl
+          image: busybox:1.36
+          securityContext:
+            privileged: true
+            runAsUser: 0
+          command: ['sh', '-c', 'sysctl -w vm.max_map_count=262144']
+        - name: fix-permissions
+          image: busybox:1.36
+          securityContext:
+            runAsUser: 0
+          command: ['sh', '-c', 'chown -R 1000:1000 /usr/share/elasticsearch/data']
+          volumeMounts:
+            - { name: data, mountPath: /usr/share/elasticsearch/data }
+      containers:
+        - name: elasticsearch
+          image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            readOnlyRootFilesystem: false
+            runAsUser: 1000
+          ports:
+            - { containerPort: 9200, name: http }
+            - { containerPort: 9300, name: transport }
+          env:
+            - { name: cluster.name, value: "elk-logging" }
+            - name: node.name
+              valueFrom:
+                fieldRef:
+                  fieldPath: metadata.name
+            - { name: discovery.seed_hosts, value: "logging-elasticsearch-headless" }
+            - { name: cluster.initial_master_nodes, value: "logging-elasticsearch-0" }
+            - { name: ES_JAVA_OPTS, value: "-Xms1g -Xmx1g" }
+            - { name: xpack.security.enabled, value: "true" }
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: logging-elasticsearch-secrets
+                  key: elastic-password
+            - { name: xpack.security.transport.ssl.enabled, value: "false" }
+            - { name: xpack.security.http.ssl.enabled, value: "false" }
+            - { name: bootstrap.memory_lock, value: "false" }
+          resources:
+            limits: { cpu: 2000m, memory: 2Gi }
+            requests: { cpu: 1000m, memory: 1Gi }
+          volumeMounts:
+            - { name: data, mountPath: /usr/share/elasticsearch/data }
+          livenessProbe:
+            httpGet: { path: "/_cluster/health?local=true", port: 9200 }
+            initialDelaySeconds: 90
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet: { path: "/_cluster/health?wait_for_status=yellow&timeout=5s", port: 9200 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+      volumeClaimTemplates:
+        - metadata:
+            name: data
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            storageClassName: local-path
+            resources:
+              requests:
+                storage: 10Gi
 
-  service:
-    type: ClusterIP
-    httpPort: 9200
-    transportPort: 9300
+    # --------------------------------------------------------------------- Logstash
+    - name: logstash
+      kind: Deployment
+      replicas: 1
+      serviceAccountName: logstash
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "logstash"
+        consul.hashicorp.com/connect-service-port: "5044"
+        consul.hashicorp.com/service-tags: "logstash,logging,pipeline"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9600"
+        prometheus.io/path: "/_node/stats"
+      initContainers:
+        - name: wait-for-elasticsearch
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Elasticsearch..."
+              until nc -z logging-elasticsearch 9200; do
+                sleep 5
+              done
+              echo "Elasticsearch is ready!"
+      containers:
+        - name: logstash
+          image: docker.elastic.co/logstash/logstash:8.15.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            readOnlyRootFilesystem: false
+          ports:
+            - { containerPort: 5044, name: beats }
+            - { containerPort: 9600, name: http }
+          env:
+            - { name: LS_JAVA_OPTS, value: "-Xms512m -Xmx512m" }
+            - name: ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: logging-elasticsearch-secrets
+                  key: elastic-password
+          resources:
+            limits: { cpu: 1000m, memory: 1536Mi }
+            requests: { cpu: 500m, memory: 768Mi }
+          volumeMounts:
+            - { name: config, mountPath: /usr/share/logstash/config/logstash.yml, subPath: logstash.yml }
+            - { name: pipeline, mountPath: /usr/share/logstash/pipeline }
+            - { name: data, mountPath: /usr/share/logstash/data }
+          livenessProbe:
+            httpGet: { path: /, port: 9600 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet: { path: /, port: 9600 }
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
+      volumes:
+        - name: config
+          configMap:
+            name: logging-logstash-config
+        - name: pipeline
+          configMap:
+            name: logging-logstash-pipeline
+        - name: data
+          persistentVolumeClaim:
+            claimName: logging-logstash-data
 
-  resources:
-    limits:
-      cpu: 2000m
-      memory: 2Gi
-    requests:
-      cpu: 1000m
-      memory: 1Gi
+    # ----------------------------------------------------------------------- Kibana
+    - name: kibana
+      kind: Deployment
+      replicas: 1
+      serviceAccountName: kibana
+      podAnnotations:
+        consul.hashicorp.com/connect-inject: "true"
+        consul.hashicorp.com/connect-service: "kibana"
+        consul.hashicorp.com/connect-service-port: "5601"
+        consul.hashicorp.com/service-tags: "kibana,logging,visualization"
+        co.elastic.logs/enabled: "true"
+        co.elastic.logs.json.keys_under_root: "true"
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "5601"
+        prometheus.io/path: "/api/status"
+      initContainers:
+        - name: wait-for-elasticsearch
+          image: busybox:1.36
+          command:
+            - sh
+            - -c
+            - |
+              echo "Waiting for Elasticsearch..."
+              until nc -z logging-elasticsearch 9200; do
+                sleep 5
+              done
+              echo "Elasticsearch is ready!"
+      containers:
+        - name: kibana
+          image: docker.elastic.co/kibana/kibana:8.15.0
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            readOnlyRootFilesystem: false
+          ports:
+            - { containerPort: 5601, name: http }
+          env:
+            - { name: ELASTICSEARCH_HOSTS, value: '["http://logging-elasticsearch:9200"]' }
+            - { name: SERVER_HOST, value: "0.0.0.0" }
+            - { name: SERVER_NAME, value: "kibana" }
+            - { name: ELASTICSEARCH_USERNAME, value: "kibana_system" }
+            - name: ELASTICSEARCH_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: logging-elasticsearch-secrets
+                  key: elastic-password
+            - name: XPACK_ENCRYPTEDSAVEDOBJECTS_ENCRYPTIONKEY
+              valueFrom:
+                secretKeyRef:
+                  name: logging-kibana-secrets
+                  key: saved-objects-encryption-key
+            - name: XPACK_REPORTING_ENCRYPTIONKEY
+              valueFrom:
+                secretKeyRef:
+                  name: logging-kibana-secrets
+                  key: reporting-encryption-key
+            - name: XPACK_SECURITY_ENCRYPTIONKEY
+              valueFrom:
+                secretKeyRef:
+                  name: logging-kibana-secrets
+                  key: encryption-key
+          resources:
+            limits: { cpu: 1000m, memory: 1Gi }
+            requests: { cpu: 500m, memory: 512Mi }
+          livenessProbe:
+            httpGet: { path: /api/status, port: 5601 }
+            initialDelaySeconds: 60
+            periodSeconds: 10
+            timeoutSeconds: 5
+            failureThreshold: 5
+          readinessProbe:
+            httpGet: { path: /api/status, port: 5601 }
+            initialDelaySeconds: 30
+            periodSeconds: 5
+            timeoutSeconds: 3
 
-  persistence:
+    # ------------------------------------------------------ Elasticsearch ILM setup
+    - name: elasticsearch-ilm-setup
+      kind: Job
+      backoffLimit: 5
+      annotations:
+        "helm.sh/hook": post-install,post-upgrade
+        "helm.sh/hook-weight": "5"
+        "helm.sh/hook-delete-policy": hook-succeeded,before-hook-creation
+      containers:
+        - name: setup
+          image: curlimages/curl:8.11.1
+          imagePullPolicy: IfNotPresent
+          securityContext:
+            readOnlyRootFilesystem: false
+          command: ["/bin/sh", "/config/setup-ilm.sh"]
+          env:
+            - name: ELASTIC_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: logging-elasticsearch-secrets
+                  key: elastic-password
+          volumeMounts:
+            - { name: config, mountPath: /config }
+      volumes:
+        - name: config
+          configMap:
+            name: logging-elasticsearch-ilm-config
+            defaultMode: 0755
+
+  services:
+    - name: elasticsearch
+      component: elasticsearch
+      annotations:
+        consul.hashicorp.com/service-name: "elasticsearch"
+        consul.hashicorp.com/service-port: "9200"
+        consul.hashicorp.com/service-tags: "elasticsearch,logging,search"
+      ports:
+        - { port: 9200, targetPort: 9200, name: http }
+        - { port: 9300, targetPort: 9300, name: transport }
+    - name: kibana
+      component: kibana
+      annotations:
+        consul.hashicorp.com/service-name: "kibana"
+        consul.hashicorp.com/service-port: "5601"
+        consul.hashicorp.com/service-tags: "kibana,logging,visualization"
+      ports:
+        - { port: 5601, targetPort: 5601, name: http }
+    - name: logstash
+      component: logstash
+      annotations:
+        consul.hashicorp.com/service-name: "logstash"
+        consul.hashicorp.com/service-port: "5044"
+        consul.hashicorp.com/service-tags: "logstash,logging,pipeline"
+      ports:
+        - { port: 5044, targetPort: 5044, name: beats }
+        - { port: 9600, targetPort: 9600, name: http }
+
+  secrets:
+    - name: elasticsearch-secrets
+      stringData:
+        elastic-password: ""
+    - name: kibana-secrets
+      stringData:
+        encryption-key: ""
+        saved-objects-encryption-key: ""
+        reporting-encryption-key: ""
+
+  pvcs:
+    - { name: logstash-data, accessModes: [ReadWriteOnce], storageClass: local-path, size: 2Gi }
+
+  routing:
+    ingresses:
+      - className: traefik
+        annotations:
+          cert-manager.io/cluster-issuer: letsencrypt
+          traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+        tls:
+          - hosts:
+              - kibana.local
+            secretName: logging-tls
+        rules:
+          - host: kibana.local
+            http:
+              paths:
+                - path: /
+                  pathType: Prefix
+                  backend:
+                    service:
+                      name: logging-kibana
+                      port:
+                        number: 5601
+
+  tests:
     enabled: true
-    storageClass: local-path
-    size: 10Gi
-    mountPath: /usr/share/elasticsearch/data
+    image: busybox:1.28
+    url: "http://logging-kibana:5601"
 
-  # Java heap (set to half of memory limit)
-  javaOpts: "-Xms1g -Xmx1g"
+  configMaps:
+    - name: elasticsearch-ilm-config
+      data:
+        ilm-policy.json: |
+          {
+            "policy": {
+              "phases": {
+                "hot": {
+                  "min_age": "0ms",
+                  "actions": {
+                    "rollover": {
+                      "max_age": "7d",
+                      "max_primary_shard_size": "10gb"
+                    },
+                    "set_priority": { "priority": 100 }
+                  }
+                },
+                "warm": {
+                  "min_age": "30d",
+                  "actions": {
+                    "forcemerge": { "max_num_segments": 1 },
+                    "shrink": { "number_of_shards": 1 },
+                    "set_priority": { "priority": 50 }
+                  }
+                },
+                "delete": {
+                  "min_age": "90d",
+                  "actions": {
+                    "delete": {}
+                  }
+                }
+              }
+            }
+          }
+        setup-ilm.sh: |
+          #!/bin/sh
+          set -e
+          ES_URL="http://logging-elasticsearch:9200"
+          AUTH="-u elastic:${ELASTIC_PASSWORD}"
 
-  # Cluster settings
-  clusterName: "elk-logging"
-  minimumMasterNodes: 2
+          echo "Waiting for Elasticsearch to be ready..."
+          until curl -s $AUTH "$ES_URL/_cluster/health" | grep -q '"status":"green\|yellow"'; do
+            echo "Elasticsearch not ready yet, retrying in 5s..."
+            sleep 5
+          done
+          echo "Elasticsearch is ready."
 
-  # X-Pack security (basic, free tier)
-  security:
-    enabled: true
-    password: ""  # Injected via Vault - see vault.hashicorp.com annotations
-    transportSsl: false
-    httpSsl: false
+          # Create ILM policy
+          echo "Creating ILM policy..."
+          curl -s -X PUT $AUTH "$ES_URL/_ilm/policy/logging-policy" \
+            -H "Content-Type: application/json" \
+            -d @/config/ilm-policy.json
+          echo ""
 
-  # ILM (Index Lifecycle Management)
-  ilm:
-    enabled: true
-    hotMaxAge: 7d
-    hotMaxSize: 10gb
-    warmMaxAge: 30d
-    deleteMinAge: 90d
+          # Create index template with ILM
+          echo "Creating index template..."
+          curl -s -X PUT $AUTH "$ES_URL/_index_template/logging-template" \
+            -H "Content-Type: application/json" \
+            -d '{
+              "index_patterns": ["filebeat-*", "logstash-*"],
+              "template": {
+                "settings": {
+                  "index.lifecycle.name": "logging-policy",
+                  "number_of_shards": 1,
+                  "number_of_replicas": 1
+                }
+              }
+            }'
+          echo ""
+          echo "ILM setup complete."
 
-  # Anti-affinity for HA
-  antiAffinity:
-    enabled: true
-    type: preferredDuringSchedulingIgnoredDuringExecution
+    - name: filebeat-config
+      data:
+        filebeat.yml: |
+          filebeat.inputs:
+            - type: container
+              paths:
+                - /var/lib/docker/containers/*/*.log
+              processors:
+                - add_kubernetes_metadata:
+                    host: ${NODE_NAME}
+                    matchers:
+                      - logs_path:
+                          logs_path: "/var/lib/docker/containers/"
 
-  # Init container for vm.max_map_count sysctl tuning
-  sysctlInit:
-    enabled: true
+          filebeat.autodiscover:
+            providers:
+              - type: kubernetes
+                node: ${NODE_NAME}
+                hints.enabled: true
+                hints.default_config:
+                  type: container
+                  paths:
+                    - /var/lib/docker/containers/${data.kubernetes.container.id}/*.log
 
-  # PodDisruptionBudget
-  pdb:
-    enabled: true
-    minAvailable: 2
+          processors:
+            - add_cloud_metadata: ~
+            - add_host_metadata: ~
+            - add_kubernetes_metadata:
+                host: ${NODE_NAME}
+          output.logstash:
+            hosts: ["logging-logstash:5044"]
 
-# Logstash config
-logstash:
-  enabled: true
-  image: docker.elastic.co/logstash/logstash:8.15.0
-  replicaCount: 1
+          setup.kibana:
+            host: "http://logging-kibana:5601"
 
-  service:
-    type: ClusterIP
-    beatsPort: 5044
-    httpPort: 9600
+          setup.ilm.enabled: true
+          setup.ilm.policy_name: "logging-policy"
+          setup.template.name: "filebeat"
+          setup.template.pattern: "filebeat-*"
 
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1536Mi
-    requests:
-      cpu: 500m
-      memory: 768Mi
+          logging.level: info
+          logging.to_files: false
 
-  javaOpts: "-Xms512m -Xmx512m"
+    - name: logstash-config
+      data:
+        logstash.yml: |
+          http.host: "0.0.0.0"
+          http.port: 9600
+          path.data: /usr/share/logstash/data
+          pipeline.workers: 2
+          pipeline.batch.size: 125
+          pipeline.batch.delay: 50
+          xpack.monitoring.enabled: false
 
-  persistence:
-    enabled: true
-    storageClass: local-path
-    size: 2Gi
-    mountPath: /usr/share/logstash/data
+    - name: logstash-pipeline
+      data:
+        logstash.conf: |
+          input {
+            beats {
+              port => 5044
+            }
+          }
 
-  # Loki forwarding (optional dual output)
-  lokiForwarding:
-    enabled: false
-    url: "http://loki.service.svc.cluster.local:3100"
+          filter {
+            # Add namespace-based index targeting
+            if [kubernetes][namespace] {
+              mutate {
+                add_field => { "[@metadata][target_index]" => "logstash-%{[kubernetes][namespace]}-%{+YYYY.MM.dd}" }
+              }
+            } else {
+              mutate {
+                add_field => { "[@metadata][target_index]" => "logstash-default-%{+YYYY.MM.dd}" }
+              }
+            }
 
-# Kibana config
-kibana:
-  enabled: true
-  image: docker.elastic.co/kibana/kibana:8.15.0
-  replicaCount: 1
+            # Parse JSON logs (common for containerized services)
+            if [message] =~ /^\{/ {
+              json {
+                source => "message"
+                target => "parsed"
+                skip_on_invalid_json => true
+              }
+            }
 
-  service:
-    type: ClusterIP
-    port: 5601
+            # Parse Traefik access logs
+            if [kubernetes][labels][app] == "traefik" {
+              grok {
+                match => { "message" => "%{COMBINEDAPACHELOG}" }
+                overwrite => ["message"]
+                tag_on_failure => ["_grokparsefailure_traefik"]
+              }
+            }
 
-  resources:
-    limits:
-      cpu: 1000m
-      memory: 1Gi
-    requests:
-      cpu: 500m
-      memory: 512Mi
+            # Timestamp normalization
+            date {
+              match => ["timestamp", "ISO8601", "yyyy-MM-dd HH:mm:ss,SSS", "yyyy-MM-dd'T'HH:mm:ss.SSS'Z'"]
+              target => "@timestamp"
+              tag_on_failure => ["_dateparsefailure"]
+            }
 
-  # Encryption keys
-  encryptionKey: ""  # Injected via Vault - see vault.hashicorp.com annotations
-  savedObjectsEncryptionKey: ""  # Injected via Vault - see vault.hashicorp.com annotations
-  reportingEncryptionKey: ""  # Injected via Vault - see vault.hashicorp.com annotations
+            # Remove unnecessary fields to save storage
+            mutate {
+              remove_field => ["agent.ephemeral_id", "agent.hostname", "agent.id", "ecs.version"]
+            }
+          }
 
-# Filebeat config (DaemonSet log collector)
-filebeat:
-  enabled: true
-  image: docker.elastic.co/beats/filebeat:8.15.0
+          output {
+            elasticsearch {
+              hosts => ["http://logging-elasticsearch:9200"]
+              index => "%{[@metadata][target_index]}"
+              user => "elastic"
+              password => "${ELASTICSEARCH_PASSWORD}"
+            }
+          }
 
-  resources:
-    limits:
-      cpu: 200m
-      memory: 256Mi
-    requests:
-      cpu: 100m
-      memory: 128Mi
+  extraManifests:
+    # Elasticsearch headless Service (publishNotReadyAddresses for StatefulSet discovery).
+    - |
+      apiVersion: v1
+      kind: Service
+      metadata:
+        name: logging-elasticsearch-headless
+        namespace: {{ .Release.Namespace }}
+        labels:
+          app.kubernetes.io/name: logging
+          app.kubernetes.io/instance: {{ .Release.Name }}
+          app.kubernetes.io/component: elasticsearch
+      spec:
+        clusterIP: None
+        publishNotReadyAddresses: true
+        selector:
+          app.kubernetes.io/name: logging
+          app.kubernetes.io/instance: {{ .Release.Name }}
+          app.kubernetes.io/component: elasticsearch
+        ports:
+          - { port: 9200, targetPort: 9200, name: http }
+          - { port: 9300, targetPort: 9300, name: transport }
 
-  # Output target: "elasticsearch" or "logstash"
-  output: logstash
+    # Filebeat DaemonSet (hostNetwork + dnsPolicy are not expressible via chart-base).
+    - |
+      apiVersion: apps/v1
+      kind: DaemonSet
+      metadata:
+        name: logging-filebeat
+        namespace: {{ .Release.Namespace }}
+        labels:
+          app.kubernetes.io/name: logging
+          app.kubernetes.io/instance: {{ .Release.Name }}
+          app.kubernetes.io/component: filebeat
+      spec:
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: logging
+            app.kubernetes.io/instance: {{ .Release.Name }}
+            app.kubernetes.io/component: filebeat
+        template:
+          metadata:
+            labels:
+              app.kubernetes.io/name: logging
+              app.kubernetes.io/instance: {{ .Release.Name }}
+              app.kubernetes.io/component: filebeat
+            annotations:
+              co.elastic.logs/enabled: "true"
+              co.elastic.logs.json.keys_under_root: "true"
+          spec:
+            serviceAccountName: filebeat
+            hostNetwork: true
+            dnsPolicy: ClusterFirst
+            containers:
+              - name: filebeat
+                image: docker.elastic.co/beats/filebeat:8.15.0
+                imagePullPolicy: IfNotPresent
+                args:
+                  - "-c"
+                  - "/etc/filebeat/filebeat.yml"
+                  - "-e"
+                env:
+                  - name: NODE_NAME
+                    valueFrom:
+                      fieldRef:
+                        fieldPath: spec.nodeName
+                securityContext:
+                  runAsUser: 0
+                volumeMounts:
+                  - { name: config, mountPath: /etc/filebeat }
+                  - { name: data, mountPath: /usr/share/filebeat/data }
+                  - { name: varlibdockercontainers, mountPath: /var/lib/docker/containers, readOnly: true }
+                  - { name: varlog, mountPath: /var/log, readOnly: true }
+                resources:
+                  limits: { cpu: 200m, memory: 256Mi }
+                  requests: { cpu: 100m, memory: 128Mi }
+            volumes:
+              - name: config
+                configMap:
+                  name: logging-filebeat-config
+              - name: data
+                hostPath:
+                  path: /var/lib/filebeat-data
+                  type: DirectoryOrCreate
+              - name: varlibdockercontainers
+                hostPath:
+                  path: /var/lib/docker/containers
+              - name: varlog
+                hostPath:
+                  path: /var/log
+            tolerations:
+              - { effect: NoSchedule, operator: Exists }
+              - { effect: NoExecute, operator: Exists }
 
-# Ingress config
-ingress:
-  enabled: true
-  className: traefik
-  annotations:
-    traefik.ingress.kubernetes.io/router.entrypoints: web,websecure
+    # Custom NetworkPolicy (component-specific ingress/egress; chart-base default deny replaced).
+    - |
+      apiVersion: networking.k8s.io/v1
+      kind: NetworkPolicy
+      metadata:
+        name: logging
+        namespace: {{ .Release.Namespace }}
+        labels:
+          app.kubernetes.io/name: logging
+          app.kubernetes.io/instance: {{ .Release.Name }}
+      spec:
+        podSelector:
+          matchLabels:
+            app.kubernetes.io/name: logging
+            app.kubernetes.io/instance: {{ .Release.Name }}
+        policyTypes:
+          - Ingress
+          - Egress
+        ingress:
+          - from:
+              - namespaceSelector:
+                  matchLabels:
+                    name: ingress
+                podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: traefik
+            ports:
+              - { protocol: TCP, port: 5601 }
+              - { protocol: TCP, port: 9200 }
+              - { protocol: TCP, port: 5044 }
+          - from:
+              - podSelector: {}
+        egress:
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    name: kube-system
+            ports:
+              - { protocol: UDP, port: 53 }
+          - to:
+              - namespaceSelector: {}
+            ports:
+              - { protocol: TCP, port: 443 }
+          - to:
+              - namespaceSelector: {}
+            ports:
+              - { protocol: TCP, port: 80 }
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    name: service
+                podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: consul
+            ports:
+              - { protocol: TCP, port: 8500 }
+              - { protocol: TCP, port: 8600 }
+          - to:
+              - namespaceSelector:
+                  matchLabels:
+                    name: service
+                podSelector:
+                  matchLabels:
+                    app.kubernetes.io/name: vault
+            ports:
+              - { protocol: TCP, port: 8200 }
 
-  hosts:
-    kibana:
-      host: kibana.local
-      path: /
+    # Elasticsearch PodDisruptionBudget.
+    - |
+      apiVersion: policy/v1
+      kind: PodDisruptionBudget
+      metadata:
+        name: elasticsearch-pdb
+        namespace: {{ .Release.Namespace }}
+      spec:
+        minAvailable: 2
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: logging
+            app.kubernetes.io/instance: {{ .Release.Name }}
+            app.kubernetes.io/component: elasticsearch
 
-  tls:
-    enabled: true
-    secretName: logging-tls
-
-# Consul integration
-consul:
-  enabled: true
-  host: "consul.consul.svc.cluster.local"
-  port: 8500
-  datacenter: dc1
-
-# Authentik integration (ForwardAuth via Traefik)
-authentik:
-  enabled: false
-  host: "https://authentik.local"
-  outpostPath: "/outpost.goauthentik.io/auth/traefik"
-
-# Vault integration
-vault:
-  enabled: false
-  role: "logging"
-
-# Security
-securityContext:
-  runAsUser: 1000
-  runAsGroup: 1000
-  fsGroup: 1000
-
-# Network Policy
-networkPolicy:
-  enabled: true
-  egressRules:
-    allowDatabases: false
-    allowConsul: true
-    allowVault: true
-    allowAuthentik: false
-  ingress: []
-  egress: []
-
-# Service Account
-serviceAccount:
-  create: true
-  automountServiceAccountToken: true
-  annotations: {}
-  name: ""
-
-# RBAC
-rbac:
-  create: true
-  allowSecrets: false
-  rules: []
-
-# Metrics
-metrics:
-  enabled: true
-  port: "metrics"
-  path: "/metrics"
-  interval: "30s"
-  scrapeTimeout: "10s"
-
-# Pod Disruption Budget
-podDisruptionBudget:
-  enabled: false
-  minAvailable: 1
-  # maxUnavailable: 1
+    # ServiceMonitor (Prometheus scrape; preserves metrics port + scrapeTimeout).
+    - |
+      apiVersion: monitoring.coreos.com/v1
+      kind: ServiceMonitor
+      metadata:
+        name: logging
+        namespace: {{ .Release.Namespace }}
+        labels:
+          app.kubernetes.io/name: logging
+          app.kubernetes.io/instance: {{ .Release.Name }}
+          prometheus: kube-prometheus
+      spec:
+        selector:
+          matchLabels:
+            app.kubernetes.io/name: logging
+            app.kubernetes.io/instance: {{ .Release.Name }}
+        endpoints:
+          - port: metrics
+            path: /metrics
+            interval: 30s
+            scrapeTimeout: 10s
