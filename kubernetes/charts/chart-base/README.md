@@ -1,50 +1,55 @@
-# chart-base (Helm library chart)
+# chart-base (generic application chart)
 
-Reusable named templates so app charts stay thin and compliant by default.
-Provides: `chart-base.deployment`, `.service`, `.serviceaccount`, `.rbac`,
-`.networkpolicy`, `.servicemonitor`, `.pdb`, `.configmap`, `.httproute`
-(Gateway API), `.tests`, plus name/label/securityContext helpers. Security
-context (runAsNonRoot, readOnlyRootFilesystem, drop ALL, seccomp RuntimeDefault),
-standard labels, the `prometheus: kube-prometheus` ServiceMonitor label, and
-Traefik/cert-manager/Authentik wiring are baked in.
+A single `type: application` chart used as a **subchart** by every self-hosted
+service. App charts keep an **empty `templates/`** dir and declare chart-base as a
+dependency; chart-base renders all of their resources from values nested under the
+`chart-base:` key. Security context (runAsNonRoot, readOnlyRootFilesystem, drop
+ALL, seccomp RuntimeDefault), standard labels, the `prometheus: kube-prometheus`
+ServiceMonitor label, and Traefik/cert-manager/Authentik wiring are baked in.
+Resource names derive from the Helm release name (= the helmfile service name).
 
-## Use it
+## How an app chart uses it
 
-1. Add the dependency to the consumer `Chart.yaml`:
+`charts/<svc>/Chart.yaml`:
+```yaml
+dependencies:
+  - name: chart-base
+    version: 0.1.0
+    repository: file://../chart-base
+```
+`charts/<svc>/templates/` contains only `.gitkeep`. `charts/<svc>/values.yaml` puts
+everything under `chart-base:`. Helmfile runs `helm dependency build` automatically
+at apply/template time (it vendors chart-base into `charts/<svc>/charts/`, which is
+gitignored). See `charts/glance/` for the reference conversion.
 
-   ```yaml
-   dependencies:
-     - name: chart-base
-       version: 0.1.0
-       repository: file://../chart-base
-   ```
-   then `helm dependency build kubernetes/charts/<svc>`.
+## Value schema (under `chart-base:`)
 
-2. Render components from one-line templates, e.g.
-   `templates/deployment.yaml`:
+`workloads[]` (Deployment / StatefulSet / DaemonSet / Job / CronJob, with
+`containers[]` + `initContainers[]`, env, ports, probes, resources, volumes,
+`volumeClaimTemplates`, affinity, podAnnotations), `services[]`, `configMaps[]`
+(inline `data`), `secrets[]`, `pvcs[]`, `serviceAccount`/`serviceAccounts[]`,
+`rbac{rules,clusterRules,extra}`, `networkPolicy`, `serviceMonitor`, `pdb`, `hpa`,
+`routing{httpRoutes[],ingresses[],traefik{ingressRoutes,middlewares}}`,
+`extraManifests[]` (raw escape hatch), `tests`. See `values.yaml` for full defaults.
 
-   ```yaml
-   {{- include "chart-base.deployment" . }}
-   ```
-   Repeat for service/serviceaccount/rbac/networkpolicy/servicemonitor/pdb/
-   httproute/tests.
+## Routing
 
-3. Populate the consumer `values.yaml` per the contract in this chart's
-   `values.yaml`.
-
-## Routing (Gateway API)
-
-`chart-base.httproute` emits an `HTTPRoute` attached to the shared cluster
-`Gateway` (defined in the `namespaces` chart, fronted by Traefik's
-`kubernetesGateway` provider). It replaces per-service `Ingress`. Authentik SSO
-is preserved via an `ExtensionRef` filter to the Traefik forward-auth Middleware.
+Default routing is **Gateway API HTTPRoute** attached to the shared cluster
+`Gateway` (in the `namespaces` chart, fronted by Traefik's `kubernetesGateway`
+provider). Authentik SSO is preserved via an `ExtensionRef` filter to the Traefik
+forward-auth Middleware. Plain Ingress and raw Traefik CRDs are available via
+`routing.ingresses` / `routing.traefik` / `extraManifests`.
 
 ## Migration status
 
-- ✅ library complete and validated (`helm template` renders all 10 components).
-- ✅ shared `Gateway`/`GatewayClass` in `charts/namespaces` (`gateway.enabled`).
-- ✅ Traefik `kubernetesGateway` provider enabled (`releases/traefik.yaml.gotmpl`).
-- ✅ reference conversion: `charts/glance` (Ingress → HTTPRoute).
-- ⏳ remaining 23 charts: convert `templates/ingress.yaml` → `httproute.yaml`
-  (pattern = `charts/glance/templates/httproute.yaml`) and, for simple
-  single-Deployment charts, adopt `chart-base` includes. Tracked in beads.
+- ✅ chart-base is a generic application subchart (validated: renders all kinds).
+- ✅ **all 26 app charts emptied** — affine, bytebase, coder, consul, excalidraw,
+  ghost, glance, hub, logging, metube, monitoring, n8n, openclaw, pangolin,
+  remnawave, rybbit, stalwart, stoat, supabase, syncthing, teamcity, vault,
+  vaultwarden, vert, youtrack, zerobyte. Each `templates/` holds only `.gitkeep`.
+- ⚪ **exempt:** `namespaces` (cluster bootstrap: Namespaces/ClusterIssuers/Gateway/
+  Certificates/NetworkPolicies) and `gitlab-ingress` (Traefik routing only) keep
+  their own templates.
+- ℹ️ chart-base enforces the mandatory securityContext on every pod. A few apps that
+  write outside their volumes set `securityContext.readOnlyRootFilesystem: false`
+  (or add an emptyDir) — smoke-test before relying on read-only root.

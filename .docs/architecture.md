@@ -482,3 +482,9 @@ creating K8s Secrets from values).
   (Replaced the former Bun + NestJS + Ink implementation, June 2026.)
 - **`docker/qdrant/`** — local QDrant + qdrant MCP server for agent semantic
   memory / token optimisation (developer tooling; not part of the platform).
+- **Helm charts** — `charts/chart-base/` is a generic `type: application` subchart
+  that renders all resources for every app chart. Each app chart has an **empty
+  `templates/`** dir, declares `chart-base` as a `file://../chart-base` dependency,
+  and supplies config under a `chart-base:` values key; helmfile vendors the
+  dependency at apply time. Routing is Gateway API (HTTPRoute) via the shared
+  `Gateway` in the `namespaces` chart. Exempt: `namespaces` and `gitlab-ingress`.
