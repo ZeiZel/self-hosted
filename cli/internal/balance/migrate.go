@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os/exec"
+	"strings"
 	"time"
 )
 
@@ -66,8 +67,12 @@ func ExecuteMigration(m Migration, dryRun bool) error {
 
 	if dryRun {
 		fmt.Printf("[dry-run] would migrate %s (%s): %s -> %s\n", m.Service, m.Namespace, m.SourceNode, m.TargetNode)
+		if m.SourceNode != "" {
+			fmt.Printf("[dry-run]   kubectl cordon %s   (uncordon afterwards)\n", m.SourceNode)
+		}
 		fmt.Printf("[dry-run]   kubectl -n %s patch deployment %s --type merge -p '%s'\n", m.Namespace, m.Service, patch)
 		fmt.Printf("[dry-run]   kubectl -n %s rollout status deployment/%s --timeout=120s\n", m.Namespace, m.Service)
+		fmt.Printf("[dry-run]   verify a pod of %s is running on %s\n", m.Service, m.TargetNode)
 		fmt.Printf("[dry-run]   (falls back to statefulset if no deployment exists)\n")
 		return nil
 	}
@@ -77,6 +82,14 @@ func ExecuteMigration(m Migration, dryRun bool) error {
 		return err
 	}
 
+	// Cordon the source node during the move so evicted pods don't reschedule
+	// back onto it before the nodeSelector takes effect. Always uncordon after.
+	if m.SourceNode != "" {
+		if _, err := runKubectl("cordon", m.SourceNode); err == nil {
+			defer runKubectl("uncordon", m.SourceNode) //nolint:errcheck
+		}
+	}
+
 	if _, err := runKubectl("-n", m.Namespace, "patch", kind, m.Service, "--type", "merge", "-p", patch); err != nil {
 		return err
 	}
@@ -84,7 +97,29 @@ func ExecuteMigration(m Migration, dryRun bool) error {
 	if _, err := runKubectl("-n", m.Namespace, "rollout", "status", kind+"/"+m.Service, "--timeout=120s"); err != nil {
 		return err
 	}
+
+	// Verify at least one pod actually landed on the target node.
+	if err := verifyPlacement(m.Namespace, m.Service, m.TargetNode); err != nil {
+		return err
+	}
 	return nil
+}
+
+// verifyPlacement confirms at least one pod of the service is running on the
+// target node after the rollout.
+func verifyPlacement(ns, name, targetNode string) error {
+	out, err := runKubectl("-n", ns, "get", "pods",
+		"-l", "app.kubernetes.io/name="+name,
+		"-o", "jsonpath={range .items[*]}{.spec.nodeName}{\"\\n\"}{end}")
+	if err != nil {
+		return fmt.Errorf("verify placement: %w", err)
+	}
+	for _, line := range strings.Split(strings.TrimSpace(out), "\n") {
+		if strings.TrimSpace(line) == targetNode {
+			return nil
+		}
+	}
+	return fmt.Errorf("migration did not land %s on %s (current: %q)", name, targetNode, strings.TrimSpace(out))
 }
 
 // ExecuteMigrations runs each migration in order, recording timing and status on

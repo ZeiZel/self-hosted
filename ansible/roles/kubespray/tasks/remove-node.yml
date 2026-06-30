@@ -1,0 +1,82 @@
+---
+# =============================================================================
+# KUBESPRAY REMOVE-NODE TASKS
+# =============================================================================
+# Gracefully remove a SINGLE node from the cluster using kubespray's
+# remove-node.yml (cordons, drains and resets only the named node — unlike
+# reset.yml which tears down the whole cluster).
+# Usage: ansible-playbook -i inventory/hosts.ini remove-node.yml -e node=<name>
+
+- name: Verify a node was specified
+  fail:
+    msg: |
+      You must specify which node to remove:
+        ansible-playbook -i inventory/hosts.ini remove-node.yml -e node=<inventory_hostname>
+  when: node is not defined or node | length == 0
+
+- name: Verify kubespray remove-node.yml exists
+  stat:
+    path: "{{ kubespray_dir }}/remove-node.yml"
+  register: remove_node_stat
+  failed_when: not remove_node_stat.stat.exists
+
+- name: Verify kubespray inventory exists
+  stat:
+    path: "{{ kubespray_inventory_dir }}/hosts.yaml"
+  register: inventory_stat
+  failed_when: not inventory_stat.stat.exists
+
+- name: Display remove-node start message
+  debug:
+    msg: |
+      Removing node "{{ node }}" from the cluster...
+      This cordons, drains and resets that node only.
+      Playbook: {{ kubespray_dir }}/remove-node.yml
+
+- name: Run kubespray remove-node.yml
+  shell: |
+    source {{ kubespray_venv_dir }}/bin/activate
+    cd {{ kubespray_dir }}
+    ansible-playbook -i {{ kubespray_inventory_dir }}/hosts.yaml \
+      remove-node.yml \
+      --become \
+      --become-user={{ kubespray_become_user }} \
+      -e node={{ node }} \
+      -e delete_nodes_confirmation=yes \
+      -e reset_nodes=true \
+      -e allow_ungraceful_removal=true \
+      -v
+  args:
+    executable: /bin/bash
+  environment:
+    ANSIBLE_HOST_KEY_CHECKING: "False"
+    ANSIBLE_DEPRECATION_WARNINGS: "False"
+  register: kubespray_remove
+  async: "{{ kubespray_deploy_timeout | default(1800) }}"
+  poll: "{{ kubespray_poll_interval | default(30) }}"
+
+- name: Display remove-node output
+  debug:
+    msg: "{{ kubespray_remove.stdout_lines[-40:] }}"
+  when: kubespray_remove.stdout_lines is defined
+
+- name: Check remove-node result
+  fail:
+    msg: |
+      Kubespray remove-node failed for "{{ node }}"!
+      Error: {{ kubespray_remove.stderr | default('see output above') }}
+  when: kubespray_remove.rc is defined and kubespray_remove.rc != 0
+
+- name: Verify node left the cluster
+  shell: kubectl get nodes -o wide
+  register: nodes_after_remove
+  changed_when: false
+  failed_when: false
+
+- name: Display cluster nodes after removal
+  debug:
+    msg: "{{ nodes_after_remove.stdout_lines | default(['(kubectl unavailable)']) }}"
+
+- name: Remove-node complete
+  debug:
+    msg: 'Node "{{ node }}" removed. Verify with: kubectl get nodes'

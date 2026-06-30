@@ -1,0 +1,20 @@
+---
+# =============================================================================
+# REMOVE NODE — gracefully remove a single node from the cluster
+# =============================================================================
+# Cordons, drains and resets only the named node via kubespray remove-node.yml.
+#
+# Usage (normally via the CLI: `selfhost node remove <label>`):
+#   ansible-playbook -i inventory/hosts.ini remove-node.yml -e node=<label>
+#
+# The node must still be present in the inventory when this runs.
+
+- name: Remove a node from the Kubernetes cluster via kubespray
+  hosts: localhost
+  connection: local
+  gather_facts: true
+  tasks:
+    - name: Run kubespray remove-node for "{{ node | default('<unset>') }}"
+      include_role:
+        name: kubespray
+        tasks_from: remove-node.yml

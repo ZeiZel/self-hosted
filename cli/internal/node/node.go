@@ -71,36 +71,38 @@ func runPlaybook(playbook string, extraArgs ...string) error {
 	return cmd.Run()
 }
 
-// Add scales the cluster by adding a new node. The repo has no dedicated
-// scale playbook, so this is best-effort: it runs the main playbook (all.yml)
-// limited to the named host with the kubespray tag, passing -e node=<name>.
-// The kubespray role's scale tasks (roles/kubespray/tasks/scale.yml) cover the
-// underlying mechanics.
-func Add(name string) error {
+// Add scales the cluster up by joining a new node. It runs the dedicated
+// ansible/scale.yml playbook, which prepares the node's OS (server + docker),
+// regenerates the kubespray inventory and runs kubespray scale.yml. The node
+// must already be present in the Ansible inventory — the CLI regenerates it from
+// the machine database before calling this (see commands/node.go).
+func Add(name, inventory string) error {
 	if name == "" {
 		return fmt.Errorf("node name is required")
 	}
-	return runPlaybook("all.yml",
-		"--tags", "kubespray",
-		"--limit", name,
-		"-e", "node="+name,
+	if inventory == "" {
+		inventory = "hosts.ini"
+	}
+	return runPlaybook("scale.yml",
+		"-i", "inventory/"+inventory,
+		"-e", "target_node="+name,
+		"--limit", name+",localhost",
 	)
 }
 
-// Remove scales the cluster down by removing a node. Like Add, this is
-// best-effort against the kubespray role (roles/kubespray/tasks/reset.yml):
-// it drains/cordons the node first via kubectl, then runs the main playbook
-// limited to the host with the kubespray tag and -e node=<name>.
-func Remove(name string) error {
+// Remove scales the cluster down by gracefully removing a node. It runs the
+// dedicated ansible/remove-node.yml playbook, which invokes kubespray's
+// remove-node.yml (cordon + drain + reset of that node only). The node must
+// still be present in the inventory when this runs.
+func Remove(name, inventory string) error {
 	if name == "" {
 		return fmt.Errorf("node name is required")
 	}
-	// Best-effort drain before removal; ignore errors so removal proceeds.
-	_ = Drain(name, true)
-	return runPlaybook("all.yml",
-		"--tags", "kubespray",
-		"--limit", name,
+	if inventory == "" {
+		inventory = "hosts.ini"
+	}
+	return runPlaybook("remove-node.yml",
+		"-i", "inventory/"+inventory,
 		"-e", "node="+name,
-		"-e", "kubespray_action=remove",
 	)
 }
