@@ -1,0 +1,54 @@
+# chart-base is a LIBRARY chart — these values are NOT applied directly. They
+# document the contract a consuming chart's values.yaml must satisfy. Copy the
+# keys you need into the consumer chart.
+
+nameOverride: ""
+fullnameOverride: ""
+replicaCount: 1
+
+image:
+  repository: nginx
+  tag: ""          # defaults to .Chart.AppVersion
+  pullPolicy: IfNotPresent
+
+service:
+  type: ClusterIP
+  port: 80
+  targetPort: 80
+
+# Gateway API routing (replaces Ingress).
+route:
+  enabled: true
+  host: app.example.com
+  hostnames: []
+  gateway:
+    name: shared-gateway
+    namespace: ingress
+    sectionName: websecure
+  authentik:
+    enabled: false
+    middleware: authentik-forward-auth
+
+resources:
+  requests: { cpu: 100m, memory: 128Mi }
+  limits: { cpu: 500m, memory: 512Mi }
+
+podSecurityContext: { runAsUser: 1000, fsGroup: 1000 }
+securityContext: { readOnlyRootFilesystem: true }
+
+serviceAccount: { create: true, name: "", automount: false }
+rbac: { create: true, rules: [] }
+networkPolicy: { enabled: true, allowDB: false, extraIngress: [], extraEgress: [] }
+serviceMonitor: { enabled: false, path: /metrics, interval: 30s }
+pdb: { enabled: false, minAvailable: "", maxUnavailable: 1 }
+configMap: { enabled: false, data: {} }
+
+env: []
+envFrom: []
+volumes: []
+volumeMounts: []
+podAnnotations: {}
+probes:
+  liveness: {}
+  readiness: {}
+  startup: {}

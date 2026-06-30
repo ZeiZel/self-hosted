@@ -1,0 +1,11 @@
+apiVersion: v2
+name: chart-base
+description: >-
+  Reusable Helm library of named templates for self-hosted services. Provides a
+  compliant Deployment/StatefulSet, Service, HTTPRoute (Gateway API),
+  ServiceAccount, RBAC, NetworkPolicy, ServiceMonitor, PDB, ConfigMap and Helm
+  test — with security context, standard labels and Traefik/cert-manager/Authentik
+  wiring baked in. Consuming charts add this as a dependency and render components
+  via `{{ include "chart-base.<component>" . }}`.
+type: library
+version: 0.1.0

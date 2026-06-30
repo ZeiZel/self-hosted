@@ -1,0 +1,51 @@
+{{- if .Values.gateway.enabled }}
+{{/*
+Shared cluster Gateway (Gateway API) fronted by Traefik. App charts attach via
+HTTPRoute parentRefs → this Gateway. Replaces per-service Traefik Ingress.
+Requires the Gateway API CRDs (see apps/_others.yaml: gateway-api-crds) and
+Traefik's kubernetesGateway provider (enabled in releases/traefik.yaml.gotmpl).
+*/}}
+apiVersion: gateway.networking.k8s.io/v1
+kind: GatewayClass
+metadata:
+  name: {{ .Values.gateway.className | default "traefik" }}
+  labels:
+    app.kubernetes.io/part-of: self-hosted
+spec:
+  controllerName: {{ .Values.gateway.controllerName | default "traefik.io/gateway-controller" }}
+---
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ .Values.gateway.name | default "shared-gateway" }}
+  namespace: {{ .Values.gateway.namespace | default "ingress" }}
+  labels:
+    app.kubernetes.io/part-of: self-hosted
+  {{- if .Values.gateway.tls.enabled }}
+  annotations:
+    cert-manager.io/cluster-issuer: {{ .Values.gateway.tls.clusterIssuer | default "letsencrypt" | quote }}
+  {{- end }}
+spec:
+  gatewayClassName: {{ .Values.gateway.className | default "traefik" }}
+  listeners:
+    - name: web
+      protocol: HTTP
+      port: 80
+      allowedRoutes:
+        namespaces:
+          from: All
+    {{- if .Values.gateway.tls.enabled }}
+    - name: websecure
+      protocol: HTTPS
+      port: 443
+      hostname: {{ printf "*.%s" .Values.gateway.domain | quote }}
+      tls:
+        mode: Terminate
+        certificateRefs:
+          - kind: Secret
+            name: {{ .Values.gateway.tls.secretName | default "shared-gateway-tls" }}
+      allowedRoutes:
+        namespaces:
+          from: All
+    {{- end }}
+{{- end }}

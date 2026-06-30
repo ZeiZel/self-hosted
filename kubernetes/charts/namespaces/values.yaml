@@ -86,6 +86,19 @@ certManager:
     path: "pki/sign/kubernetes"
     role: "cert-manager"
 
+# Shared Gateway (Gateway API) — replaces per-service Traefik Ingress.
+gateway:
+  enabled: true
+  name: shared-gateway
+  namespace: ingress
+  className: traefik
+  controllerName: traefik.io/gateway-controller
+  domain: example.com
+  tls:
+    enabled: true
+    clusterIssuer: letsencrypt
+    secretName: shared-gateway-tls
+
 # Network Policies for namespace isolation
 networkPolicies:
   enabled: true
