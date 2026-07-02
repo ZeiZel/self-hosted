@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   vert:
-    image: ghcr.io/hoarder-app/vert:latest
+    image: ghcr.io/vert-sh/vert:latest
     container_name: vert
     restart: unless-stopped
     ports:

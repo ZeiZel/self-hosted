@@ -27,18 +27,24 @@ helmfile -e k8s apply
 
 ## Quick Start with Ansible
 
-For automated provisioning:
+For automated provisioning, use the `selfhost` CLI (which wraps the phased `ansible/all.yml` playbook):
 
 ```bash
-cd ansible/pangolin
-ansible-playbook -i inventory/hosts.yml playbooks/deploy_local.yml
+selfhost deploy
+```
+
+Or run Ansible directly:
+
+```bash
+cd ansible
+ansible-playbook -i inventory/hosts.ini all.yml
 ```
 
 ## Accessing Services
 
 After deployment, services are accessible through:
 
-- **Traefik Ingress:** `https://<service-name>.<your-domain>`
+- **Gateway API (HTTPRoute):** `https://<service-name>.<your-domain>` (routed by the shared Gateway in the `ingress` namespace, with Traefik as the GatewayClass controller)
 - **Local:** `http://localhost:<port>` (for Docker Compose)
 
 ## Common Services
@@ -53,7 +59,7 @@ After deployment, services are accessible through:
 If you encounter issues:
 
 1. Check service logs: `kubectl logs <pod-name> -n <namespace>`
-2. Verify ingress: `kubectl get ingress --all-namespaces`
+2. Verify routes: `kubectl get httproute --all-namespaces`
 3. Check service status: `kubectl get pods --all-namespaces`
 
 For more detailed information, see the [Deployment Guides](../deployment/overview.md).

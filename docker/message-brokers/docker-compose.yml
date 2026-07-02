@@ -1,7 +1,7 @@
 ---
 services:
   rabbit:
-    image: docker.io/rabbitmq:4
+    image: docker.io/rabbitmq:4.3.2
     restart: always
     environment:
       RABBITMQ_DEFAULT_USER: rabbituser

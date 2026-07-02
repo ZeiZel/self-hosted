@@ -15,7 +15,7 @@ Resource names derive from the Helm release name (= the helmfile service name).
 dependencies:
   - name: chart-base
     version: 0.1.0
-    repository: file://../chart-base
+    repository: file://../../chart-base
 ```
 `charts/<svc>/templates/` contains only `.gitkeep`. `charts/<svc>/values.yaml` puts
 everything under `chart-base:`. Helmfile runs `helm dependency build` automatically

@@ -24,7 +24,9 @@ curl -fsSL https://raw.githubusercontent.com/ZeiZel/self-hosted/main/scripts/ins
 
 ## CLI Tool
 
-The `selfhost` CLI provides automated infrastructure deployment and management.
+The `selfhost` CLI provides automated infrastructure deployment and management. It is a
+single static **Go** binary built on the Charm stack (cobra, bubbletea, lipgloss, bubbles,
+ntcharts, huh), with a native monitoring daemon.
 
 ### Commands
 
@@ -34,13 +36,15 @@ The `selfhost` CLI provides automated infrastructure deployment and management.
 | `selfhost inventory` | Manage server inventory (add/remove/list hosts) |
 | `selfhost services` | Manage services (list/enable/disable) |
 | `selfhost plan` | Generate deployment plan |
-| `selfhost deploy` | Deploy services to cluster |
+| `selfhost deploy` | Deploy services to cluster (phased); `deploy release <name…>` for local Helmfile selectors |
+| `selfhost node` | Manage cluster nodes (add/remove via kubespray; cordon/drain) |
+| `selfhost balance` | Resource balancing / workload placement |
 | `selfhost status` | Show cluster and services status |
 | `selfhost validate` | Validate configuration and manifests |
 | `selfhost config` | Manage CLI configuration |
-| `selfhost balance` | Resource balancing utilities |
 | `selfhost monitor` | Open monitoring TUI dashboard |
-| `selfhost daemon` | Manage background daemon service |
+| `selfhost daemon` | Manage the native background monitoring daemon (launchd/systemd) |
+| `selfhost certs` / `gateway` / `vpn` / `bot` | cert-manager, Pangolin gateway, WireGuard VPN, Telegram bot helpers |
 
 ### Usage Examples
 
@@ -54,11 +58,11 @@ selfhost inventory add --host 192.168.1.100 --user admin --role master
 # List available services
 selfhost services list
 
-# Deploy all enabled services
+# Deploy all enabled services (phased, via Ansible)
 selfhost deploy
 
-# Deploy specific service
-selfhost deploy --service gitlab
+# Apply an individual Helmfile release locally (bypasses phases)
+selfhost deploy release gitlab
 
 # Check cluster status
 selfhost status
@@ -85,16 +89,16 @@ selfhost status --verbose
 
 ### Requirements
 
-- **Bun** runtime (automatically installed by the installer)
-- **macOS** or **Linux**
+- **macOS** or **Linux** (single static Go binary; no runtime dependency)
 - **Git**
+- To build from source: **Go 1.26+** (`cd cli && go build -o selfhost ./cmd/selfhost`)
 
 ---
 
-## Services (42 total)
+## Services (~46 total, 29 custom app charts)
 
 **Base Infrastructure**
-- **Traefik** - Ingress controller and edge router
+- **Traefik** - Gateway API controller and edge router
 - **Consul** - Service mesh and service discovery
 - **Vault** - Secrets management
 - **cert-manager** - TLS certificate automation
@@ -286,9 +290,9 @@ kubectl get nodes
 ## Architecture
 
 **Deployment Model**: Three-tier architecture
-- **Host (macOS)**: Local development, Ansible controller
-- **VPS (Gateway)**: Public internet entry point, WireGuard gateway, Traefik edge
-- **Home Server**: Kubernetes master node (bare-metal)
+- **Host (macOS/Linux)**: `selfhost` CLI + Ansible controller
+- **VPS (Gateway)**: Public internet entry point, WireGuard/Pangolin gateway, edge routing
+- **Home Server**: Kubernetes control plane (bare-metal); scale out via `selfhost node add`
 
 **Network Topology**:
 ```
@@ -296,11 +300,13 @@ Internet
   -> VPS Gateway (:80, :443)
      -> WireGuard Tunnel (10.99.0.0/24)
         -> Home Server
-           -> Kubernetes (single-node)
-              -> All Services
+           -> Kubernetes (control plane + optional worker/storage nodes)
+              -> Traefik Gateway (Gateway API / HTTPRoute)
+                 -> All Services
 ```
 
-**Stack**: Kubernetes, Helm, Helmfile, Ansible, Docker, Terraform, SOPS
+**Stack**: Kubernetes, Helm 4, Helmfile + `chart-base` subchart, Gateway API, Ansible
+(kubespray), SOPS/Vault, Go/Charm `selfhost` CLI
 
 ## Documentation
 

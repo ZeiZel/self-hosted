@@ -1,7 +1,7 @@
 ---
 services:
   youtrack:
-    image: jetbrains/youtrack:2025.1.74704
+    image: jetbrains/youtrack:2026.2.17012
     container_name: youtrack
     restart: always
     ports: [${YOUTRACK_OUT_PORT:-8080}:8080]

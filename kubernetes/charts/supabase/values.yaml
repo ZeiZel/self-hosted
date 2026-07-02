@@ -32,7 +32,7 @@ chart-base:
 
   tests:
     enabled: true
-    image: busybox:1.28
+    image: busybox:1.38.0
     port: 8000
     url: supabase-kong:8000
 
@@ -242,7 +242,7 @@ chart-base:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: kong
-          image: "kong:2.8.1"
+          image: "kong:3.9.1"
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: true
@@ -297,7 +297,7 @@ chart-base:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: auth
-          image: "supabase/gotrue:v2.151.0"
+          image: "supabase/gotrue:v2.189.0"
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: true
@@ -363,7 +363,7 @@ chart-base:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: rest
-          image: "postgrest/postgrest:v12.0.2"
+          image: "postgrest/postgrest:v14.12"
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: true
@@ -423,7 +423,7 @@ chart-base:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: realtime
-          image: "supabase/realtime:v2.27.5"
+          image: "supabase/realtime:v2.102.3"
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: true
@@ -493,7 +493,7 @@ chart-base:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: storage
-          image: "supabase/storage-api:v1.0.6"
+          image: "supabase/storage-api:v1.60.4"
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: true
@@ -564,7 +564,7 @@ chart-base:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: meta
-          image: "supabase/postgres-meta:v0.80.0"
+          image: "supabase/postgres-meta:v0.96.6"
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: true
@@ -603,7 +603,7 @@ chart-base:
         fsGroup: 1001
       containers:
         - name: studio
-          image: "supabase/studio:latest"
+          image: "supabase/studio:2026.06.03-sha-0bca601"
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: true
@@ -658,7 +658,7 @@ chart-base:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: edge-runtime
-          image: "supabase/edge-runtime:v1.22.4"
+          image: "supabase/edge-runtime:v1.74.0"
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: true
@@ -705,7 +705,7 @@ chart-base:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: imgproxy
-          image: "darthsim/imgproxy:latest"
+          image: "darthsim/imgproxy:v3.30.1"
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsNonRoot: true
@@ -927,7 +927,7 @@ chart-base:
             restartPolicy: Never
             containers:
             - name: init
-              image: "postgres:16-alpine"
+              image: "postgres:18-alpine"
               imagePullPolicy: IfNotPresent
               env:
               - name: PGHOST

@@ -9,14 +9,5 @@ export const aboutTranslations = {
 			repositoryLink: 'View Repository on GitHub',
 		},
 	},
-	ru: {
-		title: 'О проекте',
-		author: {
-			name: 'ZeiZel',
-			description:
-				'Я занимаюсь self-hosted инфраструктурой, создаю и поддерживаю решения для разработки и production окружений.',
-			repositoryLink: 'Посмотреть репозиторий на GitHub',
-		},
-	},
 };
 

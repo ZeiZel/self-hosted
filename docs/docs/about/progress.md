@@ -35,6 +35,6 @@ sidebar_position: 3
 - [ ] Prepare for local deployment
   - [ ]
 - [ ] Prepare for production deployment
-  - [x] Ansible (server_security, kubespray, client_setup roles)
+  - [x] Ansible (server, kubespray, local-access roles)
   - [x] Terraform (local machine management)
-  - [x] Kubernetes (pangolin-client, new services)
+  - [x] Kubernetes (pangolin gateway, new services)

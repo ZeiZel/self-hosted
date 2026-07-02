@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   remnawave:
-    image: ghcr.io/remnawave/panel:latest
+    image: ghcr.io/remnawave/panel:2.8.0
     container_name: remnawave
     restart: unless-stopped
     ports:
@@ -24,7 +24,7 @@ services:
       retries: 3
 
   postgres:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     container_name: remnawave-postgres
     restart: unless-stopped
     environment:
@@ -42,7 +42,7 @@ services:
       retries: 5
 
   redis:
-    image: redis:7-alpine
+    image: redis:8-alpine
     container_name: remnawave-redis
     restart: unless-stopped
     volumes:

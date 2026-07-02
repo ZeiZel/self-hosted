@@ -14,4 +14,4 @@ maintainers:
 dependencies:
   - name: chart-base
     version: 0.1.0
-    repository: file://../chart-base
+    repository: file://../../chart-base

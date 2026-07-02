@@ -5,7 +5,7 @@ name: stoat
 services:
   # MongoDB: Database
   database:
-    image: docker.io/mongo
+    image: docker.io/mongo:8.0.26
     restart: always
     volumes:
       - ./data/db:/data/db
@@ -18,12 +18,12 @@ services:
 
   # Redis: Event message broker & KV store
   redis:
-    image: docker.io/eqalpha/keydb
+    image: docker.io/eqalpha/keydb:x86_64_v6.3.4
     restart: always
 
   # RabbitMQ: Internal message broker
   rabbit:
-    image: docker.io/rabbitmq:4
+    image: docker.io/rabbitmq:4.3.2
     restart: always
     environment:
       RABBITMQ_DEFAULT_USER: rabbituser
@@ -39,7 +39,7 @@ services:
 
   # MinIO: S3-compatible storage server
   minio:
-    image: docker.io/minio/minio
+    image: docker.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data
     volumes:
       - ./data/minio:/data
@@ -62,7 +62,7 @@ services:
 
   # Caddy: Web server
   caddy:
-    image: docker.io/caddy
+    image: docker.io/caddy:2.11.4
     restart: always
     env_file: .env.web
     ports:
@@ -105,7 +105,7 @@ services:
 
   # Web App
   web:
-    image: ghcr.io/revoltchat/client:master
+    image: ghcr.io/revoltchat/client:1.0.1
     restart: always
     env_file: .env.web
 
@@ -173,7 +173,7 @@ services:
 
   # Create buckets for minio.
   createbuckets:
-    image: docker.io/minio/mc
+    image: docker.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
       - minio
     entrypoint: >

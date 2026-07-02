@@ -2,7 +2,7 @@
 # https://syncthing.net/
 services:
   syncthing:
-    image: syncthing/syncthing:latest
+    image: syncthing/syncthing:2.1.1
     container_name: syncthing
     hostname: syncthing-node
     volumes:
@@ -17,7 +17,7 @@ services:
     networks: [syncthing-net]
     restart: unless-stopped
   syncthing-exporter:
-    image: smnielsen/syncthing-exporter
+    image: f100024/syncthing_exporter:0.3.18
     container_name: syncthing-exporter
     environment:
       - ST_ADDR=http://syncthing:8384

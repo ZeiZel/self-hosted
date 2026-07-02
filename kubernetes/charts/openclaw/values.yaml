@@ -28,7 +28,7 @@ chart-base:
         prometheus.io/path: "/metrics"
       containers:
         - name: openclaw
-          image: "alpine/openclaw:1.0.0"
+          image: "alpine/openclaw:2026.6.9"
           imagePullPolicy: IfNotPresent
           # OpenClaw needs a writable root filesystem (relax chart-base default).
           securityContext:

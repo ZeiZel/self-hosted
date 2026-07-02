@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Self-hosted infrastructure platform running 40+ services on Kubernetes. Ansible provisions bare-metal nodes, Helmfile orchestrates Helm chart deployments, SOPS encrypts secrets at rest, and Vault manages runtime secrets.
+Self-hosted infrastructure platform running ~46 registered services (29 custom app charts) on Kubernetes. Ansible provisions bare-metal nodes (kubespray), Helmfile orchestrates Helm chart deployments via the shared `chart-base` subchart, routing uses the Gateway API (HTTPRoute), SOPS encrypts secrets at rest, and Vault manages runtime secrets. The operator CLI (`selfhost`) is a single static Go binary (Charm stack).
 
 **Mandatory reading before any changes:**
 1. `.docs/requirements.md` — what to build (business & technical specs)
@@ -17,7 +17,8 @@ Self-hosted infrastructure platform running 40+ services on Kubernetes. Ansible 
 
 ```
 kubernetes/
-  charts/<service>/       Custom Helm charts (24 services)
+  chart-base/             Universal subchart (type: application) rendering all app charts
+  charts/<service>/       Custom Helm charts (29; empty templates/, depend on chart-base)
   releases/<service>.yaml.gotmpl   Helmfile release value overrides
   apps/_others.yaml       App registry: repo, chart, namespace, version, needs
   .helmfile/              Helmfile base configs (environments, repositories, releases template)

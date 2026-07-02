@@ -41,7 +41,7 @@ chart-base:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: vault
-          image: vault:1.17.0
+          image: hashicorp/vault:2.0.3
           imagePullPolicy: IfNotPresent
           args:
             - "server"

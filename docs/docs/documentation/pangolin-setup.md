@@ -4,173 +4,166 @@ sidebar_position: 7
 
 # Configuration Pangolin and Wireguard Tunnel
 
-Pangolin - это система для создания VPN туннеля между клиентом (локальная машина) и сервером (VPS), позволяющая безопасно пробрасывать порты и домены. На этом этапе мы настроим Pangolin клиент на локальной машине и подключим его к Pangolin серверу на VPS.
+Pangolin is a system for creating a VPN tunnel between a client (local machine) and a server (VPS), allowing you to securely forward ports and domains. At this stage we will configure the Pangolin client on the local machine and connect it to the Pangolin server on the VPS.
 
-## Обзор архитектуры
+## Architecture Overview
 
-Pangolin состоит из двух компонентов:
+Pangolin consists of two components:
 
-- **Pangolin Server** (уже развёрнут на VPS) - управляет подключениями клиентов и маршрутизацией
-- **Pangolin Client** (Newt) - подключается к серверу и создаёт Wireguard туннель
-- **Gerbil** - Wireguard сервер, который обрабатывает VPN соединения
-- **Traefik** - reverse proxy на стороне сервера, который проксирует запросы через туннель
+- **Pangolin Server** (already deployed on the VPS) - manages client connections and routing
+- **Pangolin Client** (Newt) - connects to the server and creates a Wireguard tunnel
+- **Gerbil** - the Wireguard server that handles VPN connections
+- **Traefik** - the reverse proxy on the server side that proxies requests through the tunnel
 
-## Deployment Pangolin клиента
+## Deployment Pangolin client
 
-Pangolin клиент развёртывается на локальной машине, с которой будет осуществляться доступ к сервисам через VPN туннель.
+The Pangolin client is deployed on the local machine from which the services will be accessed through the VPN tunnel.
 
 ### Configuration inventory
 
-Make sure, что в `ansible/pangolin/inventory/hosts.yml` настроена секция `local`:
+Make sure that the `[local]` group is configured in `ansible/inventory/hosts.ini` (INI format):
 
-```yaml
-all:
-  children:
-    local:
-      hosts:
-        pangolin_local:
-          ansible_host: YOUR_LOCAL_IP  # IP адрес локальной машины (или localhost)
-          ansible_user: your_username  # Пользователь на локальной машине
-          ansible_port: 22
-          ansible_connection: local  # Для локального выполнения
-
-          pangolin_role: client
-          pangolin_server_endpoint: "yourdomain.com"  # Домен Pangolin сервера
+```ini
+[local]
+127.0.0.1 ansible_user=your_username ansible_connection=local
 ```
 
-### Выполнение развёртки
+The Pangolin server domain (`pangolin_server_endpoint`) is set in `ansible/group_vars/all/vars.yml`.
 
-Navigate to директорию с Ansible playbooks:
+### Running the deployment
+
+The recommended way is through the `selfhost` CLI:
 
 ```bash
-cd ansible/pangolin
+selfhost vpn setup
 ```
 
-Run playbook для развёртки клиента:
+Or run Ansible directly:
 
 ```bash
-ansible-playbook -i inventory/hosts.yml playbooks/deploy_local.yml
+cd ansible
+ansible-playbook -i inventory/hosts.ini vpn-client.yml
 ```
 
-Playbook выполнит следующие действия:
+The playbook will perform the following actions:
 
-1. **Роль `common`** - установка базовых пакетов и настройка системы
-2. **Роль `docker`** - установка Docker (если не установлен)
-3. **Роль `pangolin_client`** - развёртка Pangolin клиента (Newt)
+1. **The `server` role** - installs base packages and configures the system
+2. **The `docker` role** - installs Docker (if not already installed)
+3. **The `wireguard-client` role** - deploys the Pangolin client (Newt)
 
-### Что делает playbook
+### What the playbook does
 
-1. Создаёт директорию для Pangolin клиента (`/opt/pangolin`)
-2. Генерирует конфигурационные файлы для Newt
-3. Запускает контейнеры через Docker Compose
-4. Ожидает подключения к серверу
+1. Creates a directory for the Pangolin client (`/opt/pangolin`)
+2. Generates configuration files for Newt
+3. Starts the containers via Docker Compose
+4. Waits for the connection to the server
 
-## Регистрация клиента в Pangolin сервере
+## Registering the client on the Pangolin server
 
-После развёртки клиента необходимо зарегистрировать его на сервере через веб-интерфейс Pangolin.
+After deploying the client, you need to register it on the server through the Pangolin web interface.
 
-### Доступ к веб-интерфейсу
+### Accessing the web interface
 
-Откройте веб-интерфейс Pangolin сервера:
+Open the Pangolin server web interface:
 
 ```
 https://yourdomain.com
 ```
 
-Войдите используя административные учётные данные, созданные при первоначальной настройке.
+Log in using the administrative credentials created during the initial setup.
 
-### Регистрация клиента
+### Registering the client
 
-1. Navigate to раздел управления клиентами
-2. Создайте нового клиента или найдите существующего
-3. Скопируйте конфигурацию клиента (если требуется)
-4. Make sure, что клиент авторизован для подключения
+1. Navigate to the client management section
+2. Create a new client or find an existing one
+3. Copy the client configuration (if required)
+4. Make sure that the client is authorized to connect
 
-### Verification подключения клиента
+### Verification of the client connection
 
-На локальной машине проверьте логи клиента:
+On the local machine, check the client logs:
 
 ```bash
 cd /opt/pangolin
 docker-compose logs -f gerbil
 ```
 
-Вы должны увидеть сообщения о успешном подключении к серверу.
+You should see messages about a successful connection to the server.
 
-## Verification Wireguard подключения
+## Verification Wireguard connection
 
-После регистрации клиента проверьте статус Wireguard туннеля.
+After registering the client, check the status of the Wireguard tunnel.
 
-### На сервере
+### On the server
 
-Check статус Wireguard на сервере:
+Check the Wireguard status on the server:
 
 ```bash
 ssh user@your-vps-ip "docker exec gerbil wg show"
 ```
 
-Вы должны увидеть подключенных клиентов в списке peers.
+You should see the connected clients in the peers list.
 
-### На клиенте
+### On the client
 
-Check статус Wireguard на клиенте:
+Check the Wireguard status on the client:
 
 ```bash
 cd /opt/pangolin
 docker exec gerbil wg show
 ```
 
-Вы должны увидеть активный интерфейс Wireguard и подключение к серверу.
+You should see an active Wireguard interface and a connection to the server.
 
-### Verification соединения
+### Verification of the connection
 
-Check ping до сервера через туннель:
+Check the ping to the server through the tunnel:
 
 ```bash
-ping 10.99.0.1  # IP адрес сервера в Wireguard сети
+ping 10.99.0.1  # IP address of the server in the Wireguard network
 ```
 
-Если ping работает, туннель установлен правильно.
+If the ping works, the tunnel is set up correctly.
 
-## Configuration маршрутизации портов и доменов
+## Configuration of port and domain routing
 
-После успешного подключения клиента, можно настроить маршрутизацию портов и доменов.
+After the client connects successfully, you can configure port and domain routing.
 
-### Configuration через веб-интерфейс Pangolin
+### Configuration through the Pangolin web interface
 
-1. Войдите в веб-интерфейс Pangolin
-2. Navigate to раздел настройки маршрутизации
-3. Добавьте правило для проброса порта/домена:
-   - **Внешний домен:** домен, который будет использоваться для доступа
-   - **Внутренний адрес:** адрес сервиса на клиентской стороне (например, `service.local:8080`)
-   - **Протокол:** HTTP/HTTPS
+1. Log in to the Pangolin web interface
+2. Navigate to the routing settings section
+3. Add a rule to forward a port/domain:
+   - **External domain:** the domain that will be used for access
+   - **Internal address:** the address of the service on the client side (for example, `service.local:8080`)
+   - **Protocol:** HTTP/HTTPS
 
-### Пример конфигурации
+### Configuration example
 
-Примеры правил маршрутизации:
+Example routing rules:
 
 - `gitlab.local` → `gitlab.code.svc.cluster.local:80`
 - `youtrack.local` → `youtrack.code.svc.cluster.local:80`
 - `vaultwarden.local` → `vaultwarden.data.svc.cluster.local:80`
 
-### Конфигурация Traefik на сервере
+### Traefik configuration on the server
 
-Traefik на сервере автоматически настроен для проксирования запросов через туннель. Make sure, что:
+Traefik on the server is automatically configured to proxy requests through the tunnel. Make sure that:
 
-1. Traefik запущен и работает
-2. Правила маршрутизации правильно настроены в Pangolin
-3. Сертификаты SSL настроены (через Let's Encrypt или вручную)
+1. Traefik is running and working
+2. The routing rules are correctly configured in Pangolin
+3. SSL certificates are configured (through Let's Encrypt or manually)
 
-## Доступ к сервисам через туннель
+## Accessing services through the tunnel
 
-После настройки маршрутизации, сервисы будут доступны через настроенные домены.
+After configuring routing, the services will be accessible through the configured domains.
 
-### Verification доступности
+### Verification of availability
 
-Check доступность сервисов:
+Check the availability of the services:
 
 ```bash
-# Verification через curl
+# Verification through curl
 curl -I https://gitlab.local
 curl -I https://youtrack.local
 curl -I https://vaultwarden.local
@@ -178,9 +171,9 @@ curl -I https://vaultwarden.local
 
 ### Configuration DNS
 
-Для доступа к сервисам через домены, настройте DNS записи:
+To access the services through domains, configure the DNS records:
 
-**Вариант 1: Использование домена сервера с поддоменами**
+**Option 1: Using the server domain with subdomains**
 
 ```
 gitlab.yourdomain.com -> YOUR_VPS_IP
@@ -188,9 +181,9 @@ youtrack.yourdomain.com -> YOUR_VPS_IP
 vaultwarden.yourdomain.com -> YOUR_VPS_IP
 ```
 
-**Вариант 2: Использование локального DNS (для разработки)**
+**Option 2: Using local DNS (for development)**
 
-Добавьте записи в `/etc/hosts` (или `C:\Windows\System32\drivers\etc\hosts` на Windows):
+Add entries to `/etc/hosts` (or `C:\Windows\System32\drivers\etc\hosts` on Windows):
 
 ```
 YOUR_VPS_IP gitlab.local
@@ -198,23 +191,23 @@ YOUR_VPS_IP youtrack.local
 YOUR_VPS_IP vaultwarden.local
 ```
 
-### Использование Glance для централизованного доступа
+### Using Glance for centralized access
 
-После настройки всех сервисов, можно использовать Glance как центральный дашборд:
+After configuring all services, you can use Glance as a central dashboard:
 
-1. Откройте `glance.local` (или соответствующий домен)
-2. Добавьте ссылки на все сервисы
-3. Настройте виджеты и кастомизацию
+1. Open `glance.local` (or the corresponding domain)
+2. Add links to all services
+3. Configure widgets and customization
 
-## Configuration SSH туннелей через Pangolin
+## Configuration SSH tunnels through Pangolin
 
-Pangolin также может использоваться для создания SSH туннелей к сервисам на локальной машине.
+Pangolin can also be used to create SSH tunnels to services on the local machine.
 
-### Конфигурация SSH
+### SSH configuration
 
-Роль `client_setup` автоматически настраивает SSH конфигурацию для доступа через туннель.
+The `local-access` role automatically configures the SSH configuration for access through the tunnel.
 
-Check файл `~/.ssh/config`:
+Check the `~/.ssh/config` file:
 
 ```
 Host pangolin-tunnel
@@ -227,53 +220,53 @@ Host pangolin-tunnel
     ServerAliveCountMax 3
 ```
 
-### Использование SSH туннеля
+### Using the SSH tunnel
 
 ```bash
-# Подключение через туннель
+# Connecting through the tunnel
 ssh pangolin-tunnel
 
-# Проброс порта через SSH
+# Forwarding a port through SSH
 ssh -L 8080:localhost:8080 pangolin-tunnel
 ```
 
-## Мониторинг и логирование
+## Monitoring and logging
 
-### Логи Pangolin клиента
+### Pangolin client logs
 
-Check логи на локальной машине:
+Check the logs on the local machine:
 
 ```bash
 cd /opt/pangolin
 docker-compose logs -f
 ```
 
-### Логи на сервере
+### Logs on the server
 
-Check логи на сервере:
+Check the logs on the server:
 
 ```bash
 ssh user@your-vps-ip "cd /opt/pangolin && docker-compose logs -f"
 ```
 
-### Статус Wireguard
+### Wireguard status
 
-Check статус соединений:
+Check the status of the connections:
 
 ```bash
-# На клиенте
+# On the client
 cd /opt/pangolin
 docker exec gerbil wg show
 
-# На сервере
+# On the server
 ssh user@your-vps-ip "docker exec gerbil wg show"
 ```
 
 ## Troubleshooting
 
-### Issue: Клиент не подключается к серверу
+### Issue: The client does not connect to the server
 
-Check логи клиента:
+Check the client logs:
 
 ```bash
 cd /opt/pangolin
@@ -281,88 +274,82 @@ docker-compose logs gerbil
 ```
 
 Check:
-- Правильность домена сервера в конфигурации
-- Доступность сервера из сети
-- Статус сервера Pangolin
+- The correctness of the server domain in the configuration
+- The reachability of the server from the network
+- The status of the Pangolin server
 
-### Issue: Wireguard туннель не работает
+### Issue: The Wireguard tunnel does not work
 
-Check статус Wireguard:
+Check the Wireguard status:
 
 ```bash
 docker exec gerbil wg show
 ```
 
-Make sure, что:
-- Порт 51820/UDP открыт в firewall на сервере
-- Клиент зарегистрирован на сервере
-- Конфигурация Wireguard правильная
+Make sure that:
+- Port 51820/UDP is open in the firewall on the server
+- The client is registered on the server
+- The Wireguard configuration is correct
 
-### Issue: Домены не резолвятся
+### Issue: Domains do not resolve
 
-Check DNS настройки:
+Check the DNS settings:
 
 ```bash
-# Verification DNS резолюции
+# Verification of DNS resolution
 nslookup gitlab.local
 dig gitlab.local
 
-# Verification /etc/hosts
+# Verification of /etc/hosts
 cat /etc/hosts
 ```
 
-Make sure, что домены правильно настроены в DNS или `/etc/hosts`.
+Make sure that the domains are correctly configured in DNS or `/etc/hosts`.
 
-### Issue: Сервисы недоступны через туннель
+### Issue: Services are not accessible through the tunnel
 
-Check маршрутизацию в Pangolin:
+Check the routing in Pangolin:
 
-1. Войдите в веб-интерфейс Pangolin
-2. Check правила маршрутизации
-3. Make sure, что сервисы доступны локально
-4. Check логи Traefik на сервере
+1. Log in to the Pangolin web interface
+2. Check the routing rules
+3. Make sure that the services are accessible locally
+4. Check the Traefik logs on the server
 
-### Issue: Ошибки SSL сертификатов
+### Issue: SSL certificate errors
 
-Check настройки Let's Encrypt:
+Check the Let's Encrypt settings:
 
 ```bash
 ssh user@your-vps-ip "cd /opt/pangolin && ls -la config/letsencrypt/"
 ```
 
-Make sure, что:
-- Домены правильно настроены
-- Порты 80 и 443 открыты
-- Let's Encrypt может проверить домен
+Make sure that:
+- The domains are correctly configured
+- Ports 80 and 443 are open
+- Let's Encrypt can verify the domain
 
-## Безопасность
+## Security
 
-### Рекомендации по безопасности
+### Security recommendations
 
-1. **Используйте сильные пароли** для доступа к Pangolin
-2. **Ограничьте доступ** к веб-интерфейсу Pangolin (например, через VPN или whitelist IP)
-3. **Регулярно обновляйте** компоненты Pangolin
-4. **Мониторьте логи** на предмет подозрительной активности
-5. **Используйте firewall** для ограничения доступа к портам
+1. **Use strong passwords** for access to Pangolin
+2. **Restrict access** to the Pangolin web interface (for example, through a VPN or IP whitelist)
+3. **Regularly update** the Pangolin components
+4. **Monitor the logs** for suspicious activity
+5. **Use a firewall** to restrict access to ports
 
-### Ротация ключей
+### Key rotation
 
-Периодически меняйте ключи Wireguard:
+Periodically change the Wireguard keys:
 
-1. В веб-интерфейсе Pangolin
-2. Перегенерируйте ключи для клиентов
-3. Обновите конфигурацию на клиенте
-4. Перезапустите клиент
+1. In the Pangolin web interface
+2. Regenerate the keys for the clients
+3. Update the configuration on the client
+4. Restart the client
 
 ## Next Steps
 
-После успешной настройки Pangolin и Wireguard туннеля:
+After successfully configuring the Pangolin and Wireguard tunnel:
 
-1. [Настройка сервисов](./services-configuration.md) - первоначальная настройка каждого сервиса
-2. [Проверка и мониторинг](./verification.md) - проверка работоспособности всей системы
-
-
-
-
-
-
+1. [Services configuration](./services-configuration.md) - initial configuration of each service
+2. [Verification and monitoring](./verification.md) - checking the health of the entire system

@@ -25,7 +25,7 @@ chart-base:
         prometheus.io/path: "/metrics"
       containers:
         - name: syncthing
-          image: syncthing/syncthing:1.27.0
+          image: syncthing/syncthing:2.1.1
           imagePullPolicy: IfNotPresent
           ports:
             - { containerPort: 8384, name: gui, protocol: TCP }

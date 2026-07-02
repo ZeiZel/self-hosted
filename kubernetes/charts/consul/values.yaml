@@ -12,7 +12,7 @@ chart-base:
         component: server
       containers:
         - name: consul
-          image: hashicorp/consul:1.18.2
+          image: hashicorp/consul:2.0.1
           imagePullPolicy: IfNotPresent
           command:
             - consul

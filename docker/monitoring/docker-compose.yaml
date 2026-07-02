@@ -1,6 +1,6 @@
 services:
   load_generator:
-    image: curlimages/curl
+    image: curlimages/curl:8.21.0
     volumes:
       - ./load_generator.sh:/usr/bin/load_generator
     command: /usr/bin/load_generator
@@ -8,7 +8,7 @@ services:
       - varnish
 
   varnish:
-    image: varnish
+    image: varnish:9.0
     command: -n varnish
     volumes:
       - workdir:/var/lib/varnish
@@ -19,13 +19,13 @@ services:
       - origin
 
   origin:
-    image: python
+    image: python:3.14
     command: python -m http.server --directory /orig_data 80
     volumes:
       - ${ORIGIN_DATA:-./data/origin}:/orig_data
 
   grafana:
-    image: grafana/grafana-enterprise
+    image: grafana/grafana-enterprise:13.1.0
     ports:
       - 3000:${GRAFANA_PORT:-3000}
     volumes:
@@ -49,12 +49,12 @@ services:
         COPY --from=0 /tmp/prometheus_varnish_exporter /tmp/prometheus_varnish_exporter
 
   prometheus:
-    image: prom/prometheus
+    image: prom/prometheus:v3.13.0
     volumes:
       - ${PROMETHEUS_CONF:-./conf/prometheus.yml}:/etc/prometheus/prometheus.yml
 
   loki:
-    image: grafana/loki:2.9.0
+    image: grafana/loki:3.7.3
     command: -config.file=/etc/loki/local-config.yaml
 
   promtail:

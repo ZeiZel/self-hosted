@@ -132,8 +132,41 @@ func newDeployCmd(g *Global) *cobra.Command {
 	cmd.Flags().StringVar(&localDomain, "local-domain", "zeizel.local", "Local domain suffix")
 	cmd.Flags().StringVar(&cfgFile, "config", "", "Headless deployment config (deployment.yaml)")
 
-	cmd.AddCommand(deployHistoryCmd(g), deployCleanCmd(g))
+	cmd.AddCommand(deployHistoryCmd(g), deployCleanCmd(g), deployReleaseCmd(g))
 	return cmd
+}
+
+// deployReleaseCmd applies individual Helmfile releases by name against the
+// current kubeconfig, bypassing the phase system. Useful for local clusters to
+// bring up base components (e.g. namespaces, cert-manager) without running the
+// full base chain. Flow: CLI -> ansible (localhost) -> helmfile apply --selector.
+func deployReleaseCmd(g *Global) *cobra.Command {
+	var env string
+	var sets []string
+	c := &cobra.Command{
+		Use:   "release <name...>",
+		Short: "Apply individual Helmfile releases locally (bypasses phases)",
+		Long: "Apply one or more Helmfile releases by name, in order, against the " +
+			"current kubeconfig. Runs on localhost via ansible; no inventory needed.\n\n" +
+			"Example:\n  selfhost deploy release namespaces cert-manager\n" +
+			"  selfhost deploy release namespaces --set gateway.enabled=false --set metrics.enabled=false",
+		Args: cobra.MinimumNArgs(1),
+		RunE: func(_ *cobra.Command, args []string) error {
+			ui.Header("Deploy releases: " + strings.Join(args, ", "))
+			extra := []string{
+				"-i", "localhost,", "--connection=local",
+				"-e", "releases=" + strings.Join(args, ","),
+				"-e", "helmfile_env=" + env,
+			}
+			if len(sets) > 0 {
+				extra = append(extra, "-e", "hset="+strings.Join(sets, ","))
+			}
+			return runPlaybook("deploy-releases.yml", extra...)
+		},
+	}
+	c.Flags().StringVar(&env, "env", "k8s", "Helmfile environment")
+	c.Flags().StringArrayVar(&sets, "set", nil, "Helm value override key=value (repeatable), applied to every release")
+	return c
 }
 
 // runPhaseWithRetry runs a phase, prompting retry/skip/abort/debug on failure.

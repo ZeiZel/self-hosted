@@ -37,7 +37,7 @@ Best for:
 - Configuration management
 - Multi-server deployments
 
-**Location:** `ansible/pangolin/` directory
+**Location:** `ansible/` directory (single phased `all.yml` playbook, wrapped by the `selfhost` CLI)
 
 ### Terraform
 

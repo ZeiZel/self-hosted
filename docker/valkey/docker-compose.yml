@@ -3,7 +3,7 @@ services:
   valkey:
     container_name: valkey
     hostname: valkey
-    image: valkey/valkey:latest
+    image: valkey/valkey:9.1.0
     build: .
     volumes:
       - ./conf/valkey.conf:/usr/local/etc/valkey/valkey.conf

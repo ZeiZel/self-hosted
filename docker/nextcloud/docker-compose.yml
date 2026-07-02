@@ -1,7 +1,7 @@
 ---
 services:
   nextcloud:
-    image: nextcloud:${NEXTCLOUD_VERSION:-latest}
+    image: nextcloud:${NEXTCLOUD_VERSION:-34-apache}
     container_name: nextcloud_server
     restart: always
     ports:
@@ -28,7 +28,7 @@ services:
       - files:/var/www/html/data
 
   postgresql:
-    image: postgres:latest
+    image: postgres:18
     container_name: nextcloud_postgresql
     restart: always
     environment:
@@ -44,7 +44,7 @@ services:
       - postgresql:/var/lib/postgresql
 
   redis:
-    image: redis:latest
+    image: redis:8
     container_name: nextcloud_redis
     restart: always
     command: ["--databases", "1"]

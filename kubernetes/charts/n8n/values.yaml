@@ -6,7 +6,7 @@ chart-base:
       replicas: 1
       containers:
         - name: n8n
-          image: n8nio/n8n:1.70.0
+          image: n8nio/n8n:2.29.2
           imagePullPolicy: IfNotPresent
           ports:
             - { name: http, containerPort: 5678 }

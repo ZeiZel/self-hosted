@@ -21,7 +21,7 @@ chart-base:
       initContainers:
         # Ожидание Hub
         - name: wait-for-hub
-          image: curlimages/curl:8.11.1  # Pinned version - do not use :latest
+          image: curlimages/curl:8.21.0  # Pinned version - do not use :latest
           command:
             - sh
             - -c
@@ -33,7 +33,7 @@ chart-base:
               echo "Hub is ready!"
         # Ожидание GitLab
         - name: wait-for-gitlab
-          image: curlimages/curl:8.11.1  # Pinned version - do not use :latest
+          image: curlimages/curl:8.21.0  # Pinned version - do not use :latest
           command:
             - sh
             - -c
@@ -45,7 +45,7 @@ chart-base:
               echo "GitLab is ready!"
       containers:
         - name: youtrack
-          image: jetbrains/youtrack:2024.3
+          image: jetbrains/youtrack:2026.2.17012
           imagePullPolicy: IfNotPresent
           ports:
             - { name: http, containerPort: 8080 }

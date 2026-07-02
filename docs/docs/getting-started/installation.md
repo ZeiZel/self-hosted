@@ -57,7 +57,7 @@ cd ..
 
 ### 4. Configure Ansible Inventory
 
-Update `ansible/pangolin/inventory/hosts.yml` with your server details.
+Copy `ansible/inventory/hosts.example.ini` to `ansible/inventory/hosts.ini` and fill in your server details (INI format: `[vps]`, `[masters]`, `[workers]`, `[local]` groups).
 
 ### 5. Setup GPG/SOPS
 
@@ -81,19 +81,27 @@ export GPG_TTY=$(tty)
 
 ### 6. Deploy with Ansible
 
+Deployments run through the single phased `ansible/all.yml` playbook, scoped with tags. The recommended entry point is the `selfhost` CLI, which wraps these Ansible runs:
+
 ```bash
-cd ansible/pangolin
+selfhost deploy
+```
 
-# Basic local server setup
-ansible-playbook -i inventory/hosts.yml playbooks/deploy_local.yml
+Or invoke `ansible-playbook` directly:
 
-# Kubernetes cluster deployment
-ansible-playbook -i inventory/hosts.yml playbooks/deploy_local_k8s.yml
+```bash
+cd ansible
 
-# VPS deployment
-ansible-playbook -i inventory/hosts.yml playbooks/deploy_vps.yml
+# Local host setup
+ansible-playbook -i inventory/hosts.ini all.yml --tags setup_host
 
-cd ../..
+# Kubernetes cluster deployment (Kubespray)
+ansible-playbook -i inventory/hosts.ini all.yml --tags kubespray
+
+# VPS gateway deployment
+ansible-playbook -i inventory/hosts.ini all.yml --tags gateway
+
+cd ..
 ```
 
 ### 7. Deploy Kubernetes Services
@@ -127,8 +135,8 @@ kubectl get pods --all-namespaces
 # Check services
 kubectl get services --all-namespaces
 
-# Check ingress
-kubectl get ingress --all-namespaces
+# Check routes (Gateway API HTTPRoute is the default)
+kubectl get httproute --all-namespaces
 ```
 
 ## Next Steps

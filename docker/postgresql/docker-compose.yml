@@ -1,7 +1,7 @@
 ---
 services:
   postgres:
-    image: postgres:latest
+    image: postgres:18
     container_name: vw-postgres
     ports: [${POSTGRESQL_OUT_PORT:-5432}:5432]
     environment:

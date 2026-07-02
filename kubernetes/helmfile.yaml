@@ -8,6 +8,8 @@ bases:
 helmDefaults:
   wait: true
   atomic: true
-  force: true
+  # force (helm --force-replace) is incompatible with Helm 4's default
+  # server-side apply ("cannot use server-side apply and force replace together")
+  # and does a destructive delete+recreate. Left off for Helm 4 compatibility.
   devel: true
   createNamespace: true

@@ -1,7 +1,7 @@
 ---
 services:
   postgres:
-    image: postgres:17-alpine
+    image: postgres:18-alpine
     container_name: coder-postgres
     restart: unless-stopped
     environment:
@@ -20,7 +20,7 @@ services:
       start_period: 20s
 
   coder:
-    image: ghcr.io/coder/coder:${CODER_VERSION:-latest}
+    image: ghcr.io/coder/coder:${CODER_VERSION:-v2.33.11}
     container_name: coder
     restart: unless-stopped
     depends_on:

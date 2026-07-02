@@ -4,31 +4,31 @@ sidebar_position: 4
 
 # Configuration Secrets
 
-Все секреты в проекте управляются через SOPS (Secrets Operations) с использованием GPG для шифрования. Это обеспечивает безопасное хранение паролей, токенов и других чувствительных данных в репозитории.
+All secrets in the project are managed through SOPS (Secrets Operations) using GPG for encryption. This ensures secure storage of passwords, tokens, and other sensitive data in the repository.
 
-## Configuration GPG ключей для SOPS
+## GPG Key Configuration for SOPS
 
-Если вы ещё не настроили GPG ключи, следуйте инструкциям из раздела [Подготовка локального устройства](./preparation.md#настройка-gpg-ключей-для-sops).
+If you have not yet configured your GPG keys, follow the instructions in the [Local Device Preparation](./preparation.md#gpg-key-configuration-for-sops) section.
 
-### Verification существующих ключей
+### Verifying existing keys
 
-Check список ваших GPG ключей:
+Check the list of your GPG keys:
 
 ```bash
 gpg --list-secret-keys --keyid-format LONG
 ```
 
-Вы должны увидеть ваш ключ. Найдите строку вида:
+You should see your key. Find a line like:
 
 ```
 sec   rsa4096/1E89965BF6B3B6D4AA02D096FEB9EA0B2906786F 2024-01-01
 ```
 
-Где `1E89965BF6B3B6D4AA02D096FEB9EA0B2906786F` - это ID вашего ключа.
+Where `1E89965BF6B3B6D4AA02D096FEB9EA0B2906786F` is your key ID.
 
 ### Configuration .sops.yaml
 
-Make sure, что файл `.sops.yaml` в корне проекта содержит ID вашего GPG ключа:
+Make sure that the `.sops.yaml` file in the project root contains your GPG key ID:
 
 ```yaml
 ---
@@ -36,68 +36,68 @@ creation_rules:
   - pgp: YOUR_GPG_KEY_ID
 ```
 
-Замените `YOUR_GPG_KEY_ID` на ID вашего ключа.
+Replace `YOUR_GPG_KEY_ID` with your key ID.
 
-## Редактирование Secrets
+## Editing Secrets
 
-Секреты хранятся в файле `kubernetes/envs/k8s/secrets/_all.yaml`, который зашифрован через SOPS.
+Secrets are stored in the file `kubernetes/envs/k8s/secrets/_all.yaml`, which is encrypted with SOPS.
 
-### Открытие файла для редактирования
+### Opening the file for editing
 
-Для редактирования секретов используйте `helm secrets edit`:
+To edit secrets, use `helm secrets edit`:
 
 ```bash
 cd kubernetes
 helm secrets edit envs/k8s/secrets/_all.yaml
 ```
 
-Эта команда:
-1. Расшифрует файл используя ваш GPG ключ
-2. Откроет его в редакторе (определяется переменной `$EDITOR`)
-3. После сохранения автоматически зашифрует файл обратно
+This command:
+1. Decrypts the file using your GPG key
+2. Opens it in the editor (determined by the `$EDITOR` variable)
+3. Automatically re-encrypts the file after saving
 
-### Альтернативный способ (sops)
+### Alternative method (sops)
 
-Можно использовать sops напрямую:
+You can use sops directly:
 
 ```bash
 cd kubernetes
 sops envs/k8s/secrets/_all.yaml
 ```
 
-Make sure, что переменная `GPG_TTY` установлена:
+Make sure that the `GPG_TTY` variable is set:
 
 ```bash
 export GPG_TTY=$(tty)
 ```
 
-### Структура файла Secrets
+### Secrets file structure
 
-Файл `_all.yaml` имеет следующую структуру:
+The `_all.yaml` file has the following structure:
 
 ```yaml
 secrets:
-  # Authentik секреты
+  # Authentik secrets
   authentikSecret: ENC[...]
   authentikBootstrapPassword: ENC[...]
   authentikBootstrapToken: ENC[...]
   authentikLdapPassword: ENC[...]
   authentikSamlCert: ENC[...]
 
-  # SMTP секреты
+  # SMTP secrets
   smtpUsername: ENC[...]
   smtpPassword: ENC[...]
 
-  # GitLab секреты
+  # GitLab secrets
   gitlabToken: ENC[...]
   gitlabRunnerToken: ENC[...]
 
-  # Базы данных
+  # Databases
   postgresPassword: ENC[...]
   pgadminPassword: ENC[...]
   mongoPassword: ENC[...]
 
-  # Секреты сервисов
+  # Service secrets
   vaultwardenEmail: ENC[...]
   vaultwardenPassword: ENC[...]
   grafanaPassword: ENC[...]
@@ -111,119 +111,119 @@ secrets:
   minioAccessKey: ENC[...]
   minioSecretKey: ENC[...]
 
-  # Домены
+  # Domains
   domain: ENC[...]
   ingressDomain: ENC[...]
 ```
 
-### Добавление нового секрета
+### Adding a new secret
 
-1. Откройте файл для редактирования:
+1. Open the file for editing:
 
 ```bash
 helm secrets edit envs/k8s/secrets/_all.yaml
 ```
 
-2. Добавьте новый секрет в секцию `secrets`:
+2. Add the new secret to the `secrets` section:
 
 ```yaml
 secrets:
   myNewSecret: "my-secret-value"
 ```
 
-3. Сохраните файл - SOPS автоматически зашифрует значение.
+3. Save the file - SOPS will automatically encrypt the value.
 
-### Редактирование существующего секрета
+### Editing an existing secret
 
-1. Откройте файл для редактирования:
+1. Open the file for editing:
 
 ```bash
 helm secrets edit envs/k8s/secrets/_all.yaml
 ```
 
-2. Найдите нужный секрет и измените его значение (уже расшифрованное):
+2. Find the desired secret and change its value (already decrypted):
 
 ```yaml
 secrets:
   vaultwardenPassword: "new-password-here"
 ```
 
-3. Сохраните файл - SOPS автоматически зашифрует новое значение.
+3. Save the file - SOPS will automatically encrypt the new value.
 
-## Структура Secrets для каждого сервиса
+## Secrets structure for each service
 
-Ниже приведены основные секреты, которые требуются для каждого сервиса:
+Below are the main secrets required for each service:
 
 ### Authentik
 
-- `authentikSecret` - секретный ключ для подписи токенов
-- `authentikBootstrapPassword` - пароль для начальной загрузки
-- `authentikBootstrapToken` - токен для начальной загрузки
-- `authentikLdapPassword` - пароль для LDAP подключения
-- `authentikSamlCert` - сертификат для SAML
+- `authentikSecret` - secret key for signing tokens
+- `authentikBootstrapPassword` - bootstrap password
+- `authentikBootstrapToken` - bootstrap token
+- `authentikLdapPassword` - password for the LDAP connection
+- `authentikSamlCert` - certificate for SAML
 
-### Базы данных
+### Databases
 
-- `postgresPassword` - пароль суперпользователя PostgreSQL
-- `pgadminPassword` - пароль для pgAdmin
-- `mongoPassword` - пароль для MongoDB
+- `postgresPassword` - PostgreSQL superuser password
+- `pgadminPassword` - password for pgAdmin
+- `mongoPassword` - password for MongoDB
 
 ### GitLab
 
-- `gitlabToken` - токен API GitLab
-- `gitlabRunnerToken` - токен для GitLab Runner
+- `gitlabToken` - GitLab API token
+- `gitlabRunnerToken` - token for GitLab Runner
 
 ### Vaultwarden
 
-- `vaultwardenEmail` - email администратора
-- `vaultwardenPassword` - пароль администратора
+- `vaultwardenEmail` - administrator email
+- `vaultwardenPassword` - administrator password
 
-### Мониторинг
+### Monitoring
 
-- `grafanaPassword` - пароль администратора Grafana
+- `grafanaPassword` - Grafana administrator password
 
 ### Notesnook
 
-- `notesnookSecret` - секретный ключ для Notesnook
+- `notesnookSecret` - secret key for Notesnook
 
 ### Stalwart
 
-- `stalwartLdapPassword` - пароль для LDAP подключения
+- `stalwartLdapPassword` - password for the LDAP connection
 
 ### YouTrack
 
-- `youtrackGitlabToken` - токен для интеграции с GitLab
+- `youtrackGitlabToken` - token for GitLab integration
 
 ### Nextcloud
 
-- `nextcloudAdminPassword` - пароль администратора
+- `nextcloudAdminPassword` - administrator password
 
 ### Penpot
 
-- `penpotApiSecretKey` - секретный ключ API
+- `penpotApiSecretKey` - API secret key
 
 ### MinIO
 
-- `minioAccessKey` - ключ доступа
-- `minioSecretKey` - секретный ключ
+- `minioAccessKey` - access key
+- `minioSecretKey` - secret key
 
 ### SMTP
 
-- `smtpUsername` - имя пользователя SMTP
-- `smtpPassword` - пароль SMTP
+- `smtpUsername` - SMTP username
+- `smtpPassword` - SMTP password
 
-### Домены
+### Domains
 
-- `domain` - основной домен
-- `ingressDomain` - домен для ingress
+- `domain` - primary domain
+- `ingressDomain` - ingress domain
 
-## Синхронизация Secrets с Vault
+## Synchronizing Secrets with Vault
 
-После развёртки Vault (см. [Развёртка базовой инфраструктуры](./infrastructure-deployment.md)), секреты можно синхронизировать с Vault для централизованного управления.
+After deploying Vault (see [Base Infrastructure Deployment](./infrastructure-deployment.md)), secrets can be synchronized with Vault for centralized management.
 
-### Использование скрипта синхронизации
+### Using the synchronization script
 
-Скрипт `vault-sync-secrets.sh` синхронизирует секреты из `_all.yaml` в Vault:
+The `vault-sync-secrets.sh` script synchronizes secrets from `_all.yaml` into Vault:
 
 ```bash
 cd kubernetes/scripts
@@ -231,49 +231,49 @@ chmod +x vault-sync-secrets.sh
 ./vault-sync-secrets.sh
 ```
 
-Для синхронизации конкретного сервиса:
+To synchronize a specific service:
 
 ```bash
 ./vault-sync-secrets.sh vaultwarden
 ./vault-sync-secrets.sh authentik
 ```
 
-### Что делает скрипт
+### What the script does
 
-1. Расшифровывает секреты из `_all.yaml` используя SOPS
-2. Загружает секреты в Vault по пути `secret/<service>/secrets`
-3. Секреты доступны сервисам через Vault Agent Injector
+1. Decrypts secrets from `_all.yaml` using SOPS
+2. Loads secrets into Vault at the path `secret/<service>/secrets`
+3. Secrets become available to services through the Vault Agent Injector
 
-### Verification синхронизации
+### Verifying synchronization
 
-После синхронизации проверьте секреты в Vault:
+After synchronization, check the secrets in Vault:
 
 ```bash
 kubectl exec -n service deployment/vault -- vault kv get secret/vaultwarden/secrets
 ```
 
-## Безопасность
+## Security
 
-### Хранение GPG ключей
+### Storing GPG keys
 
-- Храните приватный GPG ключ в безопасном месте
-- Не коммитьте приватный ключ в репозиторий
-- Используйте ключ с парольной фразой
-- Регулярно делайте резервные копии ключей
+- Store your private GPG key in a secure location
+- Do not commit the private key to the repository
+- Use a key with a passphrase
+- Regularly make backups of your keys
 
-### Ротация Secrets
+### Secrets rotation
 
-Рекомендуется регулярно менять секреты:
+It is recommended to change secrets regularly:
 
-1. Откройте файл для редактирования
-2. Измените значения секретов
-3. Сохраните файл
-4. Синхронизируйте с Vault (если используется)
-5. Перезапустите сервисы для применения изменений
+1. Open the file for editing
+2. Change the secret values
+3. Save the file
+4. Synchronize with Vault (if used)
+5. Restart the services to apply the changes
 
-### Множественные ключи
+### Multiple keys
 
-Для командной работы можно использовать несколько GPG ключей:
+For team work, you can use multiple GPG keys:
 
 ```yaml
 ---
@@ -284,47 +284,47 @@ creation_rules:
       KEY3_ID
 ```
 
-Все указанные ключи смогут расшифровывать и шифровать файлы.
+All specified keys will be able to decrypt and encrypt files.
 
 ## Troubleshooting
 
-### Issue: Не могу расшифровать файл
+### Issue: Cannot decrypt the file
 
-Check, что ваш GPG ключ доступен:
+Check that your GPG key is available:
 
 ```bash
 gpg --list-secret-keys
 ```
 
-Check, что ключ указан в `.sops.yaml`:
+Check that the key is specified in `.sops.yaml`:
 
 ```bash
 cat .sops.yaml
 ```
 
-### Issue: GPG_TTY не установлена
+### Issue: GPG_TTY is not set
 
-Установите переменную окружения:
+Set the environment variable:
 
 ```bash
 export GPG_TTY=$(tty)
-echo 'export GPG_TTY=$(tty)' >> ~/.bashrc  # или ~/.zshrc
+echo 'export GPG_TTY=$(tty)' >> ~/.bashrc  # or ~/.zshrc
 ```
 
-### Issue: SOPS не может найти ключ
+### Issue: SOPS cannot find the key
 
-Check метаданные файла:
+Check the file metadata:
 
 ```bash
 sops envs/k8s/secrets/_all.yaml --metadata
 ```
 
-Make sure, что ваш ключ указан в метаданных.
+Make sure that your key is specified in the metadata.
 
 ## Next Steps
 
-После настройки секретов:
+After configuring secrets:
 
-1. [Развёртка базовой инфраструктуры](./infrastructure-deployment.md) - развёртка базовых сервисов (Traefik, Consul, Vault)
-
-
+1. [Base Infrastructure Deployment](./infrastructure-deployment.md) - deploy the base services (Traefik, Consul, Vault)
+</content>
+</invoke>

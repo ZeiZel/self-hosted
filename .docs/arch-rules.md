@@ -1,9 +1,16 @@
 # Architectural Rules & Design Principles for AI Agent
 
-**Document Version:** 1.0
-**Date:** February 1, 2026
+**Document Version:** 2.0.0
+**Date:** July 1, 2026
 **Target Audience:** AI Agents, Architects, DevOps Engineers
 **Context:** Enterprise Self-Hosted Infrastructure Platform
+
+> **Current architecture note.** Rules below are normative (the target design). The repo
+> now realizes them via a shared **`chart-base`** subchart (app charts have empty
+> `templates/`), **Gateway API (HTTPRoute)** routing, **Helm 4**, and a **Go/Charm**
+> `selfhost` CLI. Where a rule's illustrative snippet predates these, the surrounding
+> prose flags the current form. Known deviations from the normative security rules are
+> tracked in [production-readiness-review.md](./production-readiness-review.md).
 
 ***
 
@@ -67,19 +74,29 @@ ansible-playbook -i inventory/hosts.ini all.yml --vault-password-file ~/.ansible
 ansible-playbook -i inventory/hosts.ini all.yml --tags infrastructure,databases
 ```
 
-#### ARCH-005.3: CLI - Wrapper and Monitoring
-- **ARCH-005.3.1**: CLI is a wrapper around Ansible playbook execution
-- **ARCH-005.3.2**: CLI provides interactive prompts and phase management
-- **ARCH-005.3.3**: CLI manages monitoring daemon for Telegram alerts
-- **ARCH-005.3.4**: CLI does NOT directly interact with Kubernetes or Helm
-- **ARCH-005.3.5**: `selfhost deploy` = runs Ansible with appropriate tags
-- **ARCH-005.3.6**: `selfhost monitor` = manages TUI monitoring and alerts
+#### ARCH-005.3: CLI - Operator Interface and Monitoring
+- **ARCH-005.3.1**: The CLI (`selfhost`) is a single static **Go** binary built on the
+  Charm stack (cobra + bubbletea + lipgloss + bubbles + ntcharts + huh); it replaced the
+  former Bun + NestJS + Ink implementation.
+- **ARCH-005.3.2**: CLI orchestrates deployment by invoking **Ansible** (phased,
+  resumable) — it does not replace Ansible/Helmfile responsibilities.
+- **ARCH-005.3.3**: CLI runs a **native** monitoring daemon (`selfhost daemon`) under
+  launchd/systemd — no Docker/Bun — with a local HTTP long-poll API and SQLite state;
+  it sends Telegram alerts.
+- **ARCH-005.3.4**: CLI provides full operator surface: inventory, service selection,
+  placement/balance, phased deploy, `deploy release` (local Helmfile selector), node
+  scaling (kubespray), monitor TUI, certs/gateway/vpn helpers.
+- **ARCH-005.3.5**: `selfhost deploy` = runs Ansible phases with the right tags.
+- **ARCH-005.3.6**: `selfhost monitor` = live TUI; `selfhost daemon` = background alerts.
 
 ```bash
-# CLI deployment (calls Ansible internally)
-selfhost deploy                    # Full deployment via Ansible
-selfhost deploy --tags databases   # Selective via Ansible tags
-selfhost monitor start             # Start monitoring daemon
+# CLI deployment (drives Ansible internally)
+selfhost deploy                        # Full phased deployment via Ansible
+selfhost deploy --tags databases       # Selective via Ansible tags
+selfhost deploy release namespaces cert-manager   # Local Helmfile selector (bypasses phases)
+selfhost node add worker-2             # Scale cluster (kubespray)
+selfhost monitor                       # Live dashboard (TUI)
+selfhost daemon start                  # Background monitoring + Telegram alerts
 ```
 
 #### ARCH-005.4: Responsibility Matrix
@@ -108,40 +125,49 @@ selfhost monitor start             # Start monitoring daemon
 
 ## 2. Kubernetes Helm Chart Architecture
 
+> **Helm 4.** The cluster uses Helm v4 (server-side apply by default). `helmDefaults` in
+> `kubernetes/helmfile.yaml` sets `wait/atomic/devel/createNamespace`; `force`
+> (`--force-replace`) is intentionally **omitted** — it is incompatible with Helm 4's
+> server-side apply ("cannot use server-side apply and force replace together") and is a
+> destructive delete+recreate.
+
 ### 2.1 Chart Structure Standards
 
-#### HELM-001: Canonical Chart Structure
-Every Helm chart MUST follow this exact structure:
+#### HELM-001: Canonical Chart Structure (chart-base subchart model)
+
+Every mandated Kubernetes resource is rendered by the shared **`chart-base`** subchart
+(`kubernetes/chart-base/`, `type: application`). App charts are **thin shells**: their
+`templates/` directory is **empty** (only `.gitkeep`), they declare a `chart-base`
+dependency, and all configuration goes under a top-level `chart-base:` values key.
 
 ```
-charts/<service-name>/
-├── Chart.yaml              # Chart metadata with semantic versioning
-├── values.yaml             # Default configuration values
-├── values.schema.json      # JSON schema for values validation
+kubernetes/charts/<service-name>/
+├── Chart.yaml              # metadata + dependency on chart-base (file://../../chart-base)
+├── values.yaml             # config nested under a top-level `chart-base:` key
 ├── README.md               # Service documentation
-├── .helmignore             # Files to exclude from packaging
-├── templates/
-│   ├── NOTES.txt           # Post-install instructions
-│   ├── _helpers.tpl        # Template helper functions
-│   ├── serviceaccount.yaml # ServiceAccount for pod identity
-│   ├── rbac.yaml           # Role/ClusterRole and bindings
-│   ├── configmap.yaml      # Configuration data
-│   ├── secret.yaml         # Sensitive data (encrypted via SOPS)
-│   ├── deployment.yaml     # OR statefulset.yaml for stateful apps
-│   ├── service.yaml        # Kubernetes Service
-│   ├── ingress.yaml        # OR ingressroute.yaml for Traefik
-│   ├── networkpolicy.yaml  # Network access controls
-│   ├── pvc.yaml            # PersistentVolumeClaim (if needed)
-│   ├── hpa.yaml            # HorizontalPodAutoscaler (if applicable)
-│   ├── pdb.yaml            # PodDisruptionBudget
-│   ├── servicemonitor.yaml # Prometheus ServiceMonitor
-│   ├── prometheusrule.yaml # Alert rules
-│   └── tests/
-│       └── test-connection.yaml # Helm test pod
-├── ci/
-│   └── values-test.yaml    # Values for CI testing
-└── crds/                   # Custom Resource Definitions (if any)
+└── templates/
+    └── .gitkeep            # EMPTY — all resources come from chart-base
 ```
+
+`Chart.yaml` dependency block (required for every app chart):
+```yaml
+dependencies:
+  - name: chart-base
+    version: 0.1.0
+    repository: file://../../chart-base
+```
+
+The `chart-base` chart itself provides the canonical templates (what HELM-004…010 below
+define): `workloads.yaml`, `services.yaml`, `configmaps.yaml`, `secrets.yaml`, `pvc.yaml`,
+`rbac.yaml` (ServiceAccount + Role/RoleBinding), `networkpolicy.yaml`, `observability.yaml`
+(ServiceMonitor + PDB + HPA), `routing.yaml` (Gateway API HTTPRoute by default; opt-in
+Ingress / Traefik IngressRoute + Middleware), `extramanifests.yaml`, `tests.yaml`, plus
+`_helpers.tpl` / `_podspec.tpl` (mandatory securityContext defaults).
+
+**Exemptions** (keep their own `templates/`, do NOT use chart-base):
+`namespaces` (cluster bootstrap: namespaces, shared Gateway/GatewayClass, ClusterIssuers,
+default-deny NetworkPolicies) and `gitlab-ingress` (Traefik IngressRoute + Middleware helper).
+Helmfile vendors the `chart-base` dependency at apply time (`helm dependency build`).
 
 #### HELM-002: Chart.yaml Requirements
 ```yaml
@@ -172,13 +198,13 @@ global:
 
 # Image configuration
 image:
-  repository: harbour.example.com/<service>
+  repository: harbor.example.com/<service>
   tag: "1.0.0"              # Never use 'latest'
   pullPolicy: IfNotPresent
   digest: ""                # SHA256 digest for production
 
 imagePullSecrets:
-  - name: harbour-registry
+  - name: harbor-registry
 
 # Replica configuration
 replicaCount: 2
@@ -241,22 +267,23 @@ service:
   targetPort: 8080
   annotations: {}
 
-# Ingress configuration
-ingress:
+# Routing configuration — Gateway API (HTTPRoute) is the DEFAULT.
+# chart-base renders HTTPRoute attached to the shared Gateway; plain Ingress and
+# Traefik IngressRoute/Middleware remain opt-in fallbacks.
+route:
   enabled: true
-  className: traefik
-  annotations:
-    cert-manager.io/cluster-issuer: letsencrypt-prod
-    traefik.ingress.kubernetes.io/router.middlewares: service-authentik@kubernetescrd
-  hosts:
-    - host: <service>.example.com
-      paths:
-        - path: /
-          pathType: Prefix
-  tls:
-    - secretName: <service>-tls
-      hosts:
-        - <service>.example.com
+  gateway:
+    name: shared-gateway          # shared Gateway in the `ingress` namespace
+    namespace: ingress
+  hostnames:
+    - <service>.example.com
+  # Authentik SSO is attached via an ExtensionRef filter to the Traefik middleware.
+  # Opt-in legacy Ingress (set instead of `route`):
+  # ingress:
+  #   enabled: false
+  #   className: traefik
+  #   annotations:
+  #     cert-manager.io/cluster-issuer: letsencrypt-prod
 
 # Persistence configuration
 persistence:
@@ -333,7 +360,13 @@ topologySpreadConstraints: []
 
 ### 2.2 Mandatory Kubernetes Resources
 
-#### HELM-004: ServiceAccount (Required for ALL charts)
+> **Where these live now.** The templates in HELM-004…010 are the canonical definitions
+> of the mandated resources, but they are **implemented once in `chart-base`**
+> (`kubernetes/chart-base/templates/`), not copied into each chart. App charts inherit
+> them by depending on `chart-base` (see HELM-001). Treat the snippets below as the
+> contract chart-base fulfils for every consuming chart.
+
+#### HELM-004: ServiceAccount (Required for ALL charts — via chart-base)
 ```yaml
 {{- if .Values.serviceAccount.create -}}
 apiVersion: v1
@@ -1259,7 +1292,7 @@ monitoring:
 
 # Container registry
 registry:
-  harbour:
+  harbor:
     admin_password: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=32') }}"
     database_password: "{{ lookup('password', '/dev/null chars=ascii_letters,digits length=32') }}"
 ```
@@ -1814,14 +1847,18 @@ kubectl get nodes
 Before considering architecture complete, ALL items must pass:
 
 ### Architecture Checklist
-- [ ] Every Helm chart has RBAC (ServiceAccount + Role/ClusterRole)
-- [ ] Every Helm chart has NetworkPolicy with explicit allow rules
-- [ ] Every Helm chart has resource requests and limits
-- [ ] Every Helm chart has liveness, readiness, and startup probes
-- [ ] Every Helm chart has ServiceMonitor for Prometheus
-- [ ] Every Helm chart has PodDisruptionBudget
-- [ ] Every Helm chart has Helm tests
-- [ ] All secrets use Vault Agent Injector (no Kubernetes Secrets)
+Per-chart guarantees below are provided **centrally by `chart-base`** for every consuming
+app chart (exemptions: `namespaces`, `gitlab-ingress`):
+- [x] RBAC (ServiceAccount + Role/RoleBinding) — chart-base `rbac.yaml`
+- [x] NetworkPolicy with explicit allow rules — chart-base `networkpolicy.yaml`
+- [ ] Resource requests and limits set per app chart values
+- [ ] Liveness, readiness, and startup probes set per app chart values
+- [x] ServiceMonitor for Prometheus — chart-base `observability.yaml`
+- [x] PodDisruptionBudget — chart-base `observability.yaml`
+- [x] Helm tests — chart-base `tests.yaml`
+- [ ] Routing via Gateway API (HTTPRoute) attached to the shared Gateway
+- [ ] All secrets use Vault Agent Injector (no Kubernetes Secrets) — **target; not yet met**
+      (chart-base still renders `kind: Secret`; see production-readiness-review.md)
 - [ ] All database connections use correct namespace (`.db.svc.cluster.local`)
 - [ ] All services integrate with Authentik SSO
 

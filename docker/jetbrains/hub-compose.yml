@@ -1,7 +1,7 @@
 ---
 services:
   hub:
-    image: jetbrains/hub:2023.2.16591
+    image: jetbrains/hub:2026.2.52154
     container_name: jetbrains-hub
     restart: unless-stopped
     ports: ['${HUB_PORT:-8081}:8080']

@@ -26,7 +26,7 @@ chart-base:
                 topologyKey: kubernetes.io/hostname
       initContainers:
         - name: wait-for-clickhouse
-          image: busybox:1.35
+          image: busybox:1.38.0
           command:
             - sh
             - -c
@@ -41,7 +41,7 @@ chart-base:
           env:
             - { name: CLICKHOUSE_HOST, value: "clickhouse.db.svc.cluster.local" }
         - name: wait-for-postgres
-          image: postgres:15-alpine
+          image: postgres:18-alpine
           command:
             - sh
             - -c
@@ -59,7 +59,7 @@ chart-base:
             - { name: POSTGRES_PORT, value: "5432" }
       containers:
         - name: backend
-          image: ghcr.io/rybbit-io/rybbit-backend:latest
+          image: ghcr.io/rybbit-io/rybbit-backend:v2.6.0
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsUser: 1001
@@ -119,7 +119,7 @@ chart-base:
                 topologyKey: kubernetes.io/hostname
       containers:
         - name: client
-          image: ghcr.io/rybbit-io/rybbit-client:latest
+          image: ghcr.io/rybbit-io/rybbit-client:v2.6.0
           imagePullPolicy: IfNotPresent
           securityContext:
             runAsUser: 1001

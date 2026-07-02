@@ -4,47 +4,47 @@ sidebar_position: 6
 
 # Deployment of Services
 
-После развёртки базовой инфраструктуры можно приступить к развёртке всех остальных сервисов. Helmfile автоматически учтёт зависимости между сервисами и развернёт их в правильном порядке.
+After the base infrastructure is deployed, you can proceed to deploy all the remaining services. Helmfile automatically takes into account the dependencies between services and deploys them in the correct order.
 
-## Порядок развёртывания
+## Deployment Order
 
-Благодаря зависимостям в `kubernetes/apps/_others.yaml`, сервисы развернутся в следующем порядке:
+Thanks to the dependencies in `kubernetes/apps/_others.yaml`, the services are deployed in the following order:
 
-1. **Базы данных** (PostgreSQL, MongoDB, ValKey, MinIO)
-2. **Инфраструктурные сервисы** (Monitoring, Glance, Harbor, Bytebase, Devtron)
-3. **Сервисы авторизации** (Authentik)
-4. **Сервисы продуктивности** (Notesnook, Excalidraw, Penpot)
-5. **Сервисы разработки** (GitLab, TeamCity, YouTrack, JetBrains Hub)
-6. **Социальные сервисы** (Stoat, Stalwart)
-7. **Сервисы данных** (Vaultwarden, Syncthing, Nextcloud)
+1. **Databases** (PostgreSQL, MongoDB, ValKey, MinIO)
+2. **Infrastructure services** (Monitoring, Glance, Harbor, Bytebase, Devtron)
+3. **Authorization services** (Authentik)
+4. **Productivity services** (Notesnook, Excalidraw, Penpot)
+5. **Development services** (GitLab, TeamCity, YouTrack, JetBrains Hub)
+6. **Social services** (Stoat, Stalwart)
+7. **Data services** (Vaultwarden, Syncthing, Nextcloud)
 
-## Deployment всех of Services
+## Deployment of All Services
 
-### Выполнение развёртки
+### Running the Deployment
 
-Navigate to директорию с Kubernetes конфигурацией:
+Navigate to the directory with the Kubernetes configuration:
 
 ```bash
 cd kubernetes
 ```
 
-Run развёртку всех сервисов:
+Run the deployment of all services:
 
 ```bash
 helmfile -e k8s apply
 ```
 
-Эта команда развернёт все сервисы, учитывая зависимости. Процесс может занять 30-60 минут в зависимости от количества сервисов и скорости загрузки образов.
+This command will deploy all services, taking dependencies into account. The process may take 30-60 minutes depending on the number of services and the image download speed.
 
-### Verification статуса
+### Status Verification
 
-Check статус всех релизов:
+Check the status of all releases:
 
 ```bash
 helmfile -e k8s list
 ```
 
-Check статус подов по namespace:
+Check the pod status by namespace:
 
 ```bash
 kubectl get pods -n db
@@ -56,20 +56,20 @@ kubectl get pods -n social
 kubectl get pods -n data
 ```
 
-## Базы данных
+## Databases
 
 ### PostgreSQL
 
-PostgreSQL используется большинством сервисов для хранения данных.
+PostgreSQL is used by most services for data storage.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n db -l app=postgres
 kubectl get svc -n db -l app=postgres
 ```
 
-**Подключение:**
+**Connection:**
 
 ```bash
 kubectl exec -it -n db deployment/postgres -- psql -U postgres
@@ -77,15 +77,15 @@ kubectl exec -it -n db deployment/postgres -- psql -U postgres
 
 ### MongoDB
 
-MongoDB используется Notesnook и Stoat.
+MongoDB is used by Notesnook and Stoat.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n db -l app=mongodb
 ```
 
-**Проверка replica set:**
+**Replica set verification:**
 
 ```bash
 kubectl exec -it -n db deployment/mongodb -- mongosh --eval "rs.status()"
@@ -93,9 +93,9 @@ kubectl exec -it -n db deployment/mongodb -- mongosh --eval "rs.status()"
 
 ### ValKey
 
-ValKey (Redis-compatible) используется для кэширования и сессий.
+ValKey (Redis-compatible) is used for caching and sessions.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n db -l app=valkey
@@ -104,22 +104,22 @@ kubectl exec -it -n db deployment/valkey-master -- valkey-cli ping
 
 ### MinIO
 
-MinIO используется для S3-совместимого объектного хранилища.
+MinIO is used for S3-compatible object storage.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n db -l app=minio
 kubectl get ingress -n db -l app=minio
 ```
 
-## Инфраструктурные сервисы
+## Infrastructure Services
 
 ### Monitoring (Prometheus, Grafana, Loki)
 
-Мониторинг включает Prometheus для сбора метрик, Grafana для визуализации и Loki для логов.
+Monitoring includes Prometheus for collecting metrics, Grafana for visualization, and Loki for logs.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n service -l app=prometheus
@@ -127,330 +127,324 @@ kubectl get pods -n service -l app=grafana
 kubectl get pods -n service -l app=loki
 ```
 
-**Доступ к Grafana:**
+**Access to Grafana:**
 
 ```bash
 kubectl get ingress -n service -l app=grafana
 ```
 
-Обычно доступен по адресу `grafana.local`. Пароль администратора находится в секретах.
+Usually available at `grafana.local`. The administrator password is stored in the secrets.
 
 ### Glance
 
-Glance - централизованный дашборд со ссылками на все сервисы.
+Glance is a centralized dashboard with links to all services.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n infrastructure -l app=glance
 kubectl get ingress -n infrastructure -l app=glance
 ```
 
-**Доступ:** `glance.local`
+**Access:** `glance.local`
 
 ### Harbor
 
-Harbor - container registry для хранения Docker образов.
+Harbor is a container registry for storing Docker images.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n infrastructure -l app=harbor
 kubectl get ingress -n infrastructure -l app=harbor
 ```
 
-**Доступ:** `harbor.local`
+**Access:** `harbor.local`
 
 ### Bytebase
 
-Bytebase - система управления схемами баз данных.
+Bytebase is a database schema management system.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n infrastructure -l app=bytebase
 kubectl get ingress -n infrastructure -l app=bytebase
 ```
 
-**Доступ:** `bytebase.local`
+**Access:** `bytebase.local`
 
 ### Devtron
 
-Devtron - Kubernetes dashboard и CI/CD платформа.
+Devtron is a Kubernetes dashboard and CI/CD platform.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n devtroncd -l app=devtron
 kubectl get ingress -n devtroncd -l app=devtron
 ```
 
-**Доступ:** `devtron.local`
+**Access:** `devtron.local`
 
-## Сервисы авторизации
+## Authorization Services
 
 ### Authentik
 
-Authentik - SSO (Single Sign-On) решение для авторизации во всех сервисах.
+Authentik is an SSO (Single Sign-On) solution for authorization across all services.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n service -l app=authentik
 kubectl get ingress -n service -l app=authentik
 ```
 
-**Доступ:** `authentik.local`
+**Access:** `authentik.local`
 
-**Начальная настройка:** После первого запуска выполните настройку через веб-интерфейс (см. [Настройка сервисов](./services-configuration.md#authentik)).
+**Initial setup:** After the first launch, perform the configuration through the web interface (see [Service Configuration](./services-configuration.md#authentik)).
 
-## Сервисы продуктивности
+## Productivity Services
 
 ### Notesnook
 
-Notesnook - система для ведения заметок с синхронизацией.
+Notesnook is a note-taking system with synchronization.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n productivity -l app=notesnook
 kubectl get ingress -n productivity -l app=notesnook
 ```
 
-**Доступ:** `notesnook.local`, `identity.notesnook.local`
+**Access:** `notesnook.local`, `identity.notesnook.local`
 
 ### Excalidraw
 
-Excalidraw - инструмент для создания диаграмм.
+Excalidraw is a tool for creating diagrams.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n productivity -l app=excalidraw
 kubectl get ingress -n productivity -l app=excalidraw
 ```
 
-**Доступ:** `excalidraw.local`
+**Access:** `excalidraw.local`
 
 ### Penpot
 
-Penpot - инструмент для дизайна (аналог Figma).
+Penpot is a design tool (a Figma alternative).
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n productivity -l app=penpot
 kubectl get ingress -n productivity -l app=penpot
 ```
 
-**Доступ:** `penpot.local`
+**Access:** `penpot.local`
 
-## Сервисы разработки
+## Development Services
 
 ### GitLab
 
-GitLab - система контроля версий и CI/CD.
+GitLab is a version control and CI/CD system.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n code -l app=gitlab
 kubectl get ingress -n code -l app=gitlab
 ```
 
-**Доступ:** `gitlab.local`
+**Access:** `gitlab.local`
 
-**Начальная настройка:** После первого запуска войдите с root пользователем (пароль в секретах).
+**Initial setup:** After the first launch, log in as the root user (the password is in the secrets).
 
 ### TeamCity
 
-TeamCity - CI/CD сервер от JetBrains.
+TeamCity is a CI/CD server from JetBrains.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n code -l app=teamcity
 kubectl get ingress -n code -l app=teamcity
 ```
 
-**Доступ:** `teamcity.local`
+**Access:** `teamcity.local`
 
-**Начальная настройка:** Выполните первоначальную настройку через веб-интерфейс.
+**Initial setup:** Perform the initial configuration through the web interface.
 
 ### YouTrack
 
-YouTrack - система управления проектами от JetBrains.
+YouTrack is a project management system from JetBrains.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n code -l app=youtrack
 kubectl get ingress -n code -l app=youtrack
 ```
 
-**Доступ:** `youtrack.local`
+**Access:** `youtrack.local`
 
 ### JetBrains Hub
 
-JetBrains Hub - центр управления сервисами JetBrains.
+JetBrains Hub is the management center for JetBrains services.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n code -l app=hub
 kubectl get ingress -n code -l app=hub
 ```
 
-**Доступ:** `hub.local`
+**Access:** `hub.local`
 
-## Социальные сервисы
+## Social Services
 
 ### Stoat
 
-Stoat (ранее Revolt) - чат-сервер (аналог Discord).
+Stoat (formerly Revolt) is a chat server (a Discord alternative).
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n social -l app=stoat
 kubectl get ingress -n social -l app=stoat
 ```
 
-**Доступ:** `stoat.local`
+**Access:** `stoat.local`
 
 ### Stalwart
 
-Stalwart - почтовый сервер.
+Stalwart is a mail server.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n social -l app=stalwart
 kubectl get ingress -n social -l app=stalwart
 ```
 
-**Доступ:** `stalwart.local`
+**Access:** `stalwart.local`
 
-**Настройка:** Требует настройки DNS записей (MX, SPF, DKIM, DMARC).
+**Configuration:** Requires the configuration of DNS records (MX, SPF, DKIM, DMARC).
 
-## Сервисы данных
+## Data Services
 
 ### Vaultwarden
 
-Vaultwarden - self-hosted сервер для Bitwarden.
+Vaultwarden is a self-hosted server for Bitwarden.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n data -l app=vaultwarden
 kubectl get ingress -n data -l app=vaultwarden
 ```
 
-**Доступ:** `vaultwarden.local`
+**Access:** `vaultwarden.local`
 
-**Начальная настройка:** Зарегистрируйте первого пользователя через клиент Bitwarden.
+**Initial setup:** Register the first user through the Bitwarden client.
 
 ### Syncthing
 
-Syncthing - система синхронизации файлов.
+Syncthing is a file synchronization system.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n data -l app=syncthing
 kubectl get ingress -n data -l app=syncthing
 ```
 
-**Доступ:** `syncthing.local`
+**Access:** `syncthing.local`
 
 ### Nextcloud
 
-Nextcloud - система облачного хранения файлов.
+Nextcloud is a cloud file storage system.
 
-**Проверка:**
+**Verification:**
 
 ```bash
 kubectl get pods -n data -l app=nextcloud
 kubectl get ingress -n data -l app=nextcloud
 ```
 
-**Доступ:** `nextcloud.local`
+**Access:** `nextcloud.local`
 
-**Начальная настройка:** Войдите с администратором (пароль в секретах).
+**Initial setup:** Log in as the administrator (the password is in the secrets).
 
-## Мониторинг процесса развёртки
+## Monitoring the Deployment Process
 
-Во время развёртки можно мониторить процесс:
+During the deployment, you can monitor the process:
 
 ```bash
-# Следить за статусом подов
+# Watch the pod status
 watch kubectl get pods --all-namespaces
 
-# Следить за событиями
+# Watch the events
 kubectl get events --all-namespaces --sort-by='.lastTimestamp'
 
-# Проверять логи конкретного сервиса
+# Check the logs of a specific service
 kubectl logs -n <namespace> -l app=<app-name> -f
 ```
 
 ## Troubleshooting
 
-### Issue: Поды не запускаются
+### Issue: Pods Do Not Start
 
-Check события:
+Check the events:
 
 ```bash
 kubectl describe pod <pod-name> -n <namespace>
 kubectl get events -n <namespace> --sort-by='.lastTimestamp'
 ```
 
-Check логи:
+Check the logs:
 
 ```bash
 kubectl logs <pod-name> -n <namespace>
 ```
 
-### Issue: Ошибки инициализации баз данных
+### Issue: Database Initialization Errors
 
-Check статус баз данных:
+Check the database status:
 
 ```bash
 kubectl get pods -n db
 kubectl logs -n db <database-pod>
 ```
 
-Make sure, что базы данных полностью запущены перед развёрткой зависимых сервисов.
+Make sure that the databases are fully started before deploying dependent services.
 
-### Issue: Недостаточно ресурсов
+### Issue: Insufficient Resources
 
-Check использование ресурсов:
+Check resource usage:
 
 ```bash
 kubectl top nodes
 kubectl top pods --all-namespaces
 ```
 
-При необходимости добавьте ресурсы на узлы или уменьшите количество реплик в values.yaml.
+If necessary, add resources to the nodes or reduce the number of replicas in values.yaml.
 
-### Issue: Ошибки загрузки образов
+### Issue: Image Download Errors
 
-Check статус подов:
+Check the pod status:
 
 ```bash
 kubectl get pods --all-namespaces | grep ImagePullBackOff
 ```
 
-Make sure, что узлы могут загружать образы из registry.
+Make sure that the nodes can pull images from the registry.
 
 ## Next Steps
 
-После успешной развёртки всех сервисов:
+After successfully deploying all services:
 
-1. [Настройка Pangolin и Wireguard туннеля](./pangolin-setup.md) - настройка VPN туннеля для доступа к сервисам
-2. [Настройка сервисов](./services-configuration.md) - первоначальная настройка каждого сервиса
-
-
-
-
-
-
+1. [Setting Up the Pangolin and WireGuard Tunnel](./pangolin-setup.md) - configuring the VPN tunnel for accessing the services
+2. [Service Configuration](./services-configuration.md) - the initial configuration of each service

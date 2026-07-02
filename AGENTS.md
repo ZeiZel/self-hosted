@@ -13,7 +13,7 @@
 
 ## 🎯 Quick Start for AI Agents
 
-**You are working on an enterprise-grade self-hosted infrastructure platform** that runs 23+ services (GitLab, databases, monitoring, productivity tools) on Kubernetes with strict security, resource efficiency, and automation requirements.
+**You are working on an enterprise-grade self-hosted infrastructure platform** that runs ~46 registered services / 29 custom app charts (GitLab, databases, monitoring, productivity tools) on Kubernetes with strict security, resource efficiency, and automation requirements. App charts are rendered by a shared `chart-base` subchart; routing uses the Gateway API (HTTPRoute); the operator CLI (`selfhost`) is a single static Go binary.
 
 **Before making ANY changes:**
 

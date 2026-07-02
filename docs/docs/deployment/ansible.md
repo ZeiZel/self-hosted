@@ -8,12 +8,14 @@ Automate infrastructure provisioning and configuration with Ansible playbooks.
 
 ## Overview
 
-Ansible playbooks are located in `ansible/pangolin/` and handle:
+Ansible playbooks are located in `ansible/` and handle:
 
 - Server provisioning
-- Kubernetes cluster setup
-- VPS configuration
-- Pangolin VPN server setup
+- Kubernetes cluster setup (via Kubespray)
+- VPS gateway configuration
+- Pangolin VPN gateway setup
+
+All roles are orchestrated by a single phased playbook, `ansible/all.yml`, and selected via tags. The `selfhost` CLI (`selfhost deploy`) wraps these Ansible runs; you can also invoke `ansible-playbook` directly.
 
 ## Prerequisites
 
@@ -25,86 +27,92 @@ Ansible playbooks are located in `ansible/pangolin/` and handle:
 
 ### Inventory
 
-Configure `ansible/pangolin/inventory/hosts.yml`:
+Copy `ansible/inventory/hosts.example.ini` to `ansible/inventory/hosts.ini` and fill in your hosts (INI format):
 
-```yaml
-local:
-  hosts:
-    server:
-      ansible_host: 192.168.1.100
-      ansible_user: ubuntu
-      ansible_ssh_private_key_file: ~/.ssh/id_rsa
+```ini
+[vps]
+# VPS gateway for the Pangolin server
+server ansible_host=your.vps.ip ansible_user=root ansible_port=22
 
-vps:
-  hosts:
-    pangolin_vps:
-      ansible_host: your.vps.ip
-      ansible_user: root
-      pangolin_role: server
-      pangolin_domain: "yourdomain.com"
-      pangolin_admin_email: "admin@yourdomain.com"
+[local]
+127.0.0.1 ansible_user=admin ansible_connection=local
+
+[masters]
+master ansible_host=192.168.1.10 ansible_user=admin ansible_port=22
+
+[workers]
+# worker ansible_host=192.168.1.11 ansible_user=admin ansible_port=22
 ```
 
 ### Variables
 
-Edit `ansible/pangolin/group_vars/all.yml` for common variables.
+Edit `ansible/group_vars/all/vars.yml` for common variables.
 
-Encrypted variables go in `ansible/pangolin/group_vars/vault.yml` (encrypted with Ansible Vault).
+Encrypted variables go in `ansible/group_vars/all/vault.yml` (encrypted with Ansible Vault).
 
-## Available Playbooks
+## Running the Playbook
 
-### Deploy Local Server
+Everything runs through the single `ansible/all.yml` playbook, scoped with tags.
 
-Basic setup for local server:
+### Full deployment
 
 ```bash
-cd ansible/pangolin
-ansible-playbook -i inventory/hosts.yml playbooks/deploy_local.yml
+cd ansible
+ansible-playbook -i inventory/hosts.ini all.yml
+```
+
+### Local host setup
+
+Prepare the management/control host:
+
+```bash
+ansible-playbook -i inventory/hosts.ini all.yml --tags setup_host
 ```
 
 ### Deploy Kubernetes
 
-Kubernetes cluster deployment:
+Provision the cluster with Kubespray:
 
 ```bash
-ansible-playbook -i inventory/hosts.yml playbooks/deploy_local_k8s.yml
+ansible-playbook -i inventory/hosts.ini all.yml --tags kubespray
 ```
 
-### Deploy VPS
+### Deploy VPS gateway
 
-VPS and Pangolin server setup:
+VPS and Pangolin gateway setup:
 
 ```bash
-ansible-playbook -i inventory/hosts.yml playbooks/deploy_vps.yml
+ansible-playbook -i inventory/hosts.ini all.yml --tags gateway
 ```
 
 ## Roles
 
-Roles are located in `ansible/pangolin/roles/`:
+Roles are located in `ansible/roles/`:
 
-- `pangolin_server` - Pangolin VPN server
+- `pangolin` - Pangolin VPN gateway/node
 - `docker` - Docker installation
-- `kubernetes` - Kubernetes setup
-- And more...
+- `kubespray` - Kubernetes cluster setup
+- `server` - base server hardening
+- `apps`, `storage`, `backup`, `monitoring`, `infrastructure`, `cert-manager`, `validate` - and more...
 
 ## Encryption
 
 ### Encrypt Variables
 
 ```bash
-ansible-vault encrypt group_vars/vault.yml
+ansible-vault encrypt group_vars/all/vault.yml
 ```
 
 ### Edit Encrypted File
 
 ```bash
-ansible-vault edit group_vars/vault.yml
+ansible-vault edit group_vars/all/vault.yml
 ```
 
 ### Run with Vault
 
 ```bash
-ansible-playbook -i inventory/hosts.yml playbooks/deploy_local.yml --ask-vault-pass
+ansible-playbook -i inventory/hosts.ini all.yml --ask-vault-pass
 ```
 
 ## Verification
@@ -113,10 +121,10 @@ After deployment, verify services:
 
 ```bash
 # Check SSH connection
-ansible all -i inventory/hosts.yml -m ping
+ansible all -i inventory/hosts.ini -m ping
 
 # Check system info
-ansible all -i inventory/hosts.yml -m setup
+ansible all -i inventory/hosts.ini -m setup
 ```
 
 ## Next Steps

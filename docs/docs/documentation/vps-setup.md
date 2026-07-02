@@ -31,45 +31,37 @@ Recommended requirements for production:
 
 Before deployment, you need to configure the inventory file with your VPS parameters.
 
-Open the file `ansible/pangolin/inventory/hosts.yml` and configure the `vps` section:
+Copy `ansible/inventory/hosts.example.ini` to `ansible/inventory/hosts.ini` and configure the `[vps]` group (INI format):
 
-```yaml
-all:
-  children:
-    vps:
-      hosts:
-        pangolin_vps:
-          ansible_host: YOUR_VPS_IP_ADDRESS  # Replace with your VPS IP
-          ansible_user: root  # or another user with sudo rights
-          ansible_port: 22
-
-          pangolin_role: server
-          pangolin_domain: "yourdomain.com"  # Your domain for Pangolin
-          pangolin_admin_email: "admin@yourdomain.com"  # Administrator email
+```ini
+[vps]
+# VPS gateway for the Pangolin server
+server ansible_host=YOUR_VPS_IP_ADDRESS ansible_user=root ansible_port=22
 ```
 
 ### Variable Configuration
 
-You can also configure global variables in the same file (in the `vars` section):
+Configure global variables in `ansible/group_vars/all/vars.yml` (Pangolin domain, admin email, versions, WireGuard and security settings), for example:
 
 ```yaml
-  vars:
-    pangolin_version: "latest"
-    gerbil_version: "latest"
-    traefik_version: "v3.4.0"
+pangolin_domain: "yourdomain.com"
+pangolin_admin_email: "admin@yourdomain.com"
+pangolin_version: "latest"
+gerbil_version: "latest"
+traefik_version: "v3.4.0"
 
-    pangolin_install_dir: "/opt/pangolin"
+pangolin_install_dir: "/opt/pangolin"
 
-    wireguard_network: "10.99.0.0/24"
-    wireguard_server_ip: "10.99.0.1"
-    wireguard_port: 51820
+wireguard_network: "10.99.0.0/24"
+wireguard_server_ip: "10.99.0.1"
+wireguard_port: 51820
 
-    # Security settings
-    new_user_name: "admin"
-    fail2ban_dest_email: "admin@yourdomain.com"
-    fail2ban.ssh.maxretry: 5
-    fail2ban.ssh.bantime: 3600
-    fail2ban.ssh.findtime: 600
+# Security settings
+new_user_name: "admin"
+fail2ban_dest_email: "admin@yourdomain.com"
+fail2ban_ssh_maxretry: 5
+fail2ban_ssh_bantime: 3600
+fail2ban_ssh_findtime: 600
 ```
 
 ## Deploying Pangolin Server on VPS
@@ -84,24 +76,24 @@ Deployment is performed through an Ansible playbook that automatically:
 
 ### Executing Deployment
 
-Navigate to the directory with Ansible playbooks:
+The recommended entry point is the `selfhost` CLI, which wraps the Ansible run:
 
 ```bash
-cd ansible/pangolin
+selfhost gateway setup
 ```
 
-Run the playbook to deploy VPS:
+Or run Ansible directly. Everything lives in the single phased `ansible/all.yml` playbook, scoped with tags:
 
 ```bash
-ansible-playbook -i inventory/hosts.yml playbooks/deploy_vps.yml
+cd ansible
+ansible-playbook -i inventory/hosts.ini all.yml --tags gateway
 ```
 
 The playbook will execute the following roles:
 
-- `server_security` - security configuration (disabling root SSH, creating new user, configuring fail2ban, firewall)
-- `common` - installing basic packages, system configuration
+- `server` - security configuration (disabling root SSH, creating new user, configuring fail2ban, firewall)
 - `docker` - Docker installation
-- `pangolin_server` - Pangolin server deployment
+- `pangolin` - Pangolin gateway deployment
 
 ### What the Playbook Does
 

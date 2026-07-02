@@ -19,7 +19,7 @@ chart-base:
       replicas: 1
       containers:
         - name: api
-          image: ghcr.io/revoltchat/server:20250210-1
+          image: ghcr.io/revoltchat/server:20250930-2
           imagePullPolicy: IfNotPresent
           ports:
             - { name: http, containerPort: 14702, protocol: TCP }
@@ -42,7 +42,7 @@ chart-base:
       replicas: 1
       containers:
         - name: autumn
-          image: ghcr.io/revoltchat/autumn:20250210-1
+          image: ghcr.io/revoltchat/autumn:20250930-2
           imagePullPolicy: IfNotPresent
           ports:
             - { name: http, containerPort: 14704, protocol: TCP }
@@ -65,7 +65,7 @@ chart-base:
       replicas: 1
       containers:
         - name: bonfire
-          image: ghcr.io/revoltchat/bonfire:20250210-1
+          image: ghcr.io/revoltchat/bonfire:20250930-2
           imagePullPolicy: IfNotPresent
           ports:
             - { name: http, containerPort: 14703, protocol: TCP }
@@ -90,7 +90,7 @@ chart-base:
       replicas: 1
       containers:
         - name: january
-          image: ghcr.io/revoltchat/january:20250210-1
+          image: ghcr.io/revoltchat/january:20250930-2
           imagePullPolicy: IfNotPresent
           ports:
             - { name: http, containerPort: 14705, protocol: TCP }
@@ -113,7 +113,7 @@ chart-base:
       replicas: 1
       containers:
         - name: web
-          image: ghcr.io/revoltchat/client:master
+          image: ghcr.io/revoltchat/client:1.0.1
           imagePullPolicy: Always
           ports:
             - { name: http, containerPort: 5000, protocol: TCP }
@@ -137,7 +137,7 @@ chart-base:
       replicas: 1
       containers:
         - name: crond
-          image: ghcr.io/revoltchat/crond:20250210-1-debug
+          image: ghcr.io/revoltchat/crond:20250930-2
           imagePullPolicy: IfNotPresent
           ports:
             - { name: http, containerPort: 8000, protocol: TCP }
@@ -152,7 +152,7 @@ chart-base:
       replicas: 1
       containers:
         - name: pushd
-          image: ghcr.io/revoltchat/pushd:20250210-1
+          image: ghcr.io/revoltchat/pushd:20250930-2
           imagePullPolicy: IfNotPresent
           env:
             - { name: RUST_BACKTRACE, value: "full" }
@@ -167,7 +167,7 @@ chart-base:
       restartPolicy: Never
       containers:
         - name: create-buckets
-          image: docker.io/minio/minio
+          image: docker.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -316,5 +316,5 @@ chart-base:
 
   tests:
     enabled: true
-    image: curlimages/curl:8.5.0
+    image: curlimages/curl:8.21.0
     url: "http://stoat-web:5000"

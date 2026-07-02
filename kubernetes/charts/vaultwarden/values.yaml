@@ -25,7 +25,7 @@ chart-base:
         prometheus.io/path: "/metrics"
       initContainers:
         - name: wait-for-postgresql
-          image: postgres:15-alpine
+          image: postgres:18-alpine
           command:
             - sh
             - -c
@@ -43,7 +43,7 @@ chart-base:
                   key: DATABASE_URL
       containers:
         - name: vaultwarden
-          image: vaultwarden/server:1.0.0
+          image: vaultwarden/server:1.36.0
           imagePullPolicy: IfNotPresent
           ports:
             - { name: http, containerPort: 80 }

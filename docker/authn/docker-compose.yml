@@ -14,7 +14,7 @@ services:
         - CMD-SHELL
         - pg_isready -d $${POSTGRES_DB} -U $${POSTGRES_USER}
       timeout: 5s
-    image: docker.io/library/postgres:16-alpine
+    image: docker.io/library/postgres:18-alpine
     restart: unless-stopped
     volumes:
       - database:/var/lib/postgresql/data
@@ -29,7 +29,7 @@ services:
         - CMD-SHELL
         - redis-cli ping | grep PONG
       timeout: 3s
-    image: docker.io/library/redis:alpine
+    image: docker.io/library/redis:8-alpine
     restart: unless-stopped
     volumes:
       - redis:/data
@@ -50,7 +50,7 @@ services:
       AUTHENTIK_POSTGRESQL__USER: ${PG_USER:-authentik}
       AUTHENTIK_REDIS__HOST: redis
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?secret key required}
-    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2025.8.4}
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2026.5.3}
     ports:
       - ${COMPOSE_PORT_HTTP:-9000}:9000
       - ${COMPOSE_PORT_HTTPS:-9443}:9443
@@ -75,7 +75,7 @@ services:
       AUTHENTIK_POSTGRESQL__USER: ${PG_USER:-authentik}
       AUTHENTIK_REDIS__HOST: redis
       AUTHENTIK_SECRET_KEY: ${AUTHENTIK_SECRET_KEY:?secret key required}
-    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2025.8.4}
+    image: ${AUTHENTIK_IMAGE:-ghcr.io/goauthentik/server}:${AUTHENTIK_TAG:-2026.5.3}
     restart: unless-stopped
     user: root
     volumes:

@@ -1,7 +1,7 @@
 ---
 services:
   ocular:
-    image: ghcr.io/simonwep/ocular:v2
+    image: ghcr.io/simonwep/ocular:v2.4.0
     restart: unless-stopped
     volumes: [./data:/data/genesis]
     ports: [3030:80]

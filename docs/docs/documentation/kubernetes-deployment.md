@@ -4,169 +4,149 @@ sidebar_position: 3
 
 # Deployment Kubernetes Cluster
 
-На этом этапе мы развернём Kubernetes кластер на локальном сервере, который будет использоваться для запуска всех сервисов.
+At this stage we will deploy a Kubernetes cluster on the local server, which will be used to run all services.
 
-## Requirements к локальному серверу
+## Requirements for the local server
 
-Минимальные требования для Kubernetes кластера:
+Minimum requirements for the Kubernetes cluster:
 
 - **Master node:**
-  - CPU: 2 ядра
+  - CPU: 2 cores
   - RAM: 2 GB
-  - Диск: 20 GB
-  - ОС: Ubuntu 20.04/22.04 или аналогичная
+  - Disk: 20 GB
+  - OS: Ubuntu 20.04/22.04 or similar
 
-- **Worker node (каждый):**
-  - CPU: 4 ядра
+- **Worker node (each):**
+  - CPU: 4 cores
   - RAM: 4 GB
-  - Диск: 50 GB
-  - ОС: Ubuntu 20.04/22.04 или аналогичная
+  - Disk: 50 GB
+  - OS: Ubuntu 20.04/22.04 or similar
 
-Рекомендуемые требования для production:
+Recommended requirements for production:
 
 - **Master node:**
-  - CPU: 4 ядра
+  - CPU: 4 cores
   - RAM: 4 GB
-  - Диск: 50 GB
+  - Disk: 50 GB
 
-- **Worker node (каждый):**
-  - CPU: 8 ядер
+- **Worker node (each):**
+  - CPU: 8 cores
   - RAM: 16 GB
-  - Диск: 100 GB SSD
+  - Disk: 100 GB SSD
 
-Для полнофункционального кластера рекомендуется минимум 3 worker узла.
+For a fully featured cluster, a minimum of 3 worker nodes is recommended.
 
-## Configuration inventory для Kubernetes
+## Configuration of the inventory for Kubernetes
 
-Перед развёрткой необходимо настроить inventory файл с информацией о узлах кластера.
+Before deployment, you need to configure the inventory file with information about the cluster nodes.
 
-Откройте файл `ansible/pangolin/inventory/hosts.yml` и добавьте информацию о ваших Kubernetes узлах:
+Copy `ansible/inventory/hosts.example.ini` to `ansible/inventory/hosts.ini` and add information about your Kubernetes nodes (INI format):
+
+```ini
+[masters]
+master ansible_host=192.168.1.10 ansible_user=admin ansible_port=22
+# Add additional master nodes for HA
+
+[workers]
+worker-1 ansible_host=192.168.1.20 ansible_user=admin ansible_port=22
+# worker-2 ansible_host=192.168.1.21 ansible_user=admin ansible_port=22
+# Add additional worker nodes
+```
+
+By default a single control-plane node is deployed (single control-plane); additional nodes can be added and removed later via `selfhost node add` / `selfhost node remove` (kubespray is used).
+
+### Configuration of Kubespray variables
+
+You can also configure Kubespray parameters in `ansible/group_vars/all/vars.yml`:
 
 ```yaml
-all:
-  children:
-    k8s_masters:
-      hosts:
-        k8s-master-1:
-          ansible_host: 192.168.1.10
-          ansible_user: ubuntu
-          ip: 192.168.1.10
-        # Добавьте дополнительные master узлы для HA
-        # k8s-master-2:
-        #   ansible_host: 192.168.1.11
-        #   ansible_user: ubuntu
-        #   ip: 192.168.1.11
-
-    k8s_workers:
-      hosts:
-        k8s-worker-1:
-          ansible_host: 192.168.1.20
-          ansible_user: ubuntu
-          ip: 192.168.1.20
-        k8s-worker-2:
-          ansible_host: 192.168.1.21
-          ansible_user: ubuntu
-          ip: 192.168.1.21
-        # Добавьте дополнительные worker узлы
-        # k8s-worker-3:
-        #   ansible_host: 192.168.1.22
-        #   ansible_user: ubuntu
-        #   ip: 192.168.1.22
+# Kubespray settings
+k8s_cluster_name: "local-cluster"
+kubespray_install_dir: "/opt/kubespray"
 ```
 
-### Configuration переменных Kubespray
+## Deployment Kubernetes via Kubespray
 
-Также можно настроить параметры Kubespray в секции `vars`:
+Deployment is performed via an Ansible playbook that uses Kubespray to automatically install Kubernetes.
 
-```yaml
-  vars:
-    # Kubespray settings
-    k8s_cluster_name: "local-cluster"
-    kubespray_install_dir: "/opt/kubespray"
-    kubespray_version: "release-2.23"
-```
+### Running the deployment
 
-## Deployment Kubernetes через Kubespray
-
-Развёртка выполняется через Ansible playbook, который использует Kubespray для автоматической установки Kubernetes.
-
-### Выполнение развёртки
-
-Navigate to директорию с Ansible playbooks:
+The recommended way is through the `selfhost` CLI, which wraps the Ansible run:
 
 ```bash
-cd ansible/pangolin
+selfhost deploy
 ```
 
-Run playbook для развёртки Kubernetes:
+Or run Ansible directly. Everything is executed through the single `ansible/all.yml` playbook using tags:
 
 ```bash
-ansible-playbook -i inventory/hosts.yml playbooks/deploy_local_k8s.yml
+cd ansible
+ansible-playbook -i inventory/hosts.ini all.yml --tags kubespray
 ```
 
-Playbook выполнит следующие действия:
+The playbook will perform the following actions:
 
-1. **Роль `kubespray`:**
-   - Клонирование репозитория Kubespray
-   - Подготовка inventory для Kubespray
-   - Установка зависимостей (Python, Ansible)
-   - Настройка сетевых параметров
-   - Запуск Kubespray playbook для установки Kubernetes
-   - Проверка работоспособности кластера
-   - Настройка kubeconfig для доступа
+1. **The `kubespray` role:**
+   - Cloning the Kubespray repository
+   - Preparing the inventory for Kubespray
+   - Installing dependencies (Python, Ansible)
+   - Configuring network parameters
+   - Running the Kubespray playbook to install Kubernetes
+   - Verifying cluster health
+   - Configuring kubeconfig for access
 
-### Процесс развёртки
+### The deployment process
 
-Развёртка может занять 15-30 минут в зависимости от количества узлов и скорости сети.
+Deployment can take 15-30 minutes depending on the number of nodes and network speed.
 
-Основные этапы:
+Main stages:
 
-1. Подготовка узлов (установка пакетов, настройка системы)
-2. Установка container runtime (containerd)
-3. Установка kubeadm, kubelet, kubectl
-4. Инициализация control plane на master узлах
-5. Присоединение worker узлов к кластеру
-6. Установка сетевого плагина (Calico/Flannel)
-7. Установка CoreDNS
-8. Проверка работоспособности
+1. Preparing the nodes (installing packages, configuring the system)
+2. Installing the container runtime (containerd)
+3. Installing kubeadm, kubelet, kubectl
+4. Initializing the control plane on the master nodes
+5. Joining the worker nodes to the cluster
+6. Installing the network plugin (Calico/Flannel)
+7. Installing CoreDNS
+8. Health check
 
-### Что делает Kubespray
+### What Kubespray does
 
-Kubespray автоматически:
+Kubespray automatically:
 
-- Настраивает все необходимые компоненты Kubernetes
-- Настраивает сетевой плагин для pod-to-pod коммуникации
-- Настраивает DNS через CoreDNS
-- Настраивает сертификаты для безопасной коммуникации
-- Настраивает высокую доступность (если несколько master узлов)
+- Configures all the necessary Kubernetes components
+- Configures the network plugin for pod-to-pod communication
+- Configures DNS through CoreDNS
+- Configures certificates for secure communication
+- Configures high availability (if there are multiple master nodes)
 
-## Verification кластера
+## Verification of the cluster
 
-После завершения развёртки, проверьте статус кластера.
+After deployment is complete, check the cluster status.
 
-### Получение kubeconfig
+### Getting the kubeconfig
 
-Kubeconfig файл будет создан на одной из master машин. Скопируйте его на локальную машину:
+The kubeconfig file will be created on one of the master machines. Copy it to your local machine:
 
 ```bash
 scp ubuntu@k8s-master-1:/home/ubuntu/.kube/config ~/.kube/config
 ```
 
-Или, если playbook настроил доступ автоматически, проверьте файл:
+Or, if the playbook configured access automatically, check the file:
 
 ```bash
 cat ~/.kube/config
 ```
 
-### Verification узлов
+### Verification of nodes
 
-Check статус всех узлов:
+Check the status of all nodes:
 
 ```bash
 kubectl get nodes
 ```
 
-Все узлы должны быть в статусе `Ready`:
+All nodes should be in the `Ready` status:
 
 ```
 NAME            STATUS   ROLES           AGE   VERSION
@@ -175,15 +155,15 @@ k8s-worker-1    Ready    <none>          4m    v1.28.0
 k8s-worker-2    Ready    <none>          4m    v1.28.0
 ```
 
-### Verification системных подов
+### Verification of system pods
 
-Check, что все системные поды запущены:
+Check that all system pods are running:
 
 ```bash
 kubectl get pods --all-namespaces
 ```
 
-Все поды в namespace `kube-system` должны быть в статусе `Running`:
+All pods in the `kube-system` namespace should be in the `Running` status:
 
 ```
 NAMESPACE     NAME                                      READY   STATUS    RESTARTS   AGE
@@ -193,99 +173,99 @@ kube-system   coredns-xxx                              1/1     Running   0      
 ...
 ```
 
-## Инициализация Helmfile
+## Helmfile initialization
 
-После успешной развёртки Kubernetes кластера, необходимо инициализировать Helmfile для управления Helm charts.
+After the Kubernetes cluster has been deployed successfully, you need to initialize Helmfile to manage the Helm charts.
 
-Navigate to директорию с Kubernetes конфигурацией:
+Navigate to the directory with the Kubernetes configuration:
 
 ```bash
 cd kubernetes
 ```
 
-Инициализируйте Helmfile:
+Initialize Helmfile:
 
 ```bash
 helmfile init --force
 ```
 
-Эта команда создаст директорию `.helmfile` с необходимыми конфигурационными файлами:
+This command will create the `.helmfile` directory with the necessary configuration files:
 
-- `.helmfile/repositories.yaml` - список Helm репозиториев
-- `.helmfile/environments.yaml.gotmpl` - настройки окружений
-- `.helmfile/releases.yaml.gotmpl` - автоматически генерируемый список релизов
+- `.helmfile/repositories.yaml` - list of Helm repositories
+- `.helmfile/environments.yaml.gotmpl` - environment settings
+- `.helmfile/releases.yaml.gotmpl` - automatically generated list of releases
 
 ## Configuration Gateway API
 
-Некоторые сервисы требуют Gateway API для работы. Установите Gateway API CRDs:
+Some services require the Gateway API to work. Install the Gateway API CRDs:
 
 ```bash
 kubectl apply -f https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.2.1/standard-install.yaml
 ```
 
-Check установку:
+Check the installation:
 
 ```bash
 kubectl get crd | grep gateway
 ```
 
-Должны быть созданы CRDs для Gateway API.
+The CRDs for the Gateway API should be created.
 
 ## Troubleshooting
 
-### Issue: Узлы не в статусе Ready
+### Issue: Nodes not in Ready status
 
-Check статус узла:
+Check the node status:
 
 ```bash
 kubectl describe node k8s-worker-1
 ```
 
-Check логи kubelet на узле:
+Check the kubelet logs on the node:
 
 ```bash
 ssh ubuntu@k8s-worker-1 "sudo journalctl -u kubelet -n 50"
 ```
 
-### Issue: Поды не запускаются
+### Issue: Pods not starting
 
-Check статус подов:
+Check the pod status:
 
 ```bash
 kubectl get pods --all-namespaces
 kubectl describe pod <pod-name> -n <namespace>
 ```
 
-Check события:
+Check the events:
 
 ```bash
 kubectl get events --sort-by='.lastTimestamp'
 ```
 
-### Issue: Нет доступа к кластеру
+### Issue: No access to the cluster
 
-Check kubeconfig:
+Check the kubeconfig:
 
 ```bash
 kubectl config view
 kubectl cluster-info
 ```
 
-Make sure, что вы можете подключиться к API серверу:
+Make sure that you can connect to the API server:
 
 ```bash
 kubectl get nodes
 ```
 
-### Issue: Сетевая связность между подами
+### Issue: Network connectivity between pods
 
-Check статус сетевого плагина:
+Check the status of the network plugin:
 
 ```bash
-kubectl get pods -n kube-system | grep calico  # или flannel, в зависимости от плагина
+kubectl get pods -n kube-system | grep calico  # or flannel, depending on the plugin
 ```
 
-Check сетевые политики:
+Check the network policies:
 
 ```bash
 kubectl get networkpolicies --all-namespaces
@@ -293,12 +273,6 @@ kubectl get networkpolicies --all-namespaces
 
 ## Next Steps
 
-После успешной развёртки Kubernetes кластера:
+After the Kubernetes cluster has been deployed successfully:
 
-1. [Настройка секретов](./secrets-setup.md) - настройка GPG ключей и SOPS для управления секретами
-
-
-
-
-
-
+1. [Secrets setup](./secrets-setup.md) - configuring GPG keys and SOPS for secrets management

@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   pangolin:
-    image: fosrl/pangolin:latest
+    image: fosrl/pangolin:1.19.4
     container_name: pangolin
     restart: unless-stopped
     ports:
@@ -28,7 +28,7 @@ services:
       retries: 3
 
   gerbil:
-    image: fosrl/gerbil:latest
+    image: fosrl/gerbil:1.4.2
     container_name: gerbil
     restart: unless-stopped
     environment:

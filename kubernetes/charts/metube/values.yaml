@@ -17,7 +17,7 @@ chart-base:
         prometheus.io/path: "/metrics"
       containers:
         - name: metube
-          image: ghcr.io/alexta69/metube:latest
+          image: ghcr.io/alexta69/metube:2026.06.28
           imagePullPolicy: IfNotPresent
           ports:
             - { name: http, containerPort: 8081 }

@@ -4,47 +4,47 @@ sidebar_position: 9
 
 # Verification and Monitoring
 
-После развёртки и настройки всех сервисов необходимо проверить работоспособность всей системы и настроить мониторинг.
+After deploying and configuring all services, you need to verify that the entire system is working and set up monitoring.
 
-## Verification статуса подов
+## Verifying Pod Status
 
-Check статус всех подов во всех namespace:
+Check the status of all pods across all namespaces:
 
 ```bash
 kubectl get pods --all-namespaces
 ```
 
-Все поды должны быть в статусе `Running`. Если есть поды в статусе `Pending`, `Error`, или `CrashLoopBackOff`, проверьте их логи:
+All pods should be in the `Running` state. If there are pods in the `Pending`, `Error`, or `CrashLoopBackOff` state, check their logs:
 
 ```bash
 kubectl describe pod <pod-name> -n <namespace>
 kubectl logs <pod-name> -n <namespace>
 ```
 
-### Verification по namespace
+### Verification by Namespace
 
-Check каждый namespace отдельно:
+Check each namespace separately:
 
 ```bash
-# Базы данных
+# Databases
 kubectl get pods -n db
 
-# Сервисы
+# Services
 kubectl get pods -n service
 
-# Инфраструктура
+# Infrastructure
 kubectl get pods -n infrastructure
 
-# Продуктивность
+# Productivity
 kubectl get pods -n productivity
 
-# Код
+# Code
 kubectl get pods -n code
 
-# Социальные сервисы
+# Social services
 kubectl get pods -n social
 
-# Данные
+# Data
 kubectl get pods -n data
 
 # Ingress
@@ -53,67 +53,67 @@ kubectl get pods -n ingress
 
 ## Verification of Services
 
-Check статус всех сервисов:
+Check the status of all services:
 
 ```bash
 kubectl get svc --all-namespaces
 ```
 
-Make sure, что все сервисы имеют ClusterIP и правильные порты.
+Make sure that all services have a ClusterIP and the correct ports.
 
-### Verification endpoint'ов
+### Verifying Endpoints
 
-Check, что у сервисов есть активные endpoints:
+Check that the services have active endpoints:
 
 ```bash
 kubectl get endpoints --all-namespaces
 ```
 
-## Verification Ingress
+## Verifying Ingress
 
-Check все Ingress ресурсы:
+Check all Ingress resources:
 
 ```bash
 kubectl get ingress --all-namespaces
 ```
 
-Make sure, что:
-- Все ingress правильно настроены
-- Домены указывают на правильные сервисы
-- TLS сертификаты настроены
+Make sure that:
+- All ingresses are configured correctly
+- Domains point to the correct services
+- TLS certificates are configured
 
-### Verification конкретного ingress
+### Verifying a Specific Ingress
 
 ```bash
 kubectl describe ingress <ingress-name> -n <namespace>
 ```
 
-## Verification подключения через Pangolin
+## Verifying Connectivity via Pangolin
 
-### Verification статуса Wireguard
+### Verifying Wireguard Status
 
-На клиенте:
+On the client:
 
 ```bash
 cd /opt/pangolin
 docker exec gerbil wg show
 ```
 
-На сервере:
+On the server:
 
 ```bash
 ssh user@your-vps-ip "docker exec gerbil wg show"
 ```
 
-### Verification ping через туннель
+### Verifying Ping Through the Tunnel
 
 ```bash
-ping 10.99.0.1  # IP сервера в Wireguard сети
+ping 10.99.0.1  # Server IP in the Wireguard network
 ```
 
-### Verification доступности of Services через туннель
+### Verifying Service Availability Through the Tunnel
 
-Check доступность сервисов через домены:
+Check service availability via domains:
 
 ```bash
 curl -I https://gitlab.local
@@ -122,20 +122,20 @@ curl -I https://vaultwarden.local
 curl -I https://grafana.local
 ```
 
-Все сервисы должны отвечать HTTP 200 или редирект на страницу входа.
+All services should respond with HTTP 200 or a redirect to the login page.
 
-## Verification доступности of Services через домены
+## Verifying Service Availability via Domains
 
-### Verification DNS резолюции
+### Verifying DNS Resolution
 
 ```bash
 nslookup gitlab.local
 dig gitlab.local
 ```
 
-### Verification через curl
+### Verifying via curl
 
-Check каждый сервис:
+Check each service:
 
 ```bash
 # GitLab
@@ -160,282 +160,280 @@ curl -I https://authentik.local
 curl -I https://glance.local
 ```
 
-### Verification SSL сертификатов
+### Verifying SSL Certificates
 
 ```bash
 openssl s_client -connect gitlab.local:443 -servername gitlab.local < /dev/null
 ```
 
-Make sure, что сертификаты действительны и не истекли.
+Make sure that the certificates are valid and have not expired.
 
-## Использование Glance для централизованного доступа
+## Using Glance for Centralized Access
 
-### Открытие Glance
+### Opening Glance
 
-Откройте веб-интерфейс Glance:
+Open the Glance web interface:
 
 ```
 https://glance.local
 ```
 
-### Verification ссылок
+### Verifying Links
 
-Make sure, что все ссылки в Glance ведут на правильные сервисы и работают.
+Make sure that all links in Glance point to the correct services and work.
 
-### Configuration виджетов
+### Configuring Widgets
 
-Добавьте виджеты для мониторинга:
-- Статус сервисов
-- Метрики использования ресурсов
-- Последние события
+Add widgets for monitoring:
+- Service status
+- Resource usage metrics
+- Recent events
 
-## Мониторинг через Grafana
+## Monitoring via Grafana
 
-### Открытие Grafana
+### Opening Grafana
 
-Откройте веб-интерфейс Grafana:
+Open the Grafana web interface:
 
 ```
 https://grafana.local
 ```
 
-### Verification подключения к Prometheus
+### Verifying the Connection to Prometheus
 
 1. Configuration → Data Sources
-2. Make sure, что Prometheus подключен
-3. Test connection - должно быть "Data source is working"
+2. Make sure that Prometheus is connected
+3. Test connection - it should say "Data source is working"
 
-### Verification дашбордов
+### Verifying Dashboards
 
 1. Dashboard → Browse
-2. Make sure, что дашборды отображают данные
-3. Check метрики:
-   - CPU использование
-   - Память
-   - Сеть
-   - Диск
+2. Make sure that the dashboards display data
+3. Check the metrics:
+   - CPU usage
+   - Memory
+   - Network
+   - Disk
 
-### Создание кастомных дашбордов
+### Creating Custom Dashboards
 
-Создайте дашборды для мониторинга:
-- Статус подов
-- Использование ресурсов кластера
-- Доступность сервисов
-- Метрики приложений
+Create dashboards for monitoring:
+- Pod status
+- Cluster resource usage
+- Service availability
+- Application metrics
 
-## Логирование через Loki
+## Logging via Loki
 
-### Verification Loki
+### Verifying Loki
 
 ```bash
 kubectl get pods -n service -l app=loki
 ```
 
-### Подключение Loki к Grafana
+### Connecting Loki to Grafana
 
-1. В Grafana: Configuration → Data Sources
+1. In Grafana: Configuration → Data Sources
 2. Add data source → Loki
 3. URL: `http://loki.service.svc.cluster.local:3100`
 4. Test & Save
 
-### Просмотр логов
+### Viewing Logs
 
 1. Explore → Loki
-2. Выберите namespace и pod
-3. Просмотрите логи
+2. Select a namespace and pod
+3. View the logs
 
-## Verification баз данных
+## Verifying Databases
 
 ### PostgreSQL
 
 ```bash
-# Verification статуса
+# Verify status
 kubectl get pods -n db -l app=postgres
 
-# Подключение
+# Connect
 kubectl exec -it -n db deployment/postgres -- psql -U postgres
 
-# Verification баз данных
+# Verify databases
 kubectl exec -it -n db deployment/postgres -- psql -U postgres -c "\l"
 ```
 
 ### MongoDB
 
 ```bash
-# Verification статуса
+# Verify status
 kubectl get pods -n db -l app=mongodb
 
-# Verification replica set
+# Verify replica set
 kubectl exec -it -n db deployment/mongodb -- mongosh --eval "rs.status()"
 ```
 
 ### ValKey
 
 ```bash
-# Verification статуса
+# Verify status
 kubectl get pods -n db -l app=valkey
 
-# Verification подключения
+# Verify connection
 kubectl exec -it -n db deployment/valkey-master -- valkey-cli ping
 ```
 
-## Verification Vault
+## Verifying Vault
 
-### Статус Vault
+### Vault Status
 
 ```bash
 kubectl exec -n service deployment/vault -- vault status
 ```
 
-Make sure, что статус: `Sealed: false`
+Make sure that the status is: `Sealed: false`
 
-### Verification Secrets
+### Verifying Secrets
 
 ```bash
-# Список Secrets
+# List Secrets
 kubectl exec -n service deployment/vault -- vault kv list secret/
 
-# Просмотр секрета
+# View a secret
 kubectl exec -n service deployment/vault -- vault kv get secret/vaultwarden/secrets
 ```
 
-## Verification Consul
+## Verifying Consul
 
-### Статус Consul
+### Consul Status
 
 ```bash
 kubectl get pods -n service -l app=consul
 ```
 
-### Члены кластера
+### Cluster Members
 
 ```bash
 kubectl exec -n service deployment/consul -- consul members
 ```
 
-### UI Consul
+### Consul UI
 
-Откройте веб-интерфейс Consul (если включен):
+Open the Consul web interface (if enabled):
 
 ```
 https://consul.local
 ```
 
-## Мониторинг ресурсов
+## Resource Monitoring
 
-### Использование ресурсов узлов
+### Node Resource Usage
 
 ```bash
 kubectl top nodes
 ```
 
-### Использование ресурсов подов
+### Pod Resource Usage
 
 ```bash
 kubectl top pods --all-namespaces
 ```
 
-### Детальная информация о ресурсах
+### Detailed Resource Information
 
 ```bash
 kubectl describe node <node-name>
 ```
 
-## Verification событий
+## Verifying Events
 
-Check последние события в кластере:
+Check the latest events in the cluster:
 
 ```bash
 kubectl get events --all-namespaces --sort-by='.lastTimestamp' | tail -50
 ```
 
-Обратите внимание на события типа `Warning` или `Error`.
+Pay attention to events of type `Warning` or `Error`.
 
-## Configuration алертов
+## Configuring Alerts
 
-### Алерты в Grafana
+### Alerts in Grafana
 
 1. Alerting → Alert rules
-2. Создайте правила для:
-   - Высокое использование CPU/памяти
-   - Недоступность сервисов
-   - Ошибки в логах
-   - Проблемы с дисками
+2. Create rules for:
+   - High CPU/memory usage
+   - Service unavailability
+   - Errors in logs
+   - Disk problems
 
-### Каналы уведомлений
+### Notification Channels
 
-Настройте каналы уведомлений:
+Configure notification channels:
 - Email
 - Slack
 - Discord
 - PagerDuty
 
-## Резервное копирование
+## Backups
 
-### Verification резервных копий
+### Verifying Backups
 
-Make sure, что настроено резервное копирование:
-- Баз данных (PostgreSQL, MongoDB)
+Make sure that backups are configured for:
+- Databases (PostgreSQL, MongoDB)
 - Persistent volumes
-- Конфигурации (Helm charts, secrets)
+- Configuration (Helm charts, secrets)
 
-### Тестирование восстановления
+### Testing Restores
 
-Периодически проверяйте возможность восстановления из резервных копий.
+Periodically test the ability to restore from backups.
 
-## Чек-лист проверки
+## Verification Checklist
 
-Используйте этот чек-лист для проверки системы:
+Use this checklist to verify the system:
 
-- [ ] Все поды в статусе Running
-- [ ] Все сервисы имеют активные endpoints
-- [ ] Все ingress правильно настроены
-- [ ] Wireguard туннель работает
-- [ ] Все домены резолвятся и доступны
-- [ ] SSL сертификаты действительны
-- [ ] Glance показывает все сервисы
-- [ ] Grafana подключена к Prometheus
-- [ ] Loki собирает логи
-- [ ] Базы данных работают
-- [ ] Vault распечатан и доступен
-- [ ] Consul работает
-- [ ] Ресурсы используются разумно
-- [ ] Настроены алерты
-- [ ] Настроено резервное копирование
+- [ ] All pods are in the Running state
+- [ ] All services have active endpoints
+- [ ] All ingresses are configured correctly
+- [ ] The Wireguard tunnel is working
+- [ ] All domains resolve and are reachable
+- [ ] SSL certificates are valid
+- [ ] Glance shows all services
+- [ ] Grafana is connected to Prometheus
+- [ ] Loki is collecting logs
+- [ ] Databases are working
+- [ ] Vault is unsealed and available
+- [ ] Consul is working
+- [ ] Resources are used reasonably
+- [ ] Alerts are configured
+- [ ] Backups are configured
 
-## Устранение проблем
+## Troubleshooting
 
-### Поды не запускаются
+### Pods Don't Start
 
-1. Check события: `kubectl describe pod <pod-name> -n <namespace>`
-2. Check логи: `kubectl logs <pod-name> -n <namespace>`
-3. Check ресурсы: `kubectl describe node`
+1. Check events: `kubectl describe pod <pod-name> -n <namespace>`
+2. Check logs: `kubectl logs <pod-name> -n <namespace>`
+3. Check resources: `kubectl describe node`
 4. Check persistent volumes: `kubectl get pv, pvc`
 
-### Сервисы недоступны
+### Services Are Unavailable
 
 1. Check ingress: `kubectl describe ingress -n <namespace>`
 2. Check DNS: `nslookup <domain>`
 3. Check SSL: `openssl s_client -connect <domain>:443`
-4. Check логи Traefik: `kubectl logs -n ingress -l app=traefik`
+4. Check Traefik logs: `kubectl logs -n ingress -l app=traefik`
 
-### Проблемы с базами данных
+### Database Problems
 
-1. Check статус: `kubectl get pods -n db`
-2. Check логи: `kubectl logs -n db <db-pod>`
-3. Check подключение: попробуйте подключиться к БД
+1. Check status: `kubectl get pods -n db`
+2. Check logs: `kubectl logs -n db <db-pod>`
+3. Check connectivity: try connecting to the database
 4. Check persistent volumes
 
 ## Next Steps
 
-После проверки системы:
+After verifying the system:
 
-1. Настройте регулярные проверки
-2. Настройте автоматические алерты
-3. Настройте резервное копирование
-4. Документируйте особенности вашей установки
-
-
+1. Set up regular checks
+2. Configure automatic alerts
+3. Configure backups
+4. Document the specifics of your installation
 
 
 

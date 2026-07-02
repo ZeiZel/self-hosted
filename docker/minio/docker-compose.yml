@@ -1,7 +1,7 @@
 ---
 services:
   minio:
-    image: docker.io/minio/minio
+    image: docker.io/minio/minio:RELEASE.2025-09-07T16-13-09Z
     command: server /data
     restart: always
     volumes:
@@ -20,7 +20,7 @@ services:
       start_period: 40s
 
   createbuckets:
-    image: docker.io/minio/mc
+    image: docker.io/minio/mc:RELEASE.2025-08-13T08-35-41Z
     depends_on:
       minio:
         condition: service_healthy

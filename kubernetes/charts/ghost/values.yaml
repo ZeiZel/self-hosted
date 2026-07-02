@@ -29,7 +29,7 @@ chart-base:
         consul.hashicorp.com/service-tags: "ghost,blog,cms,content"
       containers:
         - name: ghost
-          image: ghost:5.108.0-alpine
+          image: ghost:6.49.0-alpine
           imagePullPolicy: IfNotPresent
           ports:
             - { name: http, containerPort: 2368, protocol: TCP }

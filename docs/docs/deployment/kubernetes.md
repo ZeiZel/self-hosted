@@ -10,7 +10,7 @@ Deploy the entire infrastructure to Kubernetes using Helm and Helmfile.
 
 - Kubernetes cluster (1.28+)
 - kubectl configured
-- Helm 3.8+ installed
+- Helm 4.0+ installed
 - Helmfile 0.155+ installed
 - Helm Secrets plugin installed
 
@@ -106,7 +106,7 @@ Values are organized in `envs/k8s/`:
 
 ### Chart Values
 
-Each service has its chart in `charts/` with default values in `values.yaml`.
+Each service has its chart in `charts/`. Custom app charts keep an empty `templates/` directory and declare a dependency on the shared universal subchart `chart-base` (`kubernetes/chart-base/`); their configuration lives under a top-level `chart-base:` key in `values.yaml`.
 
 ## Verification
 
@@ -122,10 +122,12 @@ kubectl get pods --all-namespaces
 kubectl get services --all-namespaces
 ```
 
-### Check Ingress
+### Check Routes
+
+Gateway API HTTPRoute is the default routing method (plain Ingress / Traefik IngressRoute are opt-in fallbacks):
 
 ```bash
-kubectl get ingress --all-namespaces
+kubectl get httproute --all-namespaces
 ```
 
 ## Updating Services

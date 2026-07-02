@@ -1,7 +1,7 @@
 ---
 services:
   mongo:
-    image: docker.io/mongo
+    image: docker.io/mongo:8.0.26
     restart: always
     volumes:
       - db:/data/db

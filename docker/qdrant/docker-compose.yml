@@ -7,7 +7,7 @@ version: '3.8'
 
 services:
   qdrant:
-    image: qdrant/qdrant:v1.12.4
+    image: qdrant/qdrant:v1.18.2
     # Distinct name + published host ports so the host-side MCP server can reach it.
     # (An unrelated `qdrant` container from the `ai-support` project may already run
     #  without published ports; this instance is dedicated to agent memory.)

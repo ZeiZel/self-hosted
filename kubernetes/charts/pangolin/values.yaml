@@ -22,7 +22,7 @@ chart-base:
         prometheus.io/path: "/metrics"
       containers:
         - name: pangolin-client
-          image: "fosrl/pangolin:latest"
+          image: "fosrl/pangolin:1.19.4"
           imagePullPolicy: IfNotPresent
           ports:
             - { name: http, containerPort: 3001 }
@@ -89,7 +89,7 @@ chart-base:
 
   tests:
     enabled: true
-    image: busybox:1.28
+    image: busybox:1.38.0
     port: 3001
 
   # The original NetworkPolicy is highly customized (restricts ingress to the

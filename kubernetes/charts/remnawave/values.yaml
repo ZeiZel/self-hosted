@@ -53,7 +53,7 @@ chart-base:
         fsGroup: 1000
       initContainers:
         - name: wait-for-postgres
-          image: postgres:17-alpine
+          image: postgres:18-alpine
           command:
             - sh
             - -c
@@ -65,7 +65,7 @@ chart-base:
               done
               echo "PostgreSQL is ready!"
         - name: wait-for-redis
-          image: busybox:1.36
+          image: busybox:1.38.0
           command:
             - sh
             - -c
@@ -78,7 +78,7 @@ chart-base:
               echo "Redis/ValKey is ready!"
       containers:
         - name: remnawave
-          image: remnawave/backend:latest
+          image: remnawave/backend:2.8.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false

@@ -86,7 +86,7 @@ All tools must be installed:
 - **Ansible:** 2.9+
 - **Terraform:** 1.0+
 - **kubectl:** 1.28+
-- **Helm:** 3.8+
+- **Helm:** 4.0+
 - **Helmfile:** 0.155+
 - **Docker:** 20.10+ (optional, for local development)
 - **GPG:** 2.2+

@@ -65,16 +65,6 @@ const themeConfig: ThemeConfig = {
       { to: "/about", label: "About", position: "left" },
       { to: "/docs", label: "Docs", position: "left" },
       {
-        type: "localeDropdown",
-        position: "right",
-        dropdownItemsAfter: [
-          {
-            href: selfHostedConfig.urls.repo,
-            label: "Help us translate",
-          },
-        ],
-      },
-      {
         href: selfHostedConfig.urls.repo,
         label: "GitHub",
         position: "right",

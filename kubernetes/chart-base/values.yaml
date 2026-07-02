@@ -124,6 +124,6 @@ extraManifests: []
 
 tests:
   enabled: false
-  image: busybox:1.36
+  image: busybox:1.38.0
   port: 80
   url: ""

@@ -5,7 +5,7 @@
 
 services:
   openclaw:
-    image: alpine/openclaw:${OPENCLAW_VERSION:-1.0.0}
+    image: alpine/openclaw:${OPENCLAW_VERSION:-2026.6.9}
     container_name: openclaw
     restart: unless-stopped
     user: "1000:1000"
@@ -59,7 +59,7 @@ services:
 
   # Optional: Nginx reverse proxy with SSL
   nginx:
-    image: nginx:1.27-alpine
+    image: nginx:1.31-alpine
     container_name: openclaw-nginx
     restart: unless-stopped
     ports:

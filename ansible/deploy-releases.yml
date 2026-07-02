@@ -1,0 +1,60 @@
+---
+# Deploy individual Helmfile releases locally (pre-phase / dev)
+#
+# Applies one or more Helmfile releases by name against the current kubeconfig,
+# in the order given, without running the full base deployment chain. Intended
+# for local clusters (Docker Desktop / kubeadm) to validate base components such
+# as namespaces and cert-manager.
+#
+# Usage:
+#   ansible-playbook -i localhost, --connection=local deploy-releases.yml \
+#     -e releases=namespaces,cert-manager
+#   selfhost deploy release namespaces cert-manager
+
+- name: Deploy individual Helmfile releases
+  hosts: localhost
+  connection: local
+  gather_facts: false
+
+  vars:
+    helmfile_env: "k8s"
+    kubernetes_path: "{{ playbook_dir }}/../kubernetes"
+    kubeconfig_path: "{{ lookup('env', 'HOME') }}/.kube/config"
+    release_list: "{{ releases.split(',') | map('trim') | select | list }}"
+    # Optional Helm --set overrides (comma-separated key=value pairs), applied to
+    # every release in this invocation. Rendered as --set=<pair> argv tokens.
+    hset: ""
+    set_flags: "{{ (hset | string).split(',') | map('trim') | select | map('regex_replace', '^(.*)$', '--set=\\1') | list }}"
+
+  tasks:
+    - name: Validate releases were provided
+      ansible.builtin.assert:
+        that:
+          - release_list | length > 0
+        fail_msg: "No releases given. Pass -e releases=namespaces,cert-manager"
+
+    - name: Show deployment plan
+      ansible.builtin.debug:
+        msg:
+          - "Environment: {{ helmfile_env }}"
+          - "Kubeconfig: {{ kubeconfig_path }}"
+          - "Releases (in order): {{ release_list | join(' -> ') }}"
+
+    - name: Apply Helmfile release
+      ansible.builtin.command:
+        argv: >-
+          {{ ['helmfile', '-e', helmfile_env, 'apply',
+              '--selector', 'name=' ~ item, '--suppress-secrets'] + set_flags }}
+        chdir: "{{ kubernetes_path }}"
+      environment:
+        KUBECONFIG: "{{ kubeconfig_path }}"
+      loop: "{{ release_list }}"
+      register: release_apply
+      changed_when: >-
+        'has been upgraded' in release_apply.stdout
+        or 'Installing' in release_apply.stdout
+        or 'installed' in release_apply.stdout
+
+    - name: Summary
+      ansible.builtin.debug:
+        msg: "Applied {{ release_list | length }} release(s): {{ release_list | join(', ') }}"

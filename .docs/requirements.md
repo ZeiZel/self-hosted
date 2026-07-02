@@ -1,7 +1,7 @@
 # Enterprise-Ready Self-Hosted Infrastructure Platform - System Requirements Specification
 
-**Document Version:** 1.0
-**Date:** February 1, 2026
+**Document Version:** 2.0.0
+**Date:** July 1, 2026
 **Target Audience:** AI Agents, Platform Engineers, DevOps Teams
 
 ***
@@ -69,21 +69,27 @@ The platform MUST provide four core functional domains:
 The platform MUST implement strict namespace segregation:
 
 ```
-ingress:        Edge routing and load balancing
-service:        Platform services (Consul, Vault, Authentik, Monitoring)
-db:             Data layer (PostgreSQL, MongoDB, Valkey, MinIO, ClickHouse)
-code:           Development tools (GitLab, CI/CD, artifact repositories)
+ingress:        Edge routing (Traefik Gateway), network policies
+service:        Platform services (Consul, Vault, Prometheus, Grafana, Loki, cert-manager)
+auth:           Authentication (Authentik)
+db:             Data layer (PostgreSQL, MongoDB, Valkey, MinIO, ClickHouse, MySQL, RabbitMQ)
+code:           Development tools (GitLab, YouTrack, TeamCity, Hub, Coder)
 productivity:   Collaboration tools (notes, whiteboards, file sharing)
 social:         Communication services (chat, email)
-data:           Personal data management (password vault, sync)
-infrastructure: Operations tools (database UI, dashboards, VPN)
+data:           Personal data management (password vault, sync, Nextcloud)
+content:        Content publishing (Ghost)
+infrastructure: Operations tools (database UI, dashboards, VPN, registry)
+utilities:      Utility services (VERT, MeTube)
+automation:     Automation & orchestration (Kestra, n8n)
+monitoring:     Monitoring stack (Prometheus, Grafana, Loki)
 ```
+(13 namespaces total — created by the `namespaces` chart.)
 
 #### AR-003: Service Discovery & Networking
 - **AR-003.1**: Kubernetes DNS MUST be the primary service discovery mechanism using FQDN format: `<service>.<namespace>.svc.cluster.local`
 - **AR-003.2**: Consul MUST provide supplementary service mesh capabilities for advanced traffic management
 - **AR-003.3**: Services in `db` namespace MUST be accessible only from application namespaces via NetworkPolicy
-- **AR-003.4**: External access MUST be routed through Traefik ingress controller in `ingress` namespace
+- **AR-003.4**: External access MUST be routed via the **Gateway API** — a shared `Gateway` (Gateway API `HTTPRoute`) in the `ingress` namespace, with Traefik as the GatewayClass controller (`traefik.io/gateway-controller`). Legacy Ingress/IngressRoute is opt-in only.
 
 ### 2.2 Infrastructure Components
 
@@ -97,7 +103,7 @@ The following services MUST be included in core infrastructure:
 - YouTrack: Issue and project tracking
 - JetBrains Hub: User management for JetBrains ecosystem
 - Bytebase: Database change management
-- Harbour: Enterprise container registry
+- Harbor: Enterprise container registry
 - Nexus Repository: Universal artifact manager
 
 **Data Layer:**
@@ -199,11 +205,11 @@ The following services MUST be included in core infrastructure:
 - **RE-008.2**: East-west traffic between pods in same namespace SHOULD bypass mesh for reduced overhead
 - **RE-008.3**: Mesh proxies MUST have resource limits (100m CPU, 128Mi memory max)
 
-#### RE-009: Ingress Consolidation
-- **RE-009.1**: Single Traefik Deployment MUST handle all external traffic
-- **RE-009.2**: Traefik MUST use IngressRoute CRD for advanced routing
-- **RE-009.3**: TLS termination MUST occur at Traefik layer, not individual services
-- **RE-009.4**: HTTP/2 and gRPC MUST be enabled at ingress level
+#### RE-009: Routing Consolidation (Gateway API)
+- **RE-009.1**: A single shared **Gateway** (Gateway API) MUST front all external traffic; Traefik is the GatewayClass controller.
+- **RE-009.2**: Services MUST attach via **HTTPRoute** (`gateway.networking.k8s.io/v1`) to the shared Gateway; Traefik IngressRoute/Ingress is opt-in only.
+- **RE-009.3**: TLS termination MUST occur at the Gateway layer, not individual services.
+- **RE-009.4**: HTTP/2 and gRPC MUST be supported at the Gateway level.
 
 ***
 
@@ -234,10 +240,15 @@ metadata:
 ```
 
 #### SEC-003: SOPS for GitOps Secrets
-- **SEC-003.1**: Helmfile values containing sensitive data MUST be encrypted with SOPS + GPG
+- **SEC-003.1**: Helmfile values containing sensitive data MUST be encrypted with SOPS
 - **SEC-003.2**: SOPS configuration MUST reside in `kubernetes/.sops.yaml`
-- **SEC-003.3**: GPG keys MUST be 4096-bit RSA or ECC Ed25519
-- **SEC-003.4**: Encrypted files MUST have `.enc.yaml` or `.secrets.yaml` suffix
+- **SEC-003.3**: Keys MUST be GPG (4096-bit RSA / Ed25519) or age
+- **SEC-003.4**: Encrypted secrets live in `kubernetes/envs/k8s/secrets/_all.yaml` (SOPS)
+
+> **Current deviation (see production-readiness-review.md).** SEC-001 (Vault-only) is the
+> target but not yet met: `chart-base` still renders `kind: Secret` from values, and the
+> active Helmfile path reads a **plaintext** bootstrap file `_all_plain.yaml` (B-1). This
+> file MUST be removed and secrets migrated to Vault injection / SOPS before production.
 
 ### 4.2 Authentication & Authorization
 
@@ -309,7 +320,7 @@ securityContext:
 ```
 
 #### SEC-008: Image Security
-- **SEC-008.1**: ALL container images MUST be pulled from Harbour private registry
+- **SEC-008.1**: ALL container images MUST be pulled from Harbor private registry
 - **SEC-008.2**: Images MUST be scanned for vulnerabilities before deployment (Trivy or Clair)
 - **SEC-008.3**: Critical/High vulnerabilities MUST block deployment
 - **SEC-008.4**: Image pull secrets MUST be namespace-scoped
@@ -348,6 +359,14 @@ securityContext:
 ***
 
 ## 5. Deployment & Automation Requirements
+
+### 5.0 Operator CLI (`selfhost`)
+
+#### DEP-000: Operator CLI
+- **DEP-000.1**: The platform MUST provide an operator CLI `selfhost` — a single static **Go** binary built on the Charm stack (cobra, bubbletea, lipgloss, bubbles, ntcharts, huh) with pure-Go SQLite state.
+- **DEP-000.2**: The CLI MUST orchestrate deployment by driving Ansible (phased, resumable) and MUST NOT replace Ansible/Helmfile responsibilities.
+- **DEP-000.3**: The CLI MUST provide inventory, service selection, placement/balance, phased `deploy` (+ `deploy release` local Helmfile selector), node scaling (kubespray `add`/`remove`), a live `monitor` TUI, and certs/gateway/vpn helpers.
+- **DEP-000.4**: A **native** monitoring daemon (`selfhost daemon`, launchd/systemd — no Docker) MUST expose a local HTTP long-poll API, use SQLite for IPC/state (`~/.selfhosted/`), and send Telegram alerts.
 
 ### 5.1 Ansible-Driven Deployment
 
@@ -461,14 +480,17 @@ Example playbook:
 
 ### 5.2 Helmfile Configuration
 
-#### DEP-005: Helmfile Structure
+#### DEP-005: Helmfile & Chart Structure
 - **DEP-005.1**: Root `kubernetes/helmfile.yaml` MUST import environment-specific values
 - **DEP-005.2**: Releases MUST be organized in `kubernetes/releases/*.yaml.gotmpl`
-- **DEP-005.3**: Custom charts MUST reside in `kubernetes/charts/<service>/`
-- **DEP-005.4**: Values hierarchy:
-  1. Chart defaults (`charts/<service>/values.yaml`)
-  2. Environment values (`envs/k8s/values.yaml`)
-  3. Secret values (`envs/k8s/secrets/_all.yaml` - SOPS encrypted)
+- **DEP-005.3**: Custom charts MUST reside in `kubernetes/charts/<service>/`, built on the shared **`chart-base`** subchart (`kubernetes/chart-base/`, `type: application`).
+- **DEP-005.4**: App charts MUST have an **empty `templates/`** dir, declare a `chart-base` dependency (`file://../../chart-base`), and place all config under a top-level `chart-base:` values key. Exemptions: `namespaces`, `gitlab-ingress`.
+- **DEP-005.5**: The service registry MUST live in `kubernetes/apps/*.yaml` (top-level `apps:` maps, merged by Helmfile).
+- **DEP-005.6**: Values hierarchy:
+  1. Chart defaults (`charts/<service>/values.yaml`, under `chart-base:`)
+  2. Release overrides (`releases/<service>.yaml.gotmpl`)
+  3. Environment values (`envs/k8s/*.yaml`)
+  4. Secret values (`envs/k8s/secrets/_all.yaml` — SOPS encrypted; `_all_plain.yaml` is a temporary bootstrap file to be removed)
 
 #### DEP-006: Helmfile Dependencies
 - **DEP-006.1**: Releases MUST declare dependencies via `needs` field:
@@ -707,13 +729,16 @@ The platform is considered enterprise-ready when:
 | Category | Technology | Version | Purpose |
 |----------|-----------|---------|---------|
 | Orchestration | Kubernetes | 1.28+ | Container orchestration |
-| Package Manager | Helm | 3.12+ | Kubernetes package manager |
-| Deployment | Helmfile | 0.157+ | Declarative Helm deployment |
-| Automation | Ansible | 2.15+ | Infrastructure provisioning |
-| Secret Management | SOPS | 3.8+ | Secrets encryption at rest |
-| Secret Runtime | Vault | 1.15+ | Dynamic secrets management |
-| Identity Provider | Authentik | 2023.10+ | SSO/OIDC/SAML |
-| Ingress Controller | Traefik | 2.10+ | Edge routing & load balancing |
+| Package Manager | Helm | 4.x | Kubernetes package manager (server-side apply) |
+| Deployment | Helmfile | 0.169+ | Declarative Helm deployment |
+| Chart framework | chart-base | 0.1.0 | Universal subchart rendering all app charts |
+| Automation | Ansible | 2.15+ | Infrastructure provisioning (kubespray) |
+| Operator CLI | selfhost (Go/Charm) | — | Single static Go binary + native daemon |
+| Secret Management | SOPS | 3.9+ | Secrets encryption at rest |
+| Secret Runtime | Vault | 1.x | Dynamic secrets management |
+| Identity Provider | Authentik | 2024+ | SSO/OIDC/SAML |
+| Routing | Gateway API (HTTPRoute) | v1 | External routing standard |
+| Gateway Controller | Traefik | v3.x (chart v37.x) | GatewayClass controller / edge routing |
 | Service Mesh | Consul | 1.17+ | Service discovery & mesh |
 | Database (SQL) | PostgreSQL | 15+ | Primary relational database |
 | Database (NoSQL) | MongoDB | 7+ | Document store |
@@ -723,7 +748,7 @@ The platform is considered enterprise-ready when:
 | Logging | Loki | 2.9+ | Log aggregation |
 | Visualization | Grafana | 10.2+ | Dashboards & alerting |
 | VCS | GitLab | 16.5+ | Git repository & CI/CD |
-| Container Registry | Harbour | 2.9+ | Image repository |
+| Container Registry | Harbor | 2.9+ | Image repository |
 | Artifact Repository | Nexus | 3.60+ | Package management |
 | Blog Platform | Ghost | 5.70+ | Content publishing |
 

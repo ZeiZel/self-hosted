@@ -35,7 +35,7 @@ chart-base:
           type: RuntimeDefault
       containers:
         - name: grafana
-          image: grafana/grafana:11.4.0
+          image: grafana/grafana:13.1.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -102,7 +102,7 @@ chart-base:
           type: RuntimeDefault
       containers:
         - name: loki
-          image: grafana/loki:3.3.2
+          image: grafana/loki:3.7.3
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -158,7 +158,7 @@ chart-base:
           type: RuntimeDefault
       containers:
         - name: prometheus
-          image: prom/prometheus:v3.1.0
+          image: prom/prometheus:v3.13.0
           imagePullPolicy: IfNotPresent
           securityContext:
             allowPrivilegeEscalation: false
@@ -402,7 +402,7 @@ chart-base:
             dnsPolicy: ClusterFirst
             containers:
               - name: promtail
-                image: grafana/promtail:3.3.2
+                image: grafana/promtail:3.6.11
                 imagePullPolicy: IfNotPresent
                 args:
                   - -config.file=/etc/promtail/config.yaml
@@ -458,7 +458,7 @@ chart-base:
         restartPolicy: Never
         containers:
           - name: wget
-            image: busybox:1.28
+            image: busybox:1.38.0
             command: ['wget']
             args: ['--spider', '-q', 'monitoring-grafana:3000/api/health']
     - |
@@ -477,7 +477,7 @@ chart-base:
         restartPolicy: Never
         containers:
           - name: wget
-            image: busybox:1.28
+            image: busybox:1.38.0
             command: ['wget']
             args: ['--spider', '-q', 'monitoring-prometheus:9090/-/ready']
 

@@ -2,7 +2,7 @@ version: '3.8'
 
 services:
   ghost:
-    image: ghost:5-alpine
+    image: ghost:6-alpine
     container_name: ghost
     restart: unless-stopped
     ports:
@@ -33,7 +33,7 @@ services:
       retries: 3
 
   mysql:
-    image: mysql:8
+    image: mysql:8.4.10
     container_name: ghost-mysql
     restart: unless-stopped
     environment:

@@ -1,9 +1,9 @@
 # Architecture Documentation
 
 **Project**: Self-Hosted Infrastructure Platform
-**Last Updated**: February 2026
-**Version**: 1.0.0
-**Status**: Production-Ready
+**Last Updated**: July 1, 2026
+**Version**: 2.0.0
+**Status**: ⛔ NOT production-ready (see [production-readiness-review.md](./production-readiness-review.md))
 
 ## Table of Contents
 
@@ -20,19 +20,22 @@
 
 ## Overview
 
-Self-hosted enterprise platform running 40+ services on Kubernetes with strict security, automation, and observability requirements.
+Self-hosted enterprise platform running ~46 registered services (29 custom app charts) on Kubernetes with strict security, automation, and observability requirements.
 
 ### Key Characteristics
 
-- **Kubernetes**: v1.28.5 (single-node bare-metal deployment)
+- **Kubernetes**: v1.28+ bare-metal, single control-plane node; multi-node supported via `selfhost node add/remove` (kubespray)
 - **CNI**: Calico v3.28.0 with IPIPCrossSubnet encapsulation
 - **Storage**: OpenEBS hostpath provisioner
-- **Ingress**: Traefik v3.4.0
+- **Routing**: Gateway API (HTTPRoute) via a shared `Gateway`; Traefik is the GatewayClass controller
+- **Helm**: v4 (server-side apply; `--force-replace` disabled for compatibility)
+- **Charts**: `chart-base` universal subchart renders every app chart (empty per-chart `templates/`)
 - **Service Mesh**: Consul
-- **Secrets**: HashiCorp Vault with auto-unseal
+- **Secrets**: HashiCorp Vault (target) + SOPS-encrypted env secrets; see Security Architecture for current gaps
 - **SSO**: Authentik
 - **Monitoring**: Prometheus + Grafana + Loki
 - **Backup**: Velero with MinIO backend
+- **Operator CLI**: `selfhost` — single static Go binary (Charm stack); native monitoring daemon
 
 ---
 
@@ -54,28 +57,34 @@ Self-hosted enterprise platform running 40+ services on Kubernetes with strict s
 ### Kubernetes Cluster
 
 ```
-Single Node: local-server
+Control plane: local-server (bare-metal)
 - IP: 192.168.100.2
 - VPN IP: 10.99.0.2
 - OS: Ubuntu 25.10
-- Role: Control plane + workloads (bare-metal)
-- Expandable with additional worker nodes when needed
+- Role: Control plane + workloads
+- Scale out/in with `selfhost node add <label>` / `selfhost node remove <label>`
+  (kubespray scale / remove-node); worker, storage and backup node groups supported.
 ```
 
 ### Ansible Roles
 
+Actual roles under `ansible/roles/` (all phases complete per the deployment epics):
+
 | Role | Purpose | Status |
 |------|---------|--------|
-| setup_server | Prepare server for Kubernetes | ✅ Complete |
+| setup_host | Prepare host tooling (Homebrew, deps, SSH) | ✅ Complete |
+| server | Prepare server for Kubernetes | ✅ Complete |
 | docker | Install Docker runtime | ✅ Complete |
-| security | UFW firewall and hardening | ✅ Complete |
-| kubespray | Deploy Kubernetes cluster | 🚧 In Progress |
-| cni | Configure Calico networking | ⏳ Pending |
-| storage | Deploy OpenEBS storage | ⏳ Pending |
-| pangolin | Setup WireGuard VPN | ⏳ Pending |
-| infrastructure | Deploy all services via Helmfile | ⏳ Pending |
-| monitoring | Verify Prometheus/Grafana | ⏳ Pending |
-| backup | Configure Velero backups | ⏳ Pending |
+| kubespray | Deploy/scale Kubernetes cluster | ✅ Complete |
+| storage / storage-node | Deploy OpenEBS storage | ✅ Complete |
+| backup / backup-node | NFS + restic + Velero backups | ✅ Complete |
+| infrastructure | Deploy all services via Helmfile | ✅ Complete |
+| monitoring | Verify Prometheus/Grafana/Loki | ✅ Complete |
+| pangolin / wireguard-client | Pangolin gateway + WireGuard VPN | ✅ Complete |
+| cert-manager | Configure ClusterIssuers | ✅ Complete |
+| local-access | Local `<svc>.<domain>` access | ✅ Complete |
+| apps | Node-level app config | ✅ Complete |
+| validate | Post-deployment verification | ✅ Complete |
 
 ---
 
@@ -91,11 +100,10 @@ Internet
    │
    └─→ WireGuard Tunnel (10.99.0.0/24)
           │
-          ├─ Master (10.99.0.10) ←→ Newt Client
-          ├─ Worker-1 (10.99.0.11) ←→ Newt Client
-          └─ Worker-2 (10.99.0.12) ←→ Newt Client
+          ├─ Control plane (10.99.0.10) ←→ Newt Client
+          └─ Additional nodes (10.99.0.1x) ←→ Newt Client   # added via `selfhost node add`
                 │
-                └─→ Cluster Traefik (ingress namespace)
+                └─→ Traefik Gateway — Gateway API (ingress namespace)
                        │
                        ├─→ service/* (Vault, Consul, Authentik, Prometheus, Grafana)
                        ├─→ db/* (PostgreSQL, MongoDB, Valkey, MinIO, ClickHouse, MySQL, RabbitMQ)
@@ -123,6 +131,10 @@ Internet
 ---
 
 ## Component Inventory
+
+> All app charts below render their Kubernetes resources through the shared
+> `chart-base` subchart (see [Operator Tooling](#operator-tooling)); versions shown are
+> the release/app versions from `kubernetes/apps/*.yaml`.
 
 ### Base Infrastructure (namespace: ingress, service)
 
@@ -216,7 +228,7 @@ Internet
 | Vert | v1.0.0 | utilities | - | Traefik, Consul |
 | Metube | v1.0.0 | utilities | 50Gi PVC | Traefik, Consul |
 
-**Total Services**: 42
+**Total registered services**: ~46 across `kubernetes/apps/*.yaml` (29 custom app charts + external charts such as Traefik, cert-manager, Authentik, GitLab, databases).
 
 ---
 
@@ -255,9 +267,9 @@ rabbitmq.db.svc.cluster.local:5672
 ### Network Security
 
 **Zero-Trust Networking**:
-- NetworkPolicy on all 23 custom charts (100% coverage)
-- Default deny-all policy
-- Explicit ingress from Traefik only
+- NetworkPolicy rendered by `chart-base` for every consuming app chart
+- Default deny-all policy (base policies in the `namespaces` chart)
+- Explicit ingress from the Traefik Gateway only
 - Explicit egress to required services
 - Service-specific database access
 
@@ -265,14 +277,14 @@ rabbitmq.db.svc.cluster.local:5672
 ```
 Internet → Gateway VPS (TLS termination)
          → WireGuard tunnel (encrypted)
-         → Cluster Traefik (mTLS)
+         → Traefik Gateway — Gateway API (HTTPRoute)
          → Services (NetworkPolicy enforced)
 ```
 
 ### Identity & Access
 
 **Pod Identity**:
-- ServiceAccount for all 23 charts (100% coverage)
+- ServiceAccount rendered by `chart-base` for every consuming app chart
 - RBAC Role + RoleBinding with least privilege
 - Minimal permissions (pod/configmap read only)
 
@@ -281,27 +293,29 @@ Internet → Gateway VPS (TLS termination)
 - OAuth2 integration for all web apps
 - LDAP backend for legacy apps
 
-**Secrets Management**:
-- HashiCorp Vault for all secrets
-- Vault Agent Injector annotations
-- Auto-rotation for database credentials
-- No Kubernetes Secrets for app credentials
+**Secrets Management** (target vs actual):
+- **Target**: HashiCorp Vault Agent Injector for all app credentials; no Kubernetes Secrets.
+- **Actual**: `chart-base/templates/secrets.yaml` still renders `kind: Secret` from values,
+  and SOPS encrypts `kubernetes/envs/k8s/secrets/_all.yaml` — but the active Helmfile path
+  reads the **plaintext** `_all_plain.yaml` (temporary bootstrap file). Full Vault injection
+  is not yet met. See [production-readiness-review.md](./production-readiness-review.md)
+  (B-1, H-2, H-3).
 
 ### Compliance
 
-**Chart Compliance (100%):**
-- ✅ NetworkPolicy: 23/23
-- ✅ ServiceAccount: 23/23
-- ✅ RBAC: 23/23
-- ✅ ServiceMonitor: 23/23
-- ✅ PodDisruptionBudget: 23/23
-- ✅ Helm Tests: 23/23
+**Chart Compliance** — provided centrally by `chart-base` for all consuming app charts
+(the 29 app charts have empty `templates/` and inherit these resources):
+- ✅ NetworkPolicy (chart-base `networkpolicy.yaml`)
+- ✅ ServiceAccount (chart-base `rbac.yaml`)
+- ✅ RBAC Role/RoleBinding (chart-base `rbac.yaml`)
+- ✅ ServiceMonitor (chart-base `observability.yaml`, label `prometheus: kube-prometheus`)
+- ✅ PodDisruptionBudget (chart-base `observability.yaml`)
+- ✅ Helm Tests (chart-base `tests.yaml`)
+- Exempt (keep their own templates): `namespaces`, `gitlab-ingress`.
 
-**Security Context:**
-- runAsNonRoot: true (all pods)
-- readOnlyRootFilesystem: true (where possible)
-- allowPrivilegeEscalation: false
-- capabilities.drop: [ALL]
+**Security Context** — mandatory defaults set in `chart-base/templates/_helpers.tpl`:
+- runAsNonRoot: true, runAsUser/fsGroup: 1000, seccompProfile: RuntimeDefault (pod level)
+- readOnlyRootFilesystem: true, allowPrivilegeEscalation: false, capabilities.drop: [ALL] (container level)
 
 ---
 
@@ -313,7 +327,7 @@ The platform uses three tools with distinct responsibilities:
 
 | Tool | Responsibility | Entry Point |
 |------|----------------|-------------|
-| **CLI** | User interface, interactive prompts, monitoring daemon | `selfhost deploy` |
+| **CLI** (`selfhost`, Go/Charm binary) | User interface, wizards, inventory/services/plan/balance, phased deploy, monitor TUI, native daemon | `selfhost deploy` |
 | **Ansible** | Server provisioning, orchestration, secret management | `ansible-playbook all.yml` |
 | **Helmfile** | Kubernetes/Helm chart deployment | `helmfile apply` (called by Ansible) |
 
@@ -334,9 +348,17 @@ selfhost deploy --tags infrastructure,databases
 # Dry run (Ansible --check mode)
 selfhost deploy --dry-run
 
-# Monitoring daemon
-selfhost monitor start
-selfhost monitor stop
+# Apply individual Helmfile releases locally (bypasses phases; e.g. on Docker Desktop)
+selfhost deploy release namespaces cert-manager
+
+# Node scaling (kubespray)
+selfhost node add worker-2
+selfhost node remove worker-2
+
+# Live monitoring dashboard (TUI) + background daemon
+selfhost monitor
+selfhost daemon start
+selfhost daemon stop
 ```
 
 ### Deployment Pipeline
@@ -431,7 +453,7 @@ Namespaces → Traefik → Consul → Vault (unsealed) → cert-manager → Auth
 
 - **Prometheus**: Metrics collection (30s scrape interval)
 - **Grafana**: Dashboards (Kubernetes, Node Exporter, Traefik, PostgreSQL)
-- **ServiceMonitor**: 23/23 charts (100% coverage)
+- **ServiceMonitor**: rendered by `chart-base` for every consuming app chart (label `prometheus: kube-prometheus`)
 - **Alertmanager**: Alert routing (Slack integration)
 
 ### Logging
@@ -467,7 +489,7 @@ findings and remediation checklist (plaintext secrets file, mutable image tags,
 consul missing NetworkPolicy/RBAC/PDB, workloads without securityContext, charts
 creating K8s Secrets from values).
 
-**Last Review**: June 2026 (production-readiness gate)
+**Last Review**: July 1, 2026 (production-readiness re-audit after chart-base migration)
 **Next Review**: After blockers remediated
 
 ---
@@ -482,9 +504,9 @@ creating K8s Secrets from values).
   (Replaced the former Bun + NestJS + Ink implementation, June 2026.)
 - **`docker/qdrant/`** — local QDrant + qdrant MCP server for agent semantic
   memory / token optimisation (developer tooling; not part of the platform).
-- **Helm charts** — `charts/chart-base/` is a generic `type: application` subchart
-  that renders all resources for every app chart. Each app chart has an **empty
-  `templates/`** dir, declares `chart-base` as a `file://../chart-base` dependency,
+- **Helm charts** — `kubernetes/chart-base/` is a generic `type: application` subchart
+  (v0.1.0) that renders all resources for every app chart. Each app chart has an **empty
+  `templates/`** dir (only `.gitkeep`), declares `chart-base` as a `file://../../chart-base` dependency,
   and supplies config under a `chart-base:` values key; helmfile vendors the
   dependency at apply time. Routing is Gateway API (HTTPRoute) via the shared
   `Gateway` in the `namespaces` chart. Exempt: `namespaces` and `gitlab-ingress`.

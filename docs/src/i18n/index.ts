@@ -31,36 +31,5 @@ export const translations = {
 			title: 'Technology Stack',
 		},
 	},
-	ru: {
-		hero: {
-			title: 'Self-hosted Infrastructure',
-			subtitle:
-				'Полное решение для self-hosted инфраструктуры для разработки и production окружений',
-			getStarted: 'Начать →',
-			viewServices: 'Сервисы',
-		},
-		about: {
-			title: 'О проекте',
-			description1:
-				'Этот репозиторий содержит полное решение для self-hosted инфраструктуры, предназначенное для разработки и production окружений. Он предоставляет комплексный набор сервисов и инструментов для создания, развертывания и управления приложениями в self-hosted окружении.',
-			description2:
-				'Инфраструктура поддерживает развертывание как через Docker Compose, так и через Kubernetes, с автоматизированной подготовкой через Ansible и Terraform. Все сервисы настроены для совместной работы, обеспечивая готовую к production self-hosted платформу.',
-		},
-		features: {
-			title: 'Основные возможности',
-		},
-		services: {
-			title: 'Обзор сервисов',
-			description: 'Комплексный набор self-hosted сервисов для всех ваших потребностей',
-			viewAll: 'Все сервисы →',
-		},
-		quickStart: {
-			title: 'Быстрый старт',
-			description: 'Выберите метод развертывания и начните работу за минуты',
-		},
-		techStack: {
-			title: 'Технологический стек',
-		},
-	},
 };
 
